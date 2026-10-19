@@ -1,0 +1,19 @@
+[package]
+name = "workeasy"
+version = "0.1.0"
+description = "WorkEasy desktop app (Windows, macOS, Linux)"
+authors = ["Guilherme Capel Pasqua"]
+license = "LicenseRef-Proprietary"
+publish = false
+edition = "2024"
+rust-version = "1.90"
+
+[lib]
+name = "workeasy_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "=2.7.1", features = [] }
+
+[dependencies]
+tauri = { version = "=2.12.1", features = [] }
