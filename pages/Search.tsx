@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Filter, ChevronDown } from 'lucide-react';
 import ProviderCard from '../components/ProviderCard';
-import { MOCK_PROVIDERS, CATEGORIES } from '../constants';
-import { filterProviders } from '../utils/search';
+import { MOCK_PROVIDERS } from '../constants';
+import { OCCUPATIONS, findArea } from '../catalog';
+import { filterProviders, searchOccupations } from '../utils/search';
 
 const SearchPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -11,6 +12,7 @@ const SearchPage: React.FC = () => {
   const categorySlug = searchParams.get('category');
 
   const providers = useMemo(() => filterProviders(MOCK_PROVIDERS, { query, categorySlug }), [query, categorySlug]);
+  const services = useMemo(() => searchOccupations(OCCUPATIONS, query, 12), [query]);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   return (
@@ -20,12 +22,27 @@ const SearchPage: React.FC = () => {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800 mb-2">
           {categorySlug 
-            ? `Profissionais de ${CATEGORIES.find(c => c.slug === categorySlug)?.name || '...'}`
+            ? `Profissionais de ${findArea(categorySlug)?.name || '...'}`
             : query ? `Resultados para "${query}"` : 'Todos os profissionais'
           }
         </h1>
-        <p className="text-gray-500 text-sm">{providers.length} profissionais encontrados próximos a você</p>
+        <p className="text-gray-500 text-sm">{providers.length} profissionais de demonstração encontrados</p>
       </div>
+
+      {services.length > 0 && (
+        <section aria-label="Serviços relacionados" className="mb-6">
+          <h2 className="text-sm font-semibold text-gray-700 mb-2">Serviços relacionados</h2>
+          <ul className="flex flex-wrap gap-2">
+            {services.map(o => (
+              <li key={o.slug}>
+                <Link to={`/servicos/${o.slug}`} className="inline-block text-sm bg-white border border-gray-200 text-gray-700 px-3 py-1.5 rounded-full hover:border-primary hover:text-primary">
+                  {o.name}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* Filters Bar (Mobile Optimized) */}
       <div className="flex gap-2 overflow-x-auto no-scrollbar mb-6 pb-2 sticky top-16 bg-gray-50 z-40 py-2 -mx-4 px-4 md:static md:bg-transparent md:mx-0 md:px-0">
@@ -81,8 +98,12 @@ const SearchPage: React.FC = () => {
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
               <Filter size={32} />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900">Nenhum profissional encontrado</h3>
-            <p className="text-gray-500">Tente ajustar seus filtros ou buscar por outra categoria.</p>
+            <h3 className="text-lg font-semibold text-gray-900">Nenhum profissional de demonstração encontrado</h3>
+            <p className="text-gray-500">
+              {services.length > 0
+                ? 'Veja acima os serviços relacionados e o que cada um exige.'
+                : <>Tente outra palavra ou veja <Link to="/categorias" className="text-primary font-medium">todas as categorias</Link>.</>}
+            </p>
           </div>
         )}
       </div>

@@ -1,21 +1,61 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { Suspense, use, useEffect, useState } from 'react';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { CheckCircle, ChevronRight, User, Briefcase, ShieldCheck, Upload, AlertCircle } from 'lucide-react';
-import { CATEGORIES } from '../constants';
+import { AREAS, findArea, findOccupation, loadPolicies } from '../catalog';
+import { BILLING_LABELS, VERIFICATION_LABELS } from '../catalog/labels';
+
+/** What onboarding will ask for the chosen occupation, from its policy. */
+const Requirements: React.FC<{ slug: string }> = ({ slug }) => {
+  const policy = use(loadPolicies())[slug];
+  if (!policy) return null;
+  return (
+    <>
+      <ul className="list-disc pl-5 space-y-1 text-yellow-800">
+        {policy.verification.map(step => (
+          <li key={step}>{VERIFICATION_LABELS[step]}</li>
+        ))}
+      </ul>
+      {policy.regulated && (
+        <p className="mt-3 text-yellow-700">
+          Profissão regulamentada: o registro no {policy.registryName || policy.regulatorBody} será conferido no órgão.
+        </p>
+      )}
+      <p className="mt-3 text-yellow-700">Cobrança: {BILLING_LABELS[policy.billing]}.</p>
+      {policy.providerType === 'somente_empresa_licenciada' && (
+        <p className="mt-3 text-yellow-700">Este serviço só pode ser prestado por empresa licenciada.</p>
+      )}
+    </>
+  );
+};
 
 const ProviderRegistration: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [step, setStep] = useState(1);
+
+  // Coming from a service page ("Ofereço este serviço") preselects it
+  const preset = findOccupation(searchParams.get('ocupacao'));
 
   // Demo: the form never leaves the browser. Nothing is sent, stored or checked.
   const [formData, setFormData] = useState({
     name: '',
     cpf: '',
     phone: '',
-    category: '',
+    area: preset?.areaSlug ?? '',
+    occupation: preset?.slug ?? '',
     experience: '',
     acknowledgedDemo: false
   });
+
+  // Fetch the policies before step 3 needs them
+  useEffect(() => {
+    void loadPolicies();
+  }, []);
+
+  const occupationsInArea = [...(findArea(formData.area)?.occupations ?? [])].sort((a, b) =>
+    a.name.localeCompare(b.name, 'pt-BR'),
+  );
+  const chosen = findOccupation(formData.occupation);
 
   const handleNext = () => {
     if (!isStepValid()) return;
@@ -24,12 +64,14 @@ const ProviderRegistration: React.FC = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const value = e.target.type === 'checkbox' ? (e.target as HTMLInputElement).checked : e.target.value;
-    setFormData({ ...formData, [e.target.name]: value });
+    // A new area clears the occupation picked in the previous one
+    const reset = e.target.name === 'area' ? { occupation: '' } : {};
+    setFormData({ ...formData, ...reset, [e.target.name]: value });
   };
 
   const isStepValid = () => {
     if (step === 1) return formData.name && formData.cpf.length >= 11 && formData.phone;
-    if (step === 2) return formData.category && formData.experience;
+    if (step === 2) return formData.occupation && formData.experience;
     if (step === 3) return formData.acknowledgedDemo;
     return true;
   };
@@ -119,15 +161,30 @@ const ProviderRegistration: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Categoria Principal</label>
-                <select 
-                  name="category" 
-                  value={formData.category} 
+                <label htmlFor="area" className="block text-sm font-medium text-gray-700 mb-1">Área</label>
+                <select
+                  id="area"
+                  name="area"
+                  value={formData.area}
                   onChange={handleChange}
                   className="w-full p-3 border border-gray-300 rounded-xl outline-hidden focus:border-primary bg-white"
                 >
                   <option value="">Selecione...</option>
-                  {CATEGORIES.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                  {AREAS.map(a => <option key={a.slug} value={a.slug}>{a.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="occupation" className="block text-sm font-medium text-gray-700 mb-1">Serviço ou profissão principal</label>
+                <select
+                  id="occupation"
+                  name="occupation"
+                  value={formData.occupation}
+                  onChange={handleChange}
+                  disabled={!formData.area}
+                  className="w-full p-3 border border-gray-300 rounded-xl outline-hidden focus:border-primary bg-white disabled:bg-gray-50 disabled:text-gray-400"
+                >
+                  <option value="">{formData.area ? 'Selecione...' : 'Escolha a área primeiro'}</option>
+                  {occupationsInArea.map(o => <option key={o.slug} value={o.slug}>{o.name}</option>)}
                 </select>
               </div>
               <div>
@@ -160,8 +217,8 @@ const ProviderRegistration: React.FC = () => {
                 <div className="w-16 h-16 bg-yellow-50 text-yellow-600 rounded-full flex items-center justify-center mx-auto mb-3">
                   <ShieldCheck size={32} />
                 </div>
-                <h2 className="text-xl font-bold text-gray-800">Verificação</h2>
-                <p className="text-sm text-gray-500">Política por categoria em definição.</p>
+                <h2 className="text-xl font-bold text-gray-800">Conferência do cadastro</h2>
+                <p className="text-sm text-gray-500">{chosen ? `O que será pedido para ${chosen.name}` : 'Regras por serviço'}</p>
               </div>
 
               <div className="bg-yellow-50 p-4 rounded-xl text-sm text-yellow-800 border border-yellow-100">
@@ -169,11 +226,14 @@ const ProviderRegistration: React.FC = () => {
                   <AlertCircle size={16} />
                   Como vai funcionar
                 </h3>
-                <p className="text-yellow-700">
-                  A verificação vai depender da categoria: profissões regulamentadas terão o registro no conselho
-                  conferido, e serviços prestados dentro de casa ou para pessoas vulneráveis poderão pedir certidões.
-                  Cada etapa terá aviso de privacidade próprio.
-                </p>
+                {chosen ? (
+                  <Suspense fallback={<p className="text-yellow-700">Carregando as regras deste serviço…</p>}>
+                    <Requirements slug={chosen.slug} />
+                  </Suspense>
+                ) : (
+                  <p className="text-yellow-700">As exigências dependem do serviço escolhido.</p>
+                )}
+                <p className="mt-3 text-yellow-700">Cada etapa terá aviso de privacidade próprio.</p>
                 <p className="mt-3 text-xs italic opacity-80">
                   Nesta demonstração, nenhum dado é enviado, consultado ou armazenado.
                 </p>

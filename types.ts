@@ -1,5 +1,3 @@
-import type { LucideIcon } from 'lucide-react';
-
 export enum UserType {
   CLIENT = 'CLIENT',
   PROVIDER = 'PROVIDER'
@@ -24,7 +22,7 @@ export interface Review {
 export interface Service {
   id: string;
   title: string;
-  category: string; // Category slug (see CATEGORIES)
+  category: string; // Area slug (see catalog/areas.json)
   description: string;
   priceMin: number;
   priceMax: number;
@@ -65,14 +63,6 @@ export interface Provider {
   reviews: Review[];
   yearsExperience: number;
   medicalInfo?: MedicalInfo; // Optional field for medical providers
-}
-
-export interface Category {
-  id: string;
-  name: string;
-  icon: LucideIcon;
-  slug: string;
-  subcategories?: string[];
 }
 
 export enum RequestStatus {

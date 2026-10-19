@@ -1,0 +1,52 @@
+{
+ "areas": [
+  {
+   "slug": "limpeza",
+   "name": "Limpeza",
+   "icon": "Home",
+   "description": "Faxina, diaristas e limpeza especializada.",
+   "occupations": [
+    {
+     "slug": "diarista",
+     "name": "Diarista",
+     "synonyms": [
+      "faxina",
+      "faxineira",
+      "limpeza de casa"
+     ]
+    }
+   ]
+  },
+  {
+   "slug": "health",
+   "name": "Saúde — médicos",
+   "icon": "Stethoscope",
+   "description": "Consultas com médicos de todas as especialidades.",
+   "occupations": [
+    {
+     "slug": "cardiologista",
+     "name": "Cardiologista",
+     "synonyms": [
+      "cardiologia",
+      "médico do coração"
+     ]
+    }
+   ]
+  },
+  {
+   "slug": "reformas",
+   "name": "Reformas",
+   "icon": "Briefcase",
+   "description": "Obras e reparos residenciais.",
+   "occupations": [
+    {
+     "slug": "encanador",
+     "name": "Encanador",
+     "synonyms": [
+      "conserto de vazamento"
+     ]
+    }
+   ]
+  }
+ ]
+}

@@ -50,6 +50,7 @@ const Navbar: React.FC = () => {
             
             {user.type === UserType.CLIENT ? (
               <>
+                <Link to="/categorias" className={`${isActive('/categorias')} hover:text-primary transition-colors`}>Categorias</Link>
                 <Link to="/search" className={`${isActive('/search')} hover:text-primary transition-colors`}>Buscar</Link>
                 <Link to="/dashboard" className={`${isActive('/dashboard')} hover:text-primary transition-colors`}>Meus Pedidos</Link>
                 <Link 
@@ -85,6 +86,8 @@ const Navbar: React.FC = () => {
           <div className="flex items-center md:hidden">
             <button
               onClick={() => setIsOpen(!isOpen)}
+              aria-label={isOpen ? 'Fechar menu' : 'Abrir menu'}
+              aria-expanded={isOpen}
               className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-hidden"
             >
               {isOpen ? <X size={24} /> : <Menu size={24} />}
@@ -114,6 +117,13 @@ const Navbar: React.FC = () => {
             
             {user.type === UserType.CLIENT ? (
               <>
+                <Link
+                  to="/categorias"
+                  onClick={() => setIsOpen(false)}
+                  className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-primary hover:bg-gray-50"
+                >
+                  Categorias
+                </Link>
                 <Link 
                   to="/search" 
                   onClick={() => setIsOpen(false)}

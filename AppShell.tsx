@@ -15,6 +15,9 @@ const TeleconsultationRoom = lazy(() => import('./pages/TeleconsultationRoom'));
 const MedicalRecords = lazy(() => import('./pages/MedicalRecords'));
 const HealthSearch = lazy(() => import('./pages/HealthSearch'));
 const DoctorProfile = lazy(() => import('./pages/DoctorProfile'));
+const Categories = lazy(() => import('./pages/Categories'));
+const AreaPage = lazy(() => import('./pages/AreaPage'));
+const OccupationPage = lazy(() => import('./pages/OccupationPage'));
 
 const PageFallback: React.FC = () => (
   <div role="status" className="py-24 text-center text-gray-400 text-sm">Carregando…</div>
@@ -30,6 +33,9 @@ const AppShell: React.FC = () => (
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/search" element={<SearchPage />} />
+          <Route path="/categorias" element={<Categories />} />
+          <Route path="/categorias/:slug" element={<AreaPage />} />
+          <Route path="/servicos/:slug" element={<OccupationPage />} />
           <Route path="/health" element={<HealthSearch />} />
           <Route path="/doctor/:id" element={<DoctorProfile />} />
           {/* /profile/me is the signed-in user's area in the demo */}

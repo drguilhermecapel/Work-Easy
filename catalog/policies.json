@@ -1,0 +1,84 @@
+{
+ "diarista": {
+  "regulated": false,
+  "regulatorBody": "",
+  "registryName": "",
+  "legalBasis": "LC 150/2015",
+  "verification": [
+   "documento_selfie",
+   "cadastro_fiscal",
+   "antecedentes"
+  ],
+  "backgroundCheck": true,
+  "billing": "comissao_primeiro_servico",
+  "ratingRanking": true,
+  "laborLock": true,
+  "providerType": "autonomo",
+  "audienceMinors": false,
+  "priceUnits": [
+   "dia"
+  ],
+  "locations": [
+   "domicilio"
+  ],
+  "notes": "Até 2 dias por semana na mesma casa; perfil conferido.",
+  "confidence": "conferido",
+  "sources": [
+   "https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp150.htm"
+  ]
+ },
+ "cardiologista": {
+  "regulated": true,
+  "regulatorBody": "CFM/CRM",
+  "registryName": "CRM",
+  "legalBasis": "Lei 3.268/1957",
+  "verification": [
+   "documento_selfie",
+   "cadastro_fiscal",
+   "registro_profissional"
+  ],
+  "backgroundCheck": false,
+  "billing": "so_assinatura",
+  "ratingRanking": false,
+  "laborLock": false,
+  "providerType": "autonomo_ou_empresa",
+  "audienceMinors": false,
+  "priceUnits": [
+   "sessao"
+  ],
+  "locations": [
+   "online",
+   "estabelecimento"
+  ],
+  "notes": "Sem ranking por nota.",
+  "confidence": "conferido",
+  "sources": []
+ },
+ "encanador": {
+  "regulated": false,
+  "regulatorBody": "",
+  "registryName": "",
+  "legalBasis": "",
+  "verification": [
+   "documento_selfie",
+   "cadastro_fiscal",
+   "antecedentes"
+  ],
+  "backgroundCheck": true,
+  "billing": "comissao_primeiro_servico",
+  "ratingRanking": true,
+  "laborLock": false,
+  "providerType": "autonomo",
+  "audienceMinors": false,
+  "priceUnits": [
+   "hora",
+   "servico"
+  ],
+  "locations": [
+   "domicilio"
+  ],
+  "notes": "",
+  "confidence": "conferido",
+  "sources": []
+ }
+}

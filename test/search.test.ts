@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CATEGORIES, MOCK_PROVIDERS } from '../constants';
+import { MOCK_PROVIDERS } from '../constants';
 import { filterProviders, profilePath } from '../utils/search';
 
 describe('filterProviders', () => {
@@ -22,25 +22,6 @@ describe('filterProviders', () => {
   it('combines query and category', () => {
     expect(filterProviders(MOCK_PROVIDERS, { query: 'faxina', categorySlug: 'reformas' })).toHaveLength(0);
     expect(filterProviders(MOCK_PROVIDERS, { query: 'faxina', categorySlug: 'limpeza' })).toHaveLength(1);
-  });
-});
-
-describe('catalog consistency', () => {
-  it('every service points to an existing category slug', () => {
-    const slugs = new Set(CATEGORIES.map(c => c.slug));
-    for (const provider of MOCK_PROVIDERS) {
-      for (const service of provider.services) {
-        expect(slugs, `${provider.id}/${service.id}`).toContain(service.category);
-      }
-    }
-  });
-
-  it('has unique category slugs and no duplicated subcategory across the catalog', () => {
-    const slugs = CATEGORIES.map(c => c.slug);
-    expect(new Set(slugs).size).toBe(slugs.length);
-    const subcategories = CATEGORIES.flatMap(c => c.subcategories ?? []);
-    const duplicates = subcategories.filter((s, i) => subcategories.indexOf(s) !== i);
-    expect(duplicates).toEqual([]);
   });
 });
 

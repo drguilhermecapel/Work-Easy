@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
-import { Search, MapPin } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { CATEGORIES } from '../constants';
+import React, { useMemo, useState } from 'react';
+import { Search, MapPin, LayoutGrid } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { AREAS, OCCUPATIONS, featuredAreas, findArea } from '../catalog';
+import { searchOccupations } from '../utils/search';
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
+  const suggestions = useMemo(() => searchOccupations(OCCUPATIONS, searchTerm, 6), [searchTerm]);
+  const featured = featuredAreas();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -13,11 +16,7 @@ const Home: React.FC = () => {
   };
 
   const handleCategoryClick = (slug: string) => {
-    if (slug === 'health') {
-      navigate('/health');
-    } else {
-      navigate(`/search?category=${encodeURIComponent(slug)}`);
-    }
+    navigate(slug === 'health' ? '/health' : `/categorias/${encodeURIComponent(slug)}`);
   };
 
   return (
@@ -53,7 +52,23 @@ const Home: React.FC = () => {
               Buscar
             </button>
           </form>
-          
+
+          {suggestions.length > 0 && (
+            <ul aria-label="Sugestões" className="max-w-md mx-auto mt-2 bg-white rounded-2xl shadow-lg text-left overflow-hidden">
+              {suggestions.map(o => (
+                <li key={o.slug}>
+                  <Link
+                    to={`/servicos/${o.slug}`}
+                    className="flex items-baseline justify-between gap-3 px-4 py-2.5 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                  >
+                    <span className="text-gray-800 font-medium truncate">{o.name}</span>
+                    <span className="text-xs text-gray-400 shrink-0">{findArea(o.areaSlug)?.name}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+
           <div className="flex items-center justify-center mt-4 text-purple-200 text-sm">
             <MapPin size={14} className="mr-1" />
             <span>São Paulo, SP</span>
@@ -65,16 +80,16 @@ const Home: React.FC = () => {
       <section className="max-w-7xl mx-auto px-4 py-12 w-full">
         <div className="flex justify-between items-end mb-8">
           <h2 className="text-xl md:text-2xl font-bold text-gray-800">Categorias</h2>
-          <button onClick={() => navigate('/search')} className="text-primary text-sm font-bold hover:bg-primary/5 px-3 py-1 rounded-full transition-colors">
+          <Link to="/categorias" className="text-primary text-sm font-bold hover:bg-primary/5 px-3 py-1 rounded-full transition-colors">
             Ver todas
-          </button>
+          </Link>
         </div>
-        
-        <div className="grid grid-cols-3 min-[480px]:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-x-4 gap-y-8">
-          {CATEGORIES.map((cat) => (
+
+        <div className="grid grid-cols-3 min-[480px]:grid-cols-4 md:grid-cols-6 gap-x-4 gap-y-8">
+          {featured.map((cat) => (
             <button
               type="button"
-              key={cat.id} 
+              key={cat.slug}
               onClick={() => handleCategoryClick(cat.slug)}
               className="flex flex-col items-center gap-3 cursor-pointer group"
             >
@@ -86,6 +101,14 @@ const Home: React.FC = () => {
               </span>
             </button>
           ))}
+          <Link to="/categorias" className="flex flex-col items-center gap-3 group">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-primary/10 rounded-2xl flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300 ease-out transform group-hover:-translate-y-1">
+              <LayoutGrid strokeWidth={1.5} className="w-8 h-8 sm:w-10 sm:h-10" />
+            </div>
+            <span className="text-xs sm:text-sm font-medium text-primary text-center leading-tight w-full px-1 line-clamp-2 h-8 flex items-start justify-center">
+              Todas as {AREAS.length} áreas
+            </span>
+          </Link>
         </div>
       </section>
 
