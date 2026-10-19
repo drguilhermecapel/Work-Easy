@@ -332,7 +332,7 @@ const ChatComponent: React.FC<{selectedChat: string | null, setSelectedChat: (id
 
               <div className="p-4 bg-white border-t border-gray-200">
                 <div className="flex items-center gap-2">
-                    <input type="text" placeholder="Digite sua mensagem..." className="flex-1 bg-gray-100 border-0 rounded-full px-4 py-2.5 text-sm outline-hidden" />
+                    <input type="text" placeholder="Digite sua mensagem..." aria-label="Mensagem" className="flex-1 min-w-0 bg-gray-100 border-0 rounded-full px-4 py-2.5 text-sm outline-hidden" />
                     <button className="bg-primary text-white p-2.5 rounded-full"><Send size={18} /></button>
                 </div>
               </div>

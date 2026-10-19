@@ -53,7 +53,7 @@ const TeleconsultationRoom: React.FC = () => {
     { id: '1', sender: 'remote', senderName: 'Sistema', text: 'Sala de demonstração: nenhuma chamada real é feita.', timestamp: '14:00' }
   ]);
   const [newMessage, setNewMessage] = useState('');
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   // Object URLs created for local previews; revoked on unmount to free memory
   const objectUrlsRef = useRef<string[]>([]);
@@ -85,10 +85,12 @@ const TeleconsultationRoom: React.FC = () => {
     return () => clearInterval(timer);
   }, [user, navigate, sessionId]);
 
-  // Scroll to bottom of chat
+  // Scroll the chat panel (not the window) to the latest message, so the
+  // future-feature notice at the top of the page stays in view.
   useEffect(() => {
-    if (activeView === 'chat') {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const panel = chatScrollRef.current;
+    if (activeView === 'chat' && panel) {
+      panel.scrollTop = panel.scrollHeight;
     }
   }, [messages, activeView]);
 
@@ -347,7 +349,7 @@ const TeleconsultationRoom: React.FC = () => {
             <div className="flex-1 flex flex-col overflow-hidden bg-gray-50 animate-in fade-in">
               
               {/* Message List */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
                 {messages.map((msg) => {
                   const isMe = msg.sender === 'me';
                   return (
@@ -384,7 +386,6 @@ const TeleconsultationRoom: React.FC = () => {
                     </div>
                   );
                 })}
-                <div ref={messagesEndRef} />
               </div>
 
               {/* Chat Input */}

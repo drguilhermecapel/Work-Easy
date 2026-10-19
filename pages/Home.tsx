@@ -43,12 +43,13 @@ const Home: React.FC = () => {
             </div>
             <input 
               type="text" 
-              placeholder="O que você precisa?" 
-              className="flex-1 p-3 text-gray-800 placeholder-gray-400 outline-hidden bg-transparent"
+              placeholder="O que você precisa?"
+              aria-label="O que você precisa?"
+              className="flex-1 min-w-0 p-3 text-gray-800 placeholder-gray-400 outline-hidden bg-transparent"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <button type="submit" className="bg-secondary text-white p-3 rounded-xl font-semibold hover:bg-purple-800 transition-colors">
+            <button type="submit" className="shrink-0 bg-secondary text-white p-3 rounded-xl font-semibold hover:bg-purple-800 transition-colors">
               Buscar
             </button>
           </form>
