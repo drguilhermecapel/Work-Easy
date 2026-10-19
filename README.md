@@ -44,7 +44,7 @@ Um único código React é empacotado para seis plataformas.
 | Linux | Tauri 2 | `npm run desktop:build` (Rust + WebKitGTK 4.1) | `.deb` e `.AppImage` |
 
 - **Modos de build.** O site usa URLs limpas e service worker. Os apps nativos usam o build `--mode native` (`.env.native`), com URLs com `#` e sem service worker, porque são servidos de arquivos locais.
-- **CI.** O workflow `Release builds` (`.github/workflows/release.yml`) gera as seis saídas sob demanda ("Run workflow") ou em tags `v*`. Os artefatos ficam anexados à execução por 7 dias.
+- **CI.** O workflow `Release builds` (`.github/workflows/release.yml`) gera as seis saídas sob demanda ("Run workflow"), em tags `v*` e em pull requests que mudam o empacotamento nativo (`android/`, `ios/`, `src-tauri/`, dependências e configuração de build). Os artefatos ficam anexados à execução por 7 dias.
 - **Saídas sem assinatura.** O APK é de debug, o app iOS roda só no simulador e os instaladores desktop não são assinados (o Windows mostra o aviso do SmartScreen e o macOS pede para abrir pelo menu de contexto).
 - **Publicação nas lojas.** Exige conta Apple Developer de organização (US$ 99/ano, também usada para notarizar no macOS), conta Google Play de organização (US$ 25, taxa única), política de privacidade publicada e exclusão de conta dentro do app.
 

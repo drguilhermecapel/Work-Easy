@@ -1,8 +1,9 @@
 name: Release builds
 
 # Builds WorkEasy for all six targets: website (PWA), Android, iOS, Windows,
-# macOS and Linux. Runs only on demand or on a version tag, so ordinary
-# pushes do not spend macOS/Windows runner minutes.
+# macOS and Linux. Runs on demand, on a version tag, and on pull requests that
+# change the native packaging, so ordinary UI changes do not spend
+# macOS/Windows runner minutes.
 #
 # Outputs are unsigned: the APK is a debug build, the iOS app runs only in the
 # simulator, and the desktop installers are not code-signed. Store-ready
@@ -12,6 +13,18 @@ on:
   workflow_dispatch:
   push:
     tags: ['v*']
+  pull_request:
+    paths:
+      - 'android/**'
+      - 'ios/**'
+      - 'src-tauri/**'
+      - 'capacitor.config.ts'
+      - 'platform/**'
+      - 'vite.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.env.native'
+      - '.github/workflows/release.yml'
 
 permissions:
   contents: read
