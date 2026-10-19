@@ -1,0 +1,482 @@
+[
+  {
+    "name": "Água Rasa",
+    "slug": "agua-rasa",
+    "zone": "Leste"
+  },
+  {
+    "name": "Alto de Pinheiros",
+    "slug": "alto-de-pinheiros",
+    "zone": "Oeste"
+  },
+  {
+    "name": "Anhanguera",
+    "slug": "anhanguera",
+    "zone": "Norte"
+  },
+  {
+    "name": "Aricanduva",
+    "slug": "aricanduva",
+    "zone": "Leste"
+  },
+  {
+    "name": "Artur Alvim",
+    "slug": "artur-alvim",
+    "zone": "Leste"
+  },
+  {
+    "name": "Barra Funda",
+    "slug": "barra-funda",
+    "zone": "Oeste"
+  },
+  {
+    "name": "Bela Vista",
+    "slug": "bela-vista",
+    "zone": "Centro"
+  },
+  {
+    "name": "Belém",
+    "slug": "belem",
+    "zone": "Leste"
+  },
+  {
+    "name": "Bom Retiro",
+    "slug": "bom-retiro",
+    "zone": "Centro"
+  },
+  {
+    "name": "Brás",
+    "slug": "bras",
+    "zone": "Leste"
+  },
+  {
+    "name": "Brasilândia",
+    "slug": "brasilandia",
+    "zone": "Norte"
+  },
+  {
+    "name": "Butantã",
+    "slug": "butanta",
+    "zone": "Oeste"
+  },
+  {
+    "name": "Cachoeirinha",
+    "slug": "cachoeirinha",
+    "zone": "Norte"
+  },
+  {
+    "name": "Cambuci",
+    "slug": "cambuci",
+    "zone": "Centro"
+  },
+  {
+    "name": "Campo Belo",
+    "slug": "campo-belo",
+    "zone": "Sul"
+  },
+  {
+    "name": "Campo Grande",
+    "slug": "campo-grande",
+    "zone": "Sul"
+  },
+  {
+    "name": "Campo Limpo",
+    "slug": "campo-limpo",
+    "zone": "Sul"
+  },
+  {
+    "name": "Cangaíba",
+    "slug": "cangaiba",
+    "zone": "Leste"
+  },
+  {
+    "name": "Capão Redondo",
+    "slug": "capao-redondo",
+    "zone": "Sul"
+  },
+  {
+    "name": "Carrão",
+    "slug": "carrao",
+    "zone": "Leste"
+  },
+  {
+    "name": "Casa Verde",
+    "slug": "casa-verde",
+    "zone": "Norte"
+  },
+  {
+    "name": "Cidade Ademar",
+    "slug": "cidade-ademar",
+    "zone": "Sul"
+  },
+  {
+    "name": "Cidade Dutra",
+    "slug": "cidade-dutra",
+    "zone": "Sul"
+  },
+  {
+    "name": "Cidade Líder",
+    "slug": "cidade-lider",
+    "zone": "Leste"
+  },
+  {
+    "name": "Cidade Tiradentes",
+    "slug": "cidade-tiradentes",
+    "zone": "Leste"
+  },
+  {
+    "name": "Consolação",
+    "slug": "consolacao",
+    "zone": "Centro"
+  },
+  {
+    "name": "Cursino",
+    "slug": "cursino",
+    "zone": "Sul"
+  },
+  {
+    "name": "Ermelino Matarazzo",
+    "slug": "ermelino-matarazzo",
+    "zone": "Leste"
+  },
+  {
+    "name": "Freguesia do Ó",
+    "slug": "freguesia-do-o",
+    "zone": "Norte"
+  },
+  {
+    "name": "Grajaú",
+    "slug": "grajau",
+    "zone": "Sul"
+  },
+  {
+    "name": "Guaianases",
+    "slug": "guaianases",
+    "zone": "Leste"
+  },
+  {
+    "name": "Iguatemi",
+    "slug": "iguatemi",
+    "zone": "Leste"
+  },
+  {
+    "name": "Ipiranga",
+    "slug": "ipiranga",
+    "zone": "Sul"
+  },
+  {
+    "name": "Itaim Bibi",
+    "slug": "itaim-bibi",
+    "zone": "Oeste"
+  },
+  {
+    "name": "Itaim Paulista",
+    "slug": "itaim-paulista",
+    "zone": "Leste"
+  },
+  {
+    "name": "Itaquera",
+    "slug": "itaquera",
+    "zone": "Leste"
+  },
+  {
+    "name": "Jabaquara",
+    "slug": "jabaquara",
+    "zone": "Sul"
+  },
+  {
+    "name": "Jaçanã",
+    "slug": "jacana",
+    "zone": "Norte"
+  },
+  {
+    "name": "Jaguara",
+    "slug": "jaguara",
+    "zone": "Oeste"
+  },
+  {
+    "name": "Jaguaré",
+    "slug": "jaguare",
+    "zone": "Oeste"
+  },
+  {
+    "name": "Jaraguá",
+    "slug": "jaragua",
+    "zone": "Norte"
+  },
+  {
+    "name": "Jardim Ângela",
+    "slug": "jardim-angela",
+    "zone": "Sul"
+  },
+  {
+    "name": "Jardim Helena",
+    "slug": "jardim-helena",
+    "zone": "Leste"
+  },
+  {
+    "name": "Jardim Paulista",
+    "slug": "jardim-paulista",
+    "zone": "Oeste"
+  },
+  {
+    "name": "Jardim São Luís",
+    "slug": "jardim-sao-luis",
+    "zone": "Sul"
+  },
+  {
+    "name": "José Bonifácio",
+    "slug": "jose-bonifacio",
+    "zone": "Leste"
+  },
+  {
+    "name": "Lajeado",
+    "slug": "lajeado",
+    "zone": "Leste"
+  },
+  {
+    "name": "Lapa",
+    "slug": "lapa",
+    "zone": "Oeste"
+  },
+  {
+    "name": "Liberdade",
+    "slug": "liberdade",
+    "zone": "Centro"
+  },
+  {
+    "name": "Limão",
+    "slug": "limao",
+    "zone": "Norte"
+  },
+  {
+    "name": "Mandaqui",
+    "slug": "mandaqui",
+    "zone": "Norte"
+  },
+  {
+    "name": "Marsilac",
+    "slug": "marsilac",
+    "zone": "Sul"
+  },
+  {
+    "name": "Moema",
+    "slug": "moema",
+    "zone": "Sul"
+  },
+  {
+    "name": "Mooca",
+    "slug": "mooca",
+    "zone": "Leste"
+  },
+  {
+    "name": "Morumbi",
+    "slug": "morumbi",
+    "zone": "Oeste"
+  },
+  {
+    "name": "Parelheiros",
+    "slug": "parelheiros",
+    "zone": "Sul"
+  },
+  {
+    "name": "Pari",
+    "slug": "pari",
+    "zone": "Leste"
+  },
+  {
+    "name": "Parque do Carmo",
+    "slug": "parque-do-carmo",
+    "zone": "Leste"
+  },
+  {
+    "name": "Pedreira",
+    "slug": "pedreira",
+    "zone": "Sul"
+  },
+  {
+    "name": "Penha",
+    "slug": "penha",
+    "zone": "Leste"
+  },
+  {
+    "name": "Perdizes",
+    "slug": "perdizes",
+    "zone": "Oeste"
+  },
+  {
+    "name": "Perus",
+    "slug": "perus",
+    "zone": "Norte"
+  },
+  {
+    "name": "Pinheiros",
+    "slug": "pinheiros",
+    "zone": "Oeste"
+  },
+  {
+    "name": "Pirituba",
+    "slug": "pirituba",
+    "zone": "Norte"
+  },
+  {
+    "name": "Ponte Rasa",
+    "slug": "ponte-rasa",
+    "zone": "Leste"
+  },
+  {
+    "name": "Raposo Tavares",
+    "slug": "raposo-tavares",
+    "zone": "Oeste"
+  },
+  {
+    "name": "República",
+    "slug": "republica",
+    "zone": "Centro"
+  },
+  {
+    "name": "Rio Pequeno",
+    "slug": "rio-pequeno",
+    "zone": "Oeste"
+  },
+  {
+    "name": "Sacomã",
+    "slug": "sacoma",
+    "zone": "Sul"
+  },
+  {
+    "name": "Santa Cecília",
+    "slug": "santa-cecilia",
+    "zone": "Centro"
+  },
+  {
+    "name": "Santana",
+    "slug": "santana",
+    "zone": "Norte"
+  },
+  {
+    "name": "Santo Amaro",
+    "slug": "santo-amaro",
+    "zone": "Sul"
+  },
+  {
+    "name": "São Domingos",
+    "slug": "sao-domingos",
+    "zone": "Norte"
+  },
+  {
+    "name": "São Lucas",
+    "slug": "sao-lucas",
+    "zone": "Leste"
+  },
+  {
+    "name": "São Mateus",
+    "slug": "sao-mateus",
+    "zone": "Leste"
+  },
+  {
+    "name": "São Miguel",
+    "slug": "sao-miguel",
+    "zone": "Leste"
+  },
+  {
+    "name": "São Rafael",
+    "slug": "sao-rafael",
+    "zone": "Leste"
+  },
+  {
+    "name": "Sapopemba",
+    "slug": "sapopemba",
+    "zone": "Leste"
+  },
+  {
+    "name": "Saúde",
+    "slug": "saude",
+    "zone": "Sul"
+  },
+  {
+    "name": "Sé",
+    "slug": "se",
+    "zone": "Centro"
+  },
+  {
+    "name": "Socorro",
+    "slug": "socorro",
+    "zone": "Sul"
+  },
+  {
+    "name": "Tatuapé",
+    "slug": "tatuape",
+    "zone": "Leste"
+  },
+  {
+    "name": "Tremembé",
+    "slug": "tremembe",
+    "zone": "Norte"
+  },
+  {
+    "name": "Tucuruvi",
+    "slug": "tucuruvi",
+    "zone": "Norte"
+  },
+  {
+    "name": "Vila Andrade",
+    "slug": "vila-andrade",
+    "zone": "Sul"
+  },
+  {
+    "name": "Vila Curuçá",
+    "slug": "vila-curuca",
+    "zone": "Leste"
+  },
+  {
+    "name": "Vila Formosa",
+    "slug": "vila-formosa",
+    "zone": "Leste"
+  },
+  {
+    "name": "Vila Guilherme",
+    "slug": "vila-guilherme",
+    "zone": "Norte"
+  },
+  {
+    "name": "Vila Jacuí",
+    "slug": "vila-jacui",
+    "zone": "Leste"
+  },
+  {
+    "name": "Vila Leopoldina",
+    "slug": "vila-leopoldina",
+    "zone": "Oeste"
+  },
+  {
+    "name": "Vila Maria",
+    "slug": "vila-maria",
+    "zone": "Norte"
+  },
+  {
+    "name": "Vila Mariana",
+    "slug": "vila-mariana",
+    "zone": "Sul"
+  },
+  {
+    "name": "Vila Matilde",
+    "slug": "vila-matilde",
+    "zone": "Leste"
+  },
+  {
+    "name": "Vila Medeiros",
+    "slug": "vila-medeiros",
+    "zone": "Norte"
+  },
+  {
+    "name": "Vila Prudente",
+    "slug": "vila-prudente",
+    "zone": "Leste"
+  },
+  {
+    "name": "Vila Sônia",
+    "slug": "vila-sonia",
+    "zone": "Oeste"
+  }
+]

@@ -2,7 +2,7 @@
 # https://supabase.com/docs/guides/local-development/cli/config
 # A string used to distinguish different Supabase projects on the same host. Defaults to the
 # working directory name when running `supabase init`.
-project_id = "work-easy"
+project_id = "workeasy"
 
 [api]
 enabled = true
@@ -118,6 +118,8 @@ enabled = true
 # The maximum file size allowed (e.g. "5MB", "500KB").
 file_size_limit = "50MiB"
 
+# The private bucket "provider-documents" and its policies are created by a migration
+# (supabase/migrations/*_providers.sql), so local and hosted projects match.
 # Uncomment to configure local storage buckets
 # [storage.buckets.images]
 # public = false
@@ -157,11 +159,19 @@ max_indexes = 5
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
-site_url = "http://127.0.0.1:3000"
+site_url = "http://localhost:3000"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://127.0.0.1:3000"]
+# Web dev server, Capacitor (Android uses https://localhost, iOS capacitor://localhost) and
+# Tauri (Windows http://tauri.localhost, macOS/Linux tauri://localhost).
+additional_redirect_urls = [
+  "http://localhost:3000",
+  "https://localhost",
+  "capacitor://localhost",
+  "http://tauri.localhost",
+  "tauri://localhost",
+]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
@@ -229,6 +239,7 @@ enable_confirmations = false
 secure_password_change = false
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
 max_frequency = "1s"
+# Sign-in is passwordless: the app calls signInWithOtp and the user types the 6-digit code.
 # Number of characters used in the email OTP.
 otp_length = 6
 # Number of seconds before the email OTP expires (defaults to 1 hour).
@@ -257,17 +268,21 @@ otp_expiry = 3600
 
 [auth.sms]
 # Allow/disallow new user signups via SMS to your project.
-enable_signup = false
+# Sign-in by code over SMS/WhatsApp. No SMS provider is configured locally: only the test phone
+# below receives a code (fixed, nothing is sent).
+enable_signup = true
 # If enabled, users need to confirm their phone number before signing in.
 enable_confirmations = false
 # Template for sending OTP to users
-template = "Your code is {{ .Code }}"
+template = "Seu código WorkEasy: {{ .Code }}"
 # Controls the minimum amount of time that must pass before sending another sms otp.
 max_frequency = "5s"
 
 # Use pre-defined map of phone number to OTP for testing.
-# [auth.sms.test_otp]
-# 4152127777 = "123456"
+# Local test phone: +55 11 99999-0000 (E.164 digits without "+"), code 123456. Use it on /entrar
+# to sign in by phone without an SMS provider. Never copy this block to a hosted project.
+[auth.sms.test_otp]
+5511999990000 = "123456"
 
 # Configure logged in session timeouts.
 # [auth.sessions]
