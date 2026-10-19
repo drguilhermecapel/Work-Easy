@@ -107,6 +107,29 @@ as $$
   select exists (select 1 from public.households h where h.id = p_household and h.owner_id = (select auth.uid()));
 $$;
 
+-- Policy helpers (security definer, so shifts and shift_offers policies do not recurse).
+create function private.owns_shift(p_shift uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (select 1 from public.shifts s join public.households h on h.id = s.household_id
+                  where s.id = p_shift and h.owner_id = (select auth.uid()));
+$$;
+
+create function private.has_open_shift_offer(p_shift uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (select 1 from public.shift_offers o
+                  where o.shift_id = p_shift and o.provider_id = (select auth.uid()) and o.status = 'offered');
+$$;
+
 -- Families create open shifts and edit them while nobody is assigned; assignment and
 -- status go through offer_shift/accept_shift_offer/check_in/cancel_shift.
 create function private.guard_shift()
@@ -472,8 +495,7 @@ create policy shifts_select on public.shifts
   using (
     private.owns_household(household_id)
     or provider_id = (select auth.uid())
-    or exists (select 1 from public.shift_offers o
-                where o.shift_id = id and o.provider_id = (select auth.uid()) and o.status = 'offered')
+    or private.has_open_shift_offer(id)
     or (select public.is_admin())
   );
 create policy shifts_insert_own on public.shifts
@@ -485,19 +507,19 @@ create policy shifts_update_own on public.shifts
 create policy shift_offers_select on public.shift_offers
   for select to authenticated
   using (provider_id = (select auth.uid())
-         or exists (select 1 from public.shifts s where s.id = shift_id and private.owns_household(s.household_id))
+         or private.owns_shift(shift_id)
          or (select public.is_admin()));
 
 create policy checkins_select on public.checkins
   for select to authenticated
   using (provider_id = (select auth.uid())
-         or exists (select 1 from public.shifts s where s.id = shift_id and private.owns_household(s.household_id))
+         or private.owns_shift(shift_id)
          or (select public.is_admin()));
 
 create policy daily_reports_select on public.daily_reports
   for select to authenticated
   using (provider_id = (select auth.uid())
-         or exists (select 1 from public.shifts s where s.id = shift_id and private.owns_household(s.household_id))
+         or private.owns_shift(shift_id)
          or (select public.is_admin()));
 
 grant select, insert, update, delete on public.households, public.care_recipients to authenticated;
@@ -506,4 +528,6 @@ grant select on public.shift_offers, public.checkins, public.daily_reports to au
 
 revoke all on all functions in schema private from public;
 grant execute on function private.owns_household(uuid) to authenticated;
+grant execute on function private.owns_shift(uuid) to authenticated;
+grant execute on function private.has_open_shift_offer(uuid) to authenticated;
 grant execute on function private.is_counterpart(uuid) to authenticated;
