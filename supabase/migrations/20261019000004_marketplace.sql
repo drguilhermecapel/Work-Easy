@@ -77,6 +77,36 @@ create trigger requests_guard
   before insert or update on public.requests
   for each row execute function private.guard_request();
 
+-- Providers send proposals and may edit or withdraw them while sent; acceptance and
+-- decline come from accept_proposal(). (Invoker: it must see the API role.)
+create function private.guard_proposal()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if not private.is_client_context() then
+    return new;
+  end if;
+  if tg_op = 'INSERT' then
+    new.status := 'sent';
+    return new;
+  end if;
+  if new.request_id is distinct from old.request_id
+     or new.provider_id is distinct from old.provider_id
+     or (new.status is distinct from old.status and not (old.status = 'sent' and new.status = 'withdrawn'))
+     or (old.status <> 'sent' and (new.price_cents, new.message, new.valid_until)
+           is distinct from (old.price_cents, old.message, old.valid_until)) then
+    raise exception 'invalid_transition' using errcode = 'P0001';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger proposals_10_guard
+  before insert or update on public.proposals
+  for each row execute function private.guard_proposal();
+
 -- A proposal needs an open request, an approved provider that has the occupation and
 -- serves the neighborhood, and a free slot under proposal_limit. The request row is
 -- locked so concurrent proposals cannot pass the limit together.
@@ -90,25 +120,13 @@ declare
   v_request public.requests;
   v_active int;
 begin
-  select * into v_request from public.requests where id = new.request_id for update;
-
-  if tg_op = 'UPDATE' then
-    if private.is_client_context() and (
-         new.request_id is distinct from old.request_id
-         or new.provider_id is distinct from old.provider_id
-         or (new.status is distinct from old.status and not (old.status = 'sent' and new.status = 'withdrawn'))
-         or (old.status <> 'sent' and (new.price_cents, new.message, new.valid_until)
-               is distinct from (old.price_cents, old.message, old.valid_until))
-       ) then
-      raise exception 'invalid_transition' using errcode = 'P0001';
-    end if;
-    -- Re-activating a proposal counts against the limit like a new one.
-    if not (new.status in ('sent', 'accepted') and old.status not in ('sent', 'accepted')) then
-      return new;
-    end if;
-  elsif private.is_client_context() then
-    new.status := 'sent';
+  -- Only a new proposal, or one becoming active again, takes a slot.
+  if tg_op = 'UPDATE'
+     and not (new.status in ('sent', 'accepted') and old.status not in ('sent', 'accepted')) then
+    return new;
   end if;
+
+  select * into v_request from public.requests where id = new.request_id for update;
 
   if v_request.status is distinct from 'open' or v_request.expires_at <= now() then
     raise exception 'request_not_open' using errcode = 'P0001';
@@ -133,7 +151,7 @@ begin
 end;
 $$;
 
-create trigger proposals_check
+create trigger proposals_20_check
   before insert or update on public.proposals
   for each row execute function private.check_proposal();
 

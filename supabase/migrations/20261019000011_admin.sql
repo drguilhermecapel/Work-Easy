@@ -1,6 +1,7 @@
 -- 11 Administration: review actions (all require is_admin() and write audit_log) and
--- the dashboard views. Views run with the caller's rights (security_invoker), so only
--- admins, through the admin RLS policies, get rows.
+-- the dashboard views. Views run with the caller's rights (security_invoker) and the
+-- admin RLS policies; they also filter on is_admin(), because participants can read
+-- some of the underlying rows (their own provider row or disputed job).
 
 create function private.require_admin()
 returns void
@@ -187,6 +188,7 @@ select p.id as provider_id,
   from public.providers p
   join public.profiles pf on pf.id = p.id
  where p.status = 'pending_review'
+   and (select public.is_admin())
  order by p.created_at;
 
 create view public.admin_open_disputes
@@ -209,7 +211,8 @@ select b.id as booking_id,
   from public.bookings b
   left join public.profiles c on c.id = b.client_id
   left join public.providers p on p.id = b.provider_id
- where b.status = 'disputed';
+ where b.status = 'disputed'
+   and (select public.is_admin());
 
 -- Counts per entity and status: created in the current ISO week, in the current month
 -- (both São Paulo time) and in total.
@@ -233,6 +236,7 @@ select r.entity,
        count(*) filter (where r.created_at >= b.month_start) as this_month,
        count(*) as total
   from rows r cross join bounds b
+ where (select public.is_admin())
  group by r.entity, r.status
  order by r.entity, r.status;
 

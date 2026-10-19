@@ -76,7 +76,7 @@ end;
 $$;
 
 create trigger quotes_10_total
-  before insert or update of items on public.quotes
+  before insert or update on public.quotes
   for each row execute function private.compute_quote_total();
 
 -- Providers move quotes between draft and sent; the client's answer comes only through
@@ -205,17 +205,18 @@ begin
   if tg_op = 'INSERT' then
     if not found
        or v_booking.client_id is null
+       -- with the insert policy (client_id = auth.uid()) only the booking's client passes
        or new.client_id is distinct from v_booking.client_id
-       or (private.is_client_context() and v_booking.client_id is distinct from auth.uid())
        or v_booking.status not in ('completed', 'released')
        or not exists (select 1 from public.payments p
                        where p.booking_id = v_booking.id and p.status in ('received', 'confirmed', 'released')) then
       raise exception 'review_not_allowed' using errcode = 'P0001';
     end if;
     new.provider_id := v_booking.provider_id;
+  -- The parties never change; they only become null when an account is deleted.
   elsif new.booking_id is distinct from old.booking_id
-        or new.client_id is distinct from old.client_id
-        or new.provider_id is distinct from old.provider_id then
+        or (new.client_id is distinct from old.client_id and new.client_id is not null)
+        or (new.provider_id is distinct from old.provider_id and new.provider_id is not null) then
     raise exception 'not_allowed' using errcode = 'P0001';
   end if;
 

@@ -6,7 +6,9 @@
 --     ("Erros do banco"); lib/errors.ts translates them.
 --   * "Client context" means the statement runs as the API roles `anon` or
 --     `authenticated`. Inside a `security definer` function current_user is the owner,
---     so guard triggers let those functions (and the service role) through.
+--     so guard triggers let those functions (and the service role) through. Guard
+--     triggers are therefore security invoker; rule triggers that must read other
+--     users' rows are security definer and never look at the caller's role.
 --   * Nothing is granted by default: each table and RPC below grants what it needs.
 
 create extension if not exists btree_gist with schema extensions;
