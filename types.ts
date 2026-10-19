@@ -1,3 +1,5 @@
+import type { LucideIcon } from 'lucide-react';
+
 export enum UserType {
   CLIENT = 'CLIENT',
   PROVIDER = 'PROVIDER'
@@ -22,7 +24,7 @@ export interface Review {
 export interface Service {
   id: string;
   title: string;
-  category: string;
+  category: string; // Category slug (see CATEGORIES)
   description: string;
   priceMin: number;
   priceMax: number;
@@ -68,7 +70,7 @@ export interface Provider {
 export interface Category {
   id: string;
   name: string;
-  icon: any; // Lucide icon component
+  icon: LucideIcon;
   slug: string;
   subcategories?: string[];
 }

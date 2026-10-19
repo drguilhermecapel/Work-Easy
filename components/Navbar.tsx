@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Bell, User as UserIcon, Briefcase, RefreshCw } from 'lucide-react';
+import { Menu, X, Bell, Briefcase } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import Avatar from './Avatar';
 import { UserType } from '../types';
@@ -13,11 +13,11 @@ const Navbar: React.FC = () => {
   const isActive = (path: string) => location.pathname === path ? 'text-primary font-bold' : 'text-gray-600';
 
   return (
-    <nav className="bg-white shadow-sm sticky top-0 z-50">
+    <nav className="bg-white shadow-xs sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <Link to="/" className="flex-shrink-0 flex items-center">
+            <Link to="/" className="shrink-0 flex items-center">
               <span className="text-2xl font-bold text-primary">WorkEasy</span>
             </Link>
             
@@ -25,19 +25,19 @@ const Navbar: React.FC = () => {
             <div className="hidden lg:flex ml-8 bg-gray-100 rounded-full p-1 items-center">
                <button 
                  onClick={() => switchRole(UserType.CLIENT)}
-                 className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${user.type === UserType.CLIENT ? 'bg-white shadow text-primary' : 'text-gray-500'}`}
+                 className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${user.type === UserType.CLIENT ? 'bg-white shadow-sm text-primary' : 'text-gray-500'}`}
                >
                  Cliente
                </button>
                <button 
                  onClick={() => switchRole(UserType.PROVIDER, false)}
-                 className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${user.type === UserType.PROVIDER && !user.isHealthProfessional ? 'bg-white shadow text-primary' : 'text-gray-500'}`}
+                 className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${user.type === UserType.PROVIDER && !user.isHealthProfessional ? 'bg-white shadow-sm text-primary' : 'text-gray-500'}`}
                >
                  Prestador
                </button>
                <button 
                  onClick={() => switchRole(UserType.PROVIDER, true)}
-                 className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${user.isHealthProfessional ? 'bg-teal-500 shadow text-white' : 'text-gray-500'}`}
+                 className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${user.isHealthProfessional ? 'bg-teal-500 shadow-sm text-white' : 'text-gray-500'}`}
                >
                  Médico
                </button>
@@ -63,7 +63,7 @@ const Navbar: React.FC = () => {
               <>
                 <Link to="/dashboard" className={`${isActive('/dashboard')} hover:text-primary transition-colors`}>Meu Painel</Link>
                 {user.isHealthProfessional && (
-                   <span className="bg-teal-100 text-teal-800 text-xs px-2 py-1 rounded border border-teal-200">
+                   <span className="bg-teal-100 text-teal-800 text-xs px-2 py-1 rounded-sm border border-teal-200">
                      CRM informado (não verificado)
                    </span>
                 )}
@@ -85,7 +85,7 @@ const Navbar: React.FC = () => {
           <div className="flex items-center md:hidden">
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none"
+              className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-hidden"
             >
               {isOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
@@ -99,9 +99,9 @@ const Navbar: React.FC = () => {
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
              {/* Mobile Role Switcher */}
              <div className="flex gap-2 p-2 bg-gray-50 rounded-lg mb-2">
-               <button onClick={() => switchRole(UserType.CLIENT)} className={`flex-1 py-1 text-xs rounded ${user.type === UserType.CLIENT ? 'bg-white shadow' : ''}`}>Cliente</button>
-               <button onClick={() => switchRole(UserType.PROVIDER, false)} className={`flex-1 py-1 text-xs rounded ${user.type === UserType.PROVIDER && !user.isHealthProfessional ? 'bg-white shadow' : ''}`}>Prestador</button>
-               <button onClick={() => switchRole(UserType.PROVIDER, true)} className={`flex-1 py-1 text-xs rounded ${user.isHealthProfessional ? 'bg-teal-500 text-white shadow' : ''}`}>Médico</button>
+               <button onClick={() => switchRole(UserType.CLIENT)} className={`flex-1 py-1 text-xs rounded-sm ${user.type === UserType.CLIENT ? 'bg-white shadow-sm' : ''}`}>Cliente</button>
+               <button onClick={() => switchRole(UserType.PROVIDER, false)} className={`flex-1 py-1 text-xs rounded-sm ${user.type === UserType.PROVIDER && !user.isHealthProfessional ? 'bg-white shadow-sm' : ''}`}>Prestador</button>
+               <button onClick={() => switchRole(UserType.PROVIDER, true)} className={`flex-1 py-1 text-xs rounded-sm ${user.isHealthProfessional ? 'bg-teal-500 text-white shadow-sm' : ''}`}>Médico</button>
              </div>
 
             <Link 

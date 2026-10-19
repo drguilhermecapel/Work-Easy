@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { MOCK_REQUESTS } from '../constants';
 import { RequestStatus, UserType } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { formatBRL } from '../utils/format';
 import { 
-  MessageCircle, Clock, XCircle, Send, Phone, ShieldAlert, ChevronRight, 
-  Video, FileText, Lock, Activity, Briefcase, Wallet, Calendar, Check, X
+  MessageCircle, Clock, XCircle, Send, ShieldAlert, ChevronRight,
+  Video, FileText, Lock, Activity, Briefcase, Wallet, Check, X
 } from 'lucide-react';
 
 // --- SUB-COMPONENT: CLIENT DASHBOARD ---
@@ -61,10 +62,10 @@ const ClientDashboard: React.FC = () => {
       {activeTab === 'requests' && (
         <div className="space-y-4">
           {MOCK_REQUESTS.map(req => (
-            <div key={req.id} className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div key={req.id} className="bg-white border border-gray-100 rounded-xl p-4 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded uppercase tracking-wide ${getStatusColor(req.status)}`}>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-sm uppercase tracking-wide ${getStatusColor(req.status)}`}>
                     {req.status}
                   </span>
                   <span className="text-xs text-gray-400">#{req.id}</span>
@@ -73,7 +74,7 @@ const ClientDashboard: React.FC = () => {
                 <p className="text-sm text-gray-500">Profissional: <span className="font-medium text-gray-700">{req.providerName}</span></p>
                 <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
                   <span className="flex items-center gap-1"><Clock size={12}/> {req.date}</span>
-                  {req.price && <span className="font-bold text-gray-900">R$ {req.price}</span>}
+                  {req.price !== undefined && <span className="font-bold text-gray-900">{formatBRL(req.price)}</span>}
                 </div>
               </div>
               <div className="flex gap-2">
@@ -103,15 +104,17 @@ const ProviderDashboard: React.FC<{ isHealth: boolean }> = ({ isHealth }) => {
   const [activeTab, setActiveTab] = useState<'incoming' | 'chat' | 'telemedicine' | 'financial'>('incoming');
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
   
-  // Local state to handle accept/reject interaction
-  const [requests, setRequests] = useState(MOCK_REQUESTS);
+  // Only open requests are actionable; confirmed or completed ones are not "new"
+  const [requests, setRequests] = useState(() =>
+    MOCK_REQUESTS.filter(r => r.status === RequestStatus.PENDING || r.status === RequestStatus.NEGOTIATING)
+  );
 
   const handleAction = (id: string, action: 'accept' | 'reject') => {
     // Update local state to simulate action
     setRequests(prev => prev.filter(r => r.id !== id));
-    
+
     if (action === 'accept') {
-      alert("Solicitação aceita! O chat com o cliente foi aberto.");
+      alert("Demonstração: solicitação aceita localmente. Nada foi enviado ao cliente.");
       setActiveTab('chat');
     }
   };
@@ -121,19 +124,19 @@ const ProviderDashboard: React.FC<{ isHealth: boolean }> = ({ isHealth }) => {
       {/* Provider Header Stats (example figures) */}
       <p className="text-xs text-gray-400">Números de exemplo.</p>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+        <div className="bg-white p-4 rounded-xl shadow-xs border border-gray-100">
           <div className="text-gray-500 text-xs mb-1 uppercase font-bold">Ganhos (Mês)</div>
-          <div className="text-2xl font-bold text-gray-900">R$ 3.450</div>
+          <div className="text-2xl font-bold text-gray-900">{formatBRL(3450)}</div>
         </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+        <div className="bg-white p-4 rounded-xl shadow-xs border border-gray-100">
           <div className="text-gray-500 text-xs mb-1 uppercase font-bold">Serviços</div>
           <div className="text-2xl font-bold text-primary">12</div>
         </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+        <div className="bg-white p-4 rounded-xl shadow-xs border border-gray-100">
            <div className="text-gray-500 text-xs mb-1 uppercase font-bold">Avaliação</div>
            <div className="text-2xl font-bold text-yellow-500">4.9 ★</div>
         </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+        <div className="bg-white p-4 rounded-xl shadow-xs border border-gray-100">
            <div className="text-gray-500 text-xs mb-1 uppercase font-bold">Visitas</div>
            <div className="text-2xl font-bold text-blue-500">142</div>
         </div>
@@ -174,10 +177,10 @@ const ProviderDashboard: React.FC<{ isHealth: boolean }> = ({ isHealth }) => {
       {activeTab === 'incoming' && (
         <div className="space-y-4">
            {requests.length > 0 ? requests.map(req => (
-            <div key={req.id} className="bg-white border-l-4 border-l-yellow-400 rounded-r-xl p-4 shadow-sm animate-in fade-in slide-in-from-bottom-2">
+            <div key={req.id} className="bg-white border-l-4 border-l-yellow-400 rounded-r-xl p-4 shadow-xs animate-in fade-in slide-in-from-bottom-2">
               <div className="flex justify-between items-start mb-2">
                  <div>
-                   <span className="text-xs font-bold text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded uppercase">Nova Solicitação</span>
+                   <span className="text-xs font-bold text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded-sm uppercase">Nova Solicitação</span>
                    <h3 className="font-bold text-gray-900 text-lg mt-1">{req.serviceTitle}</h3>
                  </div>
                  <div className="text-right">
@@ -224,7 +227,7 @@ const ProviderDashboard: React.FC<{ isHealth: boolean }> = ({ isHealth }) => {
             <div className="grid md:grid-cols-2 gap-4">
                <button 
                  onClick={() => navigate('/medical-records')}
-                 className="bg-white p-4 rounded-lg shadow-sm border border-teal-100 flex items-center gap-3 hover:bg-teal-50 transition-colors"
+                 className="bg-white p-4 rounded-lg shadow-xs border border-teal-100 flex items-center gap-3 hover:bg-teal-50 transition-colors"
                >
                  <div className="bg-teal-100 p-3 rounded-full text-teal-600"><FileText size={24}/></div>
                  <div className="text-left">
@@ -235,7 +238,7 @@ const ProviderDashboard: React.FC<{ isHealth: boolean }> = ({ isHealth }) => {
                
                <button 
                  onClick={() => navigate('/teleconsultation/mock-session-id')}
-                 className="bg-teal-600 p-4 rounded-lg shadow-sm text-white flex items-center gap-3 hover:bg-teal-700 transition-colors"
+                 className="bg-teal-600 p-4 rounded-lg shadow-xs text-white flex items-center gap-3 hover:bg-teal-700 transition-colors"
                >
                  <div className="bg-white/20 p-3 rounded-full"><Video size={24}/></div>
                  <div className="text-left">
@@ -257,7 +260,7 @@ const ProviderDashboard: React.FC<{ isHealth: boolean }> = ({ isHealth }) => {
                     <div className="text-xs text-gray-500">Retorno - Cardiologia</div>
                   </div>
                 </div>
-                <button className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-bold">Confirmado</button>
+                <button className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-sm font-bold">Confirmado</button>
               </div>
             </div>
           </div>
@@ -281,7 +284,7 @@ const ProviderDashboard: React.FC<{ isHealth: boolean }> = ({ isHealth }) => {
 // --- SHARED CHAT COMPONENT ---
 const ChatComponent: React.FC<{selectedChat: string | null, setSelectedChat: (id: string | null) => void}> = ({ selectedChat, setSelectedChat }) => {
   return (
-    <div className="bg-white border border-gray-200 rounded-xl shadow-sm h-[500px] flex overflow-hidden">
+    <div className="bg-white border border-gray-200 rounded-xl shadow-xs h-[500px] flex overflow-hidden">
       {/* Chat List */}
       <div className={`w-full md:w-1/3 border-r border-gray-200 flex flex-col ${selectedChat ? 'hidden md:flex' : 'flex'}`}>
         <div className="p-4 border-b border-gray-100 bg-gray-50">
@@ -329,7 +332,7 @@ const ChatComponent: React.FC<{selectedChat: string | null, setSelectedChat: (id
 
               <div className="p-4 bg-white border-t border-gray-200">
                 <div className="flex items-center gap-2">
-                    <input type="text" placeholder="Digite sua mensagem..." className="flex-1 bg-gray-100 border-0 rounded-full px-4 py-2.5 text-sm outline-none" />
+                    <input type="text" placeholder="Digite sua mensagem..." className="flex-1 bg-gray-100 border-0 rounded-full px-4 py-2.5 text-sm outline-hidden" />
                     <button className="bg-primary text-white p-2.5 rounded-full"><Send size={18} /></button>
                 </div>
               </div>
@@ -357,7 +360,7 @@ const Dashboard: React.FC = () => {
           {user.type === UserType.CLIENT ? `Olá, ${user.name}` : `Painel do Profissional`}
         </h1>
         {user.type === UserType.PROVIDER && (
-           <span className={`text-xs px-2 py-1 rounded font-bold ${user.isHealthProfessional ? 'bg-teal-100 text-teal-800' : 'bg-purple-100 text-purple-800'}`}>
+           <span className={`text-xs px-2 py-1 rounded-sm font-bold ${user.isHealthProfessional ? 'bg-teal-100 text-teal-800' : 'bg-purple-100 text-purple-800'}`}>
              {user.isHealthProfessional ? 'MÉDICO · REGISTRO NÃO VERIFICADO' : 'PROFISSIONAL · NÃO VERIFICADO'}
            </span>
         )}

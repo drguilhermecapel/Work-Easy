@@ -1,6 +1,6 @@
 import { Provider, Category, RequestStatus, ServiceRequest, MedicalRecord } from './types';
 import { 
-  Paintbrush, Zap, User, BookOpen, Truck, Scissors, Stethoscope, 
+  Zap, User, BookOpen, Truck, Scissors, Stethoscope, 
   Camera, Monitor, Home, Wrench, Car, Briefcase, PawPrint, ChefHat, Hammer
 } from 'lucide-react';
 
@@ -98,7 +98,7 @@ export const CATEGORIES: Category[] = [
       
       // Enfermagem e Apoio
       'Enfermeiro', 'Técnico de Enfermagem', 'Biomédico', 'Farmacêutico',
-      'Doula', 'Consultora de Amamentação',
+      'Consultora de Amamentação',
       
       // Especialidades Médicas (Lista Estendida)
       'Alergista e Imunologista', 'Anestesiologista', 'Angiologista', 
@@ -149,8 +149,8 @@ export const CATEGORIES: Category[] = [
     icon: Camera, 
     slug: 'eventos',
     subcategories: [
-      'Fotógrafo', 'DJ', 'Banda', 'Buffet', 'Barman', 'Garçom', 'Decoração', 
-      'Confeiteira', 'Assessoria de Eventos', 'Animação de Festas', 
+      'Fotógrafo', 'DJ', 'Banda', 'Buffet', 'Bartender', 'Garçom', 'Decoração', 
+      'Assessoria de Eventos', 'Animação de Festas', 
       'Segurança de Eventos', 'Aluguel de Brinquedos', 'Recepcionista'
     ]
   },
@@ -203,7 +203,7 @@ export const CATEGORIES: Category[] = [
     slug: 'gastronomia',
     subcategories: [
       'Churrasqueiro', 'Personal Chef', 'Confeitaria', 'Salgados e Doces',
-      'Marmitas', 'Bartender', 'Bolo Decorado'
+      'Marmitas', 'Bolo Decorado'
     ]
   },
 ];
@@ -221,8 +221,8 @@ export const MOCK_PROVIDERS: Provider[] = [
     description: 'Especialista em pintura residencial e comercial com 10 anos de experiência. Trabalho limpo e organizado.',
     yearsExperience: 10,
     services: [
-      { id: 's1', title: 'Pintura Interna', category: 'Reformas e Reparos', description: 'Pintura de paredes e tetos', priceMin: 15, priceMax: 25, unit: 'm2' },
-      { id: 's2', title: 'Textura', category: 'Reformas e Reparos', description: 'Aplicação de texturas diversas', priceMin: 30, priceMax: 50, unit: 'm2' }
+      { id: 's1', title: 'Pintura Interna', category: 'reformas', description: 'Pintura de paredes e tetos', priceMin: 15, priceMax: 25, unit: 'm2' },
+      { id: 's2', title: 'Textura', category: 'reformas', description: 'Aplicação de texturas diversas', priceMin: 30, priceMax: 50, unit: 'm2' }
     ],
     reviews: [
       { id: 'r1', clientName: 'Maria Silva', rating: 5, comment: 'Excelente trabalho! Muito caprichoso.', date: '2023-10-15', tags: ['Pontual', 'Limpo'] },
@@ -241,7 +241,7 @@ export const MOCK_PROVIDERS: Provider[] = [
     description: 'Limpeza detalhada e cuidadosa. Levo meus próprios produtos se necessário.',
     yearsExperience: 5,
     services: [
-      { id: 's3', title: 'Faxina Completa', category: 'Limpeza', description: 'Limpeza geral de apartamento até 80m2', priceMin: 180, priceMax: 220, unit: 'dia' }
+      { id: 's3', title: 'Faxina Completa', category: 'limpeza', description: 'Limpeza geral de apartamento até 80m2', priceMin: 180, priceMax: 220, unit: 'dia' }
     ],
     reviews: [
       { id: 'r3', clientName: 'Carla Dias', rating: 5, comment: 'A melhor diarista que já contratei.', date: '2023-11-01', tags: ['Confiança', 'Detalhe'] }
@@ -259,7 +259,7 @@ export const MOCK_PROVIDERS: Provider[] = [
     description: 'Instalação de tomadas, chuveiros e quadros de força. Atendimento 24h para emergências.',
     yearsExperience: 15,
     services: [
-      { id: 's4', title: 'Instalação de Chuveiro', category: 'Serviços Elétricos', description: 'Instalação elétrica segura', priceMin: 80, priceMax: 120, unit: 'serviço' }
+      { id: 's4', title: 'Instalação de Chuveiro', category: 'eletricista', description: 'Instalação elétrica segura', priceMin: 80, priceMax: 120, unit: 'serviço' }
     ],
     reviews: []
   },
@@ -275,7 +275,7 @@ export const MOCK_PROVIDERS: Provider[] = [
     description: 'Atendimento a domicílio com materiais esterilizados.',
     yearsExperience: 8,
     services: [
-      { id: 's5', title: 'Pé e Mão', category: 'Beleza e Estética', description: 'Cutilagem e esmaltação', priceMin: 60, priceMax: 80, unit: 'serviço' }
+      { id: 's5', title: 'Pé e Mão', category: 'beleza', description: 'Cutilagem e esmaltação', priceMin: 60, priceMax: 80, unit: 'serviço' }
     ],
     reviews: []
   },
@@ -292,8 +292,8 @@ export const MOCK_PROVIDERS: Provider[] = [
     description: 'Perfil fictício de demonstração. Cardiologia clínica com foco em prevenção cardiovascular.',
     yearsExperience: 15,
     services: [
-      { id: 'm1', title: 'Consulta Cardiológica', category: 'Saúde', description: 'Avaliação clínica completa', priceMin: 350, priceMax: 350, unit: 'serviço' },
-      { id: 'm2', title: 'Eletrocardiograma', category: 'Saúde', description: 'Exame realizado no consultório', priceMin: 100, priceMax: 100, unit: 'serviço' }
+      { id: 'm1', title: 'Consulta Cardiológica', category: 'health', description: 'Avaliação clínica completa', priceMin: 350, priceMax: 350, unit: 'serviço' },
+      { id: 'm2', title: 'Eletrocardiograma', category: 'health', description: 'Exame realizado no consultório', priceMin: 100, priceMax: 100, unit: 'serviço' }
     ],
     reviews: [
       { id: 'mr1', clientName: 'Carla S.', rating: 5, comment: 'Excelente médico! Muito atencioso e explicou tudo com calma.', date: '10/01/2024', tags: ['Atencioso', 'Pontual'] },
@@ -339,7 +339,7 @@ export const MOCK_PROVIDERS: Provider[] = [
     description: 'Perfil fictício de demonstração. Dermatologia clínica.',
     yearsExperience: 8,
     services: [
-      { id: 'm3', title: 'Consulta Dermatológica', category: 'Saúde', description: 'Análise de pele e cabelos', priceMin: 400, priceMax: 400, unit: 'serviço' }
+      { id: 'm3', title: 'Consulta Dermatológica', category: 'health', description: 'Análise de pele e cabelos', priceMin: 400, priceMax: 400, unit: 'serviço' }
     ],
     reviews: [
       { id: 'mr3', clientName: 'Ana L.', rating: 5, comment: 'Amei o atendimento! Super cuidadosa.', date: '12/01/2024', tags: ['Delicada'] }

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Star, MapPin, Clock, MessageCircle, X } from 'lucide-react';
 import { MOCK_PROVIDERS } from '../constants';
 import Avatar from '../components/Avatar';
+import { formatBRL } from '../utils/format';
 
 const Profile: React.FC = () => {
   const { id } = useParams();
@@ -28,15 +29,15 @@ const Profile: React.FC = () => {
   return (
     <div className="bg-white min-h-screen pb-20">
       {/* Header Image/Background */}
-      <div className="h-40 bg-gradient-to-r from-primary to-secondary relative">
-        <button onClick={() => navigate(-1)} className="absolute top-4 left-4 text-white bg-black/20 p-2 rounded-full backdrop-blur-sm">
+      <div className="h-40 bg-linear-to-r from-primary to-secondary relative">
+        <button onClick={() => navigate(-1)} className="absolute top-4 left-4 text-white bg-black/20 p-2 rounded-full backdrop-blur-xs">
            <X size={20} />
         </button>
       </div>
       
       {/* Profile Info */}
       <div className="max-w-4xl mx-auto px-4 -mt-16 relative">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row gap-6 items-start">
+        <div className="bg-white rounded-2xl shadow-xs border border-gray-100 p-6 flex flex-col md:flex-row gap-6 items-start">
           <Avatar name={provider.name} className="w-24 h-24 md:w-32 md:h-32 text-3xl border-4 border-white shadow-md" />
 
           <div className="flex-1 mt-2 md:mt-10">
@@ -91,7 +92,11 @@ const Profile: React.FC = () => {
                       <p className="text-xs text-gray-500 mt-1 line-clamp-1">{service.description}</p>
                     </div>
                     <div className="text-right">
-                      <span className="block font-bold text-primary">R$ {service.priceMin} - {service.priceMax}</span>
+                      <span className="block font-bold text-primary">
+                        {service.priceMin === service.priceMax
+                          ? formatBRL(service.priceMin)
+                          : `${formatBRL(service.priceMin)} – ${formatBRL(service.priceMax)}`}
+                      </span>
                       <span className="text-xs text-gray-400">/ {service.unit}</span>
                     </div>
                   </div>
@@ -120,7 +125,7 @@ const Profile: React.FC = () => {
                     <p className="text-gray-600 text-sm mb-2">"{review.comment}"</p>
                     <div className="flex flex-wrap gap-2">
                       {review.tags.map(tag => (
-                        <span key={tag} className="text-xs bg-white border border-gray-200 px-2 py-0.5 rounded text-gray-500">{tag}</span>
+                        <span key={tag} className="text-xs bg-white border border-gray-200 px-2 py-0.5 rounded-sm text-gray-500">{tag}</span>
                       ))}
                     </div>
                   </div>
@@ -133,10 +138,10 @@ const Profile: React.FC = () => {
 
           {/* Sticky CTA for Mobile (rendered as sidebar on desktop) */}
           <div className="fixed bottom-0 left-0 w-full bg-white border-t p-4 md:static md:border-0 md:bg-transparent md:p-0 z-40">
-            <div className="md:bg-white md:p-6 md:rounded-2xl md:shadow-sm md:border md:border-gray-100 md:sticky md:top-24">
+            <div className="md:bg-white md:p-6 md:rounded-2xl md:shadow-xs md:border md:border-gray-100 md:sticky md:top-24">
                <div className="hidden md:block mb-4">
                  <span className="text-sm text-gray-500">Preço médio</span>
-                 <div className="text-2xl font-bold text-primary">R$ {provider.services[0]?.priceMin} <span className="text-sm font-normal text-gray-400">/ {provider.services[0]?.unit}</span></div>
+                 <div className="text-2xl font-bold text-primary">{provider.services[0] ? formatBRL(provider.services[0].priceMin) : 'A combinar'} <span className="text-sm font-normal text-gray-400">/ {provider.services[0]?.unit}</span></div>
                </div>
                <button 
                  onClick={() => setIsModalOpen(true)}
@@ -170,7 +175,7 @@ const Profile: React.FC = () => {
                 <select 
                   value={selectedService} 
                   onChange={(e) => setSelectedService(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  className="w-full border border-gray-300 rounded-lg p-2.5 outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 >
                   {provider.services.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
                 </select>
@@ -178,7 +183,7 @@ const Profile: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Para quando?</label>
-                <input type="date" className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" required />
+                <input type="date" className="w-full border border-gray-300 rounded-lg p-2.5 outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary" required />
               </div>
 
               <div>
@@ -187,7 +192,7 @@ const Profile: React.FC = () => {
                 </div>
                 <textarea
                   rows={4}
-                  className="w-full border border-gray-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
+                  className="w-full border border-gray-300 rounded-lg p-3 outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
                   placeholder="Descreva o que precisa ser feito..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}

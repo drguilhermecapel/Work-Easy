@@ -16,7 +16,7 @@ const PALETTE = [
 
 // Initials avatar rendered locally, so the app never sends the visitor's IP
 // to third-party image hosts and never shows faces of real people as mocks.
-export const initialsOf = (name: string): string =>
+const initialsOf = (name: string): string =>
   name
     .replace(/^(Dra?\.)\s+/i, '')
     .split(/\s+/)

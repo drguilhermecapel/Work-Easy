@@ -1,11 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Search, MapPin, Filter, ChevronDown, Stethoscope, Check } from 'lucide-react';
 import { MOCK_PROVIDERS } from '../constants';
 import DoctorCard from '../components/DoctorCard';
 
 const HealthSearch: React.FC = () => {
-  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [location, setLocation] = useState('São Paulo');
   const [selectedSpecialty, setSelectedSpecialty] = useState<string | null>(null);
@@ -48,7 +46,7 @@ const HealthSearch: React.FC = () => {
               <input 
                 type="text" 
                 placeholder="Especialidade, doença ou nome do médico"
-                className="bg-transparent w-full outline-none text-gray-700 placeholder-gray-500"
+                className="bg-transparent w-full outline-hidden text-gray-700 placeholder-gray-500"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -59,7 +57,7 @@ const HealthSearch: React.FC = () => {
               <input 
                 type="text" 
                 placeholder="Cidade ou Bairro"
-                className="bg-transparent w-full outline-none text-gray-700 placeholder-gray-500"
+                className="bg-transparent w-full outline-hidden text-gray-700 placeholder-gray-500"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
               />
@@ -151,7 +149,7 @@ const HealthSearch: React.FC = () => {
 
           {/* Sidebar / Map Placeholder */}
           <div className="hidden lg:block w-80">
-            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm sticky top-24">
+            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-xs sticky top-24">
                <h3 className="font-bold text-gray-800 mb-4">Dúvidas Frequentes</h3>
                <div className="space-y-4 text-sm">
                  <div>

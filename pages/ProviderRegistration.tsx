@@ -37,7 +37,7 @@ const ProviderRegistration: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Simple Header */}
-      <div className="bg-white p-4 shadow-sm text-center">
+      <div className="bg-white p-4 shadow-xs text-center">
         <h1 className="text-xl font-bold text-primary">Cadastro de Profissional</h1>
       </div>
 
@@ -58,7 +58,7 @@ const ProviderRegistration: React.FC = () => {
           ))}
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
+        <div className="bg-white rounded-2xl shadow-xs border border-gray-100 p-6 md:p-8">
           
           {/* STEP 1: Personal Info */}
           {step === 1 && (
@@ -78,7 +78,7 @@ const ProviderRegistration: React.FC = () => {
                   name="name" 
                   value={formData.name} 
                   onChange={handleChange}
-                  className="w-full p-3 border border-gray-300 rounded-xl outline-none focus:border-primary" 
+                  className="w-full p-3 border border-gray-300 rounded-xl outline-hidden focus:border-primary" 
                   placeholder="Ex: Maria Silva" 
                 />
               </div>
@@ -89,7 +89,7 @@ const ProviderRegistration: React.FC = () => {
                   name="cpf" 
                   value={formData.cpf} 
                   onChange={handleChange}
-                  className="w-full p-3 border border-gray-300 rounded-xl outline-none focus:border-primary" 
+                  className="w-full p-3 border border-gray-300 rounded-xl outline-hidden focus:border-primary" 
                   placeholder="000.000.000-00" 
                 />
               </div>
@@ -100,7 +100,7 @@ const ProviderRegistration: React.FC = () => {
                   name="phone" 
                   value={formData.phone} 
                   onChange={handleChange}
-                  className="w-full p-3 border border-gray-300 rounded-xl outline-none focus:border-primary" 
+                  className="w-full p-3 border border-gray-300 rounded-xl outline-hidden focus:border-primary" 
                   placeholder="(11) 99999-9999" 
                 />
               </div>
@@ -124,7 +124,7 @@ const ProviderRegistration: React.FC = () => {
                   name="category" 
                   value={formData.category} 
                   onChange={handleChange}
-                  className="w-full p-3 border border-gray-300 rounded-xl outline-none focus:border-primary bg-white"
+                  className="w-full p-3 border border-gray-300 rounded-xl outline-hidden focus:border-primary bg-white"
                 >
                   <option value="">Selecione...</option>
                   {CATEGORIES.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
@@ -136,7 +136,7 @@ const ProviderRegistration: React.FC = () => {
                   name="experience" 
                   value={formData.experience} 
                   onChange={handleChange}
-                  className="w-full p-3 border border-gray-300 rounded-xl outline-none focus:border-primary bg-white"
+                  className="w-full p-3 border border-gray-300 rounded-xl outline-hidden focus:border-primary bg-white"
                 >
                   <option value="">Selecione...</option>
                   <option value="1">Menos de 1 ano</option>
@@ -185,7 +185,7 @@ const ProviderRegistration: React.FC = () => {
                   name="acknowledgedDemo"
                   checked={formData.acknowledgedDemo}
                   onChange={handleChange}
-                  className="mt-1 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary"
+                  className="mt-1 w-5 h-5 text-primary border-gray-300 rounded-sm focus:ring-primary"
                 />
                 <span className="text-sm text-gray-700">
                   Entendo que esta é uma demonstração e que nenhum dado é enviado.

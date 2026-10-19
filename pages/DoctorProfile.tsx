@@ -1,21 +1,33 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { 
-  Star, MapPin, Video, ShieldCheck, Calendar, Clock, ChevronLeft, 
+  Star, MapPin, Video, ShieldCheck, ChevronLeft,
   ChevronRight, ThumbsUp, GraduationCap, Building, Stethoscope 
 } from 'lucide-react';
 import { MOCK_PROVIDERS } from '../constants';
 import Avatar from '../components/Avatar';
+import { dayIndexFromIso } from '../utils/date';
+import { formatBRL } from '../utils/format';
+
+const CALENDAR_DAYS = 4;
+const MOCK_SLOTS = [
+  { time: '08:00', available: true },
+  { time: '09:30', available: true },
+  { time: '11:00', available: false },
+  { time: '14:00', available: true },
+  { time: '15:30', available: true },
+  { time: '17:00', available: false },
+];
 
 const DoctorProfile: React.FC = () => {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const provider = MOCK_PROVIDERS.find(p => p.id === id);
-  const selectedSlot = searchParams.get('slot');
 
   const [activeTab, setActiveTab] = useState<'about' | 'insurance' | 'reviews'>('about');
-  const [selectedDay, setSelectedDay] = useState(0); // 0 = Today, 1 = Tomorrow...
+  // Preselect the day of a slot chosen on the search card (`?slot=<ISO date>`)
+  const [selectedDay, setSelectedDay] = useState(() => dayIndexFromIso(searchParams.get('slot'), CALENDAR_DAYS));
 
   if (!provider || !provider.medicalInfo) {
     return <div className="p-8 text-center">Médico não encontrado</div>;
@@ -23,20 +35,19 @@ const DoctorProfile: React.FC = () => {
 
   const { medicalInfo } = provider;
 
-  // Generate mock calendar days
-  const calendarDays = [0, 1, 2, 3].map(offset => {
-    const d = new Date();
+  // Mock calendar: same slots every day, but times already past today are unavailable
+  const now = new Date();
+  const calendarDays = Array.from({ length: CALENDAR_DAYS }, (_, offset) => {
+    const d = new Date(now);
     d.setDate(d.getDate() + offset);
     return {
       date: d,
-      slots: [
-        { time: '08:00', available: true },
-        { time: '09:30', available: true },
-        { time: '11:00', available: false },
-        { time: '14:00', available: true },
-        { time: '15:30', available: true },
-        { time: '17:00', available: false }
-      ]
+      slots: MOCK_SLOTS.map(slot => {
+        const [hours, minutes] = slot.time.split(':').map(Number);
+        const slotStart = new Date(d);
+        slotStart.setHours(hours, minutes, 0, 0);
+        return { ...slot, available: slot.available && slotStart > now };
+      }),
     };
   });
 
@@ -70,8 +81,8 @@ const DoctorProfile: React.FC = () => {
         <div className="md:col-span-2 space-y-6">
           
           {/* Main Card */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col sm:flex-row gap-6">
-            <div className="flex-shrink-0">
+          <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-6 flex flex-col sm:flex-row gap-6">
+            <div className="shrink-0">
               <Avatar name={provider.name} className="w-32 h-32 text-4xl border border-gray-100" />
             </div>
             <div className="flex-1">
@@ -120,7 +131,7 @@ const DoctorProfile: React.FC = () => {
           </div>
 
           {/* Content Area */}
-          <div className="bg-white rounded-b-xl shadow-sm border border-gray-200 border-t-0 p-6 min-h-[300px]">
+          <div className="bg-white rounded-b-xl shadow-xs border border-gray-200 border-t-0 p-6 min-h-[300px]">
             {activeTab === 'about' && (
               <div className="space-y-8 animate-in fade-in">
                 <div>
@@ -134,7 +145,7 @@ const DoctorProfile: React.FC = () => {
                    </h3>
                    <div className="flex flex-wrap gap-2">
                      {medicalInfo.diseases.map(d => (
-                       <span key={d} className="px-3 py-1.5 bg-gray-100 rounded text-gray-700 text-sm">{d}</span>
+                       <span key={d} className="px-3 py-1.5 bg-gray-100 rounded-sm text-gray-700 text-sm">{d}</span>
                      ))}
                    </div>
                 </div>
@@ -146,7 +157,7 @@ const DoctorProfile: React.FC = () => {
                    <ul className="space-y-2">
                      {medicalInfo.education.map((edu, idx) => (
                        <li key={idx} className="flex items-start gap-2 text-gray-600 text-sm">
-                         <div className="w-1.5 h-1.5 bg-gray-400 rounded-full mt-2 flex-shrink-0"></div>
+                         <div className="w-1.5 h-1.5 bg-gray-400 rounded-full mt-2 shrink-0"></div>
                          {edu}
                        </li>
                      ))}
@@ -161,7 +172,7 @@ const DoctorProfile: React.FC = () => {
                      <h4 className="font-bold text-gray-800">Consultório Principal</h4>
                      <p className="text-gray-600">{medicalInfo.address.street}</p>
                      <p className="text-gray-600">{medicalInfo.address.neighborhood} - {medicalInfo.address.city}, {medicalInfo.address.zip}</p>
-                     <div className="mt-3 h-32 bg-gray-200 rounded flex items-center justify-center text-gray-400 text-sm">
+                     <div className="mt-3 h-32 bg-gray-200 rounded-sm flex items-center justify-center text-gray-400 text-sm">
                         Mapa Interativo (Simulação)
                      </div>
                    </div>
@@ -200,7 +211,7 @@ const DoctorProfile: React.FC = () => {
                      <p className="text-gray-600 italic">"{review.comment}"</p>
                      <div className="flex gap-2 mt-3">
                        {review.tags.map(tag => (
-                         <span key={tag} className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded flex items-center gap-1">
+                         <span key={tag} className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-sm flex items-center gap-1">
                            <ThumbsUp size={10} /> {tag}
                          </span>
                        ))}
@@ -234,7 +245,9 @@ const DoctorProfile: React.FC = () => {
               {/* Price */}
               <div className="bg-gray-50 p-3 rounded-lg text-center mb-4">
                 <span className="text-gray-500 text-xs uppercase font-bold">Valor da consulta</span>
-                <div className="text-xl font-bold text-gray-900">R$ {medicalInfo.inPersonPrice}</div>
+                <div className="text-xl font-bold text-gray-900">
+                  {medicalInfo.inPersonPrice !== undefined ? formatBRL(medicalInfo.inPersonPrice) : 'A combinar'}
+                </div>
               </div>
 
               {/* Calendar Grid */}
@@ -243,7 +256,7 @@ const DoctorProfile: React.FC = () => {
                   <button 
                     disabled={selectedDay === 0}
                     onClick={() => setSelectedDay(d => Math.max(0, d - 1))}
-                    className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
+                    className="p-1 hover:bg-gray-100 rounded-sm disabled:opacity-30"
                   >
                     <ChevronLeft size={20} />
                   </button>
@@ -253,7 +266,7 @@ const DoctorProfile: React.FC = () => {
                   <button 
                     disabled={selectedDay === calendarDays.length - 1}
                     onClick={() => setSelectedDay(d => Math.min(calendarDays.length - 1, d + 1))}
-                    className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
+                    className="p-1 hover:bg-gray-100 rounded-sm disabled:opacity-30"
                   >
                     <ChevronRight size={20} />
                   </button>
@@ -267,8 +280,8 @@ const DoctorProfile: React.FC = () => {
                       onClick={() => handleBooking(slot.time)}
                       className={`py-2 text-sm font-medium rounded-md transition-colors ${
                         slot.available 
-                        ? 'bg-teal-600 text-white hover:bg-teal-700 shadow-sm' 
-                        : 'bg-gray-100 text-gray-300 cursor-not-allowed decoration-slice line-through'
+                        ? 'bg-teal-600 text-white hover:bg-teal-700 shadow-xs' 
+                        : 'bg-gray-100 text-gray-300 cursor-not-allowed box-decoration-slice line-through'
                       }`}
                     >
                       {slot.time}

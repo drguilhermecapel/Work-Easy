@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
-  Mic, MicOff, Video, VideoOff, PhoneOff, Lock, ShieldCheck, 
-  User, Clock, AlertTriangle, FileKey, CheckCircle, Info, FileText,
+  Mic, MicOff, Video, VideoOff, PhoneOff, ShieldCheck,
+  User, CheckCircle, Info, FileText,
   MessageSquare, Paperclip, Send, X, Image as ImageIcon, File, Download
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -38,7 +38,8 @@ const TeleconsultationRoom: React.FC = () => {
   const [callDuration, setCallDuration] = useState(0);
   
   // UI State
-  const [sidebarView, setSidebarView] = useState<'emr' | 'chat'>('chat'); // 'emr' or 'chat'
+  // Doctors start on the record tab, everyone else on the chat
+  const [sidebarView, setSidebarView] = useState<'emr' | 'chat'>(() => (user.isHealthProfessional ? 'emr' : 'chat'));
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
   // EMR State
@@ -54,8 +55,17 @@ const TeleconsultationRoom: React.FC = () => {
   const [newMessage, setNewMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Object URLs created for local previews; revoked on unmount to free memory
+  const objectUrlsRef = useRef<string[]>([]);
+
+  useEffect(() => () => {
+    objectUrlsRef.current.forEach(url => URL.revokeObjectURL(url));
+    objectUrlsRef.current = [];
+  }, []);
 
   const isDoctor = user.isHealthProfessional;
+  // Only doctors can see the record tab, even if the role changes mid-session
+  const activeView = isDoctor ? sidebarView : 'chat';
   const remoteParticipantName = isDoctor ? "Paciente Fictício (demonstração)" : "Dr. Roberto Costa (fictício)";
 
   // --- DEMO-ONLY ROLE GATE (real access control must be enforced server-side) ---
@@ -67,27 +77,20 @@ const TeleconsultationRoom: React.FC = () => {
     }
     if (!sessionId) navigate('/dashboard');
 
-    // Default view based on role
-    if (isDoctor) {
-      setSidebarView('emr');
-    } else {
-      setSidebarView('chat');
-    }
-
     // Start Timer
     const timer = setInterval(() => {
       setCallDuration(prev => prev + 1);
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [user, navigate, sessionId, isDoctor]);
+  }, [user, navigate, sessionId]);
 
   // Scroll to bottom of chat
   useEffect(() => {
-    if (sidebarView === 'chat') {
+    if (activeView === 'chat') {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages, sidebarView]);
+  }, [messages, activeView]);
 
   const formatDuration = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
@@ -132,6 +135,7 @@ const TeleconsultationRoom: React.FC = () => {
 
     // Simulate upload and URL generation
     const objectUrl = URL.createObjectURL(file);
+    objectUrlsRef.current.push(objectUrl);
     const isImage = file.type.startsWith('image/');
 
     const msg: ChatMessage = {
@@ -164,8 +168,6 @@ const TeleconsultationRoom: React.FC = () => {
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
-    // If opening and user is patient, default to chat. If doctor, keeps last state or default EMR
-    if (!isSidebarOpen && !isDoctor) setSidebarView('chat');
   };
 
   return (
@@ -186,7 +188,7 @@ const TeleconsultationRoom: React.FC = () => {
           <span className="font-medium text-sm text-gray-200 border-l border-gray-600 pl-3">
             {remoteParticipantName}
           </span>
-          <span className="text-xs bg-gray-700 px-2 py-0.5 rounded text-gray-400 font-mono hidden sm:inline-block">
+          <span className="text-xs bg-gray-700 px-2 py-0.5 rounded-sm text-gray-400 font-mono hidden sm:inline-block">
             {formatDuration(callDuration)}
           </span>
         </div>
@@ -203,7 +205,7 @@ const TeleconsultationRoom: React.FC = () => {
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
         
         {/* VIDEO AREA */}
-        <div className={`flex-1 relative bg-black flex items-center justify-center p-2 md:p-4 transition-all duration-300 ${isSidebarOpen ? 'md:mr-[0px]' : ''}`}>
+        <div className={`flex-1 relative bg-black flex items-center justify-center p-2 md:p-4 transition-all duration-300 ${isSidebarOpen ? 'md:mr-0' : ''}`}>
           
           {/* Main Video Stream */}
           <div className="w-full h-full bg-gray-800 rounded-2xl overflow-hidden relative flex items-center justify-center shadow-2xl border border-gray-700">
@@ -272,13 +274,13 @@ const TeleconsultationRoom: React.FC = () => {
               <div className="flex bg-gray-200/50 p-1 rounded-lg">
                 <button 
                   onClick={() => setSidebarView('emr')}
-                  className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center gap-2 ${sidebarView === 'emr' ? 'bg-white text-teal-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                  className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center gap-2 ${sidebarView === 'emr' ? 'bg-white text-teal-700 shadow-xs' : 'text-gray-500 hover:text-gray-700'}`}
                 >
                   <ShieldCheck size={16} /> Prontuário
                 </button>
                 <button 
                   onClick={() => setSidebarView('chat')}
-                  className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center gap-2 ${sidebarView === 'chat' ? 'bg-white text-teal-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                  className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center gap-2 ${sidebarView === 'chat' ? 'bg-white text-teal-700 shadow-xs' : 'text-gray-500 hover:text-gray-700'}`}
                 >
                   <MessageSquare size={16} /> Chat
                 </button>
@@ -295,7 +297,7 @@ const TeleconsultationRoom: React.FC = () => {
           </div>
 
           {/* --- CONTENT: EMR (DOCTOR ONLY) --- */}
-          {sidebarView === 'emr' && isDoctor && (
+          {activeView === 'emr' && (
             <div className="flex-1 flex flex-col overflow-hidden animate-in fade-in">
               <div className="p-3 bg-teal-50 border-b border-teal-100 flex justify-between items-center">
                 <span className="text-xs font-bold text-teal-800 uppercase tracking-wide">Registro (rascunho)</span>
@@ -330,7 +332,7 @@ const TeleconsultationRoom: React.FC = () => {
                     </div>
                  )}
                  <textarea
-                    className="w-full h-full p-4 border border-gray-200 rounded-xl resize-none focus:ring-2 focus:ring-teal-500 outline-none text-sm leading-relaxed"
+                    className="w-full h-full p-4 border border-gray-200 rounded-xl resize-none focus:ring-2 focus:ring-teal-500 outline-hidden text-sm leading-relaxed"
                     placeholder={`Digite aqui: ${EMR_TAB_LABELS[activeEmrTab].toLowerCase()}...`}
                     value={record[activeEmrTab]}
                     onChange={(e) => setRecord({...record, [activeEmrTab]: e.target.value})}
@@ -341,7 +343,7 @@ const TeleconsultationRoom: React.FC = () => {
           )}
 
           {/* --- CONTENT: CHAT (EVERYONE) --- */}
-          {sidebarView === 'chat' && (
+          {activeView === 'chat' && (
             <div className="flex-1 flex flex-col overflow-hidden bg-gray-50 animate-in fade-in">
               
               {/* Message List */}
@@ -350,7 +352,7 @@ const TeleconsultationRoom: React.FC = () => {
                   const isMe = msg.sender === 'me';
                   return (
                     <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[85%] rounded-2xl p-3 shadow-sm ${isMe ? 'bg-teal-600 text-white rounded-br-none' : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none'}`}>
+                      <div className={`max-w-[85%] rounded-2xl p-3 shadow-xs ${isMe ? 'bg-teal-600 text-white rounded-br-none' : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none'}`}>
                         <div className={`text-[10px] font-bold mb-1 ${isMe ? 'text-teal-200' : 'text-teal-600'}`}>{msg.senderName}</div>
                         
                         {/* Text Content */}
@@ -366,7 +368,7 @@ const TeleconsultationRoom: React.FC = () => {
                                </div>
                              ) : (
                                <div className="flex items-center gap-3">
-                                 <div className="bg-white p-2 rounded-full text-red-500 shadow-sm"><File size={20}/></div>
+                                 <div className="bg-white p-2 rounded-full text-red-500 shadow-xs"><File size={20}/></div>
                                  <div className="flex-1 min-w-0">
                                    <p className="text-xs font-bold truncate">{msg.file.name}</p>
                                    <p className="text-[10px] opacity-70 uppercase">Documento</p>
@@ -411,7 +413,7 @@ const TeleconsultationRoom: React.FC = () => {
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     placeholder="Digite sua mensagem..."
-                    className="flex-1 bg-transparent border-none outline-none text-sm text-gray-800 placeholder-gray-400 resize-none max-h-24 py-2"
+                    className="flex-1 bg-transparent border-none outline-hidden text-sm text-gray-800 placeholder-gray-400 resize-none max-h-24 py-2"
                     rows={1}
                     onKeyDown={(e) => {
                       if(e.key === 'Enter' && !e.shiftKey) {
@@ -424,7 +426,7 @@ const TeleconsultationRoom: React.FC = () => {
                   <button 
                     type="submit" 
                     disabled={!newMessage.trim()}
-                    className="p-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+                    className="p-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-xs"
                   >
                     <Send size={18} />
                   </button>

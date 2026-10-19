@@ -2,6 +2,7 @@ import React from 'react';
 import { Star, MapPin, Video } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Provider } from '../types';
+import { formatTime, relativeDayLabel } from '../utils/date';
 import Avatar from './Avatar';
 
 interface DoctorCardProps {
@@ -11,23 +12,12 @@ interface DoctorCardProps {
 const DoctorCard: React.FC<DoctorCardProps> = ({ provider }) => {
   if (!provider.medicalInfo) return null;
 
-  const formatDate = (isoString: string) => {
-    const date = new Date(isoString);
-    return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  };
-
-  const isToday = (isoString: string) => {
-    const date = new Date(isoString);
-    const today = new Date();
-    return date.getDate() === today.getDate() && date.getMonth() === today.getMonth();
-  };
-
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all flex flex-col md:flex-row">
+    <div className="bg-white rounded-xl shadow-xs border border-gray-100 overflow-hidden hover:shadow-md transition-all flex flex-col md:flex-row">
       {/* Left Info Section */}
       <div className="p-5 flex-1 flex flex-col sm:flex-row gap-5">
-        <div className="flex-shrink-0 flex flex-col items-center sm:items-start">
-          <Avatar name={provider.name} className="w-24 h-24 text-2xl border-4 border-teal-50 shadow-sm" />
+        <div className="shrink-0 flex flex-col items-center sm:items-start">
+          <Avatar name={provider.name} className="w-24 h-24 text-2xl border-4 border-teal-50 shadow-xs" />
         </div>
         
         <div className="flex-1 text-center sm:text-left">
@@ -59,7 +49,7 @@ const DoctorCard: React.FC<DoctorCardProps> = ({ provider }) => {
           
           <div className="mt-4 flex flex-wrap justify-center sm:justify-start gap-2">
             {provider.services.slice(0, 3).map(s => (
-              <span key={s.id} className="text-xs border border-gray-200 text-gray-500 px-2 py-1 rounded">
+              <span key={s.id} className="text-xs border border-gray-200 text-gray-500 px-2 py-1 rounded-sm">
                 {s.title}
               </span>
             ))}
@@ -74,13 +64,13 @@ const DoctorCard: React.FC<DoctorCardProps> = ({ provider }) => {
              <p className="text-xs text-gray-500 font-bold uppercase mb-2">Próxima Disponibilidade</p>
              <div className="grid grid-cols-2 gap-2">
                 {provider.medicalInfo.nextAvailableSlots.slice(0, 4).map((slot, idx) => (
-                  <Link 
-                    to={`/doctor/${provider.id}?slot=${slot}`}
-                    key={idx} 
+                  <Link
+                    to={`/doctor/${provider.id}?slot=${encodeURIComponent(slot)}`}
+                    key={idx}
                     className="text-center bg-teal-600 text-white text-sm font-medium py-1.5 rounded-lg hover:bg-teal-700 transition-colors"
                   >
-                    {isToday(slot) ? 'Hoje' : 'Amanhã'} <br/>
-                    <span className="font-bold">{formatDate(slot)}</span>
+                    {relativeDayLabel(new Date(slot))} <br/>
+                    <span className="font-bold">{formatTime(new Date(slot))}</span>
                   </Link>
                 ))}
              </div>

@@ -25,7 +25,7 @@ const LegalDocs: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-12">
-      <div className="bg-white shadow-sm sticky top-0 z-10">
+      <div className="bg-white shadow-xs sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 h-16 flex items-center">
           <button onClick={() => navigate(-1)} className="mr-4 text-gray-500 hover:text-primary" aria-label="Voltar">
             <ChevronLeft size={24} />
@@ -42,7 +42,7 @@ const LegalDocs: React.FC = () => {
 
         <div className="grid gap-4 md:grid-cols-3">
           {DOCUMENTS.map(({ icon: Icon, title, body }) => (
-            <section key={title} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <section key={title} className="bg-white rounded-2xl shadow-xs border border-gray-100 p-6">
               <h2 className="font-bold text-gray-900 flex items-center gap-2 mb-3">
                 <Icon size={18} className="text-primary" /> {title}
               </h2>

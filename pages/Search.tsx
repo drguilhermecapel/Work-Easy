@@ -1,42 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Filter, ChevronDown } from 'lucide-react';
 import ProviderCard from '../components/ProviderCard';
 import { MOCK_PROVIDERS, CATEGORIES } from '../constants';
-import { Provider } from '../types';
+import { filterProviders } from '../utils/search';
 
 const SearchPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const query = searchParams.get('q') || '';
   const categorySlug = searchParams.get('category');
-  
-  const [providers, setProviders] = useState<Provider[]>(MOCK_PROVIDERS);
+
+  const providers = useMemo(() => filterProviders(MOCK_PROVIDERS, { query, categorySlug }), [query, categorySlug]);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-
-  useEffect(() => {
-    // Mock filtering logic
-    let filtered = MOCK_PROVIDERS;
-
-    if (query) {
-      const lowerQ = query.toLowerCase();
-      filtered = filtered.filter(p => 
-        p.name.toLowerCase().includes(lowerQ) || 
-        p.title.toLowerCase().includes(lowerQ) ||
-        p.services.some(s => s.title.toLowerCase().includes(lowerQ))
-      );
-    }
-
-    if (categorySlug) {
-      const categoryName = CATEGORIES.find(c => c.slug === categorySlug)?.name;
-      if (categoryName) {
-         filtered = filtered.filter(p => 
-          p.services.some(s => s.category === categoryName)
-        );
-      }
-    }
-
-    setProviders(filtered);
-  }, [query, categorySlug]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 min-h-screen">
@@ -56,24 +31,24 @@ const SearchPage: React.FC = () => {
       <div className="flex gap-2 overflow-x-auto no-scrollbar mb-6 pb-2 sticky top-16 bg-gray-50 z-40 py-2 -mx-4 px-4 md:static md:bg-transparent md:mx-0 md:px-0">
         <button 
           onClick={() => setIsFilterOpen(!isFilterOpen)}
-          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full text-sm font-medium text-gray-700 whitespace-nowrap shadow-sm active:bg-gray-50"
+          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full text-sm font-medium text-gray-700 whitespace-nowrap shadow-xs active:bg-gray-50"
         >
           <Filter size={16} /> Filtros
         </button>
-        <button className="flex items-center gap-1 px-4 py-2 bg-white border border-gray-200 rounded-full text-sm font-medium text-gray-700 whitespace-nowrap shadow-sm">
+        <button className="flex items-center gap-1 px-4 py-2 bg-white border border-gray-200 rounded-full text-sm font-medium text-gray-700 whitespace-nowrap shadow-xs">
           Distância <ChevronDown size={14} />
         </button>
-        <button className="flex items-center gap-1 px-4 py-2 bg-white border border-gray-200 rounded-full text-sm font-medium text-gray-700 whitespace-nowrap shadow-sm">
+        <button className="flex items-center gap-1 px-4 py-2 bg-white border border-gray-200 rounded-full text-sm font-medium text-gray-700 whitespace-nowrap shadow-xs">
           Preço <ChevronDown size={14} />
         </button>
-        <button className="flex items-center gap-1 px-4 py-2 bg-white border border-gray-200 rounded-full text-sm font-medium text-gray-700 whitespace-nowrap shadow-sm">
+        <button className="flex items-center gap-1 px-4 py-2 bg-white border border-gray-200 rounded-full text-sm font-medium text-gray-700 whitespace-nowrap shadow-xs">
           Avaliação 4.5+
         </button>
       </div>
 
       {/* Simple Filter Drawer Mock */}
       {isFilterOpen && (
-        <div className="bg-white p-4 mb-6 rounded-xl shadow-sm border border-gray-100 animate-in fade-in slide-in-from-top-4">
+        <div className="bg-white p-4 mb-6 rounded-xl shadow-xs border border-gray-100 animate-in fade-in slide-in-from-top-4">
            <div className="flex justify-between items-center mb-4">
              <h3 className="font-semibold">Filtros</h3>
              <button onClick={() => setIsFilterOpen(false)} className="text-primary text-sm">Aplicar</button>
@@ -88,7 +63,7 @@ const SearchPage: React.FC = () => {
                </div>
              </div>
              <div className="flex items-center gap-2">
-                <input type="checkbox" id="with-reviews" className="rounded text-primary focus:ring-primary" />
+                <input type="checkbox" id="with-reviews" className="rounded-sm text-primary focus:ring-primary" />
                 <label htmlFor="with-reviews" className="text-sm text-gray-700">Apenas com avaliações</label>
              </div>
            </div>

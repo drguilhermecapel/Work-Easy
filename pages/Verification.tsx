@@ -63,7 +63,7 @@ const Verification: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header */}
-      <div className="bg-white p-4 shadow-sm flex items-center">
+      <div className="bg-white p-4 shadow-xs flex items-center">
         <button onClick={() => navigate(-1)} className="text-gray-500 mr-4" aria-label="Voltar">
           <ChevronLeft size={24} />
         </button>
@@ -83,7 +83,7 @@ const Verification: React.FC = () => {
               e nenhuma verificação real é feita.
             </p>
 
-            <div className="space-y-4 mb-8 text-left bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+            <div className="space-y-4 mb-8 text-left bg-white p-4 rounded-xl border border-gray-100 shadow-xs">
               <div className="flex items-center gap-4">
                 <div className="bg-blue-100 p-2 rounded-lg text-blue-600"><ScanFace size={24}/></div>
                 <div>

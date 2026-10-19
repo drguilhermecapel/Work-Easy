@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MOCK_MEDICAL_RECORDS } from '../constants';
-import { ChevronLeft, Search, FileText, Lock, Calendar, User, ShieldAlert } from 'lucide-react';
+import { ChevronLeft, Search, FileText, Calendar, User, ShieldAlert } from 'lucide-react';
 import { MedicalRecord } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -63,7 +63,7 @@ const MedicalRecords: React.FC = () => {
         </div>
         <div className="flex items-center gap-2">
            <span className="hidden md:inline text-xs text-gray-500">{user.name}</span>
-           <div className="bg-gray-100 border border-gray-200 text-gray-600 text-[10px] font-bold px-2 py-1 rounded">
+           <div className="bg-gray-100 border border-gray-200 text-gray-600 text-[10px] font-bold px-2 py-1 rounded-sm">
               DADOS FICTÍCIOS
            </div>
         </div>
@@ -80,11 +80,11 @@ const MedicalRecords: React.FC = () => {
               placeholder="Buscar por nome ou tipo de atendimento..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-hidden"
             />
           </div>
 
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden">
             <div className="p-3 bg-gray-50 border-b border-gray-100 text-xs font-bold text-gray-500 uppercase">
               Pacientes Recentes
             </div>
@@ -111,7 +111,7 @@ const MedicalRecords: React.FC = () => {
         {/* Detail View */}
         <div className="md:col-span-2">
           {selectedRecord ? (
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 md:p-8 animate-in fade-in">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-xs p-6 md:p-8 animate-in fade-in">
               <div className="flex justify-between items-start border-b border-gray-100 pb-6 mb-6">
                 <div>
                    <h2 className="text-2xl font-bold text-gray-900 mb-1">{selectedRecord.patientName}</h2>
