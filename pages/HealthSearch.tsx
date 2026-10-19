@@ -155,16 +155,16 @@ const HealthSearch: React.FC = () => {
                <h3 className="font-bold text-gray-800 mb-4">Dúvidas Frequentes</h3>
                <div className="space-y-4 text-sm">
                  <div>
-                   <h4 className="font-bold text-teal-700 cursor-pointer hover:underline">Como agendar uma consulta?</h4>
+                   <h4 className="font-bold text-teal-700">Como agendar uma consulta?</h4>
                    <p className="text-gray-600 mt-1">Escolha um horário no perfil do especialista e confirme seus dados.</p>
                  </div>
                  <div>
-                   <h4 className="font-bold text-teal-700 cursor-pointer hover:underline">É seguro?</h4>
-                   <p className="text-gray-600 mt-1">Sim, todos os médicos têm CRM verificado e as avaliações são de pacientes reais.</p>
+                   <h4 className="font-bold text-teal-700">Os perfis são reais?</h4>
+                   <p className="text-gray-600 mt-1">Não. Nesta demonstração, os perfis, os números de CRM e as avaliações são fictícios.</p>
                  </div>
                  <div>
-                   <h4 className="font-bold text-teal-700 cursor-pointer hover:underline">Telemedicina funciona?</h4>
-                   <p className="text-gray-600 mt-1">Sim, você recebe um link seguro para a videochamada na hora agendada.</p>
+                   <h4 className="font-bold text-teal-700">Tem teleconsulta?</h4>
+                   <p className="text-gray-600 mt-1">Ainda não. A teleconsulta exige empresa registrada no CRM e prontuário certificado.</p>
                  </div>
                </div>
             </div>

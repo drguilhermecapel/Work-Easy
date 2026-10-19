@@ -88,8 +88,8 @@ const SearchPage: React.FC = () => {
                </div>
              </div>
              <div className="flex items-center gap-2">
-                <input type="checkbox" id="verified" className="rounded text-primary focus:ring-primary" />
-                <label htmlFor="verified" className="text-sm text-gray-700">Apenas verificados</label>
+                <input type="checkbox" id="with-reviews" className="rounded text-primary focus:ring-primary" />
+                <label htmlFor="with-reviews" className="text-sm text-gray-700">Apenas com avaliações</label>
              </div>
            </div>
         </div>

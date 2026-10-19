@@ -7,8 +7,7 @@ export interface UserProfile {
   id: string;
   name: string;
   type: UserType;
-  isHealthProfessional: boolean; // Flag critical for CRM/LGPD access control
-  avatar: string;
+  isHealthProfessional: boolean; // Demo-only role flag; real access control must be enforced server-side
 }
 
 export interface Review {
@@ -54,7 +53,6 @@ export interface Provider {
   id: string;
   name: string;
   title: string;
-  image: string;
   rating: number;
   totalReviews: number;
   verified: boolean;
@@ -104,5 +102,4 @@ export interface MedicalRecord {
   anamnese: string;
   evolution: string; // Evolução/Queixa
   prescription: string; // Prescrição/Conduta
-  encryptedHash: string; // Simulating LGPD encryption signature
 }

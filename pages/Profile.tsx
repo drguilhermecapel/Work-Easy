@@ -1,37 +1,28 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Star, MapPin, CheckCircle, Clock, Shield, MessageCircle, X } from 'lucide-react';
+import { Star, MapPin, Clock, MessageCircle, X } from 'lucide-react';
 import { MOCK_PROVIDERS } from '../constants';
-import { generateServiceDescription } from '../services/geminiService';
+import Avatar from '../components/Avatar';
 
 const Profile: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const provider = MOCK_PROVIDERS.find(p => p.id === id);
-  
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedService, setSelectedService] = useState(provider?.services[0]?.id || '');
   const [description, setDescription] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
 
   if (!provider) {
     return <div className="p-8 text-center">Profissional não encontrado</div>;
   }
 
-  const handleGenerateDescription = async () => {
-    const serviceName = provider.services.find(s => s.id === selectedService)?.title || 'Serviço';
-    setIsGenerating(true);
-    const desc = await generateServiceDescription(serviceName);
-    setDescription(desc);
-    setIsGenerating(false);
-  };
-
   const handleRequestSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, this would send data to backend and trigger WhatsApp notification
+    // Prototype: nothing is sent. A real request needs a backend.
     setIsModalOpen(false);
     navigate('/dashboard');
-    alert('Solicitação enviada com sucesso! O profissional receberá um WhatsApp.');
+    alert('Demonstração: nenhuma solicitação real foi enviada.');
   };
 
   return (
@@ -46,18 +37,13 @@ const Profile: React.FC = () => {
       {/* Profile Info */}
       <div className="max-w-4xl mx-auto px-4 -mt-16 relative">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row gap-6 items-start">
-          <img 
-            src={provider.image} 
-            alt={provider.name} 
-            className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-white shadow-md object-cover"
-          />
-          
+          <Avatar name={provider.name} className="w-24 h-24 md:w-32 md:h-32 text-3xl border-4 border-white shadow-md" />
+
           <div className="flex-1 mt-2 md:mt-10">
             <div className="flex justify-between items-start">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
                   {provider.name}
-                  {provider.verified && <CheckCircle className="text-blue-500 fill-current" size={20} />}
                 </h1>
                 <p className="text-gray-600 font-medium">{provider.title}</p>
               </div>
@@ -78,7 +64,7 @@ const Profile: React.FC = () => {
                  <Clock size={16} /> {provider.yearsExperience} anos exp.
                </div>
                <div className="flex items-center gap-1">
-                 <Shield size={16} /> Identidade Verificada
+                 Perfil informado (não verificado)
                </div>
             </div>
           </div>
@@ -162,7 +148,7 @@ const Profile: React.FC = () => {
                  <MessageCircle size={18} /> Chat (Dúvidas)
                </button>
                <p className="text-center text-xs text-gray-400 mt-3 hidden md:block">
-                 Pagamento seguro via WorkEasy. <br/> Seu dinheiro só é liberado após o serviço.
+                 Protótipo: pedidos e pagamentos ainda não são processados.
                </p>
             </div>
           </div>
@@ -198,25 +184,15 @@ const Profile: React.FC = () => {
               <div>
                 <div className="flex justify-between mb-1">
                    <label className="block text-sm font-medium text-gray-700">Detalhes do pedido</label>
-                   <button type="button" onClick={handleGenerateDescription} className="text-xs text-secondary font-medium hover:underline flex items-center gap-1">
-                     ✨ Usar IA para escrever
-                   </button>
                 </div>
-                <div className="relative">
-                  <textarea 
-                    rows={4} 
-                    className="w-full border border-gray-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
-                    placeholder="Descreva o que precisa ser feito..."
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    required
-                  ></textarea>
-                  {isGenerating && (
-                    <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                    </div>
-                  )}
-                </div>
+                <textarea
+                  rows={4}
+                  className="w-full border border-gray-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
+                  placeholder="Descreva o que precisa ser feito..."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  required
+                ></textarea>
               </div>
 
               <div className="pt-2">
@@ -224,7 +200,7 @@ const Profile: React.FC = () => {
                   Enviar Solicitação
                 </button>
                 <p className="text-center text-xs text-gray-400 mt-2">
-                  O prestador receberá um WhatsApp imediatamente.
+                  Demonstração: o pedido não é enviado ao profissional.
                 </p>
               </div>
             </form>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, Bell, User as UserIcon, Briefcase, RefreshCw } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import Avatar from './Avatar';
 import { UserType } from '../types';
 
 const Navbar: React.FC = () => {
@@ -63,21 +64,19 @@ const Navbar: React.FC = () => {
                 <Link to="/dashboard" className={`${isActive('/dashboard')} hover:text-primary transition-colors`}>Meu Painel</Link>
                 {user.isHealthProfessional && (
                    <span className="bg-teal-100 text-teal-800 text-xs px-2 py-1 rounded border border-teal-200">
-                     CRM Ativo
+                     CRM informado (não verificado)
                    </span>
                 )}
               </>
             )}
 
             <div className="flex items-center space-x-4 ml-4">
-              <button className="text-gray-500 hover:text-primary relative">
+              <button className="text-gray-500 hover:text-primary relative" aria-label="Notificações">
                 <Bell size={20} />
                 <span className="absolute top-0 right-0 block h-2 w-2 rounded-full ring-2 ring-white bg-red-500 transform translate-x-1/2 -translate-y-1/2"></span>
               </button>
-              <Link to="/profile/me" className="flex items-center space-x-2 text-gray-700 hover:text-primary">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden border border-gray-200">
-                   <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
-                </div>
+              <Link to="/profile/me" className="flex items-center space-x-2 text-gray-700 hover:text-primary" aria-label={`Perfil de ${user.name}`}>
+                <Avatar name={user.name} className="w-8 h-8 text-xs border border-gray-200" />
               </Link>
             </div>
           </div>

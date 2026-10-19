@@ -11,7 +11,7 @@ const MedicalRecords: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRecord, setSelectedRecord] = useState<MedicalRecord | null>(null);
 
-  // --- ACCESS CONTROL CHECK ---
+  // --- DEMO-ONLY ROLE GATE (real access control must be enforced server-side) ---
   useEffect(() => {
     // Only Health Professionals allowed
     if (!user.isHealthProfessional) {
@@ -29,10 +29,9 @@ const MedicalRecords: React.FC = () => {
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
         <div className="bg-white p-8 rounded-2xl shadow-lg max-w-md text-center border-t-4 border-red-500">
           <ShieldAlert size={64} className="mx-auto text-red-500 mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Acesso Negado</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Área restrita</h1>
           <p className="text-gray-600 mb-4">
-            Esta área contém dados sensíveis protegidos por sigilo médico e LGPD. 
-            Apenas profissionais de saúde credenciados têm acesso.
+            Esta área é destinada a profissionais de saúde. Na demonstração, troque o papel para "Médico" no menu.
           </p>
           <div className="text-sm text-gray-400">Redirecionando...</div>
         </div>
@@ -48,6 +47,10 @@ const MedicalRecords: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
+      <div role="note" className="bg-amber-100 text-amber-900 text-xs px-4 py-2 text-center">
+        <strong>Funcionalidade futura.</strong> Prontuário eletrônico exige sistema certificado (NGS2/ICP-Brasil),
+        controle de acesso no servidor e trilha de auditoria. Os registros abaixo são fictícios.
+      </div>
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-4 py-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-3">
@@ -55,13 +58,13 @@ const MedicalRecords: React.FC = () => {
             <ChevronLeft size={24} />
           </button>
           <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-            <FileText className="text-teal-600" /> Prontuários Médicos
+            <FileText className="text-teal-600" /> Prontuários (demonstração)
           </h1>
         </div>
         <div className="flex items-center gap-2">
-           <span className="hidden md:inline text-xs text-gray-500">Dr. {user.name}</span>
-           <div className="bg-red-50 border border-red-100 text-red-700 text-[10px] font-bold px-2 py-1 rounded flex items-center gap-1">
-              <Lock size={10} /> DADOS SENSÍVEIS
+           <span className="hidden md:inline text-xs text-gray-500">{user.name}</span>
+           <div className="bg-gray-100 border border-gray-200 text-gray-600 text-[10px] font-bold px-2 py-1 rounded">
+              DADOS FICTÍCIOS
            </div>
         </div>
       </div>
@@ -74,7 +77,7 @@ const MedicalRecords: React.FC = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <input 
               type="text" 
-              placeholder="Buscar paciente (Nome/CPF)..." 
+              placeholder="Buscar por nome ou tipo de atendimento..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
@@ -96,9 +99,6 @@ const MedicalRecords: React.FC = () => {
                   <span className="text-xs text-gray-500">{record.date}</span>
                 </div>
                 <p className="text-xs text-gray-500 truncate">{record.serviceType}</p>
-                <div className="flex items-center gap-1 mt-2 text-[10px] text-gray-400">
-                  <Lock size={10} /> LGPD Hash: {record.encryptedHash.substring(0, 8)}...
-                </div>
               </div>
             )) : (
               <div className="p-8 text-center text-gray-400">
@@ -120,8 +120,8 @@ const MedicalRecords: React.FC = () => {
                      <span className="flex items-center gap-1"><User size={14}/> {selectedRecord.serviceType}</span>
                    </div>
                 </div>
-                <div className="bg-teal-100 text-teal-800 text-xs px-3 py-1 rounded-full font-bold">
-                  Assinado Digitalmente
+                <div className="bg-gray-100 text-gray-700 text-xs px-3 py-1 rounded-full font-bold">
+                  Rascunho — não assinado
                 </div>
               </div>
 
@@ -147,13 +147,8 @@ const MedicalRecords: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="pt-6 border-t border-gray-100 text-xs text-gray-400 font-mono break-all">
-                  <div className="flex items-center gap-2 mb-2 text-yellow-600">
-                    <ShieldAlert size={12} />
-                    <span>Acesso registrado em log de auditoria para conformidade legal.</span>
-                  </div>
-                  LGPD Hash Signature: {selectedRecord.encryptedHash}
-                  <br/>Timestamp: {new Date().toISOString()}
+                <div className="pt-6 border-t border-gray-100 text-xs text-gray-400">
+                  Registro fictício de demonstração. Nenhum acesso é registrado e nada é armazenado.
                 </div>
               </div>
             </div>

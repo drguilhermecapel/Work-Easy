@@ -1,7 +1,8 @@
 import React from 'react';
-import { Star, MapPin, CheckCircle } from 'lucide-react';
+import { Star, MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Provider } from '../types';
+import Avatar from './Avatar';
 
 interface ProviderCardProps {
   provider: Provider;
@@ -12,17 +13,12 @@ const ProviderCard: React.FC<ProviderCardProps> = ({ provider }) => {
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
       <div className="p-4 flex gap-4">
         <div className="flex-shrink-0">
-          <img 
-            src={provider.image} 
-            alt={provider.name} 
-            className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-sm"
-          />
+          <Avatar name={provider.name} className="w-16 h-16 text-xl border-2 border-white shadow-sm" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-gray-900 truncate flex items-center gap-1">
               {provider.name}
-              {provider.verified && <CheckCircle size={14} className="text-blue-500 fill-current" />}
             </h3>
             <div className="flex items-center bg-yellow-50 px-2 py-0.5 rounded text-xs font-medium text-yellow-700">
               <Star size={12} className="fill-yellow-400 text-yellow-400 mr-1" />

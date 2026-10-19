@@ -1,36 +1,25 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { CheckCircle, ChevronRight, User, Briefcase, ShieldCheck, Upload, AlertCircle, Loader2 } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { CheckCircle, ChevronRight, User, Briefcase, ShieldCheck, Upload, AlertCircle } from 'lucide-react';
 import { CATEGORIES } from '../constants';
 
 const ProviderRegistration: React.FC = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
-  const [isChecking, setIsChecking] = useState(false);
-  
+
+  // Demo: the form never leaves the browser. Nothing is sent, stored or checked.
   const [formData, setFormData] = useState({
     name: '',
     cpf: '',
     phone: '',
     category: '',
     experience: '',
-    agreedToBackgroundCheck: false,
-    agreedToTerms: false
+    acknowledgedDemo: false
   });
 
   const handleNext = () => {
     if (!isStepValid()) return;
-
-    if (step === 3 && !isChecking) {
-      // Simulate Background Check Process
-      setIsChecking(true);
-      setTimeout(() => {
-        setIsChecking(false);
-        setStep(step + 1);
-      }, 3000);
-    } else {
-      setStep(step + 1);
-    }
+    setStep(step + 1);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -41,7 +30,7 @@ const ProviderRegistration: React.FC = () => {
   const isStepValid = () => {
     if (step === 1) return formData.name && formData.cpf.length >= 11 && formData.phone;
     if (step === 2) return formData.category && formData.experience;
-    if (step === 3) return formData.agreedToBackgroundCheck && formData.agreedToTerms;
+    if (step === 3) return formData.acknowledgedDemo;
     return true;
   };
 
@@ -164,71 +153,59 @@ const ProviderRegistration: React.FC = () => {
             </div>
           )}
 
-          {/* STEP 3: Background Check */}
+          {/* STEP 3: Verification policy (demo) */}
           {step === 3 && (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
               <div className="text-center mb-6">
                 <div className="w-16 h-16 bg-yellow-50 text-yellow-600 rounded-full flex items-center justify-center mx-auto mb-3">
                   <ShieldCheck size={32} />
                 </div>
-                <h2 className="text-xl font-bold text-gray-800">Verificação de Segurança</h2>
-                <p className="text-sm text-gray-500">Segurança para você e para os clientes.</p>
+                <h2 className="text-xl font-bold text-gray-800">Verificação</h2>
+                <p className="text-sm text-gray-500">Política por categoria em definição.</p>
               </div>
 
               <div className="bg-yellow-50 p-4 rounded-xl text-sm text-yellow-800 border border-yellow-100">
-                <h4 className="font-bold mb-2 flex items-center gap-2">
+                <h3 className="font-bold mb-2 flex items-center gap-2">
                   <AlertCircle size={16} />
-                  O que vamos verificar?
-                </h4>
-                <ul className="list-disc pl-5 space-y-1 text-yellow-700">
-                  <li>Validação do seu CPF na Receita Federal.</li>
-                  <li>Consulta de antecedentes criminais em bases públicas.</li>
-                  <li>Verificação de identidade biométrica.</li>
-                </ul>
+                  Como vai funcionar
+                </h3>
+                <p className="text-yellow-700">
+                  A verificação vai depender da categoria: profissões regulamentadas terão o registro no conselho
+                  conferido, e serviços prestados dentro de casa ou para pessoas vulneráveis poderão pedir certidões.
+                  Cada etapa terá aviso de privacidade próprio.
+                </p>
                 <p className="mt-3 text-xs italic opacity-80">
-                  Seus dados estão protegidos e são usados exclusivamente para validação de segurança, conforme nossa Política de Privacidade.
+                  Nesta demonstração, nenhum dado é enviado, consultado ou armazenado.
                 </p>
               </div>
 
-              <div className="space-y-3">
-                <label className="flex items-start gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                  <input 
-                    type="checkbox" 
-                    name="agreedToTerms"
-                    checked={formData.agreedToTerms}
-                    onChange={handleChange as any}
-                    className="mt-1 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary" 
-                  />
-                  <span className="text-sm text-gray-700">
-                    Li e aceito os <span className="text-primary font-medium hover:underline" onClick={(e) => {e.preventDefault(); navigate('/legal');}}>Termos de Uso</span> e <span className="text-primary font-medium hover:underline" onClick={(e) => {e.preventDefault(); navigate('/legal');}}>Política de Privacidade</span>.
-                  </span>
-                </label>
-
-                <label className="flex items-start gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                  <input 
-                    type="checkbox" 
-                    name="agreedToBackgroundCheck"
-                    checked={formData.agreedToBackgroundCheck}
-                    onChange={handleChange as any}
-                    className="mt-1 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary" 
-                  />
-                  <span className="text-sm text-gray-700">
-                    <strong>Autorizo</strong> o WorkEasy a realizar a consulta de meus antecedentes criminais e validação de dados para fins de cadastro na plataforma.
-                  </span>
-                </label>
-              </div>
+              <label className="flex items-start gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                <input
+                  type="checkbox"
+                  name="acknowledgedDemo"
+                  checked={formData.acknowledgedDemo}
+                  onChange={handleChange}
+                  className="mt-1 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary"
+                />
+                <span className="text-sm text-gray-700">
+                  Entendo que esta é uma demonstração e que nenhum dado é enviado.
+                </span>
+              </label>
+              <p className="text-xs text-gray-500">
+                Veja o estado dos <Link to="/legal" className="text-primary font-medium hover:underline">documentos legais</Link>.
+              </p>
             </div>
           )}
 
-          {/* STEP 4: Success */}
+          {/* STEP 4: Done (demo) */}
           {step === 4 && (
             <div className="text-center animate-in zoom-in duration-300 py-6">
-              <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 text-green-500 animate-bounce">
+              <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 text-green-500">
                 <CheckCircle size={48} />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Cadastro em Análise!</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Demonstração concluída</h2>
               <p className="text-gray-600 mb-8">
-                Recebemos seus dados e a verificação de segurança está em andamento. Você receberá uma notificação no WhatsApp assim que seu perfil for aprovado (geralmente em até 2 horas).
+                Nenhum dado foi enviado ou armazenado. O cadastro real de profissionais ainda não está disponível.
               </p>
               
               <button 
@@ -242,22 +219,14 @@ const ProviderRegistration: React.FC = () => {
 
           {/* Navigation Buttons */}
           {step < 4 && (
-             <button 
+             <button
                onClick={handleNext}
-               disabled={!isStepValid() || isChecking}
+               disabled={!isStepValid()}
                className={`w-full mt-6 flex items-center justify-center gap-2 font-bold py-4 rounded-xl shadow-lg transition-all ${
-                 !isStepValid() || isChecking ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-primary text-white hover:bg-purple-700 shadow-purple-200'
+                 !isStepValid() ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-primary text-white hover:bg-purple-700 shadow-purple-200'
                }`}
              >
-               {isChecking ? (
-                 <>
-                   <Loader2 className="animate-spin" /> Verificando Dados...
-                 </>
-               ) : (
-                 <>
-                   {step === 3 ? 'Finalizar Cadastro' : 'Continuar'} <ChevronRight size={20} />
-                 </>
-               )}
+               {step === 3 ? 'Concluir demonstração' : 'Continuar'} <ChevronRight size={20} />
              </button>
           )}
 

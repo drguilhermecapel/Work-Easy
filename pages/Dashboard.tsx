@@ -35,8 +35,8 @@ const ClientDashboard: React.FC = () => {
             <ShieldAlert size={24} />
           </div>
           <div>
-            <h3 className="font-bold text-gray-800">Verifique sua Identidade</h3>
-            <p className="text-sm text-gray-600">Aumente sua segurança ao contratar serviços.</p>
+            <h3 className="font-bold text-gray-800">Verificação de identidade (simulação)</h3>
+            <p className="text-sm text-gray-600">Veja como será o fluxo. Nenhum dado é coletado.</p>
           </div>
         </div>
         <ChevronRight className="text-blue-400" />
@@ -118,7 +118,8 @@ const ProviderDashboard: React.FC<{ isHealth: boolean }> = ({ isHealth }) => {
 
   return (
     <div className="space-y-6">
-      {/* Provider Header Stats */}
+      {/* Provider Header Stats (example figures) */}
+      <p className="text-xs text-gray-400">Números de exemplo.</p>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
           <div className="text-gray-500 text-xs mb-1 uppercase font-bold">Ganhos (Mês)</div>
@@ -213,10 +214,11 @@ const ProviderDashboard: React.FC<{ isHealth: boolean }> = ({ isHealth }) => {
         <div className="space-y-6 animate-in fade-in">
           <div className="bg-teal-50 border border-teal-200 rounded-xl p-6 text-teal-900">
             <h2 className="text-xl font-bold flex items-center gap-2 mb-2">
-              <Lock size={20} /> Área Restrita: Profissional de Saúde
+              <Lock size={20} /> Área do Profissional de Saúde (funcionalidade futura)
             </h2>
             <p className="text-sm opacity-80 mb-6">
-              Acesso exclusivo para gestão de pacientes e prontuários. Dados protegidos conforme resolução do CRM e LGPD.
+              Teleconsulta e prontuário exigem empresa registrada no CRM, responsável técnico e prontuário certificado
+              (NGS2/ICP-Brasil). As telas abaixo são demonstrações visuais com dados fictícios.
             </p>
 
             <div className="grid md:grid-cols-2 gap-4">
@@ -310,7 +312,7 @@ const ChatComponent: React.FC<{selectedChat: string | null, setSelectedChat: (id
                 <div className="flex items-center gap-3">
                   <button onClick={() => setSelectedChat(null)} className="md:hidden text-gray-500"><XCircle size={20}/></button>
                   <div>
-                    <h3 className="font-bold text-gray-800">Chat Seguro</h3>
+                    <h3 className="font-bold text-gray-800">Chat (demonstração)</h3>
                   </div>
                 </div>
               </div>
@@ -356,7 +358,7 @@ const Dashboard: React.FC = () => {
         </h1>
         {user.type === UserType.PROVIDER && (
            <span className={`text-xs px-2 py-1 rounded font-bold ${user.isHealthProfessional ? 'bg-teal-100 text-teal-800' : 'bg-purple-100 text-purple-800'}`}>
-             {user.isHealthProfessional ? 'MÉDICO VERIFICADO' : 'PROFISSIONAL VERIFICADO'}
+             {user.isHealthProfessional ? 'MÉDICO · REGISTRO NÃO VERIFICADO' : 'PROFISSIONAL · NÃO VERIFICADO'}
            </span>
         )}
       </div>

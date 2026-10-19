@@ -13,7 +13,6 @@ const MOCK_CLIENT: UserProfile = {
   name: 'Maria Cliente',
   type: UserType.CLIENT,
   isHealthProfessional: false,
-  avatar: 'https://i.pravatar.cc/150?u=user-123'
 };
 
 const MOCK_PROVIDER: UserProfile = {
@@ -21,7 +20,6 @@ const MOCK_PROVIDER: UserProfile = {
   name: 'João Pintor',
   type: UserType.PROVIDER,
   isHealthProfessional: false,
-  avatar: 'https://i.pravatar.cc/150?u=prov-456'
 };
 
 const MOCK_DOCTOR: UserProfile = {
@@ -29,7 +27,6 @@ const MOCK_DOCTOR: UserProfile = {
   name: 'Dr. Roberto Costa',
   type: UserType.PROVIDER,
   isHealthProfessional: true,
-  avatar: 'https://i.pravatar.cc/150?u=doc-789'
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);

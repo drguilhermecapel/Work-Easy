@@ -1,7 +1,8 @@
 import React from 'react';
-import { Star, MapPin, Video, Calendar, ShieldCheck, ThumbsUp } from 'lucide-react';
+import { Star, MapPin, Video } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Provider } from '../types';
+import Avatar from './Avatar';
 
 interface DoctorCardProps {
   provider: Provider;
@@ -26,16 +27,7 @@ const DoctorCard: React.FC<DoctorCardProps> = ({ provider }) => {
       {/* Left Info Section */}
       <div className="p-5 flex-1 flex flex-col sm:flex-row gap-5">
         <div className="flex-shrink-0 flex flex-col items-center sm:items-start">
-          <img 
-            src={provider.image} 
-            alt={provider.name} 
-            className="w-24 h-24 rounded-full object-cover border-4 border-teal-50 shadow-sm"
-          />
-          {provider.verified && (
-            <div className="flex items-center gap-1 text-[10px] text-teal-600 font-bold mt-2 bg-teal-50 px-2 py-1 rounded-full">
-              <ShieldCheck size={12} /> VERIFICADO
-            </div>
-          )}
+          <Avatar name={provider.name} className="w-24 h-24 text-2xl border-4 border-teal-50 shadow-sm" />
         </div>
         
         <div className="flex-1 text-center sm:text-left">
@@ -43,7 +35,7 @@ const DoctorCard: React.FC<DoctorCardProps> = ({ provider }) => {
              <h3 className="text-xl font-bold text-gray-900">{provider.name}</h3>
           </Link>
           <p className="text-gray-600 font-medium">{provider.title}</p>
-          <p className="text-xs text-gray-400 mb-2">CRM: {provider.medicalInfo.crm}</p>
+          <p className="text-xs text-gray-400 mb-2">CRM: {provider.medicalInfo.crm} · informado, não verificado</p>
           
           <div className="flex items-center justify-center sm:justify-start gap-1 mb-3">
              <div className="flex text-yellow-400">
@@ -60,8 +52,8 @@ const DoctorCard: React.FC<DoctorCardProps> = ({ provider }) => {
                 <span className="line-clamp-1">{provider.medicalInfo.address.city} - {provider.medicalInfo.address.neighborhood}</span>
              </div>
              <div className="flex items-center justify-center sm:justify-start gap-2 text-sm text-gray-600">
-                <Video size={16} className="text-teal-500" />
-                <span>Telemedicina disponível</span>
+                <Video size={16} className="text-gray-400" />
+                <span>Teleconsulta: funcionalidade futura</span>
              </div>
           </div>
           

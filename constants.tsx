@@ -213,7 +213,6 @@ export const MOCK_PROVIDERS: Provider[] = [
     id: '1',
     name: 'João Santos',
     title: 'Pintor Profissional',
-    image: 'https://picsum.photos/200/200?random=1',
     rating: 4.8,
     totalReviews: 124,
     verified: true,
@@ -234,7 +233,6 @@ export const MOCK_PROVIDERS: Provider[] = [
     id: '2',
     name: 'Ana Oliveira',
     title: 'Diarista e Limpeza Pesada',
-    image: 'https://picsum.photos/200/200?random=2',
     rating: 4.9,
     totalReviews: 89,
     verified: true,
@@ -253,7 +251,6 @@ export const MOCK_PROVIDERS: Provider[] = [
     id: '3',
     name: 'Carlos Mendes',
     title: 'Eletricista Residencial',
-    image: 'https://picsum.photos/200/200?random=3',
     rating: 4.5,
     totalReviews: 45,
     verified: false,
@@ -270,7 +267,6 @@ export const MOCK_PROVIDERS: Provider[] = [
     id: '4',
     name: 'Fernanda Lima',
     title: 'Manicure e Pedicure',
-    image: 'https://picsum.photos/200/200?random=4',
     rating: 5.0,
     totalReviews: 210,
     verified: true,
@@ -283,18 +279,17 @@ export const MOCK_PROVIDERS: Provider[] = [
     ],
     reviews: []
   },
-  // DOCTORALIA STYLE MOCK DATA
+  // Health professionals (fictitious demo data: CRM numbers are placeholders)
   {
     id: 'doc-1',
     name: 'Dr. Roberto Costa',
     title: 'Cardiologista',
-    image: 'https://picsum.photos/200/200?random=5',
     rating: 5.0,
     totalReviews: 324,
     verified: true,
     distance: 3.5,
-    location: 'Av. Paulista, São Paulo',
-    description: 'Especialista em Cardiologia Clínica e Arritmias. Foco em prevenção cardiovascular e tratamento humanizado. Atendimento presencial e telemedicina.',
+    location: 'Bela Vista, São Paulo',
+    description: 'Perfil fictício de demonstração. Cardiologia clínica com foco em prevenção cardiovascular.',
     yearsExperience: 15,
     services: [
       { id: 'm1', title: 'Consulta Cardiológica', category: 'Saúde', description: 'Avaliação clínica completa', priceMin: 350, priceMax: 350, unit: 'serviço' },
@@ -305,18 +300,17 @@ export const MOCK_PROVIDERS: Provider[] = [
       { id: 'mr2', clientName: 'Jorge P.', rating: 5, comment: 'Consultório impecável e ótima localização.', date: '05/01/2024', tags: ['Instalações'] }
     ],
     medicalInfo: {
-      crm: 'SP 123456',
-      specialties: ['Cardiologia', 'Arritmologia'],
-      insurances: ['Unimed', 'Bradesco Saúde', 'SulAmérica', 'Amil', 'Particular'],
+      crm: 'SP 000000 (DEMO)',
+      specialties: ['Cardiologia'],
+      insurances: ['Convênio A (exemplo)', 'Convênio B (exemplo)', 'Particular'],
       diseases: ['Hipertensão', 'Arritmia', 'Insuficiência Cardíaca', 'Angina'],
       languages: ['Português', 'Inglês', 'Espanhol'],
       education: [
-        'Graduação em Medicina pela USP',
-        'Residência em Cardiologia pelo InCor',
-        'Fellowship em Arritmologia nos EUA'
+        'Graduação em Medicina (exemplo)',
+        'Residência em Cardiologia (exemplo)'
       ],
       address: {
-        street: 'Av. Paulista, 1000, Conj 52',
+        street: 'Rua de Exemplo, 100',
         neighborhood: 'Bela Vista',
         city: 'São Paulo',
         zip: '01310-100',
@@ -337,13 +331,12 @@ export const MOCK_PROVIDERS: Provider[] = [
     id: 'doc-2',
     name: 'Dra. Juliana Martins',
     title: 'Dermatologista',
-    image: 'https://picsum.photos/200/200?random=6',
     rating: 4.9,
     totalReviews: 180,
     verified: true,
     distance: 1.0,
     location: 'Itaim Bibi, São Paulo',
-    description: 'Dermatologia clínica e estética. Tratamentos para acne, melasma e rejuvenescimento facial.',
+    description: 'Perfil fictício de demonstração. Dermatologia clínica.',
     yearsExperience: 8,
     services: [
       { id: 'm3', title: 'Consulta Dermatológica', category: 'Saúde', description: 'Análise de pele e cabelos', priceMin: 400, priceMax: 400, unit: 'serviço' }
@@ -352,17 +345,17 @@ export const MOCK_PROVIDERS: Provider[] = [
       { id: 'mr3', clientName: 'Ana L.', rating: 5, comment: 'Amei o atendimento! Super cuidadosa.', date: '12/01/2024', tags: ['Delicada'] }
     ],
     medicalInfo: {
-      crm: 'SP 654321',
-      specialties: ['Dermatologia', 'Estética'],
+      crm: 'SP 000001 (DEMO)',
+      specialties: ['Dermatologia'],
       insurances: ['Particular', 'Reembolso'],
       diseases: ['Acne', 'Melasma', 'Queda de Cabelo', 'Dermatite'],
       languages: ['Português', 'Inglês'],
       education: [
-        'Graduação em Medicina pela Santa Casa',
-        'Residência em Dermatologia'
+        'Graduação em Medicina (exemplo)',
+        'Residência em Dermatologia (exemplo)'
       ],
       address: {
-        street: 'Rua Joaquim Floriano, 800',
+        street: 'Rua de Exemplo, 200',
         neighborhood: 'Itaim Bibi',
         city: 'São Paulo',
         zip: '04534-003',
@@ -387,22 +380,20 @@ export const MOCK_REQUESTS: ServiceRequest[] = [
 export const MOCK_MEDICAL_RECORDS: MedicalRecord[] = [
   {
     id: 'MR-001',
-    patientName: 'Roberto Costa',
-    date: '10/01/2024',
-    serviceType: 'Cardiologia - Teleconsulta',
-    anamnese: 'Paciente relata palpitações esporádicas e leve fadiga. Histórico de hipertensão na família.',
-    evolution: 'PA 14/9 (aferida em casa). Ritmo regular. Sem edema.',
-    prescription: 'Solicitado ECG e Holter 24h. Manter losartana 50mg.',
-    encryptedHash: '8f7a9d0e1c2b3a4f...'
+    patientName: 'Paciente Fictício A',
+    date: '10/01/2026',
+    serviceType: 'Cardiologia (exemplo)',
+    anamnese: 'Texto de exemplo para demonstração da interface. Não é dado de paciente real.',
+    evolution: 'Texto de exemplo.',
+    prescription: 'Texto de exemplo.'
   },
   {
     id: 'MR-002',
-    patientName: 'Maria Silva',
-    date: '15/01/2024',
-    serviceType: 'Dermatologia - Teleconsulta',
-    anamnese: 'Queixa de manchas avermelhadas no braço direito, prurido intenso.',
-    evolution: 'Lesão descamativa circular. Provável tinea corporis.',
-    prescription: 'Cetoconazol creme 2x ao dia por 14 dias.',
-    encryptedHash: '2b3a4f5e6d7c8b9a...'
+    patientName: 'Paciente Fictício B',
+    date: '15/01/2026',
+    serviceType: 'Dermatologia (exemplo)',
+    anamnese: 'Texto de exemplo para demonstração da interface. Não é dado de paciente real.',
+    evolution: 'Texto de exemplo.',
+    prescription: 'Texto de exemplo.'
   }
 ];

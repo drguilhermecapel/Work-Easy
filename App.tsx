@@ -1,7 +1,8 @@
 import React from 'react';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import Navbar from './components/Navbar';
+import DemoBanner from './components/DemoBanner';
 import Home from './pages/Home';
 import SearchPage from './pages/Search';
 import Profile from './pages/Profile';
@@ -19,6 +20,7 @@ const App: React.FC = () => {
     <AuthProvider>
       <HashRouter>
         <div className="min-h-screen bg-gray-50 font-sans">
+          <DemoBanner />
           <Navbar />
           <main>
             <Routes>
@@ -47,11 +49,11 @@ const App: React.FC = () => {
                <h2 className="text-xl font-bold text-primary mb-2">WorkEasy</h2>
                <p className="text-gray-500 text-sm mb-4">Conectando quem precisa com quem sabe fazer.</p>
                <div className="flex justify-center gap-4 text-xs text-gray-400 mb-4">
-                  <a href="/#/legal" className="hover:text-primary">Termos de Uso</a>
-                  <a href="/#/legal" className="hover:text-primary">Privacidade</a>
-                  <a href="/#/register-provider" className="hover:text-primary">Trabalhe Conosco</a>
+                  <Link to="/legal" className="hover:text-primary">Termos de Uso</Link>
+                  <Link to="/legal" className="hover:text-primary">Privacidade</Link>
+                  <Link to="/register-provider" className="hover:text-primary">Trabalhe Conosco</Link>
                </div>
-               <p className="text-gray-400 text-xs">© 2024 WorkEasy. Todos os direitos reservados.</p>
+               <p className="text-gray-400 text-xs">© 2026 WorkEasy. Protótipo de demonstração. Todos os direitos reservados.</p>
              </div>
           </footer>
         </div>

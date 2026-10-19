@@ -21,6 +21,12 @@ interface ChatMessage {
   timestamp: string;
 }
 
+const EMR_TAB_LABELS = {
+  anamnese: 'Anamnese',
+  evolution: 'Evolução',
+  prescription: 'Conduta',
+} as const;
+
 const TeleconsultationRoom: React.FC = () => {
   const navigate = useNavigate();
   const { sessionId } = useParams();
@@ -39,23 +45,23 @@ const TeleconsultationRoom: React.FC = () => {
   const [activeEmrTab, setActiveEmrTab] = useState<'anamnese' | 'evolution' | 'prescription'>('anamnese');
   const [record, setRecord] = useState({ anamnese: '', evolution: '', prescription: '' });
   const [isSaving, setIsSaving] = useState(false);
-  const [encryptionHash, setEncryptionHash] = useState<string | null>(null);
+  const [draftSaved, setDraftSaved] = useState(false);
 
   // Chat State
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { id: '1', sender: 'remote', senderName: 'Sistema', text: 'Sessão iniciada e criptografada.', timestamp: '14:00' }
+    { id: '1', sender: 'remote', senderName: 'Sistema', text: 'Sala de demonstração: nenhuma chamada real é feita.', timestamp: '14:00' }
   ]);
   const [newMessage, setNewMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isDoctor = user.isHealthProfessional;
-  const remoteParticipantName = isDoctor ? "Maria Silva (Paciente)" : "Dr. Roberto Costa";
+  const remoteParticipantName = isDoctor ? "Paciente Fictício (demonstração)" : "Dr. Roberto Costa (fictício)";
 
-  // --- ACCESS CONTROL & INIT ---
+  // --- DEMO-ONLY ROLE GATE (real access control must be enforced server-side) ---
   useEffect(() => {
     if (user.type === UserType.PROVIDER && !user.isHealthProfessional) {
-      alert("ACESSO NEGADO: Apenas profissionais de saúde verificados podem acessar este ambiente.");
+      alert("Área restrita a profissionais de saúde.");
       navigate('/dashboard');
       return;
     }
@@ -90,18 +96,17 @@ const TeleconsultationRoom: React.FC = () => {
     return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // --- EMR HANDLERS ---
-  const handleSaveAndEncrypt = () => {
+  // --- EMR HANDLERS (demo: nothing is persisted or signed) ---
+  const handleSaveDraft = () => {
     if (!record.anamnese && !record.evolution && !record.prescription) {
-      alert("Preencha ao menos um campo do prontuário.");
+      alert("Preencha ao menos um campo do registro.");
       return;
     }
     setIsSaving(true);
     setTimeout(() => {
-      const mockHash = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"; 
-      setEncryptionHash(mockHash);
+      setDraftSaved(true);
       setIsSaving(false);
-    }, 2000);
+    }, 600);
   };
 
   // --- CHAT HANDLERS ---
@@ -165,13 +170,18 @@ const TeleconsultationRoom: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen bg-gray-900 overflow-hidden">
-      
-      {/* --- SECURE HEADER --- */}
+
+      <div role="note" className="bg-amber-100 text-amber-900 text-xs px-4 py-2 text-center">
+        <strong>Funcionalidade futura.</strong> Teleconsulta exige empresa registrada no CRM, responsável técnico e
+        prontuário certificado (NGS2/ICP-Brasil). Esta sala é só uma demonstração visual.
+      </div>
+
+      {/* --- HEADER --- */}
       <div className="h-14 bg-gray-800 flex items-center justify-between px-4 shadow-md z-10 border-b border-gray-700">
         <div className="flex items-center gap-3 text-white">
           <div className="flex items-center gap-2 bg-red-500/10 px-3 py-1 rounded-full border border-red-500/20">
             <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-            <span className="font-bold text-xs text-red-400 uppercase tracking-wider">Ao Vivo</span>
+            <span className="font-bold text-xs text-red-400 uppercase tracking-wider">Demonstração</span>
           </div>
           <span className="font-medium text-sm text-gray-200 border-l border-gray-600 pl-3">
             {remoteParticipantName}
@@ -182,13 +192,10 @@ const TeleconsultationRoom: React.FC = () => {
         </div>
         
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5 text-teal-400 text-xs font-medium bg-teal-400/10 px-3 py-1.5 rounded-lg border border-teal-400/20">
-            <Lock size={12} /> 
-            <span className="hidden sm:inline">Criptografia Ponta-a-Ponta</span>
+          <div className="flex items-center gap-1.5 text-gray-300 text-xs font-medium bg-gray-700/60 px-3 py-1.5 rounded-lg border border-gray-600">
+            <Info size={12} />
+            <span className="hidden sm:inline">Sem chamada real</span>
           </div>
-          <button onClick={() => window.open('/help', '_blank')} className="text-gray-400 hover:text-white" aria-label="Ajuda">
-            <Info size={20} />
-          </button>
         </div>
       </div>
 
@@ -207,9 +214,6 @@ const TeleconsultationRoom: React.FC = () => {
               <p className="text-gray-400 text-sm font-medium animate-pulse">
                 {remoteParticipantName} {isVideoOff ? '(Câmera desligada)' : ''}
               </p>
-            </div>
-            <div className="absolute top-4 right-4 bg-black/40 backdrop-blur px-2 py-1 rounded text-[10px] text-gray-300 font-mono border border-white/10">
-              HD 720p • 30fps
             </div>
           </div>
 
@@ -294,17 +298,17 @@ const TeleconsultationRoom: React.FC = () => {
           {sidebarView === 'emr' && isDoctor && (
             <div className="flex-1 flex flex-col overflow-hidden animate-in fade-in">
               <div className="p-3 bg-teal-50 border-b border-teal-100 flex justify-between items-center">
-                <span className="text-xs font-bold text-teal-800 uppercase tracking-wide">Registro Médico</span>
-                {!encryptionHash ? (
-                   <button 
-                     onClick={handleSaveAndEncrypt}
+                <span className="text-xs font-bold text-teal-800 uppercase tracking-wide">Registro (rascunho)</span>
+                {!draftSaved ? (
+                   <button
+                     onClick={handleSaveDraft}
                      disabled={isSaving}
                      className="text-xs bg-teal-600 text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 hover:bg-teal-700 transition-colors"
                    >
-                     {isSaving ? <span className="animate-pulse">Salvando...</span> : <><FileKey size={14} /> Assinar</>}
+                     {isSaving ? <span className="animate-pulse">Salvando...</span> : <><FileText size={14} /> Salvar rascunho</>}
                    </button>
                 ) : (
-                   <span className="text-xs font-bold text-green-600 flex items-center gap-1"><CheckCircle size={14}/> Assinado</span>
+                   <span className="text-xs font-bold text-gray-600 flex items-center gap-1"><CheckCircle size={14}/> Rascunho — não assinado</span>
                 )}
               </div>
 
@@ -316,21 +320,21 @@ const TeleconsultationRoom: React.FC = () => {
               </div>
 
               <div className="flex-1 p-4 overflow-y-auto bg-gray-50/30 relative">
-                 {encryptionHash && (
+                 {draftSaved && (
                     <div className="absolute inset-0 z-10 bg-white/60 backdrop-blur-[2px] flex items-center justify-center">
                        <div className="bg-white p-4 rounded-xl shadow-lg border border-gray-200 text-center max-w-[250px]">
-                         <Lock size={32} className="mx-auto text-teal-500 mb-2"/>
-                         <p className="text-sm font-bold text-gray-800">Prontuário Protegido</p>
-                         <p className="text-xs text-gray-500 break-all mt-1">{encryptionHash.substring(0, 16)}...</p>
+                         <FileText size={32} className="mx-auto text-gray-400 mb-2"/>
+                         <p className="text-sm font-bold text-gray-800">Rascunho — não assinado</p>
+                         <p className="text-xs text-gray-500 mt-1">Demonstração: nada é armazenado.</p>
                        </div>
                     </div>
                  )}
-                 <textarea 
+                 <textarea
                     className="w-full h-full p-4 border border-gray-200 rounded-xl resize-none focus:ring-2 focus:ring-teal-500 outline-none text-sm leading-relaxed"
-                    placeholder={`Digite aqui: ${activeEmrTab}...`}
+                    placeholder={`Digite aqui: ${EMR_TAB_LABELS[activeEmrTab].toLowerCase()}...`}
                     value={record[activeEmrTab]}
                     onChange={(e) => setRecord({...record, [activeEmrTab]: e.target.value})}
-                    disabled={!!encryptionHash}
+                    disabled={draftSaved}
                  ></textarea>
               </div>
             </div>
@@ -425,8 +429,8 @@ const TeleconsultationRoom: React.FC = () => {
                     <Send size={18} />
                   </button>
                 </form>
-                <p className="text-[10px] text-center text-gray-400 mt-2 flex items-center justify-center gap-1">
-                  <Lock size={8} /> Mensagens e arquivos criptografados de ponta a ponta.
+                <p className="text-[10px] text-center text-gray-400 mt-2">
+                  Demonstração: mensagens e arquivos não são enviados nem armazenados.
                 </p>
               </div>
             </div>

@@ -5,6 +5,7 @@ import {
   ChevronRight, ThumbsUp, GraduationCap, Building, Stethoscope 
 } from 'lucide-react';
 import { MOCK_PROVIDERS } from '../constants';
+import Avatar from '../components/Avatar';
 
 const DoctorProfile: React.FC = () => {
   const { id } = useParams();
@@ -42,7 +43,7 @@ const DoctorProfile: React.FC = () => {
   const handleBooking = (time: string) => {
     const confirm = window.confirm(`Deseja agendar consulta com ${provider.name} às ${time}?`);
     if (confirm) {
-      alert('Agendamento realizado com sucesso! Você receberá a confirmação por e-mail e WhatsApp.');
+      alert('Demonstração: nenhum agendamento real foi feito.');
       navigate('/dashboard');
     }
   };
@@ -71,11 +72,7 @@ const DoctorProfile: React.FC = () => {
           {/* Main Card */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col sm:flex-row gap-6">
             <div className="flex-shrink-0">
-              <img 
-                src={provider.image} 
-                alt={provider.name} 
-                className="w-32 h-32 rounded-lg object-cover border border-gray-100"
-              />
+              <Avatar name={provider.name} className="w-32 h-32 text-4xl border border-gray-100" />
             </div>
             <div className="flex-1">
               <h1 className="text-2xl font-bold text-gray-900">{provider.name}</h1>
@@ -88,7 +85,7 @@ const DoctorProfile: React.FC = () => {
                 </div>
                 <span className="text-sm font-bold underline cursor-pointer">{provider.totalReviews} opiniões</span>
               </div>
-              <p className="text-sm text-gray-500 mt-2">CRM: {medicalInfo.crm}</p>
+              <p className="text-sm text-gray-500 mt-2">CRM: {medicalInfo.crm} · informado, não verificado</p>
               
               <div className="flex flex-wrap gap-2 mt-4">
                 {medicalInfo.specialties.map(s => (
@@ -133,7 +130,7 @@ const DoctorProfile: React.FC = () => {
 
                 <div>
                    <h3 className="font-bold text-gray-800 text-lg mb-3 flex items-center gap-2">
-                     <Stethoscope size={20} className="text-teal-500" /> Doenças tratadas
+                     <Stethoscope size={20} className="text-teal-500" /> Áreas de atuação (exemplo)
                    </h3>
                    <div className="flex flex-wrap gap-2">
                      {medicalInfo.diseases.map(d => (
@@ -225,8 +222,12 @@ const DoctorProfile: React.FC = () => {
                  <button className="flex-1 py-2 text-xs font-bold border border-teal-600 bg-teal-50 text-teal-700 rounded-lg flex items-center justify-center gap-1">
                    <Building size={14} /> Presencial
                  </button>
-                 <button className="flex-1 py-2 text-xs font-medium border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-1">
-                   <Video size={14} /> Video
+                 <button
+                   disabled
+                   title="Teleconsulta: funcionalidade futura"
+                   className="flex-1 py-2 text-xs font-medium border border-gray-200 text-gray-400 rounded-lg flex items-center justify-center gap-1 cursor-not-allowed"
+                 >
+                   <Video size={14} /> Teleconsulta (em breve)
                  </button>
               </div>
 
@@ -277,8 +278,8 @@ const DoctorProfile: React.FC = () => {
               </div>
               
               <div className="text-center text-xs text-gray-400">
-                <p className="flex items-center justify-center gap-1">
-                  <ShieldCheck size={12} /> Agendamento grátis e seguro
+                <p>
+                  Agendar não tem custo para o paciente. O valor da consulta é mostrado antes da confirmação.
                 </p>
               </div>
            </div>

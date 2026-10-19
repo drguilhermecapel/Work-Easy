@@ -34,7 +34,7 @@ const Home: React.FC = () => {
             Contrate serviços <br/> sem complicação
           </h1>
           <p className="text-purple-100 mb-8 text-lg">
-            Pintores, diaristas, técnicos e muito mais. <br className="hidden md:block"/> Profissionais verificados perto de você.
+            Serviços de todas as áreas e profissionais liberais. <br className="hidden md:block"/> Encontre quem sabe fazer perto de você.
           </p>
 
           <form onSubmit={handleSearch} className="bg-white p-2 rounded-2xl shadow-lg flex items-center max-w-md mx-auto">
@@ -55,7 +55,7 @@ const Home: React.FC = () => {
           
           <div className="flex items-center justify-center mt-4 text-purple-200 text-sm">
             <MapPin size={14} className="mr-1" />
-            <span>Localizando em São Paulo...</span>
+            <span>São Paulo, SP</span>
           </div>
         </div>
       </section>
@@ -100,13 +100,13 @@ const Home: React.FC = () => {
              </div>
              <div className="bg-white p-6 rounded-xl shadow-sm text-center hover:shadow-md transition-shadow duration-300">
                 <div className="w-12 h-12 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 font-bold text-xl">2</div>
-                <h3 className="font-bold text-lg mb-2">Solicite e Negocie</h3>
-                <p className="text-gray-600 text-sm">Envie seu pedido. O profissional recebe no WhatsApp e vocês negociam no chat seguro.</p>
+                <h3 className="font-bold text-lg mb-2">Solicite e Combine</h3>
+                <p className="text-gray-600 text-sm">Envie seu pedido. O profissional responde com uma proposta e vocês combinam os detalhes.</p>
              </div>
              <div className="bg-white p-6 rounded-xl shadow-sm text-center hover:shadow-md transition-shadow duration-300">
                 <div className="w-12 h-12 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 font-bold text-xl">3</div>
-                <h3 className="font-bold text-lg mb-2">Pagamento Seguro</h3>
-                <p className="text-gray-600 text-sm">Pague pelo app. O valor só é liberado após o serviço ser realizado.</p>
+                <h3 className="font-bold text-lg mb-2">Avalie o Serviço</h3>
+                <p className="text-gray-600 text-sm">Depois do serviço, conte como foi e ajude outras pessoas a escolher.</p>
              </div>
            </div>
         </div>
