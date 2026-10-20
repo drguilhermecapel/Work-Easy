@@ -1,0 +1,7 @@
+steps:
+  - name: "python:3.12-slim"
+    dir: "services/api"
+    entrypoint: "sh"
+    args: ["-c", "pip install --no-cache-dir -r requirements.txt && pytest -v"]
+  - name: "gcr.io/cloud-builders/docker"
+    args: ["build", "-t", "southamerica-east1-docker.pkg.dev/$PROJECT_ID/workeasy-repo/workeasy-api:$COMMIT_SHA", "./services/api"]

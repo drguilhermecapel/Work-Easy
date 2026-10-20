@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: workeasy-api
+    runtime: docker
+    dockerfilePath: ./services/api/Dockerfile
+    dockerContext: ./services/api
+    healthCheckPath: /health

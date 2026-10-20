@@ -1,0 +1,14 @@
+.env
+.env.*
+!.env.example
+temp_kyc/
+*.jpg
+*.jpeg
+*.png
+__pycache__/
+node_modules/
+.expo/
+.next/
+*.aab
+*.ipa
+*.keystore

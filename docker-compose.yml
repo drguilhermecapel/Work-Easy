@@ -1,0 +1,15 @@
+services:
+  postgres-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: workeasy_admin
+      POSTGRES_PASSWORD: workeasy_secret_2026
+      POSTGRES_DB: workeasy_prod
+    ports: ["5432:5432"]
+    volumes:
+      - ./services/api/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+  api-backend:
+    build: ./services/api
+    ports: ["8000:8000"]
+    env_file: [.env]
+    depends_on: [postgres-db]
