@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /entrar
+Disallow: /conta
+Disallow: /pedido
+Disallow: /dashboard
