@@ -13,10 +13,11 @@
       "@/*": ["./*"]
     },
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "exclude": ["node_modules", "dist", "android", "ios", "src-tauri"]
+  "exclude": ["node_modules", "dist", "android", "ios", "src-tauri", "supabase/functions"]
 }

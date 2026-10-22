@@ -5,7 +5,8 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist', 'node_modules', 'android', 'ios', 'src-tauri', 'coverage'] },
+  // supabase/functions is Deno code, checked with `deno check` and `deno lint`
+  { ignores: ['dist', 'node_modules', 'android', 'ios', 'src-tauri', 'coverage', 'supabase/functions'] },
   {
     files: ['**/*.{ts,tsx}'],
     extends: [js.configs.recommended, ...tseslint.configs.recommended],

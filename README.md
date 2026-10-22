@@ -30,6 +30,25 @@ npm run dev     # http://localhost:3000
 | `npm run typecheck` | TypeScript em modo estrito |
 | `npm test` | Testes com Vitest |
 
+## Backend e variáveis de ambiente
+
+Sem variáveis, o app roda no **modo demonstração** (dados fictícios, seletor de papel no menu, nada é guardado). O contrato técnico do backend está em [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md).
+
+Copie `.env.example` para `.env.local` e preencha:
+
+| Variável | Uso |
+|---|---|
+| `VITE_SUPABASE_URL` | URL do projeto Supabase. Vazia = modo demonstração. |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Chave publicável (`sb_publishable_…`). |
+| `VITE_CONCIERGE_WHATSAPP` | Número da operação concierge, só dígitos com DDI (ex.: `5511999999999`). Sem backend, `/pedido` monta a mensagem e abre o WhatsApp para esse número; vazio = o pedido online aparece como ainda não disponível. |
+| `VITE_SITE_URL` | URL canônica do site (SEO e links dos e-mails de login). |
+
+- **A chave publicável é pública por desenho.** Ela vai para o JavaScript que qualquer pessoa baixa; o que cada usuário pode ler ou gravar é decidido pelo banco (RLS e funções). Nunca use no app a chave secreta (`sb_secret_…`) nem a service role.
+- **Segredos ficam nas Edge Functions** (`supabase secrets set`): Asaas, WhatsApp Cloud API, Resend e IA. O teste `test/claims-guard.test.ts` reprova o código do cliente que citar essas chaves.
+- **Login por código** (`/entrar`): no Supabase Auth (Authentication → Email Templates), os modelos **"Confirm signup"** (primeiro acesso: a conta é criada no envio do código) e **"Magic Link"** (acessos seguintes) precisam conter `{{ .Token }}` para mostrar o código de 6 dígitos. Se só um deles tiver o código, quem cai no outro recebe apenas um link. Quem entra pelo link vai para `/conta`, que pede o aceite dos Termos e da Política de Privacidade antes de liberar novos pedidos (o mesmo vale para `/pedido`).
+- **Celular:** o código vai só por SMS e só para celular (11 dígitos com DDD); depende de um provedor de SMS configurado no Supabase Auth. O envio por WhatsApp não é oferecido nesta versão.
+- Com backend: `/entrar`, `/conta` (dados, consentimentos, cópia dos dados, exclusão da conta), `/pedido`, `/pedidos` e `/pedidos/:id`. Camada de dados em `lib/` (cliente único, erros em pt-BR), `services/` (uma função por operação) e `config/` (flags).
+
 ## Plataformas
 
 Um único código React é empacotado para seis plataformas.

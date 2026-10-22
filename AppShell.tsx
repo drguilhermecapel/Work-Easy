@@ -2,6 +2,8 @@ import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate, Link } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import DemoBanner from './components/DemoBanner';
+import { contaRoutes } from './pages/conta/routes';
+import { clienteRoutes } from './pages/cliente/routes';
 
 // Each page is a separate chunk, so the first load only ships what it shows
 const Home = lazy(() => import('./pages/Home'));
@@ -47,6 +49,9 @@ const AppShell: React.FC = () => (
           <Route path="/register-provider" element={<ProviderRegistration />} />
           <Route path="/teleconsultation/:sessionId" element={<TeleconsultationRoom />} />
           <Route path="/medical-records" element={<MedicalRecords />} />
+          {/* MVP areas: each block lazy-loads its pages (pages/<área>/routes.tsx) */}
+          {contaRoutes}
+          {clienteRoutes}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

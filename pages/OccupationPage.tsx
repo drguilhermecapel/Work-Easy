@@ -12,6 +12,7 @@ import {
 import { MOCK_PROVIDERS } from '../constants';
 import ProviderCard from '../components/ProviderCard';
 import { filterProviders } from '../utils/search';
+import { features } from '../config/features';
 
 const PolicyDetails: React.FC<{ slug: string }> = ({ slug }) => {
   const policy = use(loadPolicies())[slug];
@@ -99,6 +100,7 @@ const OccupationPage: React.FC = () => {
 
   const area = findArea(occupation.areaSlug);
   const terms = [occupation.name, ...occupation.synonyms];
+  const canRequest = features.backendEnabled || features.conciergeWhatsApp !== null;
   const providers = MOCK_PROVIDERS.filter(p => terms.some(query => filterProviders([p], { query }).length > 0));
 
   return (
@@ -117,9 +119,22 @@ const OccupationPage: React.FC = () => {
           <p className="text-sm text-gray-500 mt-2">Também procurado como: {occupation.synonyms.join(', ')}</p>
         )}
         <div className="flex flex-wrap gap-3 mt-4">
+          {/* Demo without the concierge number: /pedido has nothing to offer, so the demo search stays the main action */}
+          {canRequest && (
+            <Link
+              to={`/pedido?servico=${encodeURIComponent(occupation.slug)}`}
+              className="text-sm font-semibold bg-primary text-white px-4 py-2.5 rounded-xl hover:bg-purple-700"
+            >
+              Pedir este serviço
+            </Link>
+          )}
           <Link
             to={`/search?q=${encodeURIComponent(occupation.name)}`}
-            className="text-sm font-semibold bg-primary text-white px-4 py-2.5 rounded-xl hover:bg-purple-700"
+            className={
+              canRequest
+                ? 'text-sm font-semibold bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl hover:bg-gray-50'
+                : 'text-sm font-semibold bg-primary text-white px-4 py-2.5 rounded-xl hover:bg-purple-700'
+            }
           >
             Procurar profissionais
           </Link>
