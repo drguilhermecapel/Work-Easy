@@ -2,15 +2,15 @@
 
 Plataforma para encontrar e contratar serviços e profissionais liberais de todas as áreas e categorias, de reformas e limpeza a aulas, beleza, tecnologia, cuidados e saúde.
 
-> **Status: protótipo de demonstração.** Todos os dados são fictícios. Não há backend, login real, pagamento, verificação de identidade, chat, vídeo, teleconsulta nem prontuário em funcionamento. Nada do que se digita é enviado ou armazenado. Não use para atendimento real.
+> **Status: MVP em construção, não validado com usuários e não implantado.** Sem um projeto Supabase configurado, o app roda como demonstração com dados fictícios e nada é enviado ou guardado. Com o Supabase, há cadastro por código, pedidos, propostas, agenda, orçamentos, administração e linha de cuidado, testados contra um banco local. **Pagamento retido e comissão ficam desligados** até haver parecer jurídico, a cobrança depende de conta Asaas configurada, e verificação de identidade, vídeo, teleconsulta e prontuário **não existem**. Não use para atendimento real.
 
 ## O que existe hoje
 
-- Catálogo de 15 categorias e cerca de 170 subcategorias de serviços e profissões.
-- Busca por texto (ignora acentos e maiúsculas) e por categoria.
-- Perfis de prestadores e de profissionais de saúde, com agenda de demonstração.
-- Painéis de cliente, prestador e profissional de saúde, alternados pelo seletor de papel no menu.
-- Telas de demonstração de teleconsulta e prontuário, marcadas como funcionalidade futura.
+- Catálogo de 44 áreas e 1.710 serviços e profissões, cada um com política própria (o que será exigido, cobrança, limite trabalhista, quem pode prestar). Itens com `confidence: a_confirmar` ainda precisam de conferência por advogado.
+- Busca por nome e sinônimos, sugestões na página inicial e páginas por área e por serviço (também geradas como HTML estático para busca).
+- Com backend: pedido guiado, propostas, agendamento direto, orçamento por link público, avaliação só após atendimento pago, ferramenta do profissional (agenda, serviços, clientes, cobranças, assinatura), área de administração e linha de cuidado com plantões e check-in.
+- Sem backend: a demonstração anterior (perfis fictícios, painéis alternados pelo seletor de papel) e um pedido por WhatsApp se `VITE_CONCIERGE_WHATSAPP` estiver definido.
+- Contrato técnico em [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md); banco, funções e testes em `supabase/`.
 
 ## Rodar localmente
 
