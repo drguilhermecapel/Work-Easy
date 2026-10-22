@@ -11,6 +11,7 @@ Plataforma para encontrar e contratar serviços e profissionais liberais de toda
 - Com backend: pedido guiado, propostas, agendamento direto, orçamento por link público, avaliação só após atendimento pago, ferramenta do profissional (agenda, serviços, clientes, cobranças, assinatura), área de administração e linha de cuidado com plantões e check-in.
 - Sem backend: a demonstração anterior (perfis fictícios, painéis alternados pelo seletor de papel) e um pedido por WhatsApp se `VITE_CONCIERGE_WHATSAPP` estiver definido.
 - Contrato técnico em [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md); banco, funções e testes em `supabase/`.
+- Decisões de monetização, portões e perguntas para o advogado em [`docs/DECISOES.md`](docs/DECISOES.md).
 
 ## Rodar localmente
 

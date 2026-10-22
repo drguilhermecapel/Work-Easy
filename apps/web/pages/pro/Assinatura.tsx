@@ -10,8 +10,10 @@ import {
   activateReceiving,
   cancelPro,
   getMyPaymentAccount,
+  getFreeProposalsPerMonth,
   getMySubscription,
   getProPriceCents,
+  getProTrialDays,
   subscribePro,
   type OnboardResult,
   type SubscribeResult,
@@ -31,6 +33,8 @@ const METHODS: PaymentMethod[] = ['pix', 'boleto', 'credit_card', 'undefined'];
 const SubscriptionSection: React.FC<{ version: number }> = ({ version }) => {
   const { provider, refresh } = useProvider();
   const price = useAsync(() => getProPriceCents(), 'price');
+  const trialDays = useAsync(() => getProTrialDays(), 'trial-days');
+  const freeProposals = useAsync(() => getFreeProposalsPerMonth(), 'free-proposals');
   const subscription = useAsync(() => getMySubscription(provider.id), `${provider.id}:${version}`);
   const [method, setMethod] = useState<PaymentMethod>('pix');
   const [cpfCnpj, setCpfCnpj] = useState('');
@@ -44,6 +48,8 @@ const SubscriptionSection: React.FC<{ version: number }> = ({ version }) => {
   // `pending`: subscribed, the first charge is not paid yet (past_due is only for a late payment)
   const waitingFirstPayment = row?.status === 'pending';
   const subscribed = row !== null && row !== undefined && row.status !== 'canceled';
+  // The trial is for who never subscribed: the function refuses it to anyone with a subscription row
+  const trialOffer = row === null && trialDays.data ? trialDays.data : null;
 
   const subscribe = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -89,7 +95,8 @@ const SubscriptionSection: React.FC<{ version: number }> = ({ version }) => {
       </p>
       {row?.current_period_end && (
         <p className="text-sm text-gray-600 mb-2">
-          {row.status === 'canceled' ? 'Pro vale até' : 'Período pago até'} {formatDateBR(row.current_period_end)}.
+          {row.status === 'canceled' ? 'Pro vale até' : row.status === 'trialing' ? 'Teste grátis até' : 'Período pago até'}{' '}
+          {formatDateBR(row.current_period_end)}.
         </p>
       )}
       {waitingFirstPayment && (
@@ -105,8 +112,18 @@ const SubscriptionSection: React.FC<{ version: number }> = ({ version }) => {
           <p className="text-sm text-gray-700">
             Plano Pro:{' '}
             <strong>{price.data ? `${formatCents(price.data)} por mês` : price.loading ? 'carregando o preço…' : 'preço indisponível no momento'}</strong>.
-            {' '}Libera as cobranças de clientes seus por Pix, boleto e cartão, feitas na sua conta de recebimento, sem taxa do WorkEasy. Você pode cancelar quando quiser.
+            {' '}Libera as cobranças de clientes seus por Pix, boleto e cartão, feitas na sua conta de recebimento, sem taxa do WorkEasy
+            {freeProposals.data
+              ? `, e propostas sem limite nos pedidos da plataforma (o plano grátis envia até ${freeProposals.data} por mês)`
+              : ''}
+            . Você pode cancelar quando quiser.
           </p>
+          {trialOffer && (
+            <p className="text-sm text-gray-700" role="note">
+              <strong>Teste grátis de {trialOffer} dias:</strong> o Pro começa agora e a primeira cobrança só vence quando o teste acaba.
+              Cancele antes e você não será cobrado.
+            </p>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field id="ass-forma" label="Forma de pagamento da assinatura">
               <select id="ass-forma" className={inputClass} value={method} onChange={e => setMethod(e.target.value as PaymentMethod)}>
@@ -138,8 +155,15 @@ const SubscriptionSection: React.FC<{ version: number }> = ({ version }) => {
 
       {created && (
         <div role="status" className="mt-4 space-y-2 bg-green-50 border border-green-100 rounded-xl p-3 text-sm text-gray-800">
-          <p>Assinatura criada: {formatCents(created.price_cents)} por mês. O Pro é ativado quando o primeiro pagamento for confirmado.</p>
-          {created.invoice_url && (
+          {created.trial_ends_at ? (
+            <p>
+              Teste grátis ativado: o Pro vale até {formatDateBR(created.trial_ends_at)}. A primeira cobrança, de {formatCents(created.price_cents)} por
+              mês, vence nessa data; cancele antes e você não será cobrado.
+            </p>
+          ) : (
+            <p>Assinatura criada: {formatCents(created.price_cents)} por mês. O Pro é ativado quando o primeiro pagamento for confirmado.</p>
+          )}
+          {created.invoice_url && !created.trial_ends_at && (
             <a href={created.invoice_url} target="_blank" rel="noopener noreferrer" className={secondaryButton}>
               <ExternalLink size={16} aria-hidden="true" /> Abrir a fatura do primeiro pagamento
             </a>

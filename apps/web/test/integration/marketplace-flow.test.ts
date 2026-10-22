@@ -346,6 +346,12 @@ describe('fluxo do produto contra o Supabase real', () => {
   // (c) pedidos abertos para o prestador, propostas e limite
   // -------------------------------------------------------------------------
   describe('(c) o prestador aprovado vê o pedido e envia proposta', () => {
+    beforeAll(async () => {
+      // O prestador do fluxo envia mais propostas do que o plano grátis permite no mês: é Pro,
+      // como seria um prestador ativo de verdade. O limite do grátis é testado em (j).
+      must(await world.service.from('providers').update({ plan: 'pro' }).eq('id', provider.id).select('id').single(), 'plano Pro');
+    });
+
     it('open_requests_for_me mostra o pedido sem telefone nem e-mail do cliente', async () => {
       const rows = must(await provider.client.rpc('open_requests_for_me'), 'open_requests_for_me');
       const row = rows.find(r => r.id === requestId);
@@ -945,6 +951,58 @@ describe('fluxo do produto contra o Supabase real', () => {
       expect(quote).toEqual({ client_name: null, client_phone: null, total_cents: 34990 });
       const payment = must(await world.service.from('payments').select('amount_cents, provider_id').eq('id', paymentId).single(), 'pagamento');
       expect(payment).toEqual({ amount_cents: 18000, provider_id: provider.id });
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // (j) plano grátis e Pro: propostas por mês
+  // -------------------------------------------------------------------------
+  describe('(j) plano grátis e Pro: propostas por mês', () => {
+    it('o grátis para na cota do mês com free_proposal_limit, e o Pro segue enviando', async () => {
+      const allowance = Number(
+        must(await world.anon.from('platform_settings').select('value').eq('key', 'free_proposals_per_month').single(), 'cota grátis').value,
+      );
+      expect(allowance, 'a cota de fábrica é maior que zero').toBeGreaterThan(0);
+
+      const free = await makeApprovedProvider(world, admin, { label: 'prestador-gratis', policy, neighborhood: hood.id });
+      const asker = await world.createUser('cliente-cota');
+      const requestIds: string[] = [];
+      for (let i = 0; i < allowance + 2; i++) {
+        const request = must(
+          await asker.client
+            .from('requests')
+            .insert({
+              occupation_slug: policy.occupation_slug,
+              neighborhood_id: hood.id,
+              description: `Pedido ${i + 1} para a cota de propostas (teste de integração ${world.runId})`,
+            })
+            .select('id')
+            .single(),
+          'pedido',
+        );
+        requestIds.push(request.id);
+      }
+
+      try {
+        for (let i = 0; i < allowance; i++) {
+          must(await free.user.client.from('proposals').insert({ request_id: requestIds[i], price_cents: 15000 }).select('id').single(), 'proposta grátis');
+        }
+        const refused = await expectRule(
+          free.user.client.from('proposals').insert({ request_id: requestIds[allowance], price_cents: 15000 }),
+          'free_proposal_limit',
+        );
+        expect(refused.details).toContain(`allowance ${allowance}`);
+
+        // Quem assina o Pro (a função de assinatura grava o plano com a chave de serviço) volta a poder propor
+        must(await world.service.from('providers').update({ plan: 'pro' }).eq('id', free.user.id).select('id').single(), 'plano Pro');
+        must(
+          await free.user.client.from('proposals').insert({ request_id: requestIds[allowance], price_cents: 15000 }).select('id').single(),
+          'proposta do Pro',
+        );
+      } finally {
+        // Os pedidos não ficam abertos para os outros testes nem para o catálogo
+        await asker.client.from('requests').update({ status: 'canceled' }).in('id', requestIds);
+      }
     });
   });
 });

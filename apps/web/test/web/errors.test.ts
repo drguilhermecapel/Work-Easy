@@ -88,7 +88,7 @@ describe('lib/errors', () => {
   });
 
   it('translates the rules of the database and the conflicts of the Edge Functions that used to read as "duplicate"', async () => {
-    for (const code of ['slug_taken', 'quote_items_invalid', 'checkin_window', 'booking_limit', 'offer_limit']) {
+    for (const code of ['slug_taken', 'quote_items_invalid', 'checkin_window', 'booking_limit', 'offer_limit', 'free_proposal_limit']) {
       const error = toAppError({ code: 'P0001', message: code });
       expect(error.code, code).toBe(code);
       expect(error.message, code).not.toContain(code);

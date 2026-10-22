@@ -30,12 +30,21 @@ export const getMyPaymentAccount = (providerId: string): Promise<PaymentAccountR
     unwrapMaybe<PaymentAccountRow>(await db().from('provider_payment_accounts').select('status, created_at').eq('provider_id', providerId).maybeSingle()),
   );
 
-/** platform_settings.pro_price_cents, or null when it cannot be read (no made-up price). */
-export const getProPriceCents = (): Promise<number | null> =>
+/** A whole-number platform setting readable by providers, or null when it cannot be read (no made-up numbers). */
+const readSetting = (key: string): Promise<number | null> =>
   guard(async () => {
-    const row = unwrapMaybe<{ value: unknown }>(await db().from('platform_settings').select('value').eq('key', 'pro_price_cents').maybeSingle());
+    const row = unwrapMaybe<{ value: unknown }>(await db().from('platform_settings').select('value').eq('key', key).maybeSingle());
     return typeof row?.value === 'number' && Number.isSafeInteger(row.value) && row.value > 0 ? row.value : null;
   });
+
+/** platform_settings.pro_price_cents, or null when it cannot be read (no made-up price). */
+export const getProPriceCents = (): Promise<number | null> => readSetting('pro_price_cents');
+
+/** platform_settings.pro_trial_days; null when unreadable or zero, so no trial is promised. */
+export const getProTrialDays = (): Promise<number | null> => readSetting('pro_trial_days');
+
+/** platform_settings.free_proposals_per_month; null when unreadable or no limit is set. */
+export const getFreeProposalsPerMonth = (): Promise<number | null> => readSetting('free_proposals_per_month');
 
 export interface SubscribeResult {
   status: string;
@@ -43,9 +52,14 @@ export interface SubscribeResult {
   price_cents: number;
   invoice_url: string | null;
   awaiting_payment: boolean;
+  /** End of the free trial when the subscription started one; null otherwise. */
+  trial_ends_at?: string | null;
 }
 
-/** Subscribes to the monthly Pro plan. The Pro starts when the first charge is paid, never before. */
+/**
+ * Subscribes to the monthly Pro plan. A provider that never subscribed starts with a free trial
+ * (`trial_ends_at`); otherwise the Pro starts when the first charge is paid, never before.
+ */
 export const subscribePro = (input: { method: PaymentMethod; cpfCnpj?: string }): Promise<SubscribeResult> =>
   guard(async () => {
     const body: Record<string, unknown> = { action: 'subscribe', method: input.method };

@@ -63,6 +63,14 @@ const deps: SubscriptionsDeps = {
       const value = typeof row?.value === 'string' ? Number(row.value) : row?.value;
       return typeof value === 'number' && Number.isSafeInteger(value) ? value : DEFAULT_PRO_PRICE_CENTS;
     },
+    async getTrialDays() {
+      const row = must(
+        await serviceClient().from('platform_settings').select('value').eq('key', 'pro_trial_days').maybeSingle(),
+      ) as { value: unknown } | null;
+      const value = typeof row?.value === 'string' ? Number(row.value) : row?.value;
+      // No trial unless the setting is a sane whole number: an unreadable value must not hand out free Pro
+      return typeof value === 'number' && Number.isSafeInteger(value) && value > 0 && value <= 90 ? value : 0;
+    },
     getCustomerId,
     saveCustomerId,
     getProfile,

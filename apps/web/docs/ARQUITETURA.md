@@ -143,7 +143,12 @@ Colunas listadas sem `created_at timestamptz default now()`, que toda tabela tem
 - `platform_settings` (`key text pk`, `value jsonb`, `internal bool default false`
   (chave interna: só admin lê), `updated_at`). Chaves:
   `commission_enabled` (false), `commission_bps` (1200), `escrow_enabled` (false),
-  `pro_price_cents` (4900), `proposal_limit` (3), `labor_lock_days_per_week` (2).
+  `pro_price_cents` (4900), `proposal_limit` (3), `labor_lock_days_per_week` (2) e, da migration 12,
+  `commission_cap_cents` (15000: teto da comissão; 0 = sem teto), `free_proposals_per_month` (5:
+  propostas novas por mês civil de São Paulo no plano grátis; 0 = sem limite) e `pro_trial_days`
+  (30: dias de Pro grátis na primeira assinatura; 0 = sem teste, no máximo 90). As três não têm
+  faixa checada em `admin_set_setting` nem campo na tela do admin ("outras chaves passam"): mude por
+  `admin_set_setting`. Valor ilegível volta ao padrão da regra (teto 0, limite 5, teste 0).
 - RLS: leitura pública (anon e authenticated) de catálogo, bairros e das chaves
   de `platform_settings` que não são internas; escrita só admin.
 
@@ -243,6 +248,11 @@ Colunas listadas sem `created_at timestamptz default now()`, que toda tabela tem
   `valid_until`, `status proposal_status default 'sent'`, unique (`request_id`,`provider_id`)).
   Trigger: no máximo `proposal_limit` propostas `sent`/`accepted` por pedido;
   pedido precisa estar `open`; prestador `approved`, com a ocupação e o bairro.
+  Plano grátis: no máximo `free_proposals_per_month` propostas **criadas** por mês civil
+  (`America/Sao_Paulo`), erro `free_proposal_limit`; retirar uma proposta não devolve a vaga,
+  o plano Pro não tem limite e só chamadas da API (`anon`/`authenticated`, lidas por
+  `current_setting('role')` porque o trigger é `security definer`) são limitadas, não a service role.
+  Um advisory lock por prestador impede que duas propostas simultâneas passem juntas.
 - `assist_usage` (`user_id → profiles on delete cascade`, `window_start timestamptz`,
   `count int`, pk (`user_id`, `window_start`)): cota horária do assistente de pedidos.
   RLS ligada, **sem política e sem grant** para `anon`/`authenticated` (exceção declarada
@@ -294,7 +304,8 @@ Colunas listadas sem `created_at timestamptz default now()`, que toda tabela tem
   `comissao_primeiro_servico`, ou se já existe atendimento **de origem `platform`**
   `completed`/`released` entre o mesmo cliente (ou o mesmo `provider_client_id`) e
   prestador **com pagamento `received`/`confirmed`/`released` pelo app**; senão
-  `price_cents * commission_bps / 10000` (truncado). Gravada em `platform_fee_cents`
+  `price_cents * commission_bps / 10000` (truncado) e, se `commission_cap_cents > 0`, no máximo
+  esse teto. Gravada em `platform_fee_cents`
   quando o atendimento vira `accepted` e não muda depois.
 - `transition_booking(p_booking uuid, p_to booking_status, p_reason text default null)`:
   única forma de mudar `status` (update direto de `status` é bloqueado por
@@ -515,6 +526,18 @@ Colunas listadas sem `created_at timestamptz default now()`, que toda tabela tem
   não foram tratadas; "tratada" = existe depois dela um `payment.refunded_after_cancel` ou um
   `payment.reviewed` do mesmo pagamento, ambos com `entity 'payments'`).
 
+**Receita e service role** (`12_monetization.sql`, `13_service_role_trigger_helpers.sql`)
+
+- `12`: chaves `commission_cap_cents`, `free_proposals_per_month` e `pro_trial_days`; `platform_fee`
+  com teto; `check_proposal` com a cota mensal do plano grátis (detalhes nas seções de propostas,
+  comissão e assinatura). Decisões e portões em `docs/DECISOES.md`.
+- `13`: `private.is_client_context()` e três funções de apoio dos triggers `security invoker` passam a
+  ter `execute` para `service_role`. Sem isso, qualquer escrita direta da service role em
+  `providers`, `bookings`, `quotes` etc. falhava com "permission denied for function"
+  (`setProviderPlan` das Edge Functions ligava e desligava o Pro por esse caminho). O teste
+  `14_service_role_triggers` varre os triggers e falha se um deles chamar função que a service role
+  não executa.
+
 ### Erros do banco
 
 Funções e triggers sinalizam regras com `raise exception` e mensagens-código:
@@ -523,7 +546,8 @@ Funções e triggers sinalizam regras com `raise exception` e mensagens-código:
 `documents_missing`, `review_not_allowed`, `quote_expired`, `unit_not_allowed`,
 `quote_items_invalid` (itens do orçamento), `slug_taken` (endereço da página já usado),
 `checkin_window` (check-in/out fora de ±2 h), `booking_limit` (pedidos de agendamento
-abertos demais), `offer_limit` (ofertas de plantão demais), `storage_not_empty` (a conta
+abertos demais), `offer_limit` (ofertas de plantão demais), `free_proposal_limit` (acabaram as propostas
+grátis do mês), `storage_not_empty` (a conta
 ainda tem arquivos no Storage; só a service role vê). Todos com `errcode P0001`.
 `lib/errors.ts` traduz cada código para uma frase em pt-BR: os do banco acima (menos
 `storage_not_empty`) e os códigos de conflito das Edge Functions (`already_paid`,
@@ -659,6 +683,15 @@ banco. Mudou aqui, muda `supabase/functions` no mesmo commit.
   `ignored: first_payment_overdue`. Quem reassina dentro de um período já pago também fica
   `pending` até o novo pagamento, com `current_period_end` mantido. A tela mostra “aguardando o
   primeiro pagamento” para `pending` e “pagamento atrasado” só para `past_due`.
+- **Teste grátis** (`pro_trial_days`): quem nunca teve linha em `subscriptions` começa em
+  `trialing`, com `providers.plan = 'pro'` e `current_period_end` no fim do último dia do teste
+  (23:59:59-03:00); a assinatura do Asaas nasce com `nextDueDate` nesse dia, então a primeira
+  cobrança só vence quando o teste acaba. Pagou: o webhook leva `trialing` a `active` e conta o mês
+  a partir do vencimento. Não pagou: `PAYMENT_OVERDUE` leva a `past_due` e `providers.plan` volta a
+  `free` depois do período mais os dias de carência (o ramo `first_payment_overdue` só vale para
+  `pending` sem período). Cancelar durante o teste mantém o Pro até o fim dele. Quem já teve
+  assinatura (inclusive cancelada) não recebe um segundo teste; a resposta traz `trial_ends_at`
+  e `awaiting_payment: false`.
 - O registro da nova assinatura é condicional (`claimSubscription`: insert, ou
   update só se a linha ainda é a lida): se outra requisição gravou antes, a
   assinatura recém-criada no Asaas é removida e a resposta é 409 `already_subscribed`.

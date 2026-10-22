@@ -518,7 +518,12 @@ describe('asaas-onboard', () => {
 });
 
 describe('subscriptions-manage', () => {
-  function subsDeps(current: SubscriptionRow | null, routes: Record<string, { status?: number; body: unknown }> = {}, claim = true) {
+  function subsDeps(
+    current: SubscriptionRow | null,
+    routes: Record<string, { status?: number; body: unknown }> = {},
+    claim = true,
+    trialDays = 0,
+  ) {
     const saved: SubscriptionRow[] = [];
     const plans: string[] = [];
     const { client, calls } = asaasWith({
@@ -540,6 +545,7 @@ describe('subscriptions-manage', () => {
         },
         setProviderPlan: async (_id, plan) => void plans.push(plan),
         getProPriceCents: async () => 4900,
+        getTrialDays: async () => trialDays,
         getCustomerId: async () => 'cus_p',
         saveCustomerId: async () => {},
         getProfile: async () => ({ full_name: 'Ana', phone: null }),
@@ -560,6 +566,45 @@ describe('subscriptions-manage', () => {
     expect(saved[0]).toMatchObject({ status: 'pending', asaas_subscription_id: 'sub_1' });
     expect(plans).toEqual([]);
     expect(res.body.data).toMatchObject({ awaiting_payment: true, invoice_url: 'https://sandbox.asaas.com/i/s1', plan: 'free' });
+  });
+
+  it('gives a provider that never subscribed the trial: Pro now, first charge when it ends', async () => {
+    const { deps, calls, saved, plans } = subsDeps(null, {}, true, 30);
+    const res = await read(await subscriptions(post('subscriptions-manage', { action: 'subscribe', method: 'pix' }), deps));
+    expect(res.status).toBe(201);
+    // 2026-10-19 + 30 days; the Asaas subscription starts charging only then
+    expect((calls[0].body as { nextDueDate: string }).nextDueDate).toBe('2026-11-18');
+    expect(saved[0]).toMatchObject({ status: 'trialing', asaas_subscription_id: 'sub_1', current_period_end: '2026-11-18T23:59:59-03:00' });
+    expect(plans).toEqual(['pro']);
+    expect(res.body.data).toMatchObject({
+      status: 'trialing', plan: 'pro', awaiting_payment: false, trial_ends_at: '2026-11-18T23:59:59-03:00',
+    });
+  });
+
+  it('gives the trial once: subscribing again after a cancellation waits for the payment', async () => {
+    const canceled: SubscriptionRow = {
+      provider_id: PROVIDER.id, plan: 'pro', status: 'canceled', asaas_subscription_id: 'sub_old',
+      current_period_end: '2026-10-01T23:59:59-03:00', canceled_at: '2026-10-02T12:00:00.000Z',
+    };
+    const { deps, calls, saved, plans } = subsDeps(canceled, {}, true, 30);
+    const res = await read(await subscriptions(post('subscriptions-manage', { action: 'subscribe', method: 'pix' }), deps));
+    expect(res.status).toBe(201);
+    expect((calls[0].body as { nextDueDate: string }).nextDueDate).toBe('2026-10-19');
+    expect(saved[0]).toMatchObject({ status: 'pending' });
+    expect(plans).toEqual([]);
+    expect(res.body.data).toMatchObject({ awaiting_payment: true, plan: 'free', trial_ends_at: null });
+  });
+
+  it('keeps Pro until the end of the trial when the provider cancels during it', async () => {
+    const trialing: SubscriptionRow = {
+      provider_id: PROVIDER.id, plan: 'pro', status: 'trialing', asaas_subscription_id: 'sub_1',
+      current_period_end: '2026-11-18T23:59:59-03:00', canceled_at: null,
+    };
+    const { deps, saved, plans } = subsDeps(trialing);
+    const res = await read(await subscriptions(post('subscriptions-manage', { action: 'cancel' }), deps));
+    expect(res.body.data).toEqual({ status: 'canceled', plan: 'pro', pro_until: '2026-11-18T23:59:59-03:00' });
+    expect(saved[0]).toMatchObject({ status: 'canceled' });
+    expect(plans).toEqual(['pro']);
   });
 
   it('refuses a second subscription and cancels keeping the paid period', async () => {

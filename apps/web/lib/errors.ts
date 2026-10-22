@@ -19,6 +19,7 @@ export const DATABASE_ERROR_CODES = [
   'checkin_window',
   'booking_limit',
   'offer_limit',
+  'free_proposal_limit',
 ] as const;
 
 export type DatabaseErrorCode = (typeof DATABASE_ERROR_CODES)[number];
@@ -95,6 +96,9 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   booking_limit:
     'Você já tem muitos pedidos de agendamento aguardando resposta. Espere o profissional responder ou cancele algum.',
   offer_limit: 'Limite de ofertas atingido para este plantão ou para hoje. Tente de novo mais tarde.',
+  // The monthly allowance comes from platform_settings, so the sentence does not state a number
+  free_proposal_limit:
+    'Você usou as propostas grátis deste mês. No plano Pro (menu Assinatura) as propostas são ilimitadas; as grátis voltam no mês que vem.',
   // App, auth, data access and network
   backend_disabled: 'Esta função ainda não está disponível nesta versão do app.',
   not_authenticated: 'Entre na sua conta para continuar.',

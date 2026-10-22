@@ -120,6 +120,17 @@ describe('/pro/pedidos', () => {
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Este pedido não está mais aberto.'));
   });
 
+  it('tells a free provider who used the monthly allowance that the Pro has no limit', async () => {
+    const base = fake.tables.proposals;
+    fake.tables.proposals = (call: TableCall) => (call.op === 'insert' ? ruleError('free_proposal_limit') : base(call));
+    const user = userEvent.setup();
+    renderPro('/pro/pedidos');
+    await user.click(await screen.findByRole('button', { name: 'Enviar proposta' }));
+    await user.type(screen.getByLabelText('Seu preço (R$)'), '180');
+    await user.click(screen.getByRole('button', { name: 'Enviar proposta' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Você usou as propostas grátis deste mês\. No plano Pro .* ilimitadas/);
+  });
+
   it('asks for a valid price before sending', async () => {
     const user = userEvent.setup();
     renderPro('/pro/pedidos');

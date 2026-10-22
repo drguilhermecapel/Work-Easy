@@ -16,6 +16,8 @@ let provider: ReturnType<typeof providerRow>;
 let subscription: Record<string, unknown> | null;
 let account: string | null;
 let price: unknown;
+let trialDays: unknown;
+let freeProposals: unknown;
 let accountCreatedAt: string;
 
 beforeEach(() => {
@@ -25,14 +27,19 @@ beforeEach(() => {
   subscription = null;
   account = null;
   price = 4900;
+  trialDays = null;
+  freeProposals = null;
   accountCreatedAt = new Date().toISOString();
   fake.tables = {
     ...baseTables({ provider }),
     providers: () => ok(provider),
     subscriptions: () => ok(subscription),
     provider_payment_accounts: () => ok(account ? { status: account, created_at: accountCreatedAt } : null),
-    platform_settings: (call: TableCall) =>
-      call.filters.some(([, column, value]) => column === 'key' && value === 'pro_price_cents') ? ok({ value: price }) : ok([]),
+    platform_settings: (call: TableCall) => {
+      const values: Record<string, unknown> = { pro_price_cents: price, pro_trial_days: trialDays, free_proposals_per_month: freeProposals };
+      const key = call.filters.find(([, column]) => column === 'key')?.[2];
+      return typeof key === 'string' && key in values ? ok({ value: values[key] }) : ok([]);
+    },
   };
 });
 
@@ -77,6 +84,52 @@ describe('/pro/assinatura: plan', () => {
     expect(screen.getByRole('link', { name: /Abrir a fatura do primeiro pagamento/ })).toHaveAttribute('href', 'https://sandbox.asaas.com/i/sub1');
     // The screen did not turn the plan into Pro by itself
     expect(screen.getByText('Grátis')).toBeInTheDocument();
+  });
+
+  it('offers the trial to who never subscribed, and says the proposals the free plan has', async () => {
+    trialDays = 30;
+    freeProposals = 5;
+    renderPro('/pro/assinatura');
+    expect(await screen.findByText(/Teste grátis de 30 dias/)).toBeInTheDocument();
+    expect(screen.getByText(/a primeira cobrança só vence quando o teste acaba/)).toBeInTheDocument();
+    expect(screen.getByText(/propostas sem limite nos pedidos da plataforma \(o plano grátis envia até 5 por mês\)/)).toBeInTheDocument();
+  });
+
+  it('does not promise a trial that is not configured, or to who already subscribed', async () => {
+    renderPro('/pro/assinatura');
+    expect(await screen.findByText(/R\$\s49,00 por mês/)).toBeInTheDocument();
+    expect(screen.queryByText(/Teste grátis de/)).not.toBeInTheDocument();
+  });
+
+  it('does not offer the trial again after a cancellation', async () => {
+    trialDays = 30;
+    subscription = { plan: 'pro', status: 'canceled', current_period_end: '2020-01-01T02:59:59Z', canceled_at: '2020-01-02T12:00:00Z' };
+    renderPro('/pro/assinatura');
+    expect(await screen.findByRole('button', { name: 'Assinar o Pro' })).toBeInTheDocument();
+    expect(screen.queryByText(/Teste grátis de/)).not.toBeInTheDocument();
+  });
+
+  it('starting the trial says the Pro is on until the trial ends and when the first charge falls due', async () => {
+    trialDays = 30;
+    fake.functionsHandlers['subscriptions-manage'] = () =>
+      functionData({
+        status: 'trialing', plan: 'pro', price_cents: 4900, invoice_url: 'https://sandbox.asaas.com/i/sub1', awaiting_payment: false,
+        trial_ends_at: '2030-02-10T02:59:59Z',
+      });
+    const user = userEvent.setup();
+    renderPro('/pro/assinatura');
+    await user.click(await screen.findByRole('button', { name: 'Assinar o Pro' }));
+    expect(await screen.findByText(/Teste grátis ativado: o Pro vale até/, { selector: 'p' })).toBeInTheDocument();
+    expect(screen.queryByText(/O Pro é ativado quando o primeiro pagamento for confirmado/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Abrir a fatura do primeiro pagamento/ })).not.toBeInTheDocument();
+  });
+
+  it('shows a trial in progress with its end', async () => {
+    provider = providerRow({ plan: 'pro' });
+    subscription = { plan: 'pro', status: 'trialing', current_period_end: '2030-02-10T02:59:59Z', canceled_at: null };
+    renderPro('/pro/assinatura');
+    expect(await screen.findByText(/Assinatura: período de teste/)).toBeInTheDocument();
+    expect(screen.getByText(/Teste grátis até/)).toBeInTheDocument();
   });
 
   it('does not call the function with an invalid document', async () => {

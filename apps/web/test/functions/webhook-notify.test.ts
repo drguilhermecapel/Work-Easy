@@ -480,6 +480,27 @@ describe('asaas-webhook: Pro subscription', () => {
     expect(log.plans).toEqual([]);
   });
 
+  it('turns a trial into a paid month when its first charge is paid, counted from the due date', async () => {
+    const trialing: StoredSubscription = { provider_id: PROVIDER.id, status: 'trialing', current_period_end: '2026-11-18T23:59:59-03:00' };
+    const paidAtTrialEnd: Remote = {
+      body: { id: 'pay_s', status: 'RECEIVED', subscription: 'sub_1', dueDate: '2026-11-18', billingType: 'PIX' },
+    };
+    const { deps, log } = webhookDeps({ payment: null, subscription: trialing, remote: { 'GET /v3/payments/pay_s': paidAtTrialEnd } });
+    const res = await read(await webhook(hook(subEvent('PAYMENT_RECEIVED', 'evt_t1')), deps));
+    expect(res.body.data).toMatchObject({ subscription_status: 'active', plan: 'pro' });
+    expect(log.subscriptions).toEqual([[PROVIDER.id, { status: 'active', current_period_end: '2026-12-18T23:59:59-03:00' }]]);
+  });
+
+  it('lets a trial nobody paid for lapse: overdue after its end takes Pro away, unlike a never-paid pending one', async () => {
+    const overdueRemote: Remote = { body: { id: 'pay_s', status: 'OVERDUE', subscription: 'sub_1', dueDate: '2026-10-17' } };
+    const endedTrial: StoredSubscription = { provider_id: PROVIDER.id, status: 'trialing', current_period_end: '2026-10-17T23:59:59-03:00' };
+    const { deps, log } = webhookDeps({ payment: null, subscription: endedTrial, remote: { 'GET /v3/payments/pay_s': overdueRemote } });
+    const res = await read(await webhook(hook(subEvent('PAYMENT_OVERDUE', 'evt_t2')), deps));
+    expect(res.body.data).toMatchObject({ subscription_status: 'past_due', plan: 'free' });
+    expect(res.body.data.ignored).toBeUndefined();
+    expect(log.plans).toEqual(['free']);
+  });
+
   it('takes Pro away on overdue once the paid period (plus grace) has ended', async () => {
     const overdueRemote: Remote = { body: { id: 'pay_s', status: 'OVERDUE', subscription: 'sub_1', dueDate: '2026-10-01' } };
     const lapsed: StoredSubscription = { provider_id: PROVIDER.id, status: 'active', current_period_end: '2026-10-10T23:59:59-03:00' };

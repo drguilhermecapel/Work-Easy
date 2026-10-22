@@ -1,10 +1,12 @@
 // subscriptions-manage (prestador): subscribes to or cancels the Pro plan.
 // Subscribe creates a monthly Asaas subscription in the platform account;
 // Pro is switched on by asaas-webhook when the first charge is paid.
-// Cancel removes the Asaas subscription; Pro stays until the paid period ends.
+// A provider that never subscribed gets `pro_trial_days` of Pro first: the Asaas subscription
+// then starts charging when the trial ends, and the provider is Pro (`trialing`) meanwhile.
+// Cancel removes the Asaas subscription; Pro stays until the paid (or trial) period ends.
 
 import { AsaasError, type AsaasClient } from '../_shared/asaas-client.ts';
-import { saoPauloDate } from '../_shared/dates.ts';
+import { addDays, saoPauloDate } from '../_shared/dates.ts';
 import {
   type AuditEntry, type AuthUser, type BaseDeps, auditSafely, callAsaas, corsOf, toHttpError, validated,
 } from '../_shared/handler-kit.ts';
@@ -40,6 +42,8 @@ export interface SubscriptionsDeps extends BaseDeps {
     setProviderPlan(providerId: string, plan: PlanCode): Promise<void>;
     /** platform_settings.pro_price_cents */
     getProPriceCents(): Promise<number>;
+    /** platform_settings.pro_trial_days; 0 (no trial) when the setting is missing or malformed. */
+    getTrialDays(): Promise<number>;
     getCustomerId(userId: string): Promise<string | null>;
     saveCustomerId(userId: string, asaasCustomerId: string): Promise<void>;
     getProfile(userId: string): Promise<{ full_name: string | null; phone: string | null } | null>;
@@ -73,14 +77,19 @@ export function handler(req: Request, deps: SubscriptionsDeps): Promise<Response
       const method = input.method ?? 'undefined';
       const price = await deps.admin.getProPriceCents();
       if (!Number.isSafeInteger(price) || price <= 0) throw errors.conflict('price_missing', 'Preço do plano Pro não configurado.');
+      // One trial per provider: only an account that never had a subscription row gets it
+      const trialDays = current === null ? await deps.admin.getTrialDays() : 0;
+      const today = saoPauloDate(now);
+      const trialEndDay = trialDays > 0 ? addDays(today, trialDays) : null;
       const customerId = await ensurePlatformCustomer({ admin: deps.admin, asaas }, session.user, input.cpf_cnpj);
       const subscription = await callAsaas(() =>
         asaas.createSubscription({
           customer: customerId,
           billingType: BILLING_TYPE[method],
           value: centsToReais(price),
-          // Subscribing again inside a period already paid starts charging when it ends
-          nextDueDate: firstDueDate(saoPauloDate(now), current?.current_period_end ?? null, now),
+          // The trial ends on the first due date; subscribing again inside a period already paid
+          // starts charging when that period ends
+          nextDueDate: trialEndDay ?? firstDueDate(today, current?.current_period_end ?? null, now),
           cycle: 'MONTHLY',
           description: 'WorkEasy Pro (mensal)',
           externalReference: `subscription:${provider.id}`,
@@ -93,14 +102,15 @@ export function handler(req: Request, deps: SubscriptionsDeps): Promise<Response
       } catch (error) {
         deps.logError(error);
       }
-      // Waiting for the first payment: `pending` until asaas-webhook confirms it and
-      // sets active (it never grants Pro by itself: providers.plan only changes on a paid charge).
+      // Without a trial: `pending` until asaas-webhook confirms the first payment and sets active
+      // (a payment is what grants Pro). With a trial: `trialing`, Pro until the end of the trial day;
+      // the first charge falls due then, and a trial nobody pays for lapses like any overdue Pro.
       const row: SubscriptionRow = {
         provider_id: provider.id,
         plan: 'pro',
-        status: 'pending',
+        status: trialEndDay ? 'trialing' : 'pending',
         asaas_subscription_id: subscription.id,
-        current_period_end: current?.current_period_end ?? null,
+        current_period_end: trialEndDay ? `${trialEndDay}T23:59:59-03:00` : current?.current_period_end ?? null,
         canceled_at: null,
       };
       let claimed: boolean;
@@ -116,22 +126,24 @@ export function handler(req: Request, deps: SubscriptionsDeps): Promise<Response
         await asaas.deleteSubscription(subscription.id).catch(deps.logError);
         throw errors.conflict('already_subscribed', 'Já existe uma assinatura Pro para esta conta.');
       }
+      if (trialEndDay) await deps.admin.setProviderPlan(provider.id, 'pro');
       await auditSafely(deps, {
         actor_id: provider.id,
         action: 'subscription.create',
         entity: 'subscriptions',
         entity_id: provider.id,
-        data: { asaas_subscription_id: subscription.id, price_cents: price, method },
+        data: { asaas_subscription_id: subscription.id, price_cents: price, method, trial_days: trialEndDay ? trialDays : 0 },
       });
       return {
         status: 201,
         data: {
           status: row.status,
-          plan: provider.plan,
+          plan: trialEndDay ? ('pro' as const) : provider.plan,
           asaas_subscription_id: subscription.id,
           price_cents: price,
           invoice_url: invoiceUrl,
-          awaiting_payment: true,
+          awaiting_payment: !trialEndDay,
+          trial_ends_at: trialEndDay ? row.current_period_end : null,
         },
       };
     }
