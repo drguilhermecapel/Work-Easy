@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>A localização é usada apenas quando você registra a entrada ou a saída de um plantão, para a família saber onde o registro foi feito. Você pode negar e registrar sem localização.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>A câmera é usada apenas para mostrar a prévia na tela de verificação de identidade. Nenhuma imagem é enviada ou armazenada.</string>
+</dict>
+</plist>

@@ -1,0 +1,9 @@
+{
+  "name": "WorkEasy",
+  "description": "A mobile-first marketplace connecting clients with freelance service providers like painters, cleaners, and electricians.",
+  "requestFramePermissions": [
+    "geolocation",
+    "camera"
+  ],
+  "majorCapabilities": []
+}

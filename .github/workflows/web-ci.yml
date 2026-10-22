@@ -1,0 +1,109 @@
+name: Web CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths: ['apps/web/**', '.github/workflows/web-ci.yml']
+  pull_request:
+    paths: ['apps/web/**', '.github/workflows/web-ci.yml']
+
+concurrency:
+  group: web-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: apps/web
+
+jobs:
+  web:
+    name: Lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: No secrets in the bundle
+        run: |
+          if grep -rIiE "gemini|api_key" dist/; then
+            echo "::error::A secret-like string was found in the client bundle"
+            exit 1
+          fi
+
+  database:
+    name: Banco de dados (pgTAP, integração, tipos)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci
+      # Mesma versão do devDependency "supabase" do package.json (conferida abaixo).
+      - uses: supabase/setup-cli@v3.0.1
+        with:
+          version: 2.121.0
+      - name: A CLI do CI é a do package.json
+        run: |
+          expected="$(node -p "require('./package.json').devDependencies.supabase")"
+          actual="$(supabase --version)"
+          if [ "$expected" != "$actual" ]; then
+            echo "::error::CLI do Supabase no CI ($actual) difere da do package.json ($expected)"
+            exit 1
+          fi
+      # Aplica as migrations e o seed.sql do zero. Sem Edge Functions, Studio, Realtime e
+      # os serviços de log: o banco, o Auth, a API e o Storage bastam para os testes.
+      - name: Subir a stack local
+        run: supabase start -x studio,imgproxy,logflare,vector,supavisor,realtime,edge-runtime
+      - name: pgTAP
+        run: supabase test db
+      - name: Integração (fluxo do produto contra a stack real)
+        run: |
+          eval "$(supabase status -o env | grep -E '^(API_URL|PUBLISHABLE_KEY|SERVICE_ROLE_KEY)=')"
+          export SUPABASE_URL="$API_URL"
+          export SUPABASE_PUBLISHABLE_KEY="$PUBLISHABLE_KEY"
+          export SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
+          npm run test:integration
+      - name: Tipos do banco em dia (lib/database.types.ts)
+        run: |
+          supabase gen types typescript --local > "$RUNNER_TEMP/database.types.ts"
+          if ! diff -u lib/database.types.ts "$RUNNER_TEMP/database.types.ts"; then
+            echo "::error::lib/database.types.ts está desatualizado. Rode 'npm run db:types' e faça o commit."
+            exit 1
+          fi
+      - name: Diagnóstico da stack (só se algo falhou)
+        if: failure()
+        run: |
+          supabase status || true
+          docker ps -a --format 'table {{.Names}}\t{{.Status}}'
+
+  functions:
+    name: Edge Functions (deno check e lint)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      # Versão do Deno usada no desenvolvimento (deno --version).
+      - uses: denoland/setup-deno@v2.0.5
+        with:
+          deno-version: 2.9.6
+      # O deno.lock fica fixo (--frozen): dependência nova entra com o lock atualizado.
+      - name: deno check
+        run: deno check --frozen --config supabase/functions/deno.json supabase/functions/*/index.ts
+      - name: deno lint
+        run: deno lint --config supabase/functions/deno.json supabase/functions

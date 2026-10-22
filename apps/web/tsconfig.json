@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "skipLibCheck": true,
+    "types": ["vite/client", "node", "@testing-library/jest-dom"],
+    "moduleResolution": "bundler",
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "jsx": "react-jsx",
+    "paths": {
+      "@/*": ["./*"]
+    },
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "exclude": ["node_modules", "dist", "android", "ios", "src-tauri", "supabase/functions"]
+}
