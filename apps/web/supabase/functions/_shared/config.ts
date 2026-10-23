@@ -18,7 +18,7 @@ export interface FunctionConfig {
   allowDevOrigins: boolean;
   /** Days a past-due Pro keeps the plan after the paid period (PRO_GRACE_DAYS, default 0). */
   proGraceDays: number;
-  /** request-assist calls per user per hour (ASSIST_HOURLY_LIMIT, default 10). */
+  /** AI assist calls (request-assist, quote-assist, care-summary) per user per hour, one shared counter (ASSIST_HOURLY_LIMIT, default 10). */
   assistHourlyLimit: number;
   asaas: { apiKey?: string; baseUrl: string; webhookToken?: string };
   whatsapp: { token?: string; phoneNumberId?: string; graphVersion: string };
