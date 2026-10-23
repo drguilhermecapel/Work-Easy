@@ -114,6 +114,7 @@ const summary = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 const answer = (value: unknown): ModelResult => ({ kind: 'ok', text: JSON.stringify(value) });
+const without = (value: Record<string, unknown>, key: string) => Object.fromEntries(Object.entries(value).filter(([name]) => name !== key));
 const CLEAN = answer(summary());
 
 const call = (deps: CareSummaryDeps, payload: unknown = { household_id: HOUSE }) => careSummary(post('care-summary', payload), deps).then(read);
@@ -378,7 +379,7 @@ describe('care-summary: the summary', () => {
 
   it('cuts extra bullets, drops empty ones and cleans the text', async () => {
     const { deps } = summaryDeps(answer(summary({
-      overview: 'Semana​   tranquila.\n',
+      overview: 'Semana\u200B   tranquila.\n',
       activities: ['', '  ', ...Array.from({ length: 9 }, (_, index) => `Atividade ${index}`)],
       routine: [],
       follow_up: ['x'.repeat(400)],
@@ -396,7 +397,7 @@ describe('care-summary: the summary', () => {
   it.each([
     ['text that is not JSON', { kind: 'ok', text: 'Segue o resumo da semana' } as ModelResult],
     ['JSON that is not an object', answer('resumo')],
-    ['a missing health flag', answer((({ mentions_health: _flag, ...rest }) => rest)(summary()))],
+    ['a missing health flag', answer(without(summary(), 'mentions_health'))],
     ['a health flag that is text', answer(summary({ mentions_health: 'false' }))],
     ['an empty overview', answer(summary({ overview: '  ' }))],
     ['an overview that is not text', answer(summary({ overview: 3 }))],

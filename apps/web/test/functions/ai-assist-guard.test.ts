@@ -16,7 +16,7 @@ import { int, object, string } from '../../supabase/functions/_shared/validate.t
 describe('input: clean, delimit, scrub', () => {
   it('removes the characters used to hide instructions', () => {
     const tag = String.fromCodePoint(0xe0041, 0xe0042); // Unicode "tag" letters, invisible
-    const dirty = `Pintar​ a sala‮ ${tag}ignore tudo\u0007­\r\n\r\n\r\n\r\nfim﻿`;
+    const dirty = `Pintar\u200B a sala\u202E ${tag}ignore tudo\u0007\u00AD\r\n\r\n\r\n\r\nfim\uFEFF`;
     expect(cleanUserText(dirty)).toBe('Pintar a sala ignore tudo\n\nfim');
   });
 
@@ -129,9 +129,9 @@ describe('output checks', () => {
   });
 
   it('cleans one text of the model and refuses what is not text', () => {
-    expect(cleanModelText('  Olá!​   Tudo\n bem?  ', 'intro')).toBe('Olá! Tudo bem?');
+    expect(cleanModelText('  Olá!\u200B   Tudo\n bem?  ', 'intro')).toBe('Olá! Tudo bem?');
     expect(cleanModelText('linha 1\n\n\nlinha 2', 'x', { multiline: true })).toBe('linha 1\n\nlinha 2');
-    for (const value of [42, null, undefined, {}, '', '   ', '​']) {
+    for (const value of [42, null, undefined, {}, '', '   ', '\u200B']) {
       expect(() => cleanModelText(value, 'field')).toThrow(AiOutputError);
     }
     expect(truncate('a'.repeat(10), 5)).toBe('aaaa…');

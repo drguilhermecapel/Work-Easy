@@ -374,8 +374,8 @@ describe('quote-assist: what the model can answer', () => {
   it('cleans the text it accepts: invisible characters, line breaks and long descriptions', async () => {
     const long = `${'Pintura '.repeat(40)}final`;
     const res = await call(quoteDeps(answer(draft({
-      intro: 'Olá!​  Segue\no orçamento.',
-      items: [item({ description: `Mão‮ de   obra\n${long}`, quantity: 1.23456 })],
+      intro: 'Olá!\u200B  Segue\no orçamento.',
+      items: [item({ description: `Mão\u202E de   obra\n${long}`, quantity: 1.23456 })],
     }))).deps);
     expect(res.status).toBe(200);
     expect(res.body.data.intro).toBe('Olá! Segue o orçamento.');

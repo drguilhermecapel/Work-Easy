@@ -20,7 +20,7 @@ export class AiOutputError extends Error {}
 // C0/C1 controls (but not \n and \t), soft hyphen, zero-width and bidirectional controls,
 // invisible fillers and the Unicode tag characters ("ASCII smuggling").
 // deno-lint-ignore no-control-regex
-const INVISIBLE = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F­͏؜ᅟᅠ឴឵᠋-᠏​-‏‪-‮⁠-⁯ㅤ︀-️﻿ﾠ￹-￻\u{E0000}-\u{E007F}\u{E0100}-\u{E01EF}]/gu;
+const INVISIBLE = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\u00AD\u034F\u061C\u115F\u1160\u17B4-\u17B5\u180B-\u180F\u200B-\u200F\u202A-\u202E\u2060-\u206F\u3164\uFE00-\uFE0F\uFEFF\uFFA0\uFFF9-\uFFFB\u{E0000}-\u{E007F}\u{E0100}-\u{E01EF}]/gu;
 
 /** NFC, no invisible characters, "\n" line breaks, at most one blank line in a row. */
 export function cleanUserText(text: string): string {
