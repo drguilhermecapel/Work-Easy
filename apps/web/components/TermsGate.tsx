@@ -18,7 +18,7 @@ const TermsGate: React.FC<{ userId: string; children?: ReactNode; onAccepted?: (
   const [error, setError] = useState<unknown>(null);
 
   if (missing.loading && !missing.data) {
-    return <p role="status" className="text-sm text-gray-400">Conferindo seus consentimentos…</p>;
+    return <p role="status" className="text-sm text-gray-500">Conferindo seus consentimentos…</p>;
   }
   if (missing.data && missing.data.length === 0) return <>{children}</>;
 

@@ -141,7 +141,7 @@ const RequestDetail: React.FC<{ id: string }> = ({ id }) => {
             {REQUEST_STATUS_LABELS[request.status]}
           </span>
           {request.urgent && <span className="text-xs font-bold px-2 py-0.5 rounded-sm bg-amber-100 text-amber-800">Urgente</span>}
-          <span className="text-xs text-gray-400">Feito em {formatDate(request.created_at)}</span>
+          <span className="text-xs text-gray-500">Feito em {formatDate(request.created_at)}</span>
         </div>
         <h1 className="text-xl font-bold text-gray-800">{occupationName}</h1>
         <p className="text-sm text-gray-700 mt-2 whitespace-pre-line break-words">{request.description}</p>
