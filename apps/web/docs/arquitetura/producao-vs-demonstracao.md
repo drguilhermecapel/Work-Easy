@@ -70,6 +70,7 @@ Fonte consultada para a exigência de identificação (registro conforme a regra
 - Limites: aninhamento de citação e lista até 6 níveis; ênfase e link até 10; trabalho por parágrafo proporcional ao tamanho (acima disso o parágrafo vira texto); alvo de link até 2048 caracteres; tabela até 40 colunas.
 - Não suportado: código por recuo, links por referência, notas de rodapé, âncoras automáticas nos títulos (um sumário com `[x](#y)` não rola), tarefas, tachado.
 - Armadilha de autoria: `---` logo abaixo de uma linha de texto, sem linha em branco, vira título (como no CommonMark). Deixar uma linha em branco antes.
+- Links para páginas do app: usar caminho absoluto (`[SAC](/sac)`). Ele passa pelo roteador e funciona nos apps nativos, que usam URL com `#`; um caminho relativo (`sac`) vira âncora comum.
 
 ## 6. Variáveis de ambiente novas
 
