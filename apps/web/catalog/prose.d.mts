@@ -96,6 +96,8 @@ export function inZone(zone: string): string;
 
 export function verificationItems(policy: Pick<ProsePolicy, 'verification'>): string[];
 export function verificationLead(name: string): string;
+export function introSentences(occupation: ProseOccupation, area: ProseArea | undefined): string[];
+export function scopeNote(policy: Pick<ProsePolicy, 'notes'>): string;
 export function occupationSentences(occupation: ProseOccupation, area: ProseArea | undefined, policy: ProsePolicy): OccupationSentences;
 export function neighborhoodPlaceSentence(name: string, policy: Pick<ProsePolicy, 'locations'>, bairro: string): string;
 export function neighborhoodIntro(options: {
@@ -106,12 +108,12 @@ export function neighborhoodIntro(options: {
   city?: string;
 }): string[];
 
+export function areaFacts(options: { area: ProseArea; count: number; regulated: number; launch: boolean }): string[];
 export function areaIntro(options: { area: ProseArea; count: number; regulated: number; launch: boolean }): string[];
 export function categoriesLead(count: number): string;
 export function policyBadges(
   policy: Pick<ProsePolicy, 'regulated' | 'registryName' | 'regulatorBody' | 'providerType'> | undefined,
 ): string[];
-export function priceLine(policy: Pick<ProsePolicy, 'priceUnits'>): string;
 
 export function relatedWindow<T>(list: readonly T[], index: number, limit?: number): T[];
 export function launchNeighborhoods<T extends ProseNeighborhood>(neighborhoods: readonly T[] | null | undefined): T[];

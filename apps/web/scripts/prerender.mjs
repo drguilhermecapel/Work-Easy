@@ -60,7 +60,6 @@ import {
   occupationMeta,
   occupationSentences,
   policyBadges,
-  priceLine,
   relatedWindow,
   requestHref,
   rotateNeighbors,
@@ -188,7 +187,7 @@ const CHEVRON =
 const occupationCard = (occupation, policy) =>
   `<li><a href="/servicos/${escapeHtml(occupation.slug)}" class="flex items-center justify-between gap-3 bg-white border border-gray-100 rounded-xl px-4 py-3 h-full hover:border-primary transition-colors"><span class="min-w-0"><span class="block font-medium text-gray-800">${escapeHtml(occupation.name)}</span>${policyBadges(policy)
     .map(badge => `<span class="inline-block mt-1 mr-1 text-[11px] bg-amber-50 text-amber-800 border border-amber-100 px-2 py-0.5 rounded-full">${escapeHtml(badge)}</span>`)
-    .join('')}${priceLine(policy) ? `<span class="block mt-1 text-xs text-gray-500">${escapeHtml(priceLine(policy))}</span>` : ''}</span>${CHEVRON}</a></li>`;
+    .join('')}</span>${CHEVRON}</a></li>`;
 
 // ------------------------------------------------------------ input data
 
@@ -549,10 +548,10 @@ export const buildPages = ({
     const request = canRequest
       ? link(requestHref(occupation.slug, bairro?.slug), 'Pedir este serviço')
       : link(`/search?q=${encodeURIComponent(occupation.name)}`, 'Procurar profissionais');
-    return `<p class="flex flex-wrap gap-3 text-sm font-semibold">${request} ${link(
+    return `<div class="flex flex-wrap gap-3 text-sm font-semibold">${request} ${link(
       `/register-provider?ocupacao=${encodeURIComponent(occupation.slug)}`,
       'Ofereço este serviço',
-    )}</p>`;
+    )}</div>`;
   };
 
   const policySections = (s, { hiring, requirements }) =>
@@ -649,10 +648,9 @@ export const buildPages = ({
           [path, area.name],
         ])}<header><h1 class="${H1_CLASS}">${escapeHtml(area.name)}</h1>${paragraphs(
           areaIntro({ area, count: occupations.length, regulated: regulated.length, launch: isLaunch }),
-        )}</header>${section(
-          SECTION.areaServices,
-          `<ul class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">${sorted.map(o => occupationCard(o, withPolicy.get(o.slug).policy)).join('')}</ul>`,
-        )}`,
+        )}</header><div><h2 class="font-bold text-gray-800 mb-3">${escapeHtml(SECTION.areaServices)}</h2><ul class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">${sorted
+          .map(o => occupationCard(o, withPolicy.get(o.slug).policy))
+          .join('')}</ul></div>`,
         'max-w-7xl',
       ),
     });

@@ -125,6 +125,16 @@ export const verificationItems = policy => policy.verification.map(v => VERIFICA
 
 export const verificationLead = name => `Quem quiser oferecer ${name} no WorkEasy terá de apresentar no cadastro:`;
 
+/** The part of the opening that needs no policy: the area and the other names. The page header can show it before the policies load. */
+export const introSentences = (occupation, area) =>
+  [
+    area && `${occupation.name} faz parte da área ${area.name} do WorkEasy. ${area.description}`,
+    occupation.synonyms?.length > 0 && `Também procurado como ${joinPt(occupation.synonyms)}.`,
+  ].filter(Boolean);
+
+/** What the occupation is, in the words of its policy (written by hand for it); '' when there is none. */
+export const scopeNote = policy => (typeof policy.notes === 'string' ? policy.notes.trim() : '');
+
 /**
  * Sentences about one occupation, all derived from its policy (plus the
  * occupation's own scope note, which is the one text written by hand for it).
@@ -170,11 +180,7 @@ export const occupationSentences = (occupation, area, policy) => {
     policy.confidence === 'a_confirmar' && `A base legal de ${name} ainda está a confirmar com advogado.`,
   ].filter(Boolean);
 
-  const intro = [
-    area && `${name} faz parte da área ${area.name} do WorkEasy. ${area.description}`,
-    occupation.synonyms?.length > 0 && `Também procurado como ${joinPt(occupation.synonyms)}.`,
-    typeof policy.notes === 'string' && policy.notes.trim() !== '' && policy.notes.trim(),
-  ].filter(Boolean);
+  const intro = [...introSentences(occupation, area), scopeNote(policy)].filter(Boolean);
 
   return { intro, hiring, steps, stepsLead: steps.length > 0 ? verificationLead(name) : '', requirements, regulation, units, places };
 };
@@ -201,10 +207,9 @@ export const neighborhoodIntro = ({ name, policy, bairro, zone, city = CITY }) =
 
 // ------------------------------------------------------- area and category
 
-/** Opening paragraphs of /categorias/<area>; `regulated` is how many of its occupations are regulated. */
-export const areaIntro = ({ area, count, regulated, launch }) =>
+/** What the area page adds to its description: how many services, how many regulated, and the launch note. */
+export const areaFacts = ({ area, count, regulated, launch }) =>
   [
-    area.description,
     `${area.name} tem ${count} ${count === 1 ? 'serviço' : 'serviços'} no WorkEasy${
       regulated > 0
         ? `; ${regulated === 1 ? 'um é profissão regulamentada' : `${regulated} são profissões regulamentadas`}, com registro exigido no cadastro`
@@ -212,6 +217,9 @@ export const areaIntro = ({ area, count, regulated, launch }) =>
     }.`,
     launch && `Esta é uma das áreas de lançamento em ${CITY}, com páginas por bairro ${joinPt(LAUNCH_ZONES.map(inZone))}.`,
   ].filter(Boolean);
+
+/** Opening paragraphs of /categorias/<area>; `regulated` is how many of its occupations are regulated. */
+export const areaIntro = options => [options.area.description, ...areaFacts(options)].filter(Boolean);
 
 /** Lead of /categorias. */
 export const categoriesLead = count =>
@@ -224,12 +232,6 @@ export const policyBadges = policy => {
   if (policy.regulated) badges.push(`Regulamentada · ${policy.registryName || policy.regulatorBody}`);
   if (policy.providerType === 'somente_empresa_licenciada') badges.push('Só empresas licenciadas');
   return badges;
-};
-
-/** "Preço combinado por hora ou por serviço", or '' when the policy lists no price unit. */
-export const priceLine = policy => {
-  const units = joinPt(policy.priceUnits.map(u => PRICE_UNIT_TEXT[u]).filter(Boolean), 'ou');
-  return units ? capitalize(`preço combinado ${units}`) : '';
 };
 
 // ------------------------------------------------------------------- links
