@@ -159,9 +159,18 @@ export interface NameRule {
 export interface NameMatcher {
   /** The text with every known name (any case, with or without accents) replaced by its label. */
   redact(text: string): string;
-  /** True when a known name is still in the text. */
+  /**
+   * True when a known name is in the text. Words of the care vocabulary that happen to be part of
+   * a registered name ("Cuidadora" in a trade name) do not count: the answer is expected to use them.
+   */
   contains(text: string): boolean;
 }
+
+/** Words the summaries use themselves; a registered name made of them is still redacted in the input but not hunted in the answer. */
+export const GENERIC_NAME_WORDS: ReadonlySet<string> = new Set([
+  'cuidador', 'cuidadora', 'cuidadores', 'cuidadoras', 'cuidada', 'cuidado', 'cuidados', 'pessoa', 'pessoas', 'familia',
+  'familiar', 'familiares', 'casa', 'plantao', 'plantoes', 'relatorio', 'relatorios',
+]);
 
 const PARTICLE_LIST = ['da', 'de', 'do', 'das', 'dos', 'di', 'du', 'del', 'la', 'le', 'van', 'von'];
 const PARTICLES = new Set(PARTICLE_LIST);
@@ -216,10 +225,9 @@ export function nameMatcher(rules: NameRule[]): NameMatcher {
   const alternatives = [...patterns.values()].sort((a, b) => b.length - a.length);
   const source = `(?<![\\p{L}\\p{N}])(?:${alternatives.join('|')})(?![\\p{L}\\p{N}])`;
   const global = new RegExp(source, 'giu');
-  const single = new RegExp(source, 'iu');
   return {
     redact: text => text.replace(global, match => labels.get(nameKey(match)) ?? match),
-    contains: text => single.test(text),
+    contains: text => [...text.matchAll(global)].some(match => !GENERIC_NAME_WORDS.has(nameKey(match[0]))),
   };
 }
 

@@ -36,7 +36,7 @@ do que isso prova estão na seção "O que não foi testado nem conferido".
 6. **Preço nunca é inventado.** O modelo só aponta (`price_ref`) para um preço de referência que o próprio
    prestador mandou; o servidor preenche o valor. Sem referência, o preço volta `null`.
 7. **Não clínico, sempre.** O resumo não diagnostica, não interpreta saúde, não opina sobre remédio, dose ou
-   tratamento e não julga gravidade nem urgência. Relatório que cita saúde nem chega ao modelo. A orientação de
+   tratamento e não julga gravidade nem urgência. Relatório com palavra da lista de saúde não é enviado ao modelo. A orientação de
    saúde (ligar 192, SAMU, ou procurar um médico) é um texto fixo escrito pelo servidor, não pelo modelo.
 
 ## 2. `quote-assist`
@@ -306,6 +306,7 @@ curl "${H[@]}" -d '{"household_id":"<uuid de uma casa sua>"}' $BASE/care-summary
 - **Troca de nomes é heurística.** Pega os nomes cadastrados (completos e cada palavra, com ou sem acento, em qualquer caixa).
   Apelidos, diminutivos, erros de digitação, nomes de terceiros e nomes de cuidador que o RLS não mostre à família seguem no texto.
   Telefones, e-mails, CPF/CNPJ e links também são trocados por padrões, não por reconhecimento perfeito.
+  Palavras comuns que façam parte de um nome (um cuidador cadastrado como "Cuidar Bem") também são trocadas no texto: a troca prefere esconder a mais a deixar um nome passar. Na resposta do modelo essas palavras do próprio vocabulário (cuidador, pessoa, casa, família...) não contam como nome vazado; qualquer outro nome conhecido invalida a resposta.
 - **Lista de saúde é do português** e propositalmente ampla ("dor", "queda", "consulta", "médico"...): um relatório inofensivo
   pode ser omitido do resumo (a família ainda o lê na tela). O front já barra essas palavras na escrita (`findHealthTerm`); aqui é a segunda camada.
 - **A consulta por sobreposição de período** (`period=ov.[...)`) foi aceita pelo PostgREST local (200, e erro 22P02 para um valor

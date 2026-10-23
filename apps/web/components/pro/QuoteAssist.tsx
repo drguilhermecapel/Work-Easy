@@ -99,8 +99,8 @@ const Panel: React.FC<{ providerId: string; onApply: (suggestion: QuoteSuggestio
         <fieldset className="space-y-2">
           <legend className="text-sm font-medium text-gray-700">Preços de referência (opcional)</legend>
           <p className="text-xs text-gray-500">
-            Marque os serviços cujo preço a IA pode usar. A IA nunca inventa preços: sem preço de referência, ele fica em branco para você
-            preencher. Em faixas de preço, ela usa o menor valor.
+            Marque os serviços cujo preço a IA pode usar. Só o nome do serviço vai para a IA; o valor é aplicado depois, pelo servidor. A IA
+            nunca inventa preços: sem preço de referência, ele fica em branco para você preencher. Em faixas de preço, vale o menor valor.
           </p>
           {services.map(service => (
             <label key={service.id} className="flex items-start gap-2 text-sm text-gray-700">

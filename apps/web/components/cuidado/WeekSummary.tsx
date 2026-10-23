@@ -8,7 +8,7 @@ import { card, primaryButton } from './styles';
 
 /** What the family is told before anything is sent. */
 export const WEEK_SUMMARY_NOTICE =
-  'Ao pedir o resumo, os relatórios dos últimos 7 dias da casa escolhida são enviados a um serviço de inteligência artificial de terceiros. Os nomes cadastrados da pessoa cuidada e do cuidador são trocados por termos neutros antes do envio, e relatórios que citam saúde não são enviados. O resumo não é guardado, pode conter erros e não é avaliação de saúde: leia os relatórios abaixo. Para qualquer preocupação com a saúde, ligue 192 (SAMU) ou procure um médico.';
+  'Ao pedir o resumo, os relatórios dos últimos 7 dias da casa escolhida são enviados a um serviço de inteligência artificial de terceiros. Os nomes cadastrados da pessoa cuidada e do cuidador são trocados por termos neutros e relatórios com palavras de saúde são retidos, mas essa troca e essa triagem podem falhar: apelidos e dados pessoais escritos no texto podem seguir junto. O resumo não é guardado, pode conter erros e não é avaliação de saúde: leia os relatórios abaixo. Para qualquer preocupação com a saúde, ligue 192 (SAMU) ou procure um médico.';
 
 const plural = (count: number, one: string, many: string): string => `${count} ${count === 1 ? one : many}`;
 
@@ -112,7 +112,6 @@ const WeekSummary: React.FC<{ households: Household[] }> = ({ households }) => {
             type="button"
             className={primaryButton}
             disabled={busy !== null}
-            aria-label={several ? `Resumo da semana: ${household.name}` : undefined}
             onClick={() => void ask(household)}
           >
             {busy === household.id ? 'Gerando…' : several ? `Resumo da semana · ${household.name}` : 'Resumo da semana'}

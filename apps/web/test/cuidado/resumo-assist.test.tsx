@@ -61,7 +61,8 @@ describe('/cuidado/relatorios: Resumo da semana', () => {
     const notice = screen.getByRole('note', { name: '' });
     expect(notice).toHaveTextContent('enviados a um serviço de inteligência artificial de terceiros');
     expect(notice).toHaveTextContent('nomes cadastrados da pessoa cuidada e do cuidador são trocados por termos neutros');
-    expect(notice).toHaveTextContent('relatórios que citam saúde não são enviados');
+    expect(notice).toHaveTextContent('relatórios com palavras de saúde são retidos');
+    expect(notice).toHaveTextContent('essa troca e essa triagem podem falhar');
     expect(notice).toHaveTextContent('não é avaliação de saúde');
     expect(notice).toHaveTextContent('ligue 192 (SAMU) ou procure um médico');
     expect(fake.functionCalls).toEqual([]);
@@ -167,11 +168,11 @@ describe('/cuidado/relatorios: Resumo da semana', () => {
     world.shifts.push(shiftRow({ id: 'shift-2', household_id: 'house-2', status: 'completed', provider_id: CAREGIVER_ID }));
     const user = userEvent.setup();
     renderCare('/cuidado/relatorios');
-    await user.click(await screen.findByRole('button', { name: 'Resumo da semana: Casa da praia' }));
+    await user.click(await screen.findByRole('button', { name: 'Resumo da semana · Casa da praia' }));
     expect(await screen.findByRole('heading', { name: /Resumo de/ })).toBeInTheDocument();
     expect(fake.functionCalls).toEqual([{ name: 'care-summary', body: { household_id: 'house-2' } }]);
     expect(screen.getByText('Casa: Casa da praia')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Resumo da semana: Casa da vó' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Resumo da semana · Casa da vó' })).toBeInTheDocument();
   });
 
   it('is not offered while there is no report to summarize', async () => {

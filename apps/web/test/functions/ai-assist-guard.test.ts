@@ -166,6 +166,13 @@ describe('names', () => {
     expect(nameMatcher([{ names: [null, ''], label: '[X]' }]).redact('texto')).toBe('texto');
   });
 
+  it('does not hunt the words of its own vocabulary in an answer, though it redacts them in the input', () => {
+    const trade = nameMatcher([{ names: ['Ana Cuidadora'], label: '[CUIDADOR]' }]);
+    expect(trade.redact('A cuidadora Ana fez o almoço')).toBe('A [CUIDADOR] [CUIDADOR] fez o almoço');
+    expect(trade.contains('A cuidadora fez o almoço')).toBe(false);
+    expect(trade.contains('A cuidadora Ana fez o almoço')).toBe(true);
+  });
+
   it('keeps the first label when two people share a name', () => {
     const shared = nameMatcher([{ names: ['Ana'], label: '[PESSOA_CUIDADA]' }, { names: ['Ana Souza'], label: '[CUIDADOR]' }]);
     expect(shared.redact('Ana')).toBe('[PESSOA_CUIDADA]');
