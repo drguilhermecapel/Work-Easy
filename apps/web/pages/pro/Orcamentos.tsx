@@ -6,6 +6,7 @@ import { formatCents } from '../../lib/money';
 import { formatPhoneBR } from '../../lib/phone';
 import { formatDateBR, todayInSaoPaulo } from '../../lib/timezone';
 import { useAsync } from '../../lib/useAsync';
+import { suggestionDrafts, withIntro, type QuoteSuggestion } from '../../services/aiAssist';
 import { listClients, type ClientRow } from '../../services/proClients';
 import { centsToInput, parseReaisToCents } from '../../services/proFormat';
 import {
@@ -25,6 +26,7 @@ import ErrorAlert from '../../components/ErrorAlert';
 import PageStatus from '../../components/PageStatus';
 import ProPage from '../../components/pro/ProPage';
 import { useProvider } from '../../components/pro/proContext';
+import QuoteAssist from '../../components/pro/QuoteAssist';
 import QuoteDocument from '../../components/pro/QuoteDocument';
 import { QUOTE_STATUS_LABELS, QUOTE_STATUS_STYLES } from '../../components/pro/labels';
 import { Badge, Card, ConfirmButton, CopyButton, EmptyState, Field, SectionTitle } from '../../components/pro/ui';
@@ -138,6 +140,13 @@ const Editor: React.FC<{
   const setItem = (key: number, patch: Partial<ItemDraft>) =>
     setItems(current => current.map(item => (item.key === key ? { ...item, ...patch } : item)));
 
+  // The AI draft only fills the form: blank placeholder items give way, what was typed stays, nothing is saved
+  const applySuggestion = (suggestion: QuoteSuggestion) => {
+    const drafts = suggestionDrafts(suggestion).map(draft => ({ key: nextKey++, ...draft }));
+    setItems(current => [...current.filter(item => item.description.trim() || item.price.trim()), ...drafts]);
+    setNotes(current => withIntro(current, suggestion.intro));
+  };
+
   const persist = async (send: boolean) => {
     setBusy(true);
     setError(null);
@@ -228,6 +237,8 @@ const Editor: React.FC<{
                 <input id="orc-telefone" className={inputClass} type="tel" value={clientPhone} onChange={e => setClientPhone(e.target.value)} />
               </Field>
             </div>
+
+            <QuoteAssist providerId={providerId} onApply={applySuggestion} />
 
             <fieldset className="space-y-3">
               <legend className="text-sm font-medium text-gray-700 mb-1">Itens</legend>
