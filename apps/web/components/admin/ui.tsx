@@ -1,4 +1,6 @@
 import React, { ReactNode } from 'react';
+import { describeControl } from '../fieldA11y';
+import FieldError from '../FieldError';
 import { cardClass, secondaryButton } from './styles';
 
 export const Card: React.FC<{ children: ReactNode; className?: string }> = ({ children, className = '' }) => (
@@ -13,11 +15,12 @@ export const EmptyState: React.FC<{ children: ReactNode }> = ({ children }) => (
   <p className="text-sm text-gray-500 bg-white border border-gray-100 rounded-2xl p-5">{children}</p>
 );
 
-/** Label + control; `id` ties them together. */
-export const Field: React.FC<{ id: string; label: string; hint?: string; children: ReactNode; className?: string }> = ({
+/** Label + control + optional hint and error; `id` ties the label to the control, and the hint and the error are read with it. */
+export const Field: React.FC<{ id: string; label: string; hint?: string; error?: string | null; children: ReactNode; className?: string }> = ({
   id,
   label,
   hint,
+  error,
   children,
   className = '',
 }) => (
@@ -25,12 +28,13 @@ export const Field: React.FC<{ id: string; label: string; hint?: string; childre
     <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">
       {label}
     </label>
-    {children}
+    {describeControl(children, { hint: hint ? `${id}-hint` : undefined, error: error ? `${id}-erro` : undefined })}
     {hint && (
       <p id={`${id}-hint`} className="text-xs text-gray-500 mt-1">
         {hint}
       </p>
     )}
+    {error && <FieldError id={`${id}-erro`}>{error}</FieldError>}
   </div>
 );
 

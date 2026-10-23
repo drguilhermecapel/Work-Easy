@@ -107,6 +107,7 @@ const BecomeProviderForm: React.FC<{ onCreated: () => void }> = ({ onCreated }) 
             autoCapitalize="none"
             autoComplete="off"
             aria-describedby="cad-slug-dica cad-slug-status"
+            aria-invalid={slugCheck === 'taken' ? true : undefined}
             value={slug}
             onChange={e => {
               setSlugTouched(true);
@@ -325,7 +326,7 @@ const NeighborhoodsStep: React.FC<{ providerId: string }> = ({ providerId }) => 
               />
               <span>
                 {item.name}
-                {item.zone && <span className="text-gray-400"> · {item.zone}</span>}
+                {item.zone && <span className="text-gray-500"> · {item.zone}</span>}
               </span>
             </label>
           ))}
@@ -382,7 +383,7 @@ const DocumentsStep: React.FC<{ provider: ProviderRow; userId: string }> = ({ pr
     }
   };
 
-  if (data.loading && !data.data) return <p role="status" className="text-sm text-gray-400">Carregando os documentos…</p>;
+  if (data.loading && !data.data) return <p role="status" className="text-sm text-gray-500">Carregando os documentos…</p>;
 
   return (
     <div className="space-y-4">

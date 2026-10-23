@@ -20,6 +20,8 @@ import TermsGate from '../../components/TermsGate';
 import { buildConciergeMessage, conciergeLink } from './concierge';
 
 const STEPS = ['O que você precisa', 'Bairro', 'Descrição e quando', 'Contato'] as const;
+/** The field each step validates: it takes the focus when the step is refused. */
+const FIELD_OF_STEP = ['pedido-busca', 'pedido-bairro', 'pedido-descricao'] as const;
 
 interface Draft {
   occupationSlug: string;
@@ -140,7 +142,8 @@ const Pedido: React.FC = () => {
     event.preventDefault();
     const problem = validate(step);
     setStepError(problem);
-    if (!problem) setStep(s => Math.min(s + 1, STEPS.length - 1));
+    if (problem) document.getElementById(FIELD_OF_STEP[step])?.focus();
+    else setStep(s => Math.min(s + 1, STEPS.length - 1));
   };
 
   const goBack = () => {
@@ -204,7 +207,7 @@ const Pedido: React.FC = () => {
     );
 
   const stepAlert = stepError ? (
-    <p role="alert" className="text-sm text-red-700 bg-red-50 border border-red-100 rounded-lg p-3">
+    <p id="pedido-erro" role="alert" className="text-sm text-red-700 bg-red-50 border border-red-100 rounded-lg p-3">
       {stepError}
     </p>
   ) : null;
@@ -224,7 +227,7 @@ const Pedido: React.FC = () => {
         {STEPS.map((label, index) => (
           <li key={label} aria-current={index === step ? 'step' : undefined} className="min-w-0">
             <span className={`block h-1.5 rounded-full ${index <= step ? 'bg-primary' : 'bg-gray-200'}`} aria-hidden="true" />
-            <span className={`block text-[11px] mt-1 truncate ${index === step ? 'text-primary font-semibold' : 'text-gray-400'}`}>
+            <span className={`block text-xs mt-1 truncate ${index === step ? 'text-primary font-semibold' : 'text-gray-500'}`}>
               {index + 1}. {label}
             </span>
           </li>
@@ -252,7 +255,7 @@ const Pedido: React.FC = () => {
                 {occupation ? 'Trocar o serviço' : 'O que você precisa?'}
               </label>
               <div className="relative">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true" />
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" aria-hidden="true" />
                 <input
                   id="pedido-busca"
                   type="search"
@@ -261,6 +264,8 @@ const Pedido: React.FC = () => {
                   value={query}
                   onChange={e => setQuery(e.target.value)}
                   autoComplete="off"
+                  aria-invalid={stepError ? true : undefined}
+                  aria-describedby={stepError ? 'pedido-erro' : undefined}
                 />
               </div>
             </div>
@@ -308,12 +313,14 @@ const Pedido: React.FC = () => {
                 Bairro onde o serviço será feito ({DEFAULT_CITY})
               </label>
               {online && remote.loading && !remote.data ? (
-                <p role="status" className="text-sm text-gray-400">Carregando bairros…</p>
+                <p role="status" className="text-sm text-gray-500">Carregando bairros…</p>
               ) : (
                 <select
                   id="pedido-bairro"
                   className={inputClass}
                   value={neighborhood ? draft.neighborhood : ''}
+                  aria-invalid={stepError ? true : undefined}
+                  aria-describedby={stepError ? 'pedido-erro' : undefined}
                   onChange={e => {
                     update({ neighborhood: e.target.value });
                     setStepError(null);
@@ -352,7 +359,8 @@ const Pedido: React.FC = () => {
                 placeholder="Ex.: limpeza de apartamento de 2 quartos, com janelas."
                 value={draft.description}
                 onChange={e => update({ description: e.target.value })}
-                aria-describedby="pedido-descricao-ajuda"
+                aria-invalid={stepError ? true : undefined}
+                aria-describedby={stepError ? 'pedido-descricao-ajuda pedido-erro' : 'pedido-descricao-ajuda'}
               />
               <p id="pedido-descricao-ajuda" className="text-xs text-gray-500 mt-1">
                 {descriptionLength}/{DESCRIPTION_MAX} caracteres, mínimo {DESCRIPTION_MIN}. Não coloque telefone, endereço completo
@@ -361,7 +369,7 @@ const Pedido: React.FC = () => {
             </div>
             <div>
               <label htmlFor="pedido-quando" className="block text-sm font-medium text-gray-700 mb-1">
-                Quando? <span className="font-normal text-gray-400">(opcional)</span>
+                Quando? <span className="font-normal text-gray-500">(opcional)</span>
               </label>
               <input
                 id="pedido-quando"
@@ -411,7 +419,7 @@ const Pedido: React.FC = () => {
               <>
                 <div>
                   <label htmlFor="pedido-nome" className="block text-sm font-medium text-gray-700 mb-1">
-                    Como podemos te chamar? <span className="font-normal text-gray-400">(opcional)</span>
+                    Como podemos te chamar? <span className="font-normal text-gray-500">(opcional)</span>
                   </label>
                   <input
                     id="pedido-nome"
@@ -436,7 +444,7 @@ const Pedido: React.FC = () => {
               </>
             )}
 
-            {online && auth.loading && <p role="status" className="text-sm text-gray-400">Carregando sua conta…</p>}
+            {online && auth.loading && <p role="status" className="text-sm text-gray-500">Carregando sua conta…</p>}
 
             {online && !auth.loading && !auth.isAuthenticated && (
               <>
@@ -467,7 +475,7 @@ const Pedido: React.FC = () => {
                   </div>
                   <div>
                     <label htmlFor="pedido-telefone" className="block text-sm font-medium text-gray-700 mb-1">
-                      Celular com DDD <span className="font-normal text-gray-400">(opcional)</span>
+                      Celular com DDD <span className="font-normal text-gray-500">(opcional)</span>
                     </label>
                     <input
                       id="pedido-telefone"

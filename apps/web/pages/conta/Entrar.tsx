@@ -194,7 +194,8 @@ const Entrar: React.FC = () => {
                 value={contact}
                 onChange={e => setContact(e.target.value)}
                 required
-                aria-describedby={channel === 'phone' ? 'entrar-sms-nota' : undefined}
+                aria-invalid={error ? true : undefined}
+                aria-describedby={[channel === 'phone' ? 'entrar-sms-nota' : '', error ? 'entrar-erro' : ''].filter(Boolean).join(' ') || undefined}
               />
               {channel === 'phone' && (
                 <p id="entrar-sms-nota" className="text-xs text-gray-500 mt-1">
@@ -225,7 +226,7 @@ const Entrar: React.FC = () => {
               </span>
             </label>
 
-            <ErrorAlert error={error} />
+            <ErrorAlert id="entrar-erro" error={error} />
 
             <button type="submit" className={primaryButton} disabled={busy || !acceptedTerms || contact.trim() === ''}>
               {busy ? 'Enviando…' : 'Enviar código'}
@@ -251,10 +252,13 @@ const Entrar: React.FC = () => {
                 value={code}
                 onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 required
+                autoFocus
+                aria-invalid={error ? true : undefined}
+                aria-describedby={error ? 'entrar-codigo-erro' : undefined}
               />
             </div>
 
-            <ErrorAlert error={error} />
+            <ErrorAlert id="entrar-codigo-erro" error={error} />
             {resent && !error && (
               <p role="status" className="text-sm text-green-700">
                 Enviamos um novo código.
