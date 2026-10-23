@@ -1026,7 +1026,7 @@ isOneToOne: false
           Views: {
             "admin_metrics": {
                   Row: {
-                    "entity": string | null,"status": string | null,"this_month": number | null,"this_week": number | null,"total": number | null
+                    "amount_cents": number | null,"entity": string | null,"last_30_days": number | null,"last_7_days": number | null,"month_amount_cents": number | null,"status": string | null,"this_month": number | null,"this_week": number | null,"total": number | null
                   }
                   ComputedFields: never
                   Relationships: [
