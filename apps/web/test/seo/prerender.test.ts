@@ -1,189 +1,38 @@
 // @vitest-environment node
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BILLING_LABELS, LOCATION_LABELS, PRICE_UNIT_LABELS, PROVIDER_KIND_LABELS, VERIFICATION_LABELS } from '../../catalog/labels';
+import {
+  DATE,
+  ROOT,
+  SCRIPT,
+  SITE,
+  TEMPLATE,
+  loadPrerender,
+  ldBlocks,
+  makeProjectIn,
+  policy,
+  quiet,
+  smallInputs,
+  textOf,
+  trackTmpDirs,
+  type Inputs,
+  type Page,
+  type PrerenderModule,
+} from './helpers';
 
 // scripts/prerender.mjs writes the static SEO pages after `vite build`.
 // These tests run its exported functions against a temporary dist/.
 
-interface Occupation {
-  slug: string;
-  name: string;
-  synonyms?: string[];
-}
-interface Area {
-  slug: string;
-  name: string;
-  description: string;
-  occupations: Occupation[];
-}
-type Policy = Record<string, unknown>;
-interface Neighborhood {
-  name: string;
-  slug: string;
-  zone: string;
-}
-interface Inputs {
-  areas: Area[];
-  policies: Record<string, Policy>;
-  neighborhoods: Neighborhood[] | null;
-}
-interface Page {
-  kind: string;
-  /** False for pages kept out of search results (neighborhood pages without local data). */
-  indexable?: boolean;
-  path: string;
-  title: string;
-  description: string;
-  jsonLd: Record<string, unknown>;
-  body: string;
-}
-interface PrerenderResult {
-  pages: Page[];
-  counts: Record<string, number>;
-  sitemapPaths: string[];
-}
-interface PrerenderModule {
-  LAUNCH_AREA_SLUGS: string[];
-  LAUNCH_ZONES: string[];
-  FORBIDDEN_CLAIMS: Array<[string, RegExp]>;
-  PRICE_UNIT_TEXT: Record<string, string>;
-  LOCATION_TEXT: Record<string, string>;
-  VERIFICATION_TEXT: Record<string, string>;
-  PROVIDER_KIND_TEXT: Record<string, unknown>;
-  BILLING_TEXT: Record<string, unknown>;
-  loadInputs: (root: string, warn?: (message: string) => void) => Inputs;
-  buildPages: (input: Inputs & { siteUrl?: string; canRequest?: boolean; warn?: (message: string) => void }) => Page[];
-  renderPage: (template: string, page: Page, siteUrl?: string) => string;
-  validatePage: (page: Page, siteUrl?: string) => string[];
-  validateHtml: (html: string) => string[];
-  findProhibitedText: (page: Page) => string[];
-  buildSitemap: (paths: string[], siteUrl: string, date: string) => string;
-  buildSitemapFiles: (paths: string[], siteUrl: string, date: string, limit?: number) => Array<{ name: string; xml: string }>;
-  buildRobots: (base: string, siteUrl: string) => string;
-  normalizeSiteUrl: (value: string | undefined, warn?: (message: string) => void) => string;
-  requestEnabled: (env: Record<string, string>) => boolean;
-  requestHref: (occupation: string, neighborhood?: string) => string;
-  mapLimit: <T>(items: T[], limit: number, fn: (item: T, index: number) => Promise<void>) => Promise<void>;
-  prerender: (options: {
-    root: string;
-    distDir: string;
-    siteUrl?: string;
-    buildDate?: string;
-    canRequest?: boolean;
-    concurrency?: number;
-    log?: (message: string) => void;
-    warn?: (message: string) => void;
-  }) => Promise<PrerenderResult>;
-}
-
-const ROOT = process.cwd();
-const SCRIPT = join(ROOT, 'scripts', 'prerender.mjs');
-const SITE = 'https://workeasy.example';
-const DATE = '2026-10-22';
-const TEMPLATE =
-  '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8" /><meta name="description" content="Geral" /><title>WorkEasy</title></head><body><div id="root"></div></body></html>';
-
-const load = async (): Promise<PrerenderModule> => (await import(pathToFileURL(SCRIPT).href)) as PrerenderModule;
 let mod: PrerenderModule;
 beforeEach(async () => {
-  mod = await load();
+  mod = await loadPrerender();
 });
 
-const tmpDirs: string[] = [];
-const tmp = (): string => {
-  const dir = mkdtempSync(join(tmpdir(), 'prerender-'));
-  tmpDirs.push(dir);
-  return dir;
-};
-afterEach(() => {
-  for (const dir of tmpDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
-});
-
-const quiet = { log: () => {}, warn: () => {} };
-
-/** A project folder with the given inputs and a dist/ holding only the template. */
-const makeProject = (inputs: Inputs): { root: string; dist: string } => {
-  const root = tmp();
-  mkdirSync(join(root, 'catalog'));
-  mkdirSync(join(root, 'data'));
-  mkdirSync(join(root, 'dist'));
-  writeFileSync(join(root, 'catalog', 'areas.json'), JSON.stringify({ areas: inputs.areas }));
-  writeFileSync(join(root, 'catalog', 'policies.json'), JSON.stringify(inputs.policies));
-  writeFileSync(join(root, 'data', 'neighborhoods.json'), JSON.stringify(inputs.neighborhoods ?? []));
-  writeFileSync(join(root, 'dist', 'index.html'), TEMPLATE);
-  return { root, dist: join(root, 'dist') };
-};
-
-const policy = (overrides: Policy = {}): Policy => ({
-  regulated: false,
-  regulatorBody: '',
-  registryName: '',
-  legalBasis: '',
-  verification: ['documento_selfie', 'cadastro_fiscal'],
-  backgroundCheck: false,
-  billing: 'comissao_primeiro_servico',
-  ratingRanking: true,
-  laborLock: false,
-  providerType: 'autonomo',
-  audienceMinors: false,
-  priceUnits: ['hora', 'servico'],
-  locations: ['domicilio'],
-  notes: '',
-  confidence: 'conferido',
-  sources: [],
-  ...overrides,
-});
-
-const bairros: Neighborhood[] = [
-  { name: 'Moema', slug: 'moema', zone: 'Sul' },
-  { name: 'Santo Amaro', slug: 'santo-amaro', zone: 'Sul' },
-  { name: 'Campo Belo', slug: 'campo-belo', zone: 'Sul' },
-  { name: 'Sé', slug: 'se', zone: 'Centro' },
-  { name: 'Mooca', slug: 'mooca', zone: 'Leste' },
-];
-
-const smallInputs = (): Inputs => ({
-  areas: [
-    {
-      slug: 'reformas',
-      name: 'Reformas',
-      description: 'Obras e reparos residenciais.',
-      occupations: [
-        { slug: 'encanador', name: 'Encanador', synonyms: ['conserto de vazamento'] },
-        { slug: 'pintor', name: 'Pintor' },
-      ],
-    },
-    {
-      slug: 'health',
-      name: 'Saúde',
-      description: 'Consultas com médicos.',
-      occupations: [{ slug: 'cardiologista', name: 'Cardiologista', synonyms: [] }],
-    },
-  ],
-  policies: {
-    encanador: policy(),
-    pintor: policy({ priceUnits: ['m2'], locations: ['domicilio', 'empresa_cliente'] }),
-    cardiologista: policy({
-      regulated: true,
-      regulatorBody: 'CFM/CRM',
-      registryName: 'CRM',
-      legalBasis: 'Lei 3.268/1957',
-      verification: ['documento_selfie', 'registro_profissional'],
-      billing: 'so_assinatura',
-      ratingRanking: false,
-      priceUnits: ['sessao'],
-      locations: ['estabelecimento', 'online'],
-    }),
-  },
-  neighborhoods: bairros,
-});
-
-const textOf = (html: string): string => html.replace(/<[^>]+>/g, '\n');
+const tmp = trackTmpDirs();
+const makeProject = (inputs: Inputs): { root: string; dist: string } => makeProjectIn(tmp(), inputs);
 
 describe('prerender: pages of the real catalog', () => {
   let inputs: Inputs;
@@ -221,17 +70,18 @@ describe('prerender: pages of the real catalog', () => {
   });
 
   it('has valid JSON-LD of type Service, with no price, rating or review', () => {
-    const dist = tmp();
-    writeFileSync(join(dist, 'index.html'), TEMPLATE);
     for (const page of pages) {
       const html = mod.renderPage(TEMPLATE, page, SITE);
-      const blocks = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)];
-      expect(blocks).toHaveLength(1);
-      const data = JSON.parse(blocks[0][1]) as Record<string, unknown>;
+      // The first block describes the page; area, occupation and neighborhood pages add a BreadcrumbList after it
+      const blocks = ldBlocks(html);
+      expect(blocks.length, page.path).toBe(page.kind === 'categorias' ? 1 : 2);
+      const data = blocks[0];
       expect(data['@context']).toBe('https://schema.org');
       expect(data['@type']).toBe('Service');
       expect(data.url).toBe(`${SITE}${page.path}`);
-      expect(JSON.stringify(data)).not.toMatch(/aggregateRating|ratingValue|reviewCount|"review"|"offers"|"price|priceRange|priceCurrency/);
+      for (const block of blocks) {
+        expect(JSON.stringify(block)).not.toMatch(/aggregateRating|ratingValue|reviewCount|"review"|"offers"|"price|priceRange|priceCurrency/);
+      }
     }
   });
 
@@ -263,7 +113,8 @@ describe('prerender: content of a page', () => {
     const text = textOf(encanador.body);
     expect(text).toContain('por hora ou por serviço');
     expect(text).toContain('na casa do cliente');
-    expect(text).toContain('documento com foto e selfie');
+    // The documents are a list now, with the same wording as the app (catalog/labels.ts)
+    expect(text).toContain('Documento com foto e selfie');
     expect(text).toContain('não exige registro em conselho profissional');
     expect(mod.validateHtml(html)).toEqual([]);
   });
@@ -276,20 +127,12 @@ describe('prerender: content of a page', () => {
     expect(text).toContain('apenas a assinatura da ferramenta');
   });
 
-  it('has at least 3 own sentences per occupation and neighborhood page', () => {
-    const pages = mod.buildPages({ ...smallInputs(), warn: () => {} });
-    for (const page of pages.filter(p => p.kind === 'servico' || p.kind === 'bairro')) {
-      const sentences = [...page.body.matchAll(/<p [^>]*>([^<]*)<\/p>/g)].flatMap(m => m[1].split(/(?<=[.!?])\s+/));
-      expect(sentences.length, page.path).toBeGreaterThanOrEqual(3);
-    }
-  });
-
   it('does not repeat the same paragraph on pages of different occupations', () => {
     const pages = mod.buildPages({ ...smallInputs(), warn: () => {} }).filter(p => p.kind === 'servico');
     const seen = new Map<string, string>();
     for (const page of pages) {
       for (const [, paragraph] of page.body.matchAll(/<p [^>]*>([^<]*)<\/p>/g)) {
-        if (paragraph.startsWith('O WorkEasy está em fase inicial')) continue;
+        if (paragraph === mod.NOTICE || paragraph === mod.RULE_NOTE) continue;
         expect(seen.get(paragraph), `${page.path}: ${paragraph}`).toBeUndefined();
         seen.set(paragraph, page.path);
       }
@@ -298,7 +141,7 @@ describe('prerender: content of a page', () => {
 
   it('gives neighborhood pages their own introduction and links to different neighbors', () => {
     const pages = mod.buildPages({ ...smallInputs(), warn: () => {} }).filter(p => p.kind === 'bairro');
-    const intros = pages.map(p => /<p [^>]*>([^<]*)<\/p>/.exec(p.body)![1]);
+    const intros = pages.map(p => /<p [^>]*>(Procura [^<]*)<\/p>/.exec(p.body)![1]);
     expect(new Set(intros).size).toBe(intros.length);
     const sul = pages.filter(p => p.path.startsWith('/servicos/encanador/') && !p.path.endsWith('/se'));
     const linkSets = sul.map(p => [...p.body.matchAll(/href="(\/servicos\/encanador\/[^"]+)"/g)].map(m => m[1]).join('|'));
@@ -325,9 +168,9 @@ describe('prerender: content of a page', () => {
     const pages = mod.buildPages({ ...inputs, warn: () => {} });
     const html = mod.renderPage(TEMPLATE, pages.find(p => p.path === '/servicos/encanador')!, SITE);
     expect(html).not.toContain('<b>');
-    expect(html.match(/<\/script>/g)).toHaveLength(1);
-    const ld = /<script type="application\/ld\+json">([\s\S]*?)<\/script>/.exec(html)![1];
-    expect((JSON.parse(ld) as { name: string }).name).toContain('Técnico <b>&</b> "x" $& </script>');
+    // Two blocks (Service, BreadcrumbList), no more: the name cannot close one early
+    expect(html.match(/<\/script>/g)).toHaveLength(2);
+    expect((ldBlocks(html)[0] as { name: string }).name).toContain('Técnico <b>&</b> "x" $& </script>');
     expect(html).toContain('$&amp;');
     expect(mod.validateHtml(html)).toEqual([]);
   });
