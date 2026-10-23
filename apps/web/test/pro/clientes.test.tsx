@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { blobHead, blobText, captureDownloads } from './download';
 import { baseTables, isEq, ok, providerRow, signInProvider, type ProFake, type TableCall } from './fake';
 
 vi.mock('../../lib/supabase', async () => {
@@ -152,5 +153,35 @@ describe('/pro/clientes (CRM)', () => {
     await user.click(within(none).getByRole('button', { name: 'Excluir' }));
     expect(within(none).getByText('Excluir Paulo Reis?')).toBeInTheDocument();
     expect(fake.tableCalls.find(call => call.table === 'bookings')?.filters).toEqual([['eq', 'provider_id', 'prov-1']]);
+  });
+});
+
+describe('/pro/clientes: CSV export', () => {
+  it('exports the contacts for Excel, without the private notes', async () => {
+    const downloads = captureDownloads();
+    const user = userEvent.setup();
+    clients = [
+      client({ created_at: '2026-10-01T12:00:00Z' }),
+      client({ id: 'cli-2', name: 'Zuleica =1+1', phone: null, email: null, origin: 'platform', created_at: '2026-10-02T12:00:00Z', notes: 'segredo' }),
+    ];
+    renderPro('/pro/clientes');
+    await user.click(await screen.findByRole('button', { name: 'Exportar CSV' }));
+
+    expect(downloads).toHaveLength(1);
+    expect(downloads[0].filename).toMatch(/^clientes-workeasy-\d{4}-\d{2}-\d{2}\.csv$/);
+    expect(await blobHead(downloads[0].blob)).toEqual([0xef, 0xbb, 0xbf]);
+    const text = await blobText(downloads[0].blob);
+    expect(text).toBe(
+      'Nome;Celular;E-mail;Origem;Cadastrado em\r\n' +
+        'Carlos Dias;(11) 98765-4321;carlos@example.com;Cliente próprio;01/10/2026\r\n' +
+        'Zuleica =1+1;;;Veio pelo WorkEasy;02/10/2026\r\n',
+    );
+    expect(text).not.toMatch(/Prefere|segredo/);
+  });
+
+  it('has nothing to export without clients', async () => {
+    renderPro('/pro/clientes');
+    expect(await screen.findByText(/Você ainda não tem clientes cadastrados/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Exportar CSV' })).not.toBeInTheDocument();
   });
 });

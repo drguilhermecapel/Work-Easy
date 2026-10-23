@@ -1,9 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Pencil, Plus } from 'lucide-react';
+import { Download, Pencil, Plus } from 'lucide-react';
 import { formatPhoneBR } from '../../lib/phone';
+import { todayInSaoPaulo } from '../../lib/timezone';
 import { useAsync } from '../../lib/useAsync';
 import { countBookingsByClient, deleteClient, listClients, saveClient, type ClientRow } from '../../services/proClients';
+import { clientsCsv, csvFileName, downloadCsv } from '../../services/proExport';
 import ErrorAlert from '../../components/ErrorAlert';
 import PageStatus from '../../components/PageStatus';
 import ProPage from '../../components/pro/ProPage';
@@ -140,6 +142,15 @@ const Clients: React.FC = () => {
           <button type="button" className={primaryButton} onClick={() => setEditing(EMPTY)}>
             <Plus size={16} aria-hidden="true" /> Novo cliente
           </button>
+          {(clients.data?.list.length ?? 0) > 0 && (
+            <button
+              type="button"
+              className={secondaryButton}
+              onClick={() => downloadCsv(csvFileName('clientes', todayInSaoPaulo()), clientsCsv(clients.data?.list ?? []))}
+            >
+              <Download size={16} aria-hidden="true" /> Exportar CSV
+            </button>
+          )}
           {(clients.data?.list.length ?? 0) > 0 && (
             <Field id="cli-busca" label="Buscar cliente" className="flex-1 min-w-48">
               <input id="cli-busca" type="search" className={inputClass} value={filter} onChange={e => setFilter(e.target.value)} />
