@@ -103,9 +103,16 @@ describe('Markdown blocks', () => {
     expect(html('#### D ####\n\n#hashtag')).toBe('<h4>D</h4><p>#hashtag</p>');
   });
 
-  it('can leave out a leading title', () => {
+  it('can leave out a leading title, whose level the page heading takes over', () => {
     expect(html('# Título\n\n## Seção\n\ntexto', { skipFirstH1: true })).toBe('<h2>Seção</h2><p>texto</p>');
+    expect(html('# Título\n\n## Seção\n\n### Parte', { skipFirstH1: true, headingOffset: 1 })).toBe('<h2>Seção</h2><h3>Parte</h3>');
+    // without a leading title the offset applies in full
     expect(html('Texto\n\n# Depois', { skipFirstH1: true })).toBe('<p>Texto</p><h1>Depois</h1>');
+    expect(html('Texto\n\n# Depois\n\n## Parte', { skipFirstH1: true, headingOffset: 1 })).toBe('<p>Texto</p><h2>Depois</h2><h3>Parte</h3>');
+  });
+
+  it('never draws a heading above the minimum level', () => {
+    expect(html('# Título\n\n# Outro\n\n## Seção', { skipFirstH1: true, headingOffset: 1, minHeading: 2 })).toBe('<h2>Outro</h2><h2>Seção</h2>');
   });
 
   it('renders underlined headings', () => {

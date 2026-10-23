@@ -25,8 +25,14 @@ export interface MarkdownProps {
   source: string;
   /** Heading levels move down by this much (1: "#" becomes h2); the result stops at h6. */
   headingOffset?: number;
-  /** Leaves out the first block when it is a "#" heading (the page already shows the title). */
+  /**
+   * Leaves out the first block when it is a "#" heading, because the page already shows the
+   * title. The page's own heading takes the level of the one left out, so the shift above is
+   * one less in that case ("##" stays h2 with an offset of 1).
+   */
   skipFirstH1?: boolean;
+  /** No heading is drawn above this level (2: an extra "#" in the text becomes h2, not a second h1). */
+  minHeading?: number;
   /** Tailwind classes per element. */
   classNames?: MarkdownClassNames;
   /** Draws links; the default is a plain anchor. Pass the router's Link for in-app targets. */
@@ -36,6 +42,7 @@ export interface MarkdownProps {
 interface Context {
   classes: MarkdownClassNames;
   headingOffset: number;
+  minHeading: number;
   renderLink?: MarkdownProps['renderLink'];
 }
 
@@ -73,7 +80,7 @@ const renderBlocks = (blocks: Block[], ctx: Context, tight = false): ReactNode[]
   blocks.map((block, index) => {
     switch (block.type) {
       case 'heading': {
-        const Tag = `h${Math.min(6, block.level + ctx.headingOffset)}` as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
+        const Tag = `h${Math.min(6, Math.max(ctx.minHeading, block.level + ctx.headingOffset))}` as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
         return <Tag key={index} className={ctx.classes[Tag]}>{renderInline(block.children, ctx)}</Tag>;
       }
       case 'paragraph':
@@ -127,13 +134,14 @@ const renderBlocks = (blocks: Block[], ctx: Context, tight = false): ReactNode[]
   });
 
 /** Markdown text as React elements. Safe for any source: see lib/markdownParser.ts. */
-const Markdown: React.FC<MarkdownProps> = ({ source, headingOffset = 0, skipFirstH1 = false, classNames = {}, renderLink }) => {
-  const blocks = useMemo(() => {
+const Markdown: React.FC<MarkdownProps> = ({ source, headingOffset = 0, skipFirstH1 = false, minHeading = 1, classNames = {}, renderLink }) => {
+  const { blocks, offset } = useMemo(() => {
     const parsed = parseMarkdown(source);
     const first = parsed[0];
-    return skipFirstH1 && first?.type === 'heading' && first.level === 1 ? parsed.slice(1) : parsed;
-  }, [source, skipFirstH1]);
-  return <>{renderBlocks(blocks, { classes: classNames, headingOffset, renderLink })}</>;
+    const skip = skipFirstH1 && first?.type === 'heading' && first.level === 1;
+    return skip ? { blocks: parsed.slice(1), offset: Math.max(0, headingOffset - 1) } : { blocks: parsed, offset: headingOffset };
+  }, [source, skipFirstH1, headingOffset]);
+  return <>{renderBlocks(blocks, { classes: classNames, headingOffset: offset, minHeading, renderLink })}</>;
 };
 
 export default Markdown;
