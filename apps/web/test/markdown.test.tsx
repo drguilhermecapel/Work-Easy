@@ -160,6 +160,18 @@ describe('Markdown blocks', () => {
     expect(html('1. Primeiro\n  - sub\n2. Segundo')).toBe('<ol><li>Primeiro<ul><li>sub</li></ul></li><li>Segundo</li></ol>');
   });
 
+  it('lets a list start right after a paragraph or a heading, and takes + as a bullet', () => {
+    expect(html('Lista:\n- a\n- b')).toBe('<p>Lista:</p><ul><li>a</li><li>b</li></ul>');
+    expect(html('## Itens\n+ a\n+ b')).toBe('<h2>Itens</h2><ul><li>a</li><li>b</li></ul>');
+    expect(html('Texto\n2. não interrompe')).toBe('<p>Texto 2. não interrompe</p>');
+  });
+
+  it('does not take clause numbers such as 1.1 for lists', () => {
+    expect(html('1.1. Cláusula')).toBe('<p>1.1. Cláusula</p>');
+    expect(html('-texto sem espaço')).toBe('<p>-texto sem espaço</p>');
+    expect(html('1) um\n2) dois')).toBe('<ol><li>um</li><li>dois</li></ol>');
+  });
+
   it('keeps an item with several paragraphs together', () => {
     expect(html('1. a\n\n   mais um parágrafo\n\n2. b')).toBe('<ol><li><p>a</p><p>mais um parágrafo</p></li><li><p>b</p></li></ol>');
   });
@@ -180,6 +192,12 @@ describe('Markdown blocks', () => {
     expect(cells[0].querySelector('strong')).not.toBeNull();
     expect(cells[1].style.textAlign).toBe('right');
     expect(container.querySelector('div + p')?.textContent).toBe('depois');
+  });
+
+  it('renders a table written without outer pipes and one next to a paragraph', () => {
+    const container = rendered('Antes da tabela\nA | B\n--|--\n1 | 2');
+    expect(container.querySelector('p')?.textContent).toBe('Antes da tabela');
+    expect(Array.from(container.querySelectorAll('td')).map(td => td.textContent)).toEqual(['1', '2']);
   });
 
   it('pads and trims table rows to the header', () => {

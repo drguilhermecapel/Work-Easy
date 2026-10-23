@@ -97,6 +97,16 @@ describe('legal text pages', () => {
     expect(container.querySelector('a[href^="javascript"]')).toBeNull();
   });
 
+  it('offers to print on the website but not in the native shells', async () => {
+    const { unmount } = renderAt('/privacidade');
+    expect(await screen.findByRole('button', { name: 'Imprimir' })).toBeInTheDocument();
+    unmount();
+    vi.stubEnv('VITE_ROUTER', 'hash');
+    renderAt('/privacidade');
+    await screen.findByRole('heading', { level: 1, name: 'Política de Privacidade' });
+    expect(screen.queryByRole('button', { name: 'Imprimir' })).toBeNull();
+  });
+
   it('has a way back to the index', async () => {
     renderAt('/privacidade');
     expect(await screen.findByRole('link', { name: /Documentos legais/ })).toHaveAttribute('href', '/legal');

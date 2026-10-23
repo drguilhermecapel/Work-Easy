@@ -83,6 +83,9 @@ const SacChannels: React.FC = () => {
   );
 };
 
+/** The native shells (hash URLs) run in web views where window.print() may do nothing: only the website offers the button. */
+const canPrint = (): boolean => import.meta.env.VITE_ROUTER !== 'hash' && typeof window.print === 'function';
+
 /** One legal text: title and version from config/legal.ts, body from content/legal/<id>.md. */
 const LegalDocPage: React.FC<{ id: LegalDocId }> = ({ id }) => {
   const doc = legalDocById(id);
@@ -101,13 +104,15 @@ const LegalDocPage: React.FC<{ id: LegalDocId }> = ({ id }) => {
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{doc.title}</h1>
           <p className="text-sm text-gray-500 mt-1">Versão {doc.version}</p>
         </div>
-        <button
-          type="button"
-          onClick={() => window.print()}
-          className="print:hidden inline-flex items-center gap-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl px-3 py-2 hover:bg-gray-50"
-        >
-          <Printer size={16} aria-hidden="true" /> Imprimir
-        </button>
+        {canPrint() && (
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="print:hidden inline-flex items-center gap-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl px-3 py-2 hover:bg-gray-50"
+          >
+            <Printer size={16} aria-hidden="true" /> Imprimir
+          </button>
+        )}
       </header>
 
       {!inForce && (
