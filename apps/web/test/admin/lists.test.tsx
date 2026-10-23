@@ -9,8 +9,21 @@ vi.mock('../../lib/supabase', async () => {
 });
 
 const { fake, renderAdmin, resetWorld } = await import('./harness');
-const { approvalCheck, auditProviderId, explainAdminError, periodBounds, groupMetrics, missingSteps, registryLookupUrl, stepStatuses, PAGE_SIZE } =
-  await import('../../services/admin');
+const {
+  approvalCheck,
+  auditProviderId,
+  explainAdminError,
+  hasRegistryNumber,
+  periodBounds,
+  groupMetrics,
+  missingSteps,
+  REGISTRY_NUMBER_MISSING,
+  registryLookupUrl,
+  requiresRegistry,
+  stepStatuses,
+  PAGE_SIZE,
+} = await import('../../services/admin');
+const { toAppError } = await import('../../lib/errors');
 
 // The status filter also has an <option> with each label: count only the badges of the rows
 const statusBadges = (label = 'Recebido') => screen.queryAllByText(label, { selector: 'span' });
@@ -323,6 +336,47 @@ describe('regras de revisão de prestador', () => {
       reason: 'Esta ocupação não tem política no catálogo, então não há como saber quais documentos exigir.',
     });
     expect(approvalCheck({ registry_status: 'not_required', policy: { verification: [] } as never }, [])).toEqual({ ok: true, reason: null });
+  });
+
+  it('asks for the registry number when the policy asks for the registry, as the registry rule of the table does', () => {
+    const policy = { verification: ['documento_selfie', 'registro_profissional'] } as never;
+    const accepted = [
+      { step: 'documento_selfie', status: 'accepted' },
+      { step: 'registro_profissional', status: 'accepted' },
+    ] as never[];
+    expect(approvalCheck({ registry_status: 'informed', registry_number: '123456', policy }, accepted)).toEqual({ ok: true, reason: null });
+    // The policy changed after the provider took the occupation: documents accepted, no number on file
+    for (const registry_number of [null, '', '   ']) {
+      expect(approvalCheck({ registry_status: 'not_required', registry_number, policy }, accepted)).toEqual({ ok: false, reason: REGISTRY_NUMBER_MISSING });
+    }
+    // A number that was not read is not a number that is missing
+    expect(approvalCheck({ registry_status: 'informed', policy }, accepted)).toEqual({ ok: true, reason: null });
+    // A policy that does not ask for the registry asks for no number
+    const noRegistry = { verification: ['documento_selfie'] } as never;
+    expect(approvalCheck({ registry_status: 'not_required', registry_number: null, policy: noRegistry }, accepted.slice(0, 1))).toEqual({ ok: true, reason: null });
+    // A rejected registry and a missing policy are still said first
+    expect(approvalCheck({ registry_status: 'rejected', registry_number: null, policy }, accepted).reason).toMatch(/rejeitado/);
+    expect(approvalCheck({ registry_status: 'not_required', registry_number: null, policy: null }, []).reason).toMatch(/não tem política/);
+    // The number missing comes before the documents missing: it is what the provider has to fix first
+    expect(approvalCheck({ registry_status: 'not_required', registry_number: null, policy }, []).reason).toBe(REGISTRY_NUMBER_MISSING);
+  });
+
+  it('knows when a policy asks for the registry and when a number is on file', () => {
+    expect(requiresRegistry({ verification: ['cnh', 'registro_profissional'] })).toBe(true);
+    expect(requiresRegistry({ verification: ['cnh'] })).toBe(false);
+    expect(requiresRegistry(null)).toBe(false);
+    expect(hasRegistryNumber({ registry_number: '123456' })).toBe(true);
+    expect(hasRegistryNumber({ registry_number: '  ' })).toBe(false);
+    expect(hasRegistryNumber({ registry_number: null })).toBe(false);
+  });
+
+  it('explains registry_required in the words of the administration, where the provider reads another sentence', () => {
+    const error = explainAdminError({ code: 'P0001', message: 'registry_required', details: null });
+    expect(error.code).toBe('registry_required');
+    expect(error.message).toBe(
+      'O banco recusou: a política de uma das ocupações exige o número do registro e o prestador ainda não o informou. Peça que ele informe o número no cadastro e tente de novo.',
+    );
+    expect(toAppError({ code: 'P0001', message: 'registry_required' }).message).toBe('Esta profissão exige o número de registro no conselho para continuar.');
   });
 
   it('explains the refusals of the database for the administration and leaves the other errors alone', () => {

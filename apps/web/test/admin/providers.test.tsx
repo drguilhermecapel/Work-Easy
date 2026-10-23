@@ -27,6 +27,18 @@ describe('fila de prestadores', () => {
     expect(within(link).getByText(/Cardiologista/)).toBeInTheDocument();
   });
 
+  it('counts the occupations to approve in the plural, and says when there is nothing to approve or review', async () => {
+    const world = (await import('./fake')).current.world;
+    world.tables.admin_provider_queue[0].occupations_to_approve = 2;
+    const first = renderAdmin('/admin/prestadores');
+    expect(within(await screen.findByRole('link', { name: /Dr\. Paulo Cardio/ })).getByText(/2 ocupações a aprovar/)).toBeInTheDocument();
+    first.unmount();
+
+    Object.assign(world.tables.admin_provider_queue[0], { occupations_to_approve: 0, registries_to_review: 0, documents_submitted: 0 });
+    renderAdmin('/admin/prestadores');
+    expect(within(await screen.findByRole('link', { name: /Dr\. Paulo Cardio/ })).getByText(/Nada a aprovar nem a revisar/)).toBeInTheDocument();
+  });
+
   it('says the queue is empty', async () => {
     resetWorld();
     const world = (await import('./fake')).current.world;
@@ -483,6 +495,45 @@ describe('detalhe do prestador', () => {
     await user.click(screen.getByRole('button', { name: 'Aceitar documento' }));
     await user.click(screen.getByRole('button', { name: 'Confirmar aceite' }));
     expect(await screen.findByText(/O arquivo deste documento não está no armazenamento/)).toBeInTheDocument();
+  });
+
+  it('keeps "Aprovar ocupação" off when the policy asks for the registry and the provider never gave the number, and shows it on the card', async () => {
+    const world = await acceptAll();
+    // The policy asks for the registry now, but the occupation was taken before: no number, nothing under review
+    Object.assign(world.tables.provider_occupations[0], { registry_number: null, registry_uf: null, registry_status: 'not_required' });
+    await open();
+    const card = screen.getByRole('heading', { name: 'Cardiologista' }).parentElement as HTMLElement;
+    expect(within(card).getByText('Sem número')).toBeInTheDocument();
+    const button = within(card).getByRole('button', { name: 'Aprovar ocupação' });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAccessibleDescription(/O prestador ainda não informou o número do registro que a política exige/);
+    // There is no registry to confirm or reject without a number
+    expect(within(card).queryByRole('button', { name: 'Confirmar registro' })).not.toBeInTheDocument();
+    expect(within(card).queryByRole('button', { name: 'Rejeitar registro' })).not.toBeInTheDocument();
+    await user.click(button);
+    expect(callsOf('admin_set_occupation_approval')).toHaveLength(0);
+  });
+
+  it('shows the explained refusal when the database finds no registry number that the screen did not see', async () => {
+    await acceptAll();
+    fake.rpcs.admin_set_occupation_approval = () => ({ data: null, error: { code: 'P0001', message: 'registry_required', details: null } });
+    await open();
+    await user.click(screen.getByRole('button', { name: 'Aprovar ocupação' }));
+    const form = screen.getByRole('form', { name: 'Aprovar Cardiologista' });
+    await user.type(within(form).getByLabelText('Motivo (obrigatório)'), 'Teste.');
+    await user.click(within(form).getByRole('button', { name: 'Aprovar ocupação' }));
+    expect(await within(form).findByRole('alert')).toHaveTextContent('O banco recusou: a política de uma das ocupações exige o número do registro');
+    expect(screen.queryByText('Ocupação aprovada')).not.toBeInTheDocument();
+  });
+
+  it('shows the same explanation when the first approval of the provider is refused for the registry number', async () => {
+    fake.rpcs.admin_set_provider_status = () => ({ data: null, error: { code: 'P0001', message: 'registry_required', details: null } });
+    await open();
+    await user.click(screen.getByRole('button', { name: 'Aprovar prestador' }));
+    const form = screen.getByRole('form', { name: 'Aprovar este prestador' });
+    await user.type(within(form).getByLabelText('Motivo (obrigatório)'), 'Cadastro conferido.');
+    await user.click(within(form).getByRole('button', { name: 'Confirmar' }));
+    expect(await within(form).findByRole('alert')).toHaveTextContent('exige o número do registro e o prestador ainda não o informou');
   });
 
   it('withdraws the approval of an occupation with a reason', async () => {

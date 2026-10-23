@@ -5,6 +5,7 @@ import {
   approvalCheck,
   missingSteps,
   registryLookupUrl,
+  requiresRegistry,
   setOccupationApproval,
   setRegistryStatus,
   stepStatuses,
@@ -32,7 +33,10 @@ const OccupationCard: React.FC<{ occupation: AdminOccupation; documents: AdminDo
   const steps = stepStatuses(policy, documents);
   const missing = missingSteps(policy, documents);
   const check = approvalCheck(occ, documents);
+  // A registry is on file or under review: it can be confirmed or rejected
   const hasRegistry = occ.registry_status !== 'not_required';
+  // The policy asks for the registry, even if the provider never gave the number (the policy may have changed after the occupation was taken)
+  const showRegistry = hasRegistry || requiresRegistry(policy);
   const registryName = policy?.registry_name || 'registro';
   const sources = (policy?.sources ?? []).filter(url => /^https?:\/\//.test(url));
 
@@ -47,9 +51,9 @@ const OccupationCard: React.FC<{ occupation: AdminOccupation; documents: AdminDo
       </div>
       <h3 className="font-semibold text-gray-900 break-words">{name}</h3>
 
-      {hasRegistry && (
+      {showRegistry && (
         <dl className="text-sm text-gray-700 mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
-          <dt className="text-gray-500">{registryName} informado</dt>
+          <dt className="text-gray-500">{occ.registry_number ? `${registryName} informado` : registryName}</dt>
           <dd className="break-words">
             {occ.registry_number ? `${occ.registry_number}${occ.registry_uf ? `/${occ.registry_uf}` : ''}` : 'Sem número'}
           </dd>
@@ -67,7 +71,7 @@ const OccupationCard: React.FC<{ occupation: AdminOccupation; documents: AdminDo
           )}
         </dl>
       )}
-      {hasRegistry && (
+      {showRegistry && (
         <p className="text-xs text-gray-500 mt-2">
           O número é informado pelo prestador. Ele só passa a &quot;confirmado pelo WorkEasy&quot; depois que uma pessoa da administração consulta o
           conselho.
