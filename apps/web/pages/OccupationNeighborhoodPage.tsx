@@ -95,17 +95,17 @@ const OccupationNeighborhoodPage: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 min-h-screen space-y-6">
       <nav aria-label="Caminho" className="text-sm text-gray-500 flex flex-wrap items-center gap-1">
-        <Link to="/categorias" className="hover:text-primary">Categorias</Link>
+        <Link to="/categorias" className="inline-flex items-center max-sm:min-h-11 hover:text-primary">Categorias</Link>
         <ChevronRight size={14} />
         {area && (
           <>
-            <Link to={`/categorias/${area.slug}`} className="hover:text-primary">{area.name}</Link>
+            <Link to={`/categorias/${area.slug}`} className="inline-flex items-center max-sm:min-h-11 hover:text-primary">{area.name}</Link>
             <ChevronRight size={14} />
           </>
         )}
-        <Link to={base} className="hover:text-primary">{occupation.name}</Link>
+        <Link to={base} className="inline-flex items-center max-sm:min-h-11 hover:text-primary">{occupation.name}</Link>
         <ChevronRight size={14} />
-        <span className="text-gray-700">{neighborhood.name}</span>
+        <span aria-current="page" className="text-gray-700">{neighborhood.name}</span>
       </nav>
 
       <header>
@@ -119,7 +119,7 @@ const OccupationNeighborhoodPage: React.FC = () => {
         <div className="flex flex-wrap gap-3 mt-4">
           {/* Demo without the concierge number: /pedido has nothing to offer, so the search stays the main action */}
           {canRequest && (
-            <Link to={requestTo} className="text-sm font-semibold bg-primary text-white px-4 py-2.5 rounded-xl hover:bg-purple-700">
+            <Link to={requestTo} className="inline-flex items-center min-h-11 text-sm font-semibold bg-primary text-white px-4 py-2.5 rounded-xl hover:bg-purple-700">
               Pedir este serviço
             </Link>
           )}
@@ -127,8 +127,8 @@ const OccupationNeighborhoodPage: React.FC = () => {
             to={base}
             className={
               canRequest
-                ? 'text-sm font-semibold bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl hover:bg-gray-50'
-                : 'text-sm font-semibold bg-primary text-white px-4 py-2.5 rounded-xl hover:bg-purple-700'
+                ? 'inline-flex items-center min-h-11 text-sm font-semibold bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl hover:bg-gray-50'
+                : 'inline-flex items-center min-h-11 text-sm font-semibold bg-primary text-white px-4 py-2.5 rounded-xl hover:bg-purple-700'
             }
           >
             Ver {occupation.name}
@@ -136,7 +136,7 @@ const OccupationNeighborhoodPage: React.FC = () => {
         </div>
       </header>
 
-      <Suspense fallback={<div role="status" className="text-sm text-gray-400">Carregando regras deste serviço…</div>}>
+      <Suspense fallback={<div role="status" className="text-sm text-gray-500">Carregando regras deste serviço…</div>}>
         <Requirements slug={occupation.slug} name={occupation.name} neighborhood={neighborhood.name} />
       </Suspense>
 
@@ -146,7 +146,7 @@ const OccupationNeighborhoodPage: React.FC = () => {
           <ul className="flex flex-wrap gap-2 text-sm">
             {neighbors.map(n => (
               <li key={n.slug}>
-                <Link to={`${base}/${n.slug}`} className="inline-block bg-gray-50 border border-gray-100 rounded-full px-3 py-1 text-primary hover:underline">
+                <Link to={`${base}/${n.slug}`} className="inline-flex items-center max-sm:min-h-11 bg-gray-50 border border-gray-100 rounded-full px-3 py-1 text-primary hover:underline">
                   {n.name}
                 </Link>
               </li>

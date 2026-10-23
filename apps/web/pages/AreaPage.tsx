@@ -25,12 +25,12 @@ const OccupationList: React.FC<{ occupations: Occupation[]; policies?: Record<st
           <span className="min-w-0">
             <span className="block font-medium text-gray-800">{o.name}</span>
             {badgesFor(policies?.[o.slug]).map(badge => (
-              <span key={badge} className="inline-block mt-1 mr-1 text-[11px] bg-amber-50 text-amber-800 border border-amber-100 px-2 py-0.5 rounded-full">
+              <span key={badge} className="inline-block mt-1 mr-1 text-xs bg-amber-50 text-amber-800 border border-amber-100 px-2 py-0.5 rounded-full">
                 {badge}
               </span>
             ))}
           </span>
-          <ChevronRight size={16} className="shrink-0 text-gray-400" />
+          <ChevronRight size={16} className="shrink-0 text-gray-500" />
         </Link>
       </li>
     ))}
@@ -53,9 +53,9 @@ const AreaPage: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 min-h-screen">
       <nav aria-label="Caminho" className="text-sm text-gray-500 mb-4 flex items-center gap-1">
-        <Link to="/categorias" className="hover:text-primary">Categorias</Link>
+        <Link to="/categorias" className="inline-flex items-center max-sm:min-h-11 hover:text-primary">Categorias</Link>
         <ChevronRight size={14} />
-        <span className="text-gray-700">{area.name}</span>
+        <span aria-current="page" className="text-gray-700">{area.name}</span>
       </nav>
 
       <header className="flex items-start gap-4 mb-6">
@@ -72,12 +72,12 @@ const AreaPage: React.FC = () => {
       {(area.slug === 'health' || hasDemoProviders) && (
         <div className="flex flex-wrap gap-3 mb-6">
           {area.slug === 'health' && (
-            <Link to="/health" className="text-sm font-medium bg-teal-50 text-teal-700 px-4 py-2 rounded-full hover:bg-teal-100">
+            <Link to="/health" className="inline-flex items-center min-h-11 text-sm font-medium bg-teal-50 text-teal-700 px-4 py-2 rounded-full hover:bg-teal-100">
               Buscar profissionais de saúde
             </Link>
           )}
           {hasDemoProviders && (
-            <Link to={`/search?category=${encodeURIComponent(area.slug)}`} className="text-sm font-medium bg-primary/10 text-primary px-4 py-2 rounded-full hover:bg-primary/20">
+            <Link to={`/search?category=${encodeURIComponent(area.slug)}`} className="inline-flex items-center min-h-11 text-sm font-medium bg-primary/10 text-primary px-4 py-2 rounded-full hover:bg-primary/20">
               Ver profissionais de demonstração
             </Link>
           )}

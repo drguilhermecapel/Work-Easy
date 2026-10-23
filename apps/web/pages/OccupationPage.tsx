@@ -83,7 +83,7 @@ const PolicyDetails: React.FC<{ slug: string }> = ({ slug }) => {
             <ul className="mt-2 space-y-1 break-all">
               {policy.sources.map(url => (
                 <li key={url}>
-                  <a href={url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{url}</a>
+                  <a href={url} target="_blank" rel="noopener noreferrer" className="inline-block py-1.5 max-sm:py-3.75 text-primary hover:underline">{url}</a>
                 </li>
               ))}
             </ul>
@@ -107,11 +107,11 @@ const OccupationPage: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 min-h-screen space-y-6">
       <nav aria-label="Caminho" className="text-sm text-gray-500 flex flex-wrap items-center gap-1">
-        <Link to="/categorias" className="hover:text-primary">Categorias</Link>
+        <Link to="/categorias" className="inline-flex items-center max-sm:min-h-11 hover:text-primary">Categorias</Link>
         <ChevronRight size={14} />
-        {area && <Link to={`/categorias/${area.slug}`} className="hover:text-primary">{area.name}</Link>}
+        {area && <Link to={`/categorias/${area.slug}`} className="inline-flex items-center max-sm:min-h-11 hover:text-primary">{area.name}</Link>}
         <ChevronRight size={14} />
-        <span className="text-gray-700">{occupation.name}</span>
+        <span aria-current="page" className="text-gray-700">{occupation.name}</span>
       </nav>
 
       <header>
@@ -124,7 +124,7 @@ const OccupationPage: React.FC = () => {
           {canRequest && (
             <Link
               to={`/pedido?servico=${encodeURIComponent(occupation.slug)}`}
-              className="text-sm font-semibold bg-primary text-white px-4 py-2.5 rounded-xl hover:bg-purple-700"
+              className="inline-flex items-center min-h-11 text-sm font-semibold bg-primary text-white px-4 py-2.5 rounded-xl hover:bg-purple-700"
             >
               Pedir este serviço
             </Link>
@@ -133,22 +133,22 @@ const OccupationPage: React.FC = () => {
             to={`/search?q=${encodeURIComponent(occupation.name)}`}
             className={
               canRequest
-                ? 'text-sm font-semibold bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl hover:bg-gray-50'
-                : 'text-sm font-semibold bg-primary text-white px-4 py-2.5 rounded-xl hover:bg-purple-700'
+                ? 'inline-flex items-center min-h-11 text-sm font-semibold bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl hover:bg-gray-50'
+                : 'inline-flex items-center min-h-11 text-sm font-semibold bg-primary text-white px-4 py-2.5 rounded-xl hover:bg-purple-700'
             }
           >
             Procurar profissionais
           </Link>
           <Link
             to={`/register-provider?ocupacao=${encodeURIComponent(occupation.slug)}`}
-            className="text-sm font-semibold bg-white border border-primary text-primary px-4 py-2.5 rounded-xl hover:bg-primary/5"
+            className="inline-flex items-center min-h-11 text-sm font-semibold bg-white border border-primary text-primary px-4 py-2.5 rounded-xl hover:bg-primary/5"
           >
             Ofereço este serviço
           </Link>
         </div>
       </header>
 
-      <Suspense fallback={<div role="status" className="text-sm text-gray-400">Carregando regras deste serviço…</div>}>
+      <Suspense fallback={<div role="status" className="text-sm text-gray-500">Carregando regras deste serviço…</div>}>
         <PolicyDetails slug={occupation.slug} />
       </Suspense>
 

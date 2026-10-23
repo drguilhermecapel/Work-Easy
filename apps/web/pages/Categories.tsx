@@ -19,16 +19,21 @@ const Categories: React.FC = () => {
       </p>
 
       <div className="relative max-w-xl mb-8">
-        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
         <input
           type="search"
           value={filter}
           onChange={e => setFilter(e.target.value)}
           placeholder="Procure um serviço ou profissão"
           aria-label="Procure um serviço ou profissão"
-          className="w-full min-w-0 pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-xl outline-hidden focus:border-primary"
+          className="w-full min-w-0 pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-xl outline-hidden focus:ring-2 focus:ring-primary/40 focus:border-primary"
         />
       </div>
+
+      {/* Tells a screen reader how many services the filter found while the person types */}
+      <p role="status" className="sr-only">
+        {filtering ? (matches.length === 0 ? 'Nenhum serviço encontrado.' : `${matches.length} ${matches.length === 1 ? 'serviço encontrado' : 'serviços encontrados'}.`) : ''}
+      </p>
 
       {filtering ? (
         <section aria-label="Resultados">
@@ -46,7 +51,7 @@ const Categories: React.FC = () => {
                       <span className="block font-medium text-gray-800 truncate">{o.name}</span>
                       <span className="block text-xs text-gray-500 truncate">{findArea(o.areaSlug)?.name}</span>
                     </span>
-                    <ChevronRight size={16} className="shrink-0 text-gray-400" />
+                    <ChevronRight size={16} className="shrink-0 text-gray-500" />
                   </Link>
                 </li>
               ))}
@@ -70,14 +75,14 @@ const Categories: React.FC = () => {
               <ul className="flex flex-wrap gap-2 mt-3">
                 {area.occupations.slice(0, PREVIEW).map(o => (
                   <li key={o.slug}>
-                    <Link to={`/servicos/${o.slug}`} className="inline-block text-xs bg-gray-100 text-gray-700 px-2.5 py-1 rounded-full hover:bg-primary/10 hover:text-primary">
+                    <Link to={`/servicos/${o.slug}`} className="inline-flex items-center max-sm:min-h-11 text-xs bg-gray-100 text-gray-700 px-2.5 py-1 rounded-full hover:bg-primary/10 hover:text-primary">
                       {o.name}
                     </Link>
                   </li>
                 ))}
               </ul>
               {area.occupations.length > PREVIEW && (
-                <Link to={`/categorias/${area.slug}`} className="inline-flex items-center gap-1 text-sm font-medium text-primary mt-3">
+                <Link to={`/categorias/${area.slug}`} className="inline-flex items-center gap-1 max-sm:min-h-11 text-sm font-medium text-primary mt-3">
                   Ver todos os {area.occupations.length} <ChevronRight size={14} />
                 </Link>
               )}
