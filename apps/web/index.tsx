@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import PwaUpdateNotice from './components/PwaUpdateNotice';
 import { initNativeShell } from './platform/native';
 import './index.css';
 
@@ -15,5 +16,6 @@ const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <App />
+    <PwaUpdateNotice />
   </React.StrictMode>
 );
