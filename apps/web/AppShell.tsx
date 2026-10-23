@@ -9,6 +9,8 @@ import { publicoRoutes } from './pages/publico/routes';
 import { adminRoutes } from './pages/admin/routes';
 import { cuidadoRoutes } from './pages/cuidado/routes';
 import { plantoesRoutes } from './pages/pro/plantoes/routes';
+import AccessibilityLayer, { MAIN_ID } from './components/AccessibilityLayer';
+import RoutePrefetcher from './components/RoutePrefetcher';
 
 // Each page is a separate chunk, so the first load only ships what it shows
 const Home = lazy(() => import('./pages/Home'));
@@ -34,9 +36,11 @@ const PageFallback: React.FC = () => (
 /** Layout and routes, independent of the router flavour (browser, hash or memory). */
 const AppShell: React.FC = () => (
   <div className="min-h-screen bg-gray-50 font-sans">
+    <AccessibilityLayer />
+    <RoutePrefetcher />
     <DemoBanner />
     <Navbar />
-    <main>
+    <main id={MAIN_ID} tabIndex={-1} className="outline-hidden">
       <Suspense fallback={<PageFallback />}>
         <Routes>
           <Route path="/" element={<Home />} />
