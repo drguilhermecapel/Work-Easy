@@ -62,6 +62,26 @@ describe('web helpers', () => {
     expect(settings.commissionBps).toBe(DEFAULT_SETTINGS.commissionBps);
   });
 
+  it('reads the commission ceiling, the free proposals and the Pro trial, and promises nothing by default', () => {
+    // What the rules apply when the key is missing: no ceiling, 5 free proposals, no trial
+    expect(DEFAULT_SETTINGS).toMatchObject({ commissionCapCents: 0, freeProposalsPerMonth: 5, proTrialDays: 0 });
+    const settings = parseSettings([
+      { key: 'commission_cap_cents', value: 20000 },
+      { key: 'free_proposals_per_month', value: 8 },
+      { key: 'pro_trial_days', value: 14 },
+    ]);
+    expect(settings).toMatchObject({ commissionCapCents: 20000, freeProposalsPerMonth: 8, proTrialDays: 14 });
+    // A zero is a value (no ceiling, no limit, no trial), not a missing one
+    expect(parseSettings([{ key: 'free_proposals_per_month', value: 0 }, { key: 'pro_trial_days', value: 0 }])).toMatchObject({
+      freeProposalsPerMonth: 0,
+      proTrialDays: 0,
+    });
+    // A value of the wrong type falls back instead of being read as a number
+    expect(parseSettings([{ key: 'pro_trial_days', value: '30' }, { key: 'commission_cap_cents', value: null }, { key: 'free_proposals_per_month', value: NaN }])).toEqual(
+      DEFAULT_SETTINGS,
+    );
+  });
+
   it('builds the concierge WhatsApp link', () => {
     const message = buildConciergeMessage({
       occupationName: 'Diarista',
