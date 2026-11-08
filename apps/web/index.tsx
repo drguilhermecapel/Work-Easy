@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import ErrorBoundary from './components/ErrorBoundary';
+import PwaUpdateNotice from './components/PwaUpdateNotice';
 import { initNativeShell } from './platform/native';
 import { initObservability } from './lib/observability';
 import './index.css';
@@ -20,6 +21,7 @@ root.render(
   <React.StrictMode>
     <ErrorBoundary>
       <App />
+      <PwaUpdateNotice />
     </ErrorBoundary>
   </React.StrictMode>
 );

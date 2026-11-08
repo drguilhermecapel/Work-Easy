@@ -2,11 +2,16 @@ import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, ChevronRight } from 'lucide-react';
 import { AREAS, OCCUPATIONS, findArea } from '../catalog';
+import { categoriesLead, categoriesMeta } from '../catalog/prose.mjs';
 import { searchOccupations } from '../utils/search';
+import { Notice } from '../components/seo/Prose';
+import { useDocumentTitle } from '../lib/useDocumentTitle';
 
 const PREVIEW = 6;
+const TITLE = categoriesMeta(AREAS.map(area => area.name)).title;
 
 const Categories: React.FC = () => {
+  useDocumentTitle(TITLE);
   const [filter, setFilter] = useState('');
   const matches = useMemo(() => searchOccupations(OCCUPATIONS, filter, 30), [filter]);
   const filtering = filter.trim().length >= 2;
@@ -14,9 +19,11 @@ const Categories: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 min-h-screen">
       <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">Todas as categorias</h1>
-      <p className="text-gray-500 mb-6">
+      <p className="text-gray-500 mb-2">
         {AREAS.length} áreas e {OCCUPATIONS.length} serviços e profissões.
       </p>
+      {/* The sentence the static page opens with (scripts/prerender.mjs) */}
+      <p className="text-sm text-gray-600 mb-6">{categoriesLead(AREAS.length)}</p>
 
       <div className="relative max-w-xl mb-8">
         <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -77,7 +84,7 @@ const Categories: React.FC = () => {
                 ))}
               </ul>
               {area.occupations.length > PREVIEW && (
-                <Link to={`/categorias/${area.slug}`} className="inline-flex items-center gap-1 text-sm font-medium text-primary mt-3">
+                <Link to={`/categorias/${area.slug}`} className="inline-flex items-center gap-1 text-sm font-medium text-secondary mt-3">
                   Ver todos os {area.occupations.length} <ChevronRight size={14} />
                 </Link>
               )}
@@ -85,6 +92,10 @@ const Categories: React.FC = () => {
           ))}
         </div>
       )}
+
+      <div className="mt-8">
+        <Notice />
+      </div>
     </div>
   );
 };

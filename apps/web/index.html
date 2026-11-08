@@ -7,10 +7,30 @@
     <meta name="theme-color" content="#667eea" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-    <title>WorkEasy</title>
+    <!-- Generic share tags. No canonical or og:url: this file also serves every route the app owns; scripts/prerender.mjs sets them per page. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="WorkEasy" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:title" content="WorkEasy: serviços e profissionais perto de você" />
+    <meta property="og:description" content="WorkEasy: encontre profissionais e serviços de todas as áreas perto de você. Protótipo de demonstração." />
+    <meta property="og:image" content="/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="WorkEasy: conectando quem precisa com quem sabe fazer" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="WorkEasy: serviços e profissionais perto de você" />
+    <meta name="twitter:description" content="WorkEasy: encontre profissionais e serviços de todas as áreas perto de você. Protótipo de demonstração." />
+    <meta name="twitter:image" content="/og-image.png" />
+    <title>WorkEasy: serviços e profissionais perto de você</title>
   </head>
   <body class="bg-gray-50 text-gray-800 antialiased">
     <div id="root"></div>
+    <noscript>
+      <main>
+        <h1>WorkEasy</h1>
+        <p>O WorkEasy precisa de JavaScript para funcionar. Enquanto isso, veja as <a href="/categorias">categorias de serviços</a>.</p>
+      </main>
+    </noscript>
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>

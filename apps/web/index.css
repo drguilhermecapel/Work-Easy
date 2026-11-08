@@ -55,3 +55,13 @@
     display: none;
   }
 }
+
+/*
+  While a lazy page loads, AppShell shows its "Carregando…" fallback alone inside <main>, and the footer
+  sits right under it. When the page arrives the footer drops to the bottom of the page: a layout shift of
+  0.23 to 0.24 on every page (measured with Lighthouse). Keep the footer out of sight until then; an
+  element that was not visible does not count as moving, whatever the height of the page.
+*/
+main:has(> [role='status']:only-child) + footer {
+  visibility: hidden;
+}
