@@ -161,6 +161,14 @@ describe('/conta with a backend (simulated Supabase client)', () => {
     expect(fake.tableCalls.some(c => c.table === 'consents' && c.op === 'update')).toBe(false);
   });
 
+  it('says what withdrawing the background-check consent does and does not do', async () => {
+    fake.session = { access_token: 't', user: { id: USER_ID, email: 'maria@example.com' } };
+    renderAt('/conta');
+    const row = (await screen.findByText('Consulta de antecedentes')).closest('li') as HTMLElement;
+    expect(row).toHaveTextContent('A retirada fica registrada, mas não apaga a certidão já enviada nem muda quem pode vê-la.');
+    expect(row).toHaveTextContent('Enquanto a certidão não for analisada, você a remove no cadastro');
+  });
+
   it('shows a clear message when the account export fails', async () => {
     fake.session = { access_token: 't', user: { id: USER_ID, email: 'maria@example.com' } };
     fake.functionsHandlers['account-export'] = () => ({

@@ -136,7 +136,8 @@ const CONSENTS: Array<{ purpose: ConsentPurpose; title: string; description: str
   {
     purpose: 'background_check',
     title: 'Consulta de antecedentes',
-    description: 'Para profissionais cuja ocupação exige certidão de antecedentes criminais no cadastro.',
+    description:
+      'Para profissionais cuja ocupação exige certidão de antecedentes criminais no cadastro. A retirada fica registrada, mas não apaga a certidão já enviada nem muda quem pode vê-la. Enquanto a certidão não for analisada, você a remove no cadastro; depois da análise, só pode apagá-la excluindo a sua conta.',
     revocable: true,
   },
   {

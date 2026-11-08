@@ -34,6 +34,10 @@ export const supabase: AppSupabaseClient | null = backendEnabled
       auth: {
         persistSession: true,
         autoRefreshToken: true,
+        // PKCE: a session is created only from a code exchanged in the browser that
+        // asked for the sign-in, so tokens placed in a link's URL hash are never installed.
+        flowType: 'pkce',
+        // Completes the PKCE callback (?code=) on load.
         detectSessionInUrl: true,
       },
     })
