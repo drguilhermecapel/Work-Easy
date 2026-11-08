@@ -74,9 +74,12 @@ export const BILLING_TEXT = {
   sob_consulta_juridica: name => `O modelo de cobrança para ${name} ainda está em análise jurídica.`,
 };
 
-/** Shown at the end of every static page and of the four hydrated routes. */
+/**
+ * Shown at the end of every static page and of the four hydrated routes. It says nothing about demo profiles:
+ * the demo mode says so in its own banner (components/DemoBanner.tsx), and a build with a backend shows none.
+ */
 export const NOTICE =
-  'O WorkEasy está em fase inicial: os perfis exibidos no app podem ser de demonstração e o pedido online depende de o serviço estar configurado. O WorkEasy não tabela preços; cada profissional informa o seu.';
+  'O WorkEasy está em fase inicial: o pedido online depende de o serviço estar configurado. O WorkEasy não tabela preços; cada profissional informa o seu.';
 
 /** Small print under the heading of the requirements section. */
 export const RULE_NOTE = 'Regra prevista. Nesta demonstração, nada é coletado ou conferido.';
