@@ -29,6 +29,7 @@
     "@capacitor/app": "8.1.2",
     "@capacitor/core": "8.5.2",
     "@capacitor/ios": "8.5.2",
+    "@sentry/react": "11.9.0",
     "@supabase/supabase-js": "2.118.0",
     "lucide-react": "0.577.0",
     "react": "19.3.0",
