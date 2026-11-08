@@ -7,7 +7,8 @@ import { initObservability } from './lib/observability';
 import './index.css';
 
 void initNativeShell();
-void initObservability();
+// Checked here, on the variable itself, so the build can drop the SDK when no DSN is set.
+if (import.meta.env.VITE_SENTRY_DSN) void initObservability();
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
