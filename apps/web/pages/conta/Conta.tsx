@@ -239,14 +239,17 @@ const ExportSection: React.FC = () => {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [done, setDone] = useState(false);
+  const [incomplete, setIncomplete] = useState(false);
 
   const run = async () => {
     setBusy(true);
     setError(null);
     setDone(false);
+    setIncomplete(false);
     try {
-      const data = await exportMyData();
+      const data = (await exportMyData()) as { unavailable?: unknown[] } | null;
       downloadJson(data, `workeasy-meus-dados-${todayInSaoPaulo()}.json`);
+      setIncomplete((data?.unavailable?.length ?? 0) > 0);
       setDone(true);
     } catch (err) {
       setError(err);
@@ -262,6 +265,11 @@ const ExportSection: React.FC = () => {
       </p>
       <ErrorAlert error={error} />
       {done && <p role="status" className="text-sm text-green-700">Arquivo gerado. Confira seus downloads.</p>}
+      {incomplete && (
+        <p role="alert" className="text-sm text-amber-700">
+          Parte dos seus dados não pôde ser incluída no arquivo. Tente gerar de novo mais tarde.
+        </p>
+      )}
       <button type="button" className={`${secondaryButton} inline-flex items-center gap-2`} onClick={run} disabled={busy}>
         <Download size={16} aria-hidden="true" /> {busy ? 'Gerando arquivo…' : 'Baixar meus dados'}
       </button>

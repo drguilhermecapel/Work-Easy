@@ -5,7 +5,7 @@
 import { type AuthUser, type BaseDeps, corsOf } from '../_shared/handler-kit.ts';
 import { errors, route } from '../_shared/http.ts';
 import {
-  buildExport, EXPORT_PLAN, HOUSEHOLD_CHILDREN, mergeRows, ownerFilter, stripColumns,
+  buildExport, EXPORT_PLAN, LINKED_CHILDREN, mergeRows, ownerFilter, stripColumns,
 } from '../_shared/lgpd-export.ts';
 
 type Row = Record<string, unknown>;
@@ -40,16 +40,15 @@ export function handler(req: Request, deps: ExportDeps): Promise<Response> {
       }
     }
 
-    const householdIds = (tables.households ?? []).map(h => String(h.id)).filter(Boolean);
-    if (householdIds.length) {
-      for (const child of HOUSEHOLD_CHILDREN) {
-        try {
-          const rows = await session.selectIn(child.table, child.column, householdIds);
-          tables[child.table] = mergeRows(tables[child.table], rows);
-        } catch (error) {
-          deps.logError(error);
-          if (!unavailable.includes(child.table)) unavailable.push(child.table);
-        }
+    for (const child of LINKED_CHILDREN) {
+      const parentIds = (tables[child.parent] ?? []).map(row => String(row.id)).filter(Boolean);
+      if (!parentIds.length) continue;
+      try {
+        const rows = await session.selectIn(child.table, child.column, parentIds);
+        tables[child.table] = mergeRows(tables[child.table], rows);
+      } catch (error) {
+        deps.logError(error);
+        if (!unavailable.includes(child.table)) unavailable.push(child.table);
       }
     }
 

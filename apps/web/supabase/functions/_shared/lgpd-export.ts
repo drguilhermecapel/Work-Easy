@@ -55,10 +55,18 @@ export const EXPORT_PLAN: ExportQuery[] = [
   { table: 'data_requests', ownerColumns: ['user_id'] },
 ];
 
-/** Rows that hang off the user's households (care line). */
-export const HOUSEHOLD_CHILDREN: Array<{ table: string; column: string }> = [
-  { table: 'care_recipients', column: 'household_id' },
-  { table: 'shifts', column: 'household_id' },
+/**
+ * Rows that hang off rows already read, matched by the ids of those rows. They are readable under RLS
+ * for the user even when the parent belongs to someone else (the other party of a booking, request or
+ * household). Listed in order: a parent may come from an earlier entry (the shifts of a household).
+ */
+export const LINKED_CHILDREN: Array<{ parent: string; table: string; column: string }> = [
+  { parent: 'households', table: 'care_recipients', column: 'household_id' },
+  { parent: 'households', table: 'shifts', column: 'household_id' },
+  { parent: 'bookings', table: 'booking_events', column: 'booking_id' },
+  { parent: 'requests', table: 'proposals', column: 'request_id' },
+  { parent: 'shifts', table: 'checkins', column: 'shift_id' },
+  { parent: 'shifts', table: 'daily_reports', column: 'shift_id' },
 ];
 
 /** PostgREST `or` filter: `client_id.eq.<id>,provider_id.eq.<id>`. */
