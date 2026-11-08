@@ -166,7 +166,7 @@ const ConsentsSection: React.FC<{ userId: string }> = ({ userId }) => {
     }
   };
 
-  if (history.loading && !history.data) return <p role="status" className="text-sm text-gray-400">Carregando consentimentos…</p>;
+  if (history.loading && !history.data) return <p role="status" className="text-sm text-gray-500">Carregando consentimentos…</p>;
   if (history.error && !history.data) return <ErrorAlert error={history.error} />;
 
   const rows: ConsentRow[] = history.data ?? [];

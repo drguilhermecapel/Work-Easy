@@ -33,7 +33,7 @@ export const LinkList: React.FC<{ links: ReadonlyArray<{ to: string; label: stri
   <ul className="list-disc pl-5 space-y-1 text-sm text-gray-800">
     {links.map(item => (
       <li key={item.to}>
-        <Link to={item.to} className="text-secondary hover:underline">
+        <Link to={item.to} className="inline-flex items-center max-sm:min-h-11 text-secondary hover:underline">
           {item.label}
         </Link>
       </li>
@@ -80,7 +80,7 @@ export const PolicySections: React.FC<{
           <ul className="mt-2 space-y-1 break-all">
             {sources.map(url => (
               <li key={url}>
-                <a href={url} target="_blank" rel="noopener noreferrer" className="text-secondary hover:underline">
+                <a href={url} target="_blank" rel="noopener noreferrer" className="inline-block py-1.5 max-sm:py-3.75 text-secondary hover:underline">
                   {url}
                 </a>
               </li>
@@ -113,11 +113,11 @@ export const OccupationCard: React.FC<{ to: string; name: string; badges: readon
     <span className="min-w-0">
       <span className="block font-medium text-gray-800">{name}</span>
       {badges.map(badge => (
-        <span key={badge} className="inline-block mt-1 mr-1 text-[11px] bg-amber-50 text-amber-800 border border-amber-100 px-2 py-0.5 rounded-full">
+        <span key={badge} className="inline-block mt-1 mr-1 text-xs bg-amber-50 text-amber-800 border border-amber-100 px-2 py-0.5 rounded-full">
           {badge}
         </span>
       ))}
     </span>
-    <ChevronRight size={16} className="shrink-0 text-gray-400" />
+    <ChevronRight size={16} className="shrink-0 text-gray-500" />
   </Link>
 );

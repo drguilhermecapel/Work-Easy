@@ -37,7 +37,7 @@ const DocumentCard: React.FC<{ document: AdminDocument; onChanged: () => void }>
         <span className="text-xs text-gray-500">Enviado em {formatDateTime(doc.created_at)}</span>
       </div>
       <h3 className="font-semibold text-gray-900 break-words flex items-start gap-2">
-        <FileText size={16} className="shrink-0 mt-1 text-gray-400" aria-hidden="true" /> {label}
+        <FileText size={16} className="shrink-0 mt-1 text-gray-500" aria-hidden="true" /> {label}
       </h3>
       <p className="text-xs text-gray-500 break-all mt-0.5">{doc.storage_path.split('/').slice(1).join('/') || doc.storage_path}</p>
       {doc.expires_at && <p className="text-xs text-gray-500 mt-0.5">Validade informada: {formatDateBR(doc.expires_at)}</p>}

@@ -23,6 +23,7 @@ const ProviderCard: React.FC<ProviderCardProps> = ({ provider }) => {
             </h3>
             <div className="flex items-center bg-yellow-50 px-2 py-0.5 rounded-sm text-xs font-medium text-yellow-700">
               <Star size={12} className="fill-yellow-400 text-yellow-400 mr-1" />
+              <span className="sr-only">Nota </span>
               {provider.rating}
             </div>
           </div>
@@ -49,9 +50,9 @@ const ProviderCard: React.FC<ProviderCardProps> = ({ provider }) => {
         </div>
         <Link 
           to={profilePath(provider)}
-          className="block w-full text-center bg-primary text-white font-medium py-2 rounded-lg hover:bg-purple-700 transition-colors"
+          className="flex items-center justify-center w-full min-h-11 text-center bg-primary text-white font-medium py-2 rounded-lg hover:bg-purple-700 transition-colors"
         >
-          Ver Perfil
+          Ver Perfil<span className="sr-only"> de {provider.name}</span>
         </Link>
       </div>
     </div>

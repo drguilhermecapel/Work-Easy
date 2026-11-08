@@ -1,4 +1,6 @@
-import React, { ReactElement, ReactNode, cloneElement, isValidElement, useRef, useState } from 'react';
+import React, { ReactNode, useRef, useState } from 'react';
+import { describeControl } from '../fieldA11y';
+import FieldError from '../FieldError';
 import { card, dangerButton, secondaryButton } from './styles';
 
 /** Rounded white panel. */
@@ -14,36 +16,28 @@ export const Card: React.FC<{
   </Tag>
 );
 
-/** Label + control + optional hint; `id` ties the label to the control and the hint is read with it. */
-export const Field: React.FC<{ id: string; label: string; hint?: string; children: ReactNode; className?: string }> = ({
+/** Label + control + optional hint and error; `id` ties the label to the control, and the hint and the error are read with it. */
+export const Field: React.FC<{ id: string; label: string; hint?: string; error?: string | null; children: ReactNode; className?: string }> = ({
   id,
   label,
   hint,
+  error,
   children,
   className = '',
-}) => {
-  const control =
-    hint &&
-    isValidElement<{ 'aria-describedby'?: string }>(children) &&
-    typeof children.type === 'string' &&
-    ['input', 'select', 'textarea'].includes(children.type) &&
-    !children.props['aria-describedby']
-      ? cloneElement(children as ReactElement<{ 'aria-describedby'?: string }>, { 'aria-describedby': `${id}-dica` })
-      : children;
-  return (
-    <div className={className}>
-      <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">
-        {label}
-      </label>
-      {control}
-      {hint && (
-        <p id={`${id}-dica`} className="text-xs text-gray-500 mt-1">
-          {hint}
-        </p>
-      )}
-    </div>
-  );
-};
+}) => (
+  <div className={className}>
+    <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">
+      {label}
+    </label>
+    {describeControl(children, { hint: hint ? `${id}-dica` : undefined, error: error ? `${id}-erro` : undefined })}
+    {hint && (
+      <p id={`${id}-dica`} className="text-xs text-gray-500 mt-1">
+        {hint}
+      </p>
+    )}
+    {error && <FieldError id={`${id}-erro`}>{error}</FieldError>}
+  </div>
+);
 
 export const Badge: React.FC<{ className: string; children: ReactNode }> = ({ className, children }) => (
   <span className={`inline-block text-xs font-bold px-2 py-0.5 rounded-sm ${className}`}>{children}</span>

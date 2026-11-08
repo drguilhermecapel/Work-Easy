@@ -155,7 +155,7 @@ export const normalizeSiteUrl = (value, warn = () => {}) => {
 
 const absolute = (siteUrl, path) => (siteUrl ? `${siteUrl}${path === '/' ? '/' : path}` : path);
 
-const LINK_CLASS = 'text-secondary hover:underline';
+const LINK_CLASS = 'inline-flex items-center max-sm:min-h-11 text-secondary hover:underline';
 const link = (href, text) => `<a href="${escapeHtml(href)}" class="${LINK_CLASS}">${escapeHtml(text)}</a>`;
 
 const list = items =>
@@ -182,11 +182,11 @@ const main = (kind, inner, width = 'max-w-4xl') =>
 
 // Same markup as the React cards of pages/AreaPage.tsx (lucide ChevronRight inlined).
 const CHEVRON =
-  '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-right shrink-0 text-gray-400" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>';
+  '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-right shrink-0 text-gray-500" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>';
 
 const occupationCard = (occupation, policy) =>
   `<li><a href="/servicos/${escapeHtml(occupation.slug)}" class="flex items-center justify-between gap-3 bg-white border border-gray-100 rounded-xl px-4 py-3 h-full hover:border-primary transition-colors"><span class="min-w-0"><span class="block font-medium text-gray-800">${escapeHtml(occupation.name)}</span>${policyBadges(policy)
-    .map(badge => `<span class="inline-block mt-1 mr-1 text-[11px] bg-amber-50 text-amber-800 border border-amber-100 px-2 py-0.5 rounded-full">${escapeHtml(badge)}</span>`)
+    .map(badge => `<span class="inline-block mt-1 mr-1 text-xs bg-amber-50 text-amber-800 border border-amber-100 px-2 py-0.5 rounded-full">${escapeHtml(badge)}</span>`)
     .join('')}</span>${CHEVRON}</a></li>`;
 
 // ------------------------------------------------------------ input data

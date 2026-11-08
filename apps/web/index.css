@@ -2,7 +2,13 @@
 @import 'tw-animate-css';
 
 @theme {
-  --color-primary: #667eea;
+  /*
+    Darkened from #667eea (hue and saturation kept). On white that colour is 3.66:1, below the
+    4.5:1 that WCAG 2.1 AA asks of normal text, so every text-primary link and every
+    bg-primary text-white button failed. #3e5ce5 is 5.4:1 on white and 4.5:1 or more on the
+    tints the app uses under it (gray-50, purple-50, primary/5, primary/10).
+  */
+  --color-primary: #3e5ce5;
   --color-secondary: #764ba2;
   --color-success: #10b981;
   --color-warning: #f59e0b;
@@ -43,6 +49,48 @@
   body {
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
       env(safe-area-inset-left);
+  }
+
+  /* The sticky navbar (4rem) must not cover the element that just received the focus */
+  html {
+    scroll-padding-top: 5rem;
+  }
+
+  /*
+    Visible keyboard focus for everything that does not draw its own (inputs use
+    focus:ring and hide this one). The white halo keeps the ring readable on the
+    gradient and on dark areas.
+  */
+  :focus-visible:not([tabindex='-1']) {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 2px #fff;
+  }
+
+  /* Phones: controls reach the 44 px touch target (WCAG 2.5.5); links inside a sentence are left alone */
+  @media (max-width: 639.98px) {
+    button,
+    [role='button'],
+    summary {
+      min-height: 2.75rem;
+      min-width: 2.75rem;
+    }
+    label:has(> input[type='checkbox']),
+    label:has(> input[type='radio']) {
+      min-height: 2.75rem;
+    }
+  }
+}
+
+/* Honour the system setting: no looping or sliding motion for people who asked for none */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

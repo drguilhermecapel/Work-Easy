@@ -97,6 +97,8 @@ const ChargeDetails: React.FC<{ charge: ChargeView; today: string; onRefresh: ()
         <img
           src={`data:image/png;base64,${qr}`}
           alt="QR Code do Pix para pagar este atendimento"
+          width={160}
+          height={160}
           className="w-40 h-40 bg-white border border-gray-200 rounded-lg p-1"
         />
       )}

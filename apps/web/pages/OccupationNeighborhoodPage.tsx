@@ -54,22 +54,22 @@ const OccupationNeighborhoodPage: React.FC = () => {
     neighborhood.slug,
   );
   const requestTo = requestHref(occupation.slug, neighborhood.slug);
-  const secondary = 'text-sm font-semibold bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl hover:bg-gray-50';
+  const secondary = 'inline-flex items-center min-h-11 text-sm font-semibold bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl hover:bg-gray-50';
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 min-h-screen space-y-6">
       <nav aria-label="Caminho" className="text-sm text-gray-500 flex flex-wrap items-center gap-1">
-        <Link to="/categorias" className="hover:text-primary">Categorias</Link>
+        <Link to="/categorias" className="inline-flex items-center max-sm:min-h-11 hover:text-primary">Categorias</Link>
         <ChevronRight size={14} />
         {area && (
           <>
-            <Link to={`/categorias/${area.slug}`} className="hover:text-primary">{area.name}</Link>
+            <Link to={`/categorias/${area.slug}`} className="inline-flex items-center max-sm:min-h-11 hover:text-primary">{area.name}</Link>
             <ChevronRight size={14} />
           </>
         )}
-        <Link to={base} className="hover:text-primary">{occupation.name}</Link>
+        <Link to={base} className="inline-flex items-center max-sm:min-h-11 hover:text-primary">{occupation.name}</Link>
         <ChevronRight size={14} />
-        <span className="text-gray-700">{neighborhood.name}</span>
+        <span aria-current="page" className="text-gray-700">{neighborhood.name}</span>
       </nav>
 
       <header>
@@ -83,13 +83,13 @@ const OccupationNeighborhoodPage: React.FC = () => {
         <div className="flex flex-wrap gap-3 mt-4">
           {/* Demo without the concierge number: /pedido has nothing to offer, so the search stays the main action */}
           {canRequest && (
-            <Link to={requestTo} className="text-sm font-semibold bg-primary text-white px-4 py-2.5 rounded-xl hover:bg-purple-700">
+            <Link to={requestTo} className="inline-flex items-center min-h-11 text-sm font-semibold bg-primary text-white px-4 py-2.5 rounded-xl hover:bg-purple-700">
               Pedir este serviço
             </Link>
           )}
           <Link
             to={base}
-            className={canRequest ? secondary : 'text-sm font-semibold bg-primary text-white px-4 py-2.5 rounded-xl hover:bg-purple-700'}
+            className={canRequest ? secondary : 'inline-flex items-center min-h-11 text-sm font-semibold bg-primary text-white px-4 py-2.5 rounded-xl hover:bg-purple-700'}
           >
             Ver {occupation.name}
           </Link>
@@ -106,7 +106,7 @@ const OccupationNeighborhoodPage: React.FC = () => {
       </header>
 
       {/* Tall on purpose: what loads in here is long, and the sections below must not slide up the screen while it does */}
-      <Suspense fallback={<div role="status" className="min-h-[70vh] text-sm text-gray-400">Carregando regras deste serviço…</div>}>
+      <Suspense fallback={<div role="status" className="min-h-[70vh] text-sm text-gray-500">Carregando regras deste serviço…</div>}>
         <Requirements occupation={occupation} area={area} neighborhood={neighborhood} />
       </Suspense>
 
