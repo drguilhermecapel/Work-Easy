@@ -73,9 +73,13 @@ describe('public/og-image.png', () => {
 });
 
 describe('layout shift', () => {
-  it('reserves a screen of height for the lazy page fallback, so that the footer does not jump', () => {
+  it('keeps the footer out of sight while the lazy page loads, so that it does not jump to the bottom', () => {
     const css = readFileSync(join(ROOT, 'index.css'), 'utf8');
-    expect(css).toMatch(/main > \[role='status'\]:only-child\s*\{\s*min-height: 100vh;\s*\}/);
+    expect(css).toMatch(/main:has\(> \[role='status'\]:only-child\) \+ footer\s*\{\s*visibility: hidden;\s*\}/);
+    // The selector follows AppShell.tsx: the fallback is the only child of <main>, and the footer comes right after it
+    const shell = readFileSync(join(ROOT, 'AppShell.tsx'), 'utf8');
+    expect(shell).toMatch(/<main>[\s\S]*<Suspense fallback=\{<PageFallback \/>\}>[\s\S]*<\/main>\s*<footer/);
+    expect(shell).toMatch(/const PageFallback[\s\S]*role="status"/);
   });
 });
 

@@ -57,11 +57,11 @@
 }
 
 /*
-  While a lazy page loads, AppShell shows its "Carregando…" fallback alone inside <main>.
-  Every page is at least one screen tall (min-h-screen), so reserve that height: the footer then
-  stays below the fold instead of jumping down when the page appears. That jump was the whole
-  layout shift of the site (CLS 0.23 to 0.24 on every page, measured with Lighthouse).
+  While a lazy page loads, AppShell shows its "Carregando…" fallback alone inside <main>, and the footer
+  sits right under it. When the page arrives the footer drops to the bottom of the page: a layout shift of
+  0.23 to 0.24 on every page (measured with Lighthouse). Keep the footer out of sight until then; an
+  element that was not visible does not count as moving, whatever the height of the page.
 */
-main > [role='status']:only-child {
-  min-height: 100vh;
+main:has(> [role='status']:only-child) + footer {
+  visibility: hidden;
 }
