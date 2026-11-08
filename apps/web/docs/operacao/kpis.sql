@@ -188,7 +188,7 @@ select s.trilha,
 --   Relógio: requests.created_at, ou a abertura da janela de atendimento se o pedido chegou
 --     fora dela (segunda a sexta 8h a 17h30; sábado 8h a 14h; domingo, abre na segunda 8h).
 --     Feriados não são descontados: ajuste à mão nesses dias.
---   Proposta: qualquer proposta do pedido (proposals.created_at). O banco não sabe se a
+--   Proposta: qualquer proposta de prestador que não é conta de teste (proposals.created_at). O banco não sabe se a
 --     proposta diz "quando pode ir"; o resultado é um teto. Confira uma amostra na planilha.
 --   Linha TOTAL: numerador e denominador do G3. Passa com percentual >= 70 e pedidos >= 30.
 -- =============================================================================
@@ -248,9 +248,11 @@ pedidos as (
     from pedidos_base b
 ),
 primeira_proposta as (
-  select request_id, min(created_at) as primeira
-    from proposals
-   group by request_id
+  select pr.request_id, min(pr.created_at) as primeira
+    from proposals pr
+   cross join teste t
+   where not coalesce(pr.provider_id = any (t.ids), false)
+   group by pr.request_id
 ),
 resultado as (
   select p.id,

@@ -1,7 +1,7 @@
 # Supabase em produção: dossiê e runbook
 
 Documento técnico para o owner e para quem executar a publicação do WorkEasy.
-**Não é parecer jurídico.** Nada foi criado nem executado em nenhum projeto Supabase,
+**Não é parecer jurídico.** Nada foi criado nem executado em nenhum projeto Supabase remoto (no banco local, só consultas de leitura),
 e nenhum arquivo do repositório foi alterado.
 
 | Campo | Valor |
@@ -20,7 +20,7 @@ e nenhum arquivo do repositório foi alterado.
    - E-mail de código: o SMTP embutido envia 2 e-mails por hora no projeto [S11, S13]. É preciso um SMTP próprio.
    - SMS de código: o padrão é de 30 SMS por hora no projeto inteiro [S11].
    - Provedor: a Auth só envia código por WhatsApp pela Twilio [S28]. O app pede código por SMS (`channel: 'sms'`, `services/auth.ts`, linha 33), e o `config.toml` diz "SMS/WhatsApp". Falta uma decisão (D3).
-4. **Não rode `supabase config push` com este `config.toml`.** A CLI 2.121.0 envia ao projeto as propriedades que o arquivo declara e pede confirmação por recurso; com `--yes` ou `SUPABASE_YES` a confirmação é pulada [CLI 2.121.0]. O arquivo declara o placeholder da Twilio e um código de teste fixo para o telefone `+55 11 99999-0000` [REPO `supabase/config.toml`, linhas 281-285 e 309-313].
+4. **Não rode `supabase config push` com este `config.toml`.** A CLI 2.121.0 envia ao projeto as propriedades que o arquivo declara e pede confirmação por recurso; com `--yes` a confirmação é pulada [CLI 2.121.0] (`SUPABASE_YES` não conferida). O arquivo declara o placeholder da Twilio e um código de teste fixo para o telefone `+55 11 99999-0000` [REPO `supabase/config.toml`, linhas 296-297 e 321-325].
 5. **Risco no agendador.** O `net.http_post` usa timeout padrão de 2000 ms [S24]. O `notify-dispatch` pode levar até 100 s por lote [REPO `supabase/functions/notify-dispatch/handler.ts`, `DEFAULT_BUDGET_MS`], e a migration 08 não define timeout. Teste em um projeto de ensaio antes da produção (seção 10, item A).
 6. **Já existe um workflow de publicação**, `.github/workflows/deploy-supabase.yml`. Ele roda só por disparo manual, só a partir de `main`, simula as migrations por padrão, aplica-as com `--skip-vault`, não aplica o seed e publica as duas funções públicas com `--no-verify-jwt` [REPO]. O runbook da seção 7 usa esse workflow sempre que possível.
 
@@ -38,7 +38,7 @@ e nenhum arquivo do repositório foi alterado.
 | D6 | CAPTCHA (Turnstile ou hCaptcha) | Desligado ou ligado | Decidir depois do primeiro ensaio. Ligar exige enviar `captchaToken` no app, que hoje não envia | [S12], `services/auth.ts` |
 | D7 | Admins no início | 1 ou 2 | Dois, para não depender de uma única conta. A inserção é manual (fase 12) | [REPO `admins`] |
 | D8 | Domínio canônico | O de `VITE_SITE_URL` | Mesmo valor em Site URL, no segredo `SITE_URL` e em `VITE_SITE_URL` | [REPO `docs/arquitetura/infra.md`] |
-| D9 | Validade do código de entrada | 3600 s (valor atual do `config.toml`) ou outro | Escolha do owner. Nenhuma fonte aberta dá valor recomendado | [REPO `supabase/config.toml`, linha 246] |
+| D9 | Validade do código de entrada | 3600 s (valor atual do `config.toml`) ou outro | Escolha do owner. Nenhuma fonte aberta dá valor recomendado | [REPO `supabase/config.toml`, linha 247] |
 | D10 | Retenção de logs | 1 dia (Free) ou 7 dias (Pro) | Pro. Confirmar se 7 dias cobrem a investigação de cobrança e webhook | [S2] |
 
 ---
@@ -47,15 +47,15 @@ e nenhum arquivo do repositório foi alterado.
 
 | Item | Fato | Onde |
 |---|---|---|
-| Migrations | 16 arquivos, de `20261019000001_identity.sql` a `20261108100000_product_events.sql` | `supabase/migrations/` |
+| Migrations | 36 arquivos, de `20261019000001_identity.sql` a `20261109300006_booking_request_notice.sql` | `supabase/migrations/` |
 | Extensões | `btree_gist` e `pg_net` no schema `extensions`; `pg_cron` no schema `pg_catalog`. Nenhuma migration cria `supabase_vault`, mas a migration 06 usa `vault.create_secret`, `vault.update_secret` e `vault.decrypted_secrets` | `20261019000001_identity.sql` (início); `20261019000006_payments.sql` |
-| Agendamentos | 4 chamadas a `cron.schedule`, em 3 migrations: `workeasy-dispatch-notifications` (`* * * * *`), `workeasy-expire-stale` (`*/15 * * * *`), `workeasy-booking-reminders` (`*/15 * * * *`) e `product-events-retention` (`17 3 * * *`) | `20261019000008_notifications.sql`; `20261023100000_booking_reminders.sql`; `20261108100000_product_events.sql` |
+| Agendamentos | 7 chamadas a `cron.schedule`, em 6 migrations: `workeasy-dispatch-notifications` (`* * * * *`), `workeasy-expire-stale` (`*/15 * * * *`), `workeasy-booking-reminders` (`*/15 * * * *`), `workeasy-expire-booking-requests` (`*/15 * * * *`), `workeasy-expire-pro-plans` (`17 * * * *`), `product-events-retention` (`17 3 * * *`) e `notification-counts-retention` (`23 3 * * *`); no banco local, `cron.job` tem as mesmas 7 linhas | `20261019000008_notifications.sql`; `20261023100000_booking_reminders.sql`; `20261108100000_product_events.sql`; `20261109000006_booking_requests.sql`; `20261109000007_pro_plan_expiry.sql`; `20261109100001_notification_daily_cap.sql` |
 | Despachante | `private.dispatch_notifications` só chama `notify-dispatch` se o Vault tem `notify_dispatch_url` **e** `cron_secret`; sem as duas, retorna sem erro | `20261019000008_notifications.sql` |
 | Funções | 12 pastas com `index.ts`, mais `_shared/` e `_runtime/` (bibliotecas) | `supabase/functions/` |
 | Chaves de runtime | `_runtime/supabase.ts` lê as chaves novas (`SUPABASE_PUBLISHABLE_KEYS`, `SUPABASE_SECRET_KEYS`) ou as antigas (`SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`) | `supabase/functions/_shared/config.ts`, linhas 57-61 |
 | Funções sem JWT de usuário | `asaas-webhook` exige `asaas-access-token` (401 `invalid_token`; 503 sem `ASAAS_WEBHOOK_TOKEN`). `notify-dispatch` exige `x-cron-secret` ou `Authorization: Bearer` (401 `unauthorized`; 503 sem `CRON_SECRET`) | `asaas-webhook/handler.ts`, linhas 80-91; `notify-dispatch/handler.ts`, linhas 116-120 |
-| Config de funções | `config.toml` não tem nenhuma seção `[functions]` | `supabase/config.toml` |
-| Seed | 10 instruções `insert` (1 em `areas`, 4 em `occupations`, 4 em `occupation_policies`, 1 em `neighborhoods`), 10 cláusulas `on conflict ... do update`, 0 `delete`, 0 `truncate`. O cabeçalho informa 44 áreas, 1.710 ocupações, 1.710 políticas e 96 bairros. Nenhum insert toca `auth.users` | `supabase/seed.sql` (1,66 MB) |
+| Config de funções | `config.toml` tem `[functions.asaas-webhook]` e `[functions.notify-dispatch]` com `verify_jwt = false` (linhas 407-411); `test/functions/functions-config.test.ts` confere | `supabase/config.toml` |
+| Seed | 10 instruções `insert` (1 em `areas`, 4 em `occupations`, 4 em `occupation_policies`, 1 em `neighborhoods`), 10 cláusulas `on conflict ... do update`, 0 `delete`, 0 `truncate`. O cabeçalho informa 44 áreas, 1.710 ocupações, 1.710 políticas e 96 bairros. Nenhum insert toca `auth.users` | `supabase/seed.sql` (1,82 MB; 1.824.152 bytes) |
 | Bucket | `provider-documents`, privado, limite de 10.485.760 bytes, tipos `image/jpeg`, `image/png`, `image/webp`, `image/heic` e `application/pdf`, com políticas em `storage.objects`. Criado pela migration (`on conflict do nothing`) | `20261019000003_providers.sql` |
 | Cadastro | Trigger `on_auth_user_created` cria `profiles` a cada insert em `auth.users`. `admins` tem RLS, uma política de leitura e `grant select` só para `authenticated`. Não há trigger em `admins` | `20261019000001_identity.sql` |
 | Login no app | `signInWithOtp` com `shouldCreateUser: true`; e-mail com `emailRedirectTo`; telefone com `channel: 'sms'`. O app não chama `signInWithPassword` e não envia `captchaToken` | `services/auth.ts`, linhas 25-35 |
@@ -87,7 +87,7 @@ e nenhum arquivo do repositório foi alterado.
 | Invocações de Edge Functions | 500 mil | 2 milhões; excedente US$ 2 por milhão | [S2] |
 | Usuários ativos mensais | 50 mil | 100 mil; excedente US$ 0,00325/MAU | [S2] |
 | Backup diário | não incluso | mantido por 7 dias | [S2], [S3] |
-| PITR | não incluso | complemento pago. Valor lido na página: US$ 100/mês por 7 dias de retenção [incerto: leitura de resumo, confirmar antes de contratar] | [S2], [S3] |
+| PITR | não incluso | complemento pago. A página de backups dá valor aproximado de US$ 100/mês para 7 dias (US$ 200 para 14 e US$ 400 para 28); confirmar no painel antes de contratar | [S2], [S3] |
 | Retenção de logs | 1 dia | 7 dias | [S2] |
 | Pausa por inatividade | pausa após 1 semana com pouca atividade | nunca pausa | [S2], [S10] |
 | Branching | não citado para Free | citado para Pro | [S10], [S19] |
@@ -96,12 +96,12 @@ e nenhum arquivo do repositório foi alterado.
 
 ### 4.3 Backups e restauração
 
-- Backup diário: incluído em Pro (7 dias), Team (14 dias) e Enterprise (até 30 dias). Free não tem backup automático; a página recomenda exportar os dados regularmente e manter cópias fora da plataforma [S3].
-- PITR: complemento para Pro, Team e Enterprise. Janelas de 7, 14 e 28 dias. Pior caso de RPO: dois minutos. Ativar PITR desliga os backups diários [S3].
-- Restauração: pelo painel (Database, Backups). Restaurar substitui o estado atual do banco [S3].
+- Backup diário: incluído em Pro (7 dias), Team (14 dias) e Enterprise (até 30 dias) [S3]. Free não tem backup automático [S2]; a página de backups recomenda exportar os dados regularmente com `db dump` e manter cópias fora da plataforma [S3].
+- PITR: complemento para Pro, Team e Enterprise. Janelas de 7, 14 e 28 dias. RPO de dois minutos: não reconferido nesta revisão [incerto]. Ativar PITR desliga os backups diários [S3].
+- Restauração: pelo painel; caminho de menu não conferido [incerto]. A restauração por PITR substitui o estado atual do banco; a página sugere restaurar primeiro em um projeto novo para não perder dados recentes [S3].
 - Free: os backups não podem ser baixados [S10].
-- Página de checklist: bancos acima de 4 GB devem ativar PITR [S10].
-- Não há como testar uma restauração sem custo; a decisão de testar fica para o owner [PLANEJADO].
+- Página de checklist: se o banco deve passar de 4 GB, a página recomenda ativar o add-on PITR [S10].
+- Testar uma restauração exige um projeto de teste ou janela de manutenção; a decisão fica para o owner [PLANEJADO].
 
 ### 4.4 Edge Functions
 
@@ -125,7 +125,7 @@ e nenhum arquivo do repositório foi alterado.
 - `--no-verify-jwt`: desliga a verificação de JWT da função.
 - `--use-api`: empacota no servidor, sem Docker. Atenção ao limite de 5 MB do empacotamento no servidor [S4]. Se o bundle passar disso, usar o empacotamento local (exige Docker) [incerto: não confirmei que `--use-api` cai nesse limite].
 - `--prune`: apaga do projeto as funções que não existem localmente. Não usar em produção sem revisão.
-- `verify_jwt` pode ser definido em `config.toml`, na forma `[functions.<nome>] verify_jwt = false` [S5]. O repositório não tem essa seção; o workflow passa a flag em cada publicação [REPO `deploy-supabase.yml`; `docs/arquitetura/infra.md`].
+- `verify_jwt` pode ser definido em `config.toml`, na forma `[functions.<nome>] verify_jwt = false` [S5]. O repositório tem essa seção para as duas funções sem JWT (linhas 407-411); o workflow repete a flag em cada publicação [REPO `deploy-supabase.yml`]. A página de deploy não diz explicitamente que `functions deploy` aplica o `config.toml` [incerto].
 - Não conferido: se o empacotamento usa `supabase/functions/deno.json` e `deno.lock` [incerto]. A página de deploy cita só `--import-map`.
 
 **Quais funções exigem JWT** (regra da ARQUITETURA: "Toda função valida o JWT do usuário (exceto webhook e cron)" [REPO `docs/ARQUITETURA.md`]):
@@ -136,7 +136,7 @@ e nenhum arquivo do repositório foi alterado.
 | `notify-dispatch` | **false** | Chamada do agendador, com `CRON_SECRET` |
 | `account-delete`, `account-export`, `asaas-onboard`, `care-summary`, `charges-create`, `payments-create`, `payments-void`, `quote-assist`, `request-assist`, `subscriptions-manage` | true (padrão) | Usuário logado. `care-summary` e `quote-assist` não aparecem na tabela de funções da ARQUITETURA; a regra geral vale para elas [incerto: conferir no handler] |
 
-- Se `asaas-webhook` ou `notify-dispatch` for publicada sem a flag, o gateway tende a recusar a chamada antes do handler, porque o segredo não é um JWT. Isso é raciocínio a partir de [S5] e [S20], não um teste feito aqui. Os pagamentos deixariam de ser registrados.
+- Se `asaas-webhook` ou `notify-dispatch` for publicada sem a flag, o gateway tende a recusar a chamada antes do handler, porque o segredo não é um JWT. Isso é raciocínio a partir de [S5] e [S20], não um teste feito aqui. Como o `config.toml` declara a mesma flag, o risco só existe se a CLI não aplicar o `config.toml` na publicação [incerto]; por isso a flag fica no workflow. Os pagamentos deixariam de ser registrados.
 
 **Segredos** [S6, CLI 2.121.0]:
 
@@ -148,11 +148,11 @@ e nenhum arquivo do repositório foi alterado.
 
 ### 4.5 pg_cron, pg_net e Vault
 
-- **pg_cron.** A página diz que a plataforma suporta a extensão e que ela cria o schema `cron`. Jobs ficam em `cron.job`; histórico em `cron.job_run_details`; intervalo de um segundo ou mais [S25, S8]. Disponibilidade por plano: não conferida [incerto]. A migration 01 cria `pg_cron` com `schema pg_catalog`; a documentação aberta não diz em qual schema fica no projeto hospedado [incerto].
-- **pg_net.** `net.http_post(url, body, params, headers, timeout_milliseconds)`. Timeout padrão de 2000 ms. A requisição só sai depois do commit da transação. A resposta fica 6 horas em `net._http_response` [S24, sem data].
-- **Exemplo oficial** de agendamento com `cron.schedule` e `net.http_post`, com o segredo lido de `vault.decrypted_secrets`. Aviso da página: "Any role that can log in to your database can read the secret key while the request waits." [S8, sem data]. Por isso, só o dono do banco deve ter login.
+- **pg_cron.** A página diz que a plataforma suporta a extensão e que ela cria o schema `cron`. Jobs ficam em `cron.job`; histórico em `cron.job_run_details`; intervalo de um segundo ou mais [S25, S8]. Disponibilidade por plano: não conferida [incerto]. A migration 01 cria `pg_cron` com `schema pg_catalog`; a documentação aberta não diz em qual schema fica no projeto hospedado [incerto]. No banco local (stack do CLI, 2026-11-08), `pg_cron` está em `pg_catalog` e `cron.job` tem 7 linhas.
+- **pg_net.** `net.http_post(url, body, params, headers, timeout_milliseconds)`. Timeout padrão de 2000 ms. A requisição só sai depois do commit da transação. A resposta fica 6 horas em `net._http_response` [S24, sem data]. A página marca a API como beta e avisa que as assinaturas podem mudar [S24].
+- **Exemplo oficial** de agendamento com `cron.schedule` e `net.http_post`, com o segredo lido de `vault.decrypted_secrets`; o exemplo envia o segredo em `apikey`, e a migration 08 usa `Authorization: Bearer` [S8; REPO]. Aviso da página: "Any role that can log in to your database can read the secret key while the request waits." [S8, sem data]. Por isso, só o dono do banco deve ter login.
 - **Vault.** Exemplos: `vault.create_secret('valor', 'nome', 'descrição')`, que devolve um UUID. A página não nomeia os parâmetros, só mostra essa ordem [S7]. `vault.update_secret(uuid, ...)`. A view `vault.decrypted_secrets` dá acesso aos valores a quem puder consultá-la [S7]. Disponibilidade por plano: não citada [incerto].
-- Não conferido: se `anon` e `authenticated` têm `SELECT` em `vault.decrypted_secrets` no projeto novo. Conferir na fase 3.
+- No banco local, `anon` e `authenticated` não têm `SELECT` em `vault.decrypted_secrets` (consulta de 2026-11-08). No projeto novo, não conferido: conferir na fase 3.
 
 ### 4.6 CLI 2.121.0: comandos usados no runbook
 
@@ -164,13 +164,13 @@ e nenhum arquivo do repositório foi alterado.
 | `functions deploy [nome...]` | ver 4.4 | [S20], [CLI 2.121.0] |
 | `secrets set` | `--project-ref`, `--env-file`, `NAME=VALUE` | [CLI 2.121.0] |
 | `config diff` | — | Mostra o que um `config push` mudaria [CLI 2.121.0] |
-| `config push` | `--project-ref` | "Pushes the properties your local config.toml declares"; propriedades não declaradas ficam como estão; pede confirmação por recurso; `--yes` e `SUPABASE_YES` pulam a confirmação [CLI 2.121.0]. Documentação: [S9, sem data] |
+| `config push` | `--project-ref` | "Pushes the properties your local config.toml declares"; propriedades não declaradas ficam como estão; pede confirmação por recurso; `--yes` pula a confirmação [CLI 2.121.0] (`SUPABASE_YES` não conferida). Documentação: [S9, sem data] |
 | `db advisors` | `--linked`, `--type all\|security\|performance` | [CLI 2.121.0]; [S18] |
 | `migration list` | — | Citado para divergências entre histórico local e remoto [S15]. Flags não conferidas |
 
 ### 4.7 Auth
 
-**Limites de taxa** [S11, sem data; S10, parte com data de 3 de setembro de 2024]:
+**Limites de taxa** [S11, sem data; S10, nota com data de 3 Sep 2024]:
 
 | Limite | Padrão | Escopo | Ajustável |
 |---|---|---|---|
@@ -190,21 +190,21 @@ e nenhum arquivo do repositório foi alterado.
 
 **SMTP próprio** [S13, sem data]: o SMTP embutido "is not meant for production use" e tem 2 mensagens por hora. Para o SMTP próprio: escolher um provedor com protocolo SMTP, obter host, porta, usuário e senha, definir o remetente e ativar no painel (ou pela Management API). Depois de salvar, o limite fica em 30 por hora até ser ajustado [S13]. Plano Free: não citado [incerto].
 
-**Senha** [S-senha, sem data]: a página diz que menos de 8 caracteres "is not recommended". Oferece exigência de dígitos, minúsculas, maiúsculas e símbolos; reautenticação para trocar a senha; proteção contra vazamento (HaveIBeenPwned) "available on the Pro Plan and above". Configuração no painel de Auth; a página não cita `config.toml`.
+**Senha** [S-senha, sem data]: a página diz que menos de 8 caracteres "is not recommended". Oferece exigência de dígitos, minúsculas, maiúsculas e símbolos; reautenticação para trocar a senha; proteção contra senha vazada "available on the Pro Plan and above" (a página não cita o nome do serviço). Configuração no painel de Auth; a página não cita `config.toml`.
 
 **Telefone** [S28, sem data]: provedores de SMS listados: MessageBird, Twilio, Vonage e TextLocal (comunitário). WhatsApp como canal de código: "only supported as a channel for the Twilio and Twilio Verify Providers". Hook de SMS não citado. Plano Free: não citado.
 
 ### 4.8 Storage
 
 - Acesso controlado por políticas RLS em `storage.objects` [S22, sem data]. Bucket público não precisa de política de leitura [S22].
-- Limites: no Free, o limite por arquivo não pode passar de 50 MB; no Pro, até 500 GB. O limite do bucket não pode ser maior que o global [S23, sem data].
+- Teto do limite global de upload (Storage Settings): no Free, 50 MB; no Pro, até 500 GB. O limite de cada bucket não pode ser maior que o global [S23].
 - No repositório, o bucket `provider-documents` tem 10 MiB, abaixo dos 50 MB do Free [REPO].
 - Não conferido: se URLs assinadas funcionam para bucket privado [incerto]. A página aberta não trata desse caso.
 
 ### 4.9 Rede e conexões
 
 - Conexão direta, `db.<ref>.supabase.co:5432`: IPv6. Para IPv4 é preciso o complemento IPv4, que troca o registro AAAA pelo A e deixa o endpoint só em IPv4 [S29, sem data].
-- Pooler compartilhado: sempre IPv4. Modo sessão na porta 5432 e modo transação na porta 6543. O modo transação não aceita prepared statements [S29].
+- Pooler compartilhado: host `aws-[INDEX]-[REGION].pooler.supabase.com`, usuário `postgres.<ref>`; sessão na porta 5432 e transação na porta 6543. IPv4 não reconferido nesta revisão [incerto]. O modo transação não aceita prepared statements [S29].
 - Para migrations, `pg_dump` e restauração, a página recomenda a conexão direta; o modo sessão também serve para sessões longas [S29].
 - Restrições de rede: valem para Postgres e pooler, não para PostgREST, Storage, Auth nem supabase-js. Com restrições ligadas, Edge Functions perdem o acesso direto ao banco e devem usar supabase-js [S14, sem data]. Padrão: tudo liberado. Plano exigido: não citado [incerto].
 - O repositório usa supabase-js nas funções; nenhuma função usa `SUPABASE_DB_URL` (busca em `supabase/functions` sem resultado) [REPO]. Pela regra de [S14], restringir o acesso direto não deve afetar as funções. É inferência, não teste [incerto].
@@ -214,7 +214,7 @@ e nenhum arquivo do repositório foi alterado.
 - `postgres` tem privilégios administrativos. As queries do painel rodam como `postgres` [S17, sem data].
 - `service_role` contorna RLS [S17].
 - Dono da tabela contorna RLS, a menos que a tabela use `FORCE ROW LEVEL SECURITY`. Superusuários e papéis com `BYPASSRLS` sempre contornam [S31, PostgreSQL 18.6]. O repositório não usa `FORCE` (busca sem resultado) [REPO]. Logo, o `postgres` que roda as migrations consegue inserir em `admins` pelo SQL.
-- A página de papéis não descreve como RLS atua sobre `anon` e `authenticated` [S17]. O comportamento vem das políticas do repositório (`docs/ARQUITETURA.md`).
+- A página de papéis diz que `anon` e `authenticated` são usados pelo PostgREST para usuário sem login e com login, mas não descreve como o RLS age sobre eles [S17]. O comportamento vem das políticas do repositório (`docs/ARQUITETURA.md`).
 
 ### 4.11 Exposição pela Data API
 
@@ -228,7 +228,7 @@ e nenhum arquivo do repositório foi alterado.
 - **Security Advisor** [S18, sem data]: RLS desligada em tabela pública (0013, erro), view que expõe `auth.users` (0002, erro), view `security definer` (0010, erro), `search_path` mutável (0011, aviso). Também: políticas permissivas (0024), funções `SECURITY DEFINER` chamáveis por `anon` ou `authenticated` (0028 e 0029).
 - **Performance Advisor** [S18]: chaves estrangeiras sem índice (0001), políticas RLS lentas por reavaliar `auth` a cada linha (0003), várias políticas permissivas (0006), índices duplicados (0009), entre outros.
 - Acesso: painel (Advisors), `supabase db advisors` [CLI 2.121.0] e MCP [S18]. A página avisa que alguns achados podem ser intencionais.
-- **Checklist de produção** [S10, sem data; trecho com data de 3 de setembro de 2024]: segurança (RLS, SSL e rede, acesso, Auth, ameaças); desempenho (advisor, índices, teste de carga em staging); disponibilidade (SMTP próprio, pausa do Free, PITR); deploy (GitHub conectado, "Deploy to production" a partir de `main`, branching no Pro); abuso (CAPTCHA em cadastro, login e recuperação de senha).
+- **Checklist de produção** [S10; data de 3 Sep 2024 numa nota de limite de e-mails]: segurança (RLS, SSL e rede, acesso, Auth, ameaças); desempenho (advisor, índices, teste de carga em staging); disponibilidade (SMTP próprio, pausa do Free, PITR); deploy (GitHub conectado, "Deploy to production" a partir de `main`, branching no Pro); abuso (CAPTCHA em cadastro, login e recuperação de senha).
 - **Branching** [S19, sem data]: cria um banco de preview a partir das migrations do repositório. Branches persistentes servem a staging e não são apagadas quando o PR fecha. Planos: a página de branching não cita; a checklist cita o Pro [S10] [incerto].
 
 ---
@@ -243,13 +243,13 @@ e nenhum arquivo do repositório foi alterado.
 | Pausa | pausa após 1 semana de pouca atividade | nunca pausa | Um projeto pausado derruba o app | [S2], [S10] |
 | Retenção de logs | 1 dia | 7 dias | Investigar um webhook de pagamento de uma semana atrás não é possível | [S2] |
 | Senha vazada | não | sim | Só importa se houver login por senha | [S-senha] |
-| Banco | 500 MB | 8 GB | Com 4 GB a página de checklist manda ativar PITR | [S2], [S10] |
+| Banco | 500 MB | 8 GB | Acima de 4 GB, a página de checklist recomenda ativar PITR | [S2], [S10] |
 | Edge Functions | 100 por projeto; 150 s de duração | 1.000; 400 s | As 12 funções cabem nos dois | [S4] |
 | Invocações | 500 mil por mês | 2 milhões | Ver seção 10, item L | [S2] |
 | Branching | não citado | citado | Ensaio de migrations | [S10], [S19] |
 | SMTP próprio, CAPTCHA, restrições de rede, pg_cron, Vault, SMS | planos não citados nas fontes | — | Conferir no painel antes de contratar | [incerto] |
 
-**Conclusão técnica:** para dado real de clientes e pagamento, o mínimo é o Pro. A página de checklist diz o mesmo para disponibilidade [S10].
+**Conclusão técnica:** para dado real de clientes e pagamento, o mínimo é o Pro. A página de checklist aponta na mesma direção: Pro não pausa por inatividade e PITR é recomendado acima de 4 GB [S10].
 
 ---
 
@@ -263,24 +263,24 @@ O `config.toml` é do ambiente local. Nenhum valor abaixo deve ser enviado ao pr
 | `auth.additional_redirect_urls` | inclui `http://localhost:3000` (linhas 168-174) | remover o localhost; manter `capacitor://localhost`, `https://localhost`, `http://tauri.localhost`, `tauri://localhost` (apps nativos) e o domínio | Origens de desenvolvimento não devem ser aceitas em produção | [REPO `config.toml`] |
 | `auth.enable_anonymous_sign_ins` | `false` | `false` | O app não usa login anônimo | [REPO] |
 | `auth.enable_signup` | `true` | `true` | O código cria a conta no primeiro uso (`shouldCreateUser: true`) | [REPO `services/auth.ts`] |
-| `auth.email.enable_confirmations` | `false` | manter; decidir | O código já prova o e-mail. Notificações só vão para contato confirmado pelo Auth | [REPO `ARQUITETURA.md`, Notificações] |
+| `auth.email.enable_confirmations` | `true` | manter; decidir | O código já prova o e-mail. Notificações só vão para contato confirmado pelo Auth | [REPO `ARQUITETURA.md`, Notificações] |
 | `auth.minimum_password_length` | `6` (linha 193) | 8 ou mais, se houver login por senha | Menos de 8 não é recomendado | [S-senha] |
 | `auth.password_requirements` | `""` | a opção mais forte disponível, se houver senha | — | [S-senha] |
 | `auth.email.secure_password_change` | `false` | `true`, se houver senha | Reautenticação para trocar a senha | [S-senha] |
-| `auth.email.otp_expiry` | `3600` (linha 246) | D9 | Sem valor recomendado nas fontes abertas | [REPO] [incerto] |
+| `auth.email.otp_expiry` | `3600` (linha 247) | D9 | Sem valor recomendado nas fontes abertas | [REPO] [incerto] |
 | `auth.rate_limit.email_sent` | `2` (linha 210) | ajustar após SMTP próprio | Padrão do SMTP embutido | [S11], [S13] |
 | `auth.rate_limit.sms_sent` | `30` (linha 212) | D5 | Limite do projeto | [S11] |
 | `auth.rate_limit.sign_in_sign_ups` | `30` por 5 min por IP | manter; observar | Redes móveis podem compartilhar IP. Risco de raciocínio, não testado | [S11] |
 | `auth.captcha` | comentado | D6 | Exige `captchaToken` no app | [S12] |
 | `auth.sms` (canal) | `enable_signup = true`; texto "SMS/WhatsApp" | D3 | Canal real decide o provedor | [S28], `services/auth.ts` |
-| `auth.sms.twilio` | placeholders `local-placeholder` (linhas 309-313) | remover do arquivo de produção | Placeholder não é credencial | [REPO] |
-| `auth.sms.test_otp` | `5511999990000 = "123456"` (linhas 284-285) | **nunca** | Código fixo que valeria em produção. O próprio arquivo avisa | [REPO] |
+| `auth.sms.twilio` | placeholders `local-placeholder` (linhas 321-325, com `enabled = true`) | remover do arquivo de produção | Placeholder não é credencial | [REPO] |
+| `auth.sms.test_otp` | `5511999990000 = "123456"` (linhas 296-297) | **nunca** | Código fixo que valeria em produção. O próprio arquivo avisa | [REPO] |
 | `auth.mfa.totp` | desligado | decidir para admins | — | [REPO] [incerto: plano exigido] |
 | `db.major_version` | `17` (linha 41) | conferir com `SHOW server_version;` no projeto | O comentário do config manda igualar | [REPO] |
 | `db.network_restrictions` | desligado | avaliar | Padrão liberado; supabase-js é compatível | [S14] |
 | `api.auto_expose_new_tables` | comentado (linha 23) | conferir no painel | Ver 4.11 | [S26] |
 | `storage.file_size_limit` | `50MiB` (linha 119) | conferir no painel | Limite global; Free não passa de 50 MB | [S23] |
-| `functions.*.verify_jwt` | ausente | ver 4.4 (flag no deploy) | Ver seção 9, item 1 | [S5], [REPO] |
+| `functions.*.verify_jwt` | `false` em `asaas-webhook` e `notify-dispatch` (linhas 407-411) | manter; a flag também vai no deploy | Ver seção 9, item 1 | [S5], [REPO] |
 | `db.seed` | `sql_paths = ["./seed.sql"]` | não aplicar por `db push` | Seed é de catálogo; ver fase 5 | [S15], [REPO workflow] |
 
 **D11 (decisão):** manter o `config.toml` só para o local e fazer ajustes de produção no painel, ou criar um diretório de configuração separado para produção. A CLI tem `--workdir` (diretório que contém a pasta `supabase/`) [CLI 2.121.0]. Essa segunda opção não foi testada.
@@ -334,7 +334,7 @@ No painel, procure `pg_net`, `pg_cron` e `supabase_vault` e confirme que estão 
 
 ### Fase 4: migrations
 
-Pelo workflow, em **Actions > Publicar Supabase > Run workflow**, com `dry_run = true` e `deploy_functions = false`. Revise a lista. Depois repita com `dry_run = false`. Os dois passos pedem aprovação do ambiente `production` [REPO `infra.md`, passo 5].
+Pelo workflow, em **Actions > Publicar Supabase (migrations e Edge Functions) > Run workflow**, com `dry_run = true` e `deploy_functions = false`. Revise a lista. Depois repita com `dry_run = false`. O arquivo do workflow declara o ambiente `production`; se há aprovação manual, isso depende da regra do ambiente no GitHub, não conferida [REPO `infra.md`, passo 5; incerto].
 
 Equivalente pela CLI:
 
@@ -344,19 +344,19 @@ npx supabase db push --linked --skip-vault --yes
 ```
 
 - As flags vêm do `--help` da CLI 2.121.0 [CLI 2.121.0].
-- Um projeto novo recebe as 16 migrations. Não editar migration já aplicada: crie outra [REPO `CLAUDE.md`, `AGENTS.md`].
+- Um projeto novo recebe as 36 migrations. Não editar migration já aplicada: crie outra (regra adotada pelo projeto; não localizada em `CLAUDE.md` nem em `AGENTS.md`).
 - Se o `dry-run` ou a aplicação falhar em `pg_cron` ou em `vault`, voltar à fase 3.
 
 ### Fase 5: catálogo (seed), sem reset
 
-O seed não entra no `db push` por padrão [S15; REPO workflow]. Ele é idempotente: 10 `insert ... on conflict do update` e nenhum `delete` ou `truncate` (grep de 2026-11-08). Por isso pode ser rodado de novo. Não usar `--include-seed` sem ensaio: a página não diz se o seed roda em transação [S15] [incerto].
+O seed não entra no `db push` por padrão [S15; REPO workflow]. Ele é idempotente: 10 `insert ... on conflict do update` e nenhum `delete` ou `truncate` (grep de 2026-11-08). Por isso pode ser rodado de novo, com uma ressalva: `do update` sobrescreve o que foi alterado no banco. Não repetir depois de edição manual do catálogo sem revisar antes. Não usar `--include-seed` sem ensaio: a página não diz se o seed roda em transação [S15] [incerto].
 
 Carregue o arquivo com `psql`, em uma única transação e parando no primeiro erro [S32, sem data; PostgreSQL 18.6]:
 
 ```bash
 # A senha não vai para o histórico do shell. Digite quando pedido.
 read -rs -p "Senha do Postgres: " DBPW; echo
-# Conexão direta (IPv6). Sem IPv6 na rede, use o pooler de sessão (porta 5432, IPv4) [S29].
+# Conexão direta (IPv6). Sem IPv6 na rede, use o pooler de sessão: host `aws-[INDEX]-[REGION].pooler.supabase.com`, porta 5432, usuário `postgres.<ref>` [S29; o host exato vem do painel].
 psql "postgresql://postgres:<senha-codificada-na-URL>@db.${SUPABASE_PROJECT_ID}.supabase.co:5432/postgres" \
   -1 -v ON_ERROR_STOP=1 -f supabase/seed.sql
 unset DBPW
@@ -377,7 +377,7 @@ select
                        where p.occupation_slug = o.slug))                   as sem_politica; -- esperado 0
 ```
 
-- Os valores esperados vêm do cabeçalho do `seed.sql` [REPO]. Ocupação sem política não pode ser tomada nem aprovada [REPO `ARQUITETURA.md`, Prestadores]; por isso o último número precisa ser zero.
+- Os valores esperados vêm do cabeçalho do `seed.sql` [REPO]. No banco local de 2026-11-08 (catálogo já carregado), a consulta deu 44, 1710, 1710, 96 e 0. Ocupação sem política não pode ser tomada nem aprovada [REPO `ARQUITETURA.md`, Prestadores]; por isso o último número precisa ser zero.
 
 ### Fase 6: Auth no painel
 
@@ -407,9 +407,9 @@ Crie um arquivo **fora do repositório** com os valores de produção, a partir 
 |---|---|---|
 | `SITE_URL` | `https://<domínio>` | Igual a `VITE_SITE_URL`. CORS e links de e-mail [REPO] |
 | `ASAAS_API_KEY` | chave da conta raiz (produção) | Nunca no cliente |
-| `ASAAS_BASE_URL` | `https://api.asaas.com/v3` | O padrão do `.env.example` é o sandbox [REPO `infra.md`] |
+| `ASAAS_BASE_URL` | `https://api.asaas.com/v3` | O padrão do código (`_shared/config.ts`) é o sandbox [REPO] |
 | `ASAAS_WEBHOOK_TOKEN` | 32 a 255 caracteres | Mesmo valor cadastrado no webhook do Asaas [REPO `functions/README.md`] |
-| `CRON_SECRET` | aleatório, 32 bytes ou mais | Igual ao `cron_secret` do Vault (fase 10) [REPO] |
+| `CRON_SECRET` | aleatório e longo (tamanho mínimo não localizado no repositório [incerto]) | Igual ao `cron_secret` do Vault (fase 10) [REPO] |
 | `PRO_GRACE_DAYS` | ex.: `0` | Padrão 0, máximo 60 [REPO `ARQUITETURA.md`] |
 | `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_GRAPH_VERSION` | se o canal estiver ligado | Sem eles, mensagens ficam `skipped` [REPO] |
 | `RESEND_API_KEY`, `EMAIL_FROM` | se o e-mail estiver ligado | Sem eles, ficam `skipped` [REPO] |
@@ -462,7 +462,7 @@ select vault.create_secret(
 select name from vault.secrets order by name;  -- só nomes, sem valores
 ```
 
-- A ordem dos argumentos segue o exemplo de [S7].
+- A ordem dos argumentos (valor, nome, descrição) confere com os exemplos de [S7], reabertos em 2026-11-08.
 - Enquanto as duas chaves não existirem, o agendador não chama a função e não erra [REPO `notifications.sql`].
 - Quem tem login no banco consegue ler o `cron_secret` enquanto a requisição espera [S8]. Por isso só o owner deve ter login no banco de produção.
 - O valor de `cron_secret` tem de ser igual ao `CRON_SECRET` da fase 8. Diferente, o despachante responde 401 `unauthorized` [REPO `notify-dispatch/handler.ts`].
@@ -518,14 +518,14 @@ Rodar depois da fase 14. Nenhum teste de `supabase/tests/database` (pgTAP) ou de
 
 | # | Teste | Como | Resultado esperado | Fonte |
 |---|---|---|---|---|
-| 1 | Migrations aplicadas | `npx supabase migration list --linked` | 16 aplicadas | [S15] (flags não conferidas) |
+| 1 | Migrations aplicadas | `npx supabase migration list --linked` | 36 aplicadas | [S15] (flags não conferidas) |
 | 2 | Catálogo | consulta da fase 5 | 44, 1710, 1710, 96 e 0 | [REPO `seed.sql`] |
 | 3 | Leitura pública do catálogo | cliente com a chave publicável, sem login, `select` em `areas` | linhas retornadas | [REPO `ARQUITETURA.md`] |
 | 4 | Bloqueio de tabelas privadas | mesmo cliente, `select` em `payments`, `admins`, `provider_documents`, `profiles` | nenhuma linha ou erro de permissão | [REPO `ARQUITETURA.md`] |
 | 5 | Colunas de pagamento | `select *` em `payments` | erro (regra da ARQUITETURA) | [REPO `ARQUITETURA.md`] [incerto: não testado] |
 | 6 | Advisor de segurança | fase 14 | sem RLS desligada em tabela pública | [S18] |
-| 7 | Agendamentos | `select jobname, schedule, active from cron.job order by jobname;` | 4 linhas, todas ativas | [REPO] |
-| 8 | Execuções | `select status, start_time from cron.job_run_details order by start_time desc limit 10;` após 2 min (nomes de colunas não conferidos [incerto]) | `succeeded`. Não prova entrega de mensagem | [S25] |
+| 7 | Agendamentos | `select jobname, schedule, active from cron.job order by jobname;` | 7 linhas, todas ativas (no banco local: notification-counts-retention, product-events-retention, workeasy-booking-reminders, workeasy-dispatch-notifications, workeasy-expire-booking-requests, workeasy-expire-pro-plans, workeasy-expire-stale) | [REPO] |
+| 8 | Execuções | `select status, start_time from cron.job_run_details order by start_time desc limit 10;` após 2 min (colunas `status` e `start_time` confirmadas no banco local em 2026-11-08) | `succeeded`. Não prova entrega de mensagem | [S25] |
 | 9 | Vault | `select name from vault.secrets order by name;` | `cron_secret` e `notify_dispatch_url`, sem valores | [REPO] |
 | 10 | Despachante sem segredo certo | `curl -i -X POST "https://<ref>.supabase.co/functions/v1/notify-dispatch" -H "x-cron-secret: errado" -H 'Content-Type: application/json' -d '{}'` | 401, código `unauthorized` | [REPO `notify-dispatch/handler.ts`, linha 120] |
 | 11 | Webhook sem token | `curl -i -X POST "https://<ref>.supabase.co/functions/v1/asaas-webhook" -H 'Content-Type: application/json' -d '{}'` | 401, código `invalid_token` | [REPO `asaas-webhook/handler.ts`, linhas 88-91] |
@@ -540,16 +540,19 @@ Rodar depois da fase 14. Nenhum teste de `supabase/tests/database` (pgTAP) ou de
 
 ## 9. Divergências entre repositório e documentação
 
-1. **Verificação de JWT.** `supabase/functions/README.md` (linhas 34-36) diz que o `verify_jwt = false` fica em `supabase/config.toml`. O arquivo não tem essa seção. O workflow compensa com a flag no deploy [REPO]. Registrar em mudança própria, como sugere `infra.md`.
-2. **Agendamentos.** `docs/ARQUITETURA.md` (seção Notificações) lista dois jobs de `pg_cron`. Há quatro: também `workeasy-booking-reminders` e `product-events-retention` [REPO].
+1. **Verificação de JWT.** Resolvida no repositório: `supabase/config.toml` (linhas 407-411) tem `[functions.asaas-webhook]` e `[functions.notify-dispatch]` com `verify_jwt = false`, como diz `supabase/functions/README.md` (linhas 34-36); `test/functions/functions-config.test.ts` confere. O workflow mantém `--no-verify-jwt` na publicação [REPO]. Documentos irmãos ainda dizem o contrário (item 12).
+2. **Agendamentos.** `docs/ARQUITETURA.md` (seção Notificações) lista dois jobs de `pg_cron`. Há sete `cron.schedule` nas migrations e sete jobs no banco local: também `workeasy-booking-reminders`, `product-events-retention`, `workeasy-expire-pro-plans`, `workeasy-expire-booking-requests` e `notification-counts-retention` [REPO; consulta local].
 3. **Funções.** A tabela de Edge Functions da `ARQUITETURA.md` cita 10 funções. Há 12 pastas: não aparecem `care-summary` nem `quote-assist` [REPO; `grep` sem resultado].
 4. **Versão do Postgres.** `ARQUITETURA.md` (linha 76) diz "Postgres 15+ do Supabase". `config.toml` (linha 41) diz `major_version = 17`, com comentário que manda igualar ao projeto remoto [REPO].
 5. **DEPLOY.md.** `infra.md` (linha 5) remete ao `DEPLOY.md`. O arquivo não existe no repositório [REPO].
-6. **Canal de código.** `config.toml` (linha 271) diz "Sign-in by code over SMS/WhatsApp". O app pede código só por SMS (`services/auth.ts`, linha 33). WhatsApp pela Auth exige Twilio [S28].
+6. **Canal de código.** `config.toml` (linha 282) diz "Sign-in by code over SMS/WhatsApp". O app pede código só por SMS (`services/auth.ts`, linha 33). WhatsApp pela Auth exige Twilio [S28].
 7. **Documento de WhatsApp.** `docs/pesquisa/whatsapp-e-email.md` cita `auth-send-sms`, `SEND_SMS_HOOK_SECRETS`, `WHATSAPP_OTP_TEMPLATE`, `WHATSAPP_APP_SECRET` e `WHATSAPP_VERIFY_TOKEN`. Nada disso existe em `supabase/` (busca em 2026-11-08, sem resultado). É documento de proposta ou está desatualizado. Decidir antes da fase 8.
 8. **Cabeçalho do agendador.** `.env.example` diz que o segredo vai no cabeçalho `x-cron-secret`. A migration 08 envia `Authorization: Bearer`. O handler aceita os dois [REPO]. Sem defeito funcional; a descrição está incompleta.
 9. **Nomes das migrations.** `ARQUITETURA.md` cita `01_identity.sql`, `08_notifications.sql` etc. Os arquivos têm prefixo de data (`20261019000001_identity.sql`). Cosmético.
 10. **Sandbox por padrão.** `ARQUITETURA.md` (linha 68) diz que `ALLOW_DEV_ORIGINS` "já vale com o Asaas sandbox". Se `ASAAS_BASE_URL` ficar no sandbox em produção, o CORS abre para `localhost`. Mitigação: fase 8.
+11. **Deploy: workflow e passo manual diferem.** O workflow publica sem `--use-api` (empacotamento com Docker no runner `ubuntu-24.04`); a fase 9 deste documento usa `--use-api` em todas as funções. Escolher um dos dois caminhos e usá-lo nos dois [incerto: qual é o aceito pelo projeto].
+12. **Documentos irmãos com afirmações antigas (não editados aqui).** `docs/RUNBOOKS.md` (linha 1047) diz que o `config.toml` não tem a seção `[functions]` e que o banco local tem seis agendamentos; `docs/pesquisa/whatsapp-e-email.md` (linha 673) diz o mesmo sobre `[functions.*]`. O `config.toml` atual tem a seção e o banco local tem sete jobs.
+13. **Consistência com `DECISOES.md` e `juridico/`.** `DECISOES.md` (seção de modelo financeiro) estima infraestrutura em cerca de R$ 135/mês sem uso [estimativa do plano]; o Pro do Supabase começa em US$ 25 (página de 2026-11-08, sem conversão). Não há contradição, mas a conta em real não foi feita aqui. `juridico/08` (seção 10.3) e este documento descrevem backups por plano da mesma forma, e `juridico/08` (linha 504) deixa plano e retenção de logs como [PLANEJADO], como aqui. Neste documento, "Pro" é o plano do Supabase, não o plano Pro do WorkEasy (R$ 49/mês, `DECISOES.md`, D2). `juridico/06` diz ter lido o DPA do Supabase em 23/10/2026; esse DPA não foi reaberto aqui.
 
 ---
 
@@ -567,9 +570,9 @@ Nenhum destes itens foi corrigido. São registros para o owner e para quem for i
 - **H. SMTP e SMS no lançamento.** Padrões de 2 e-mails por hora e 30 SMS por hora no projeto [S11, S13]. Bloqueiam o cadastro em escala. Decisões D4 e D5.
 - **I. Restauração não testada.** Backup de Pro existe [S3], mas não há restauração ensaiada. Um ensaio exige projeto de teste ou janela de manutenção [PLANEJADO].
 - **J. Admin sem auditoria.** A inserção em `admins` não gera `audit_log` [REPO]. Registro manual (fase 12).
-- **K. Vault e grants.** Não conferido se `anon` e `authenticated` podem ler `vault.decrypted_secrets` [incerto]. Conferir na fase 3 com uma consulta a `information_schema` ou ao `pg_roles`.
+- **K. Vault e grants.** No banco local, `anon` e `authenticated` não podem ler `vault.decrypted_secrets` (consulta de 2026-11-08). No projeto hospedado, não conferido [incerto]. Conferir na fase 3 com uma consulta a `information_schema` ou ao `pg_roles`.
 - **L. Invocações.** Pelo código, o `notify-dispatch` só é chamado quando há linha `queued` vencida ou `sending` parada [REPO, migration 08]. No teto de um disparo por minuto, são 43.200 chamadas em 30 dias, abaixo do limite do Free (500 mil) [S2] e do Pro. Isso é conta de raciocínio, não medição.
-- **M. Validade do código.** `otp_expiry` de 3600 s (uma hora) [REPO, linha 246]. Não há valor recomendado nas fontes abertas (D9).
+- **M. Validade do código.** `otp_expiry` de 3600 s (uma hora) [REPO, linha 247]. Não há valor recomendado nas fontes abertas (D9).
 - **N. CAPTCHA.** Ligar sem o app enviar `captchaToken` quebra o login por código [S12; REPO `services/auth.ts`]. Fazer as duas mudanças juntas, em ambiente de ensaio.
 - **O. Região fora do Brasil.** Se a região escolhida for fora do Brasil, a análise sobre transferência internacional de dados é matéria de parecer jurídico. [CONDICIONAL: depende de parecer]. Este documento não interpreta lei.
 - **P. Retenção.** Logs do Pro: 7 dias [S2]. Quanto tempo manter logs, backups e registros de pagamento é decisão jurídica e operacional. [CONDICIONAL: depende de parecer].
@@ -590,7 +593,7 @@ Nenhum destes itens foi corrigido. São registros para o owner e para quem for i
 - Conteúdo da seção de variáveis do psql (`:'nome'`) e a regra exata de codificação da senha na URL.
 - Dois itens da lista de CAPTCHA: se cobre OTP e magic link.
 - Se o login por senha está desligado no painel. O repositório não tem essa chave em `config.toml`.
-- Nenhum comando foi executado contra um projeto Supabase. Os comandos de CLI foram só de `--help`.
+- Nenhum comando foi executado contra projeto Supabase remoto. A CLI foi usada só com `--help`. No banco local (`127.0.0.1:54322`), houve só consultas de leitura em transação `READ ONLY` com `ROLLBACK`; o `seed.sql` não foi reexecutado. Host exato e IPv4 do pooler, e o DPA do Supabase, não conferidos.
 
 ---
 
@@ -609,7 +612,7 @@ Todas abertas em 2026-11-08. "Sem data" = a página não tem data visível.
 | S7 | https://supabase.com/docs/guides/database/vault | `create_secret`, `update_secret`, `decrypted_secrets` | Sem data; sem planos |
 | S8 | https://supabase.com/docs/guides/functions/schedule-functions | Exemplo pg_cron + pg_net; aviso sobre roles | Sem data |
 | S9 | https://supabase.com/docs/reference/cli/supabase-config-push | Descrição de `config push` | Sem data; lida em resumo |
-| S10 | https://supabase.com/docs/guides/platform/going-into-prod | Checklist de produção; limites de Auth; branching no Pro | Trecho com data de 3 de setembro de 2024 |
+| S10 | https://supabase.com/docs/guides/platform/going-into-prod | Checklist de produção; limites de Auth; branching no Pro | Data de 3 Sep 2024 numa nota sobre o limite de e-mails, não de publicação; reaberta em 2026-11-08 |
 | S11 | https://supabase.com/docs/guides/auth/rate-limits | Limites de Auth, escopo e ajuste | Sem data |
 | S12 | https://supabase.com/docs/guides/auth/auth-captcha | Provedores; formulários; `captchaToken` | Sem data; sem planos |
 | S13 | https://supabase.com/docs/guides/auth/auth-smtp | SMTP embutido e próprio; limites | Sem data; plano Free não citado |
@@ -634,6 +637,8 @@ Todas abertas em 2026-11-08. "Sem data" = a página não tem data visível.
 | S32 | https://www.postgresql.org/docs/current/app-psql.html | `-v`, `-1`, `ON_ERROR_STOP` | PostgreSQL 18.6; a seção de variáveis e de ambiente não foi lida até o fim |
 | S-senha | https://supabase.com/docs/guides/auth/password-security | 8 caracteres; exigências; proteção contra senha vazada, Pro | Sem data |
 | CLI 2.121.0 | Saída local de `--help`: `db push`, `config push`, `config diff` (citada), `secrets set`, `projects create`, `db advisors`, `functions deploy` | Flags e descrições | Versão local, lida em 2026-11-08 |
+
+Reabertas em 2026-11-08 nesta revisão: S1, S2, S3, S4, S5, S6, S7, S8, S10, S11, S12, S13, S17, S18, S23, S24, S28, S29, S30 e S-senha. Não reabertas: S9, S14, S16, S19, S21, S22, S25, S26, S27 e S31; S15 e S20 tiveram as flags conferidas no `--help` da CLI; S32 teve `-1` e `-v` conferidos no `psql --help`.
 
 Página aberta sem conteúdo útil para o tema: `supabase.com/docs/guides/database/extensions/pg_cron` (apenas um título e um link). A política de senha está em `password-security` (S-senha), não em `passwords` (S27).
 

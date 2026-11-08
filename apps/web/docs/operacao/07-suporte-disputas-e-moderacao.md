@@ -4,7 +4,7 @@
 
 | Item | Situação |
 |---|---|
-| Versão | Rascunho 1, redigido em 2026-11-08 |
+| Versão | Rascunho 1, redigido em 2026-11-08; fatos e fontes conferidos no mesmo dia (seção 17) |
 | Quem opera | Uma pessoa (o dono), pelas telas `/admin` |
 | Estado do produto | Protótipo. Não implantado, sem usuários reais. Asaas, WhatsApp e Resend não foram testados com serviços reais (documento 10, cabeçalho). |
 | Documentos irmãos | 02 (Termos do Prestador, cláusula 17), 04 (Cancelamento, Reembolso e Garantia), 05 (Avaliações e Moderação), 08 (Incidentes), 10 (SAC). Se um deles mudar, este muda junto. |
@@ -38,12 +38,12 @@ Leia antes de qualquer procedimento. Onde o playbook pede algo que a tela não f
 
 | Tarefa | O que o produto faz hoje (2026-11-08) | O que fazer no lugar |
 |---|---|---|
-| Receber pedido de suporte | Não há caixa, rota `/sac` nem tabela de chamados. | Caixa do SAC `[PLANEJADO]` e planilha (seção 2). |
+| Receber pedido de suporte | Há a rota `/sac`, com texto provisório e sem canal de contato (documento 10, L2). Não há caixa de atendimento nem tabela de chamados. | Caixa do SAC `[PLANEJADO]` e planilha (seção 2). |
 | Contestação do cliente | `/admin/disputas` lista os atendimentos em contestação. Duas decisões: liberar ou cancelar, com motivo obrigatório. | Seção 5. |
-| Devolver dinheiro | Não há botão de estorno. `payments-void` só cancela cobrança `pending` no Asaas e não devolve nada. | Seção 6, por situação e forma de pagamento. |
+| Devolver dinheiro | Não há botão de estorno. `payments-void` cancela no Asaas as cobranças `pending` de atendimento cancelado. Se a cobrança já estava paga, o webhook pede o estorno (`payment.void_paid`). | Seção 6, por situação e forma de pagamento. |
 | Cancelar atendimento pago | Nenhum dos dois lados cancela pelo app depois do pagamento (documento 04, seção 2.1). A administração tem `transition_booking` com motivo, mas não há tela fora de disputa. | Pelo SAC. Mudar o estado só pela função `transition_booking`, nunca por UPDATE direto: um trigger bloqueia isso (ARQUITETURA). |
 | Moderar avaliação | Não há tela (documento 05, seção 6.3). Nenhuma ocorrência de `published` em `pages/admin/`, `components/admin/` e `services/admin.ts`. | Seção 8. |
-| Suspender prestador | `/admin/prestadores/:id`, botão "Suspender", motivo obrigatório (`PrestadorDetalhe.tsx`). O app não avisa o prestador. | Seção 9. |
+| Suspender prestador | `/admin/prestadores/:id`, botão "Suspender prestador", confirmação "Suspender", motivo obrigatório na tela (`PrestadorDetalhe.tsx`). O app não avisa o prestador. | Seção 9. |
 | Pedido de dados (LGPD) | `/admin/lgpd` é só leitura. Cópia e exclusão são feitas pelo próprio usuário em "Minha conta". | Seção 10. |
 | Ver o que aconteceu | `/admin/auditoria` é só leitura, com filtro por entidade e por ator. Não tem exportação. | Seção 7.2 e a pendência G-9. |
 | Não comparecimento | Não existe marcação (documento 04, seções 4.8 e 4.9). | Seção 13, com as árvores de decisão. |
@@ -77,7 +77,7 @@ Leia antes de qualquer procedimento. Onde o playbook pede algo que a tela não f
 - [ ] Abrir a caixa do SAC e registrar cada mensagem na planilha no mesmo dia.
 - [ ] Abrir `/admin/disputas`. Ver se há atendimento em contestação parado.
 - [ ] Abrir `/admin/pagamentos` e ver a lista "Exigem atenção".
-- [ ] Abrir `/admin/lgpd` e ver pedidos com situação "Não terminou" (`failed`).
+- [ ] Abrir `/admin/lgpd` e ver pedidos com situação `failed` (a tela mostra "Este pedido não terminou").
 - [ ] Ver a caixa de ofícios e notificações de órgãos.
 
 ---
@@ -99,7 +99,7 @@ As categorias T1 a T12 e as prioridades P1 a P3 são as do documento 10 (seçõe
 | T9 | Assédio ou ameaça | P2; P1 se houver ameaça | Guardar provas e decidir o escalonamento | Operador |
 | T10 | Incidente de segurança na casa | P1 | Número de emergência primeiro (seção 7.1) | Operador e advogado |
 | T11 | Reclamação de conselho ou de publicidade regulada | P1 se for pedido de autoridade | Seção 11 | Operador e advogado |
-| T12 | Ordem judicial, notificação ou imprensa | P1 para ordem e notificação; P3 para imprensa | Enviar ao advogado no dia do recebimento | Advogado |
+| T12 | Ordem judicial, notificação ou imprensa | P1 para ordem judicial (documento 10, seção 4.2); notificação extrajudicial sem prioridade no documento 10 `[PROPOSTA: P1]`; P3 para imprensa | Enviar ao advogado no dia do recebimento | Advogado |
 | LGPD | Pedido de titular (cópia, exclusão, correção, revogação) | P3; P2 se houver dúvida sobre a exclusão | Seção 10 | Operador |
 
 ---
@@ -108,8 +108,8 @@ As categorias T1 a T12 e as prioridades P1 a P3 são as do documento 10 (seçõe
 
 | # | Prazo | Quando começa | Base | Estado |
 |---|---|---|---|---|
-| 1 | Resposta ao consumidor pelo SAC: **5 dias corridos** | Recebimento | Decreto 7.962/2013, art. 4º, parágrafo único, como citado nos documentos 04 (seção 9.2) e 10 (seção 4.1). Texto não aberto nesta sessão: o Planalto bloqueou o acesso. | `[PROPOSTA]` `[incerto]` |
-| 2 | Demanda não urgente sob o Decreto 13.135/2026: 7 dias corridos | Recebimento | Documento 10, Q3, e documento 04, seção 9.3. Texto não encontrado nesta sessão. | `[incerto]`. Até o parecer, vale o prazo mais curto (5 dias). |
+| 1 | Resposta ao consumidor pelo SAC: **5 dias corridos** | Recebimento | Decreto 7.962/2013, art. 4º, parágrafo único: "A manifestação do fornecedor às demandas previstas no inciso V do caput será encaminhada em até cinco dias ao consumidor" (texto lido na cópia da Câmara dos Deputados, 2026-11-08; o Planalto bloqueou o acesso). Citado também nos documentos 04 (seção 9.2) e 10 (seção 4.1). | `[PROPOSTA]`. Aplicação ao serviço `[CONDICIONAL: depende de parecer]` (documento 10, Q1). |
+| 2 | Demanda não urgente sob o Decreto 13.135/2026: 7 dias corridos | Recebimento | Decreto 13.135/2026, art. 21 (texto lido na cópia da Câmara, 2026-11-08). Documento 10, Q3, e documento 04, seção 9.3. Vigência calculada: 20 dias após a publicação no DOU de 13/10/2026 (art. 25), ou seja 2/11/2026, a confirmar no DOU. | `[CONDICIONAL: depende de parecer]` quanto ao escopo (documento 10, Q2). Até o parecer, vale o prazo mais curto (5 dias). |
 | 3 | Reclamação no Consumidor.gov.br: **10 dias corridos** | Registro da reclamação | Página "Conheça o Consumidor.gov.br" e Termo de Adesão, Cláusula Quarta, item 4 (abertos em 2026-11-08). | Só vale com adesão `[PLANEJADO]` |
 | 4 | Resposta à CIP do Procon-SP: **10 dias corridos** | Envio (sistema, correio ou entrega pessoal) | Portaria Normativa Procon-SP 247/2021, art. 18, §2º (aberta). | Pode ser alterado por decisão fundamentada do Diretor da DAOC (art. 18, §3º). |
 | 5 | Resposta ao Termo de Notificação ao Fornecedor (TNF) do Procon-SP: **10 dias corridos** | Envio da notificação de abertura de processo | Portaria 247/2021, art. 29 (aberta). | Conferir o ato recebido |
@@ -117,16 +117,16 @@ As categorias T1 a T12 e as prioridades P1 a P3 são as do documento 10 (seçõe
 | 7 | Contestação do cliente | Fim do horário marcado | `transition_booking`, migração `20261019000005_bookings.sql`, linha 392 (código), e documento 04, seção 8.1 | Vale no sistema |
 | 8 | Decisão da equipe sobre a contestação: **5 dias corridos** | Última prova recebida | Proposta deste playbook | `[PROPOSTA]` |
 | 9 | Pedido de estorno ao Asaas: **até 5 dias úteis** | Decisão ou aviso de pagamento | Documento 04, seção 5.4 | `[PROPOSTA]` |
-| 10 | Prazo para o valor aparecer ao cliente (cartão, Pix) | Pedido de estorno | Documento 04, seção 5.3, cita a documentação do Asaas. Não reaberta aqui. | `[incerto]` |
-| 11 | LGPD, declaração completa: **15 dias corridos** | Pedido | LGPD, art. 19, II, como citado no documento 10 (seção 7). Planalto bloqueado; não reaberta. | `[incerto]` |
-| 12 | Denúncia ou contestação de avaliação, análise interna: **2 dias úteis** | Recebimento | Documento 05, seção 6.7 | `[PROPOSTA]` |
+| 10 | Prazo para o valor aparecer ao cliente (cartão, Pix) | Pedido de estorno | Cartão: "pode levar até 10 dias úteis para aparecer na fatura do pagador" (página do Asaas, lida em 2026-11-08); o prazo do emissor do cartão é outro. Pix: a página não informa prazo. | Cartão: lido. Pix: `[incerto]` |
+| 11 | LGPD, declaração completa: **15 dias corridos** | Pedido de confirmação ou acesso | LGPD, art. 19, II (texto lido na cópia da Câmara, 2026-11-08). O prazo se refere a confirmação e acesso; aplicá-lo à eliminação não foi conferido. | Lido. Aplicação à eliminação `[incerto]` |
+| 12 | Denúncia ou contestação de avaliação, análise interna: **2 dias úteis** | Recebimento | Documento 05, seção 6.7 | `[DECISÃO DO DONO]` (proposta de 2 dias úteis, como no documento 05) |
 | 13 | Prazo para contestar avaliação: **7 dias corridos** | Aviso da ocultação | Documento 05, seção 8.3 | `[DECISÃO DO DONO]` |
-| 14 | Resposta à contestação de avaliação: **5 dias úteis** | Contestação | Documento 05, seção 8.4 | `[DECISÃO DO DONO]` |
+| 14 | Resposta à contestação de avaliação: **5 dias corridos** | Contestação | Documento 05, seção 8.4 (proposta de 5 dias corridos, como no SAC; o documento 05, item 21, pede um só prazo) | `[DECISÃO DO DONO]` |
 | 15 | Prestador responde ao aviso de suspensão: **10 dias** | Aviso por escrito | Documento 02, cláusula 17.3 | `†` sem norma |
 | 16 | Decisão por escrito após a resposta: **10 dias úteis** | Resposta do prestador | Documento 02, cláusula 17.3 | `†` sem norma |
 | 17 | Aviso de suspensão cautelar: **até 2 dias úteis** | Suspensão | Documento 02, cláusula 17.4 | `†` sem norma |
 | 18 | Resposta ao pedido de revisão de suspensão: **10 dias úteis** | Pedido de revisão | Documento 02, cláusula 17.5 | `†` sem norma |
-| 19 | Guarda do histórico do SAC: mensagens por 90 dias; histórico por 6 meses | Encerramento | Documento 10, seção 5.3, cita o Decreto 13.135/2026, arts. 18 e 19 | `[CONDICIONAL: depende de parecer]` `[incerto]` |
+| 19 | Guarda do SAC: gravações e mensagens por pelo menos 90 dias; histórico da demanda por pelo menos 6 meses depois de resolvida | Encerramento | Decreto 13.135/2026, art. 19 e art. 18, §4º, II (texto lido na cópia da Câmara). Documento 10, seção 5.3 | `[CONDICIONAL: depende de parecer]` |
 
 **Dois avisos sobre prazos de órgão**
 
@@ -146,7 +146,7 @@ As categorias T1 a T12 e as prioridades P1 a P3 são as do documento 10 (seçõe
 
 1. Abrir o cartão em `/admin/disputas`. Conferir valor, origem ("Pela plataforma" ou "Cliente próprio do profissional"), situação dos pagamentos e a data de contestação.
 2. Ler o histórico do atendimento. Ele mostra quem marcou "Concluído", quando, e o motivo escrito pelo cliente.
-3. Pedir a prova de cada parte, por escrito, pelo SAC: fotos, comprovante, conversa. Prazo para a parte responder: 5 dias corridos `[PROPOSTA]`. O app não tem chat, e a conversa combinada fora do app não está no sistema (documento 10, T2).
+3. Pedir a prova de cada parte, por escrito, pelo SAC: fotos, comprovante, conversa. Prazo para a parte responder: 5 dias corridos `[PROPOSTA]`. O app não tem chat entre as partes `[incerto: a busca por "chat" achou telas de concierge e de teleconsulta; conferir]`, e a conversa combinada fora do app não está no sistema (documento 10, T2).
 4. Conferir o pagamento em `/admin/pagamentos`. Não abrir o payload bruto (`payments.raw`) sem necessidade: cada acesso gera `payment.raw_viewed` no audit_log.
 5. Decidir até 5 dias corridos depois da última prova `[PROPOSTA]`. Escrever um motivo curto. O motivo vai para o histórico do atendimento e para o audit_log (`dispute.resolved`).
 6. Anotar na planilha: decisão, motivo, valor e forma de pagamento.
@@ -165,21 +165,21 @@ As categorias T1 a T12 e as prioridades P1 a P3 são as do documento 10 (seçõe
 
 ### 6.1 Correção de premissa
 
-`payments-void` **não devolve dinheiro**. Ele cancela no Asaas as cobranças `pending` de um atendimento que já está `canceled`, e marca `payments.status = 'canceled'` (`supabase/functions/payments-void/handler.ts`). A devolução de valor pago acontece de três jeitos: pelo webhook, quando o pagamento chega depois do cancelamento; pelo estorno manual no painel do Asaas; ou pelo SAC, para desistência. Nenhuma tela do admin chama estorno.
+`payments-void` **não devolve dinheiro**. Ele cancela no Asaas as cobranças `pending` de um atendimento que já está `canceled`, e marca `payments.status = 'canceled'` (`supabase/functions/payments-void/handler.ts`; a marcação é feita por `cancelPendingPayment`, em `supabase/functions/_runtime/supabase.ts`). Se a cobrança estiver paga no momento do cancelamento, o webhook pede o estorno (`payment.void_paid`). A devolução de valor pago acontece de três jeitos: pelo webhook, quando o pagamento chega depois do cancelamento; pelo estorno manual no painel do Asaas; ou pelo SAC, para desistência. Nenhuma tela do admin chama estorno.
 
 ### 6.2 Tabela por situação
 
 | Situação | Quem age | Pix | Cartão | Boleto |
 |---|---|---|---|---|
-| **A.** Cobrança aberta de atendimento cancelado | Automático (`payments-void`) | Cobrança cancelada no Asaas. Nenhum dinheiro saiu. | Igual ao Pix | Igual ao Pix |
-| **B.** Pagamento recebido depois do cancelamento (`payment.received_after_cancel`) | Automático (webhook pede o estorno total) | Asaas aceita. Se recusar (saldo, rede): `payment.refund_failed`, que aparece em "Exigem atenção". | Igual ao Pix | O comentário em `asaas-client.ts` diz que a API só aceita estorno de cartão e Pix. Por isso, o boleto vai para `payment.refund_failed` e fica para o operador. |
-| **C.** Pago, e o atendimento foi cancelado pela equipe (decisão de contestação a favor do cliente, ou desistência atendida) | Manual (operador) | Estorno no painel do Asaas `[incerto: procedimento não conferido]`. Depois, o webhook marca `refunded`. | Igual ao Pix. Prazo para a fatura do cliente: `[incerto]`. | Estorno precisa de dados bancários do cliente. O app não tem fluxo para isso (documento 04, seção 5.3, `[PLANEJADO]`). Procedimento manual `[incerto]`. |
+| **A.** Cobrança aberta de atendimento cancelado | Automático (`payments-void`) | Cobrança cancelada no Asaas. Nenhum dinheiro saiu. Se já estava paga, vira situação B. | Igual ao Pix | Igual ao Pix |
+| **B.** Pagamento recebido depois do cancelamento (`payment.received_after_cancel`) | Automático (webhook pede o estorno total) | Asaas aceita. Se recusar (saldo, rede): `payment.refund_failed`, que aparece em "Exigem atenção". | Igual ao Pix | O app chama o estorno geral do Asaas. A página desse endpoint (lida em 2026-11-08) cita cartão e Pix e aponta para um endpoint separado, "Estornar boleto", que o app não chama. O comentário em `asaas-client.ts` diz "card and Pix only". Por isso, o boleto deve ir para `payment.refund_failed` e ficar para o operador `[incerto: resposta real do Asaas não testada]`. |
+| **C.** Pago, e o atendimento foi cancelado pela equipe (decisão de contestação a favor do cliente, ou desistência atendida) | Manual (operador) | Estorno no painel do Asaas `[incerto: procedimento não conferido]`. Depois, o webhook marca `refunded`. | Igual ao Pix. Até 10 dias úteis para aparecer na fatura, segundo o Asaas. O emissor do cartão define o prazo final. | Estorno precisa de dados bancários do cliente. O app não tem fluxo para isso (documento 04, seção 5.3, `[PLANEJADO]`). O Asaas documenta o endpoint "Estornar boleto", que pede dados bancários do pagador (não testado). Procedimento manual `[incerto]`. |
 | **D.** Liberado a favor do profissional | Ninguém | Sem devolução | Sem devolução | Sem devolução |
 | **E.** Desistência (arrependimento) de atendimento pago | Manual, pelo SAC | Documento 04, seção 5.5: `[CONDICIONAL: depende de parecer]` | Igual ao Pix, e a comunicação ao emissor do cartão (Decreto 7.962/2013, art. 5º, §3º) `[CONDICIONAL: quem comunica, documento 10, Q5]` | Igual ao Pix, com dados bancários do cliente |
 
 **Pontos da tabela que o operador precisa saber**
 
-- O Asaas só aceita estorno de cartão e de Pix (`supabase/functions/_shared/asaas-client.ts`, linha 9, e ARQUITETURA, Webhook). O estorno Pix exige saldo na conta, senão responde erro 400 (documento 04, seção 5.3, `[incerto]`).
+- O endpoint geral de estorno do Asaas vale, pela página lida em 2026-11-08, para cartão e Pix. O comentário em `supabase/functions/_shared/asaas-client.ts`, linha 9, diz "card and Pix only". No Pix, a operação retorna erro 400 se a conta não tiver saldo para o valor total (página do Asaas; documento 04, seção 5.3).
 - Na situação C, **não existe alerta**. "Exigem atenção" lista só `payment.refund_failed` e `payment.received_after_cancel` (ARQUITETURA, seção Administração). O caso precisa ser controlado na planilha (pendência G-2).
 - Quando o estorno manual chega ao webhook, o `PAYMENT_REFUNDED` marca o pagamento como `refunded`. Se o atendimento já está `canceled`, o webhook não muda o atendimento (`bookingTransition` devolve nulo para `canceled → canceled`, `supabase/functions/_shared/asaas-events.ts`, linhas 158 a 165). Isso é o esperado.
 
@@ -219,7 +219,7 @@ O boleto não tem estorno pelo app. Trate cada caso como exceção registrada:
 |---|---|---|---|
 | Risco a uma pessoa (agressão, furto, risco durante atendimento ou plantão) | Ligar para o número de emergência. O documento 10 cita 192 (SAMU); não conferido nesta sessão `[incerto]`. Guardar provas. Registrar. | Operador | Na hora |
 | Ameaça ou assédio com risco físico (T9) | Guardar provas (prints com data e hora). Avisar o advogado. | Operador | Mesmo dia útil |
-| Suspeita de incidente com dado pessoal (conta invadida, vazamento, acesso indevido) | Abrir registro, conforme o documento 08, seção 6 (H0 e D0). Preservar evidências (seção 7.3). | Operador e advogado | Conforme o documento 08. Prazo legal de 3 dias úteis contado do conhecimento (documento 08, seção 6.1). |
+| Suspeita de incidente com dado pessoal (conta invadida, vazamento, acesso indevido) | Abrir registro, conforme o documento 08, seção 6 (H0 e D0). Preservar evidências (seção 7.3). | Operador e advogado | Conforme o documento 08. Prazo de três dias úteis contado do conhecimento (documento 08, seção 6.1, que cita o art. 6º, §1º; o regulamento da ANPD não foi aberto nesta sessão `[incerto]`). |
 | Conta de cliente ou de prestador comprometida (T8) | Limitar o recurso afetado. Não enviar código de acesso por nenhum canal. | Operador | Mesmo dia útil (P2) |
 | Conta de administrador suspeita | Encerrar o acesso e revisar o audit_log do período. Procedimento de encerramento de sessão no Supabase Auth: `[incerto]`. Documento 08, cenário 9.2. | Operador | Na hora |
 | Pagamento que parece forjado | Não agir sobre o pagamento. A releitura no Asaas recusa evento sem cobrança correspondente (ARQUITETURA, Webhook). Conferir se houve efeito em `payments`. | Operador | Mesmo dia útil |
@@ -237,13 +237,13 @@ Use o filtro de entidade e de ator em `/admin/auditoria`. O filtro de ator pede 
 | `payment.reviewed` | `payments` | Tratamento de pagamento, com motivo |
 | `payment.void` e `payment.void_paid` | `payments` | Cobrança cancelada, ou paga durante a tentativa de cancelar |
 | `payment.status` | `payments` | Mudança de situação vinda do webhook (ator vazio) |
-| `payment.raw_viewed` | `payments` | Acesso do admin ao payload bruto, por `admin_get_payment_raw` |
+| `payment.raw_viewed` | `payment` | Acesso do admin ao payload bruto, por `admin_get_payment_raw` |
 | `payment_event.unverified`, `payment_event.failed` | conforme o registro | Evento não conferido no Asaas, ou erro de processamento |
 | `provider.status` | `provider` | Aprovação e suspensão, com motivo |
 | `occupation.approval` e `occupation.approval_revoked` | `provider_occupation` | Aprovação por ocupação, e revogação quando um documento deixa de ser aceito |
 | `registry.status` | `provider_occupation` | Situação do registro profissional |
 | `setting.changed` | `platform_setting` | Mudança de configuração |
-| `user.anonymized` | `user` | Exclusão de conta (`anonymize_user`) |
+| `user.anonymized` | `profile` | Exclusão de conta (`anonymize_user`) |
 | `client.*` | conforme o registro | Ações do cliente pelo app (o servidor só aceita esse prefixo para usuários do app) |
 
 ### 7.3 Preservação de evidências
@@ -277,7 +277,7 @@ Nota baixa não é motivo. Discordância do profissional também não é motivo.
 3. Decidir pelos motivos a) a d). Sinais de fraude estão na seção 7.1 do documento 05. Hoje nenhum sinal é calculado (documento 05, seção 7.3).
 4. Ocultar: trocar `reviews.published` para falso, pela política `reviews_admin_update`, direto no banco (documento 05, seção 6.2). Não há tela nem registro de motivo (pendência G-5). Anote na planilha: motivo, data e quem fez.
 5. Avisar o autor e o profissional com o motivo, o trecho da regra e o modo de contestar (macro M16). O aviso é manual, porque não há modelo de notificação para avaliação (documento 05, seção 8.1, `[PLANEJADO]`).
-6. Contestação: pelo SAC, em `[DECISÃO DO DONO: proposta de 7 dias corridos do aviso]`. Resposta em `[DECISÃO DO DONO: proposta de 5 dias úteis]`.
+6. Contestação: pelo SAC, em `[DECISÃO DO DONO: proposta de 7 dias corridos do aviso]`. Resposta em `[DECISÃO DO DONO: proposta de 5 dias corridos]`.
 7. Com uma pessoa só não há outro administrador para analisar a contestação. O documento 05, seção 8.4, prevê essa separação quando há mais de um administrador. A regra para um operador é `[DECISÃO DO DONO]`.
 8. Restaurar: só o administrador, e só em ocupação com nota. Em ocupação sem nota a reativação não é possível (documento 05, seção 6.5).
 
@@ -301,7 +301,7 @@ Só nestas hipóteses (documento 02, cláusula 17.1): (a) fraude; (b) risco à s
 2. Enviar aviso por escrito ao e-mail cadastrado do prestador (macro M14a): fato, regra descumprida e prazo de `10 dias†` para responder.
 3. Esperar o prazo. A resposta chega pela caixa do SAC. Registrar.
 4. Decidir por escrito, com motivo, em até `10 dias úteis†` depois da resposta (ou do fim do prazo, sem resposta). Macro M15.
-5. Se suspender: `/admin/prestadores/:id`, botão "Suspender prestador", confirmar com "Suspender" e motivo obrigatório. O audit_log grava `provider.status`.
+5. Se suspender: `/admin/prestadores/:id`, botão "Suspender prestador", confirmar com "Suspender" e motivo obrigatório. O audit_log grava `provider.status`. A tela exige o motivo; a função não o confere no banco (G-19).
 6. Enviar a decisão por escrito. O app não avisa o prestador (cláusula 17.8).
 
 ### 9.3 Suspensão cautelar
@@ -335,9 +335,9 @@ Só em fraude evidente, risco imediato à segurança ou ordem de autoridade (cl�
 
 | Pedido | Pelo app | Pelo SAC (e-mail) | Prazo | Base |
 |---|---|---|---|---|
-| Cópia dos dados | `account-export`: JSON na hora. Grava `data_requests` com `completed` (`account-export/handler.ts`, linha 59). | Só depois de confirmar a identidade `[PLANEJADO]` | 15 dias corridos para a declaração completa `[incerto]` | LGPD, art. 19, II, citado no documento 10, §7 |
-| Exclusão da conta | `account-delete`. Recusa com 409 `active_bookings` se houver atendimento `accepted`, `paid`, `in_progress` ou `disputed`. Cancela a assinatura Pro e as cobranças `pending` no Asaas, apaga os documentos, anonimiza. | Não excluir por e-mail sem identidade confirmada `[PLANEJADO]` | 15 dias corridos `[incerto]` | LGPD, art. 18, VI, e art. 16 `[incerto]`. Documento 03 e documento 10, §7. |
-| Correção | "Minha conta": nome, telefone e cidade | Pelo SAC, para os outros dados | `[PROPOSTA]`. LGPD, art. 18, III, não conferido nesta sessão `[incerto]` | |
+| Cópia dos dados | `account-export`: JSON na hora. Grava `data_requests` com `completed` (`account-export/handler.ts`, linha 59). | Só depois de confirmar a identidade `[PLANEJADO]` | 15 dias corridos para a declaração completa | LGPD, art. 19, II (lido na cópia da Câmara). Documento 10, §7 |
+| Exclusão da conta | `account-delete`. Recusa com 409 `active_bookings` se houver atendimento `accepted`, `paid`, `in_progress` ou `disputed`. Cancela a assinatura Pro e as cobranças `pending` no Asaas, apaga os documentos, anonimiza. | Não excluir por e-mail sem identidade confirmada `[PLANEJADO]` | 15 dias corridos `[incerto]`: o art. 19, II, trata de confirmação e acesso | LGPD, art. 18, VI, e art. 16, I (lidos na cópia da Câmara). Documento 03 e documento 10, §7. |
+| Correção | "Minha conta": nome, telefone e cidade | Pelo SAC, para os outros dados | `[PROPOSTA]`. LGPD, art. 18, III (lido na cópia da Câmara, 2026-11-08) | |
 | Revogação de consentimento | Sem tela `[PLANEJADO]` | Pelo SAC | `[PROPOSTA]` | Documento 03 |
 
 ### 10.2 Procedimento
@@ -348,7 +348,7 @@ Só em fraude evidente, risco imediato à segurança ou ordem de autoridade (cl�
 4. Pedido de eliminação recusado por guarda fiscal ou de registro: a resposta diz o motivo e a base legal, e o encarregado revisa antes de enviar (documento 10, seção 7, item 5). Pedido que envolve dado de terceiro vai ao encarregado (documento 10, seção 5.4).
 5. Pedido sobre assistido no módulo de cuidado: quem pede pode não ser o titular. Levar ao advogado (documento 10, Q12).
 6. Responder com a declaração completa dentro do prazo. Macro T6.
-7. Em `/admin/lgpd`, pedido "Não terminou" (`failed`) pede conferência no audit_log e contato com o usuário (texto da própria tela).
+7. Em `/admin/lgpd`, pedido com situação `failed` mostra a mensagem "Este pedido não terminou. Confira o histórico de auditoria e fale com o usuário." Conferir o audit_log e falar com o usuário.
 
 Pedido por e-mail não tem registro no sistema (documento 10, L7). A planilha é o único registro até existir caminho no produto.
 
@@ -369,12 +369,12 @@ Pedido por e-mail não tem registro no sistema (documento 10, L7). A planilha é
 
 ## 12. Procon-SP e Consumidor.gov.br
 
-### 12.1 Procon-SP (Portaria Normativa 247/2021, consolidada com a 099/2022)
+### 12.1 Procon-SP (Portaria Normativa 247/2021, consolidada com a 099/2022 `[incerto: consolidação não conferida]`)
 
 - **Como chega:** por sistema, correio ou entrega pessoal (art. 18, §2º). A contagem começa no envio. Guarde o comprovante de envio.
 - **Resposta à CIP (Carta de Informações Preliminares):** 10 dias corridos (art. 18, §2º). O Diretor da DAOC pode alterar o prazo por decisão fundamentada (art. 18, §3º).
 - **Resposta ao TNF (Termo de Notificação ao Fornecedor):** 10 dias corridos a contar do envio da notificação de abertura de processo (art. 29).
-- **Consumidor:** tem 10 dias corridos para informar se o problema foi resolvido (art. 19). Sem resposta, a CIP é encerrada (art. 19, §2º, resumo da página consolidada).
+- **Consumidor:** tem 10 dias corridos para informar se o problema foi resolvido (art. 19). Sem resposta, a CIP será baixada (art. 19, §2º; texto lido).
 - **Ação:** registrar a data do envio; levar ao advogado no dia; responder dentro do prazo do ato. Modelo na macro M19.
 - **Outros Procons e órgãos municipais:** não conferidos. `[incerto]`. Conferir o ato recebido.
 
@@ -384,7 +384,7 @@ Pedido por e-mail não tem registro no sistema (documento 10, L7). A planilha é
 - Acompanhar as reclamações todos os dias e responder em até 10 dias, contados do registro (Termo de Adesão, Cláusula Quarta, item 4).
 - Pedido de informação complementar **não suspende** o prazo (Cláusula Quarta, item 6).
 - Depois da resposta, o consumidor tem até 20 dias para avaliar e marcar como resolvida ou não resolvida (página "Conheça").
-- Motivos para recusar uma reclamação e prazo de 15 dias do órgão gestor: vieram de resultado de busca, não de texto aberto `[incerto]`.
+- Motivos para recusar uma reclamação e prazo de 15 dias do órgão gestor: não aparecem na página "Conheça o Consumidor.gov.br" lida em 2026-11-08. Não usar este prazo.
 - Enquanto não aderir, não diga que a empresa participa do Consumidor.gov.br (documento 10, seção 2.2, item 10).
 
 ---
@@ -393,7 +393,7 @@ Pedido por e-mail não tem registro no sistema (documento 10, L7). A planilha é
 
 ### 13.1 "O profissional diz que o cliente não pagou"
 
-1. **Achar o pagamento.** Em `/admin/pagamentos`, o filtro só aceita situação, datas e o ID do pagamento. Não há busca por atendimento (pendência G-10). Use a data do atendimento e o atendimento curto mostrado na entrada.
+1. **Achar o pagamento.** Em `/admin/pagamentos`, o formulário filtra por situação e datas; o ID entra só pelo link `?pagamento=<id>` da lista "Exigem atenção". Não há busca por atendimento (pendência G-10). Use a data do atendimento e o atendimento curto mostrado na entrada.
 2. **Há cobrança pelo app?**
    - **Não há nenhum pagamento.** O cliente nunca gerou a cobrança. Não há estorno. Pedir ao profissional o combinado. Se o atendimento foi iniciado sem pagamento, é a pendência G-3. Orientar o cliente a pagar pelo app.
    - **Cobrança `pending`.** O cliente ainda não pagou. Nada a devolver. Se o atendimento foi cancelado, `payments-void` já cancelou a cobrança. Macro T2 ou T3 conforme o caso.
@@ -406,7 +406,7 @@ Pedido por e-mail não tem registro no sistema (documento 10, L7). A planilha é
 
 1. **Ler o estado e o histórico** do atendimento. Se estiver em contestação, o cartão de `/admin/disputas` mostra o histórico.
 2. **Conforme o estado:**
-   - **`requested` ou `accepted`, nunca iniciado.** Se não pago, o cliente cancela pelo app, sem multa (documento 04, seção 3.2). Se pago, não há botão: pedido pelo SAC, decisão da equipe e estorno manual (seção 6, situação C). A pendência G-8 se aplica.
+   - **`requested` ou `accepted`, nunca iniciado.** Se não pago, o cliente cancela pelo app, sem multa (documento 04, seção 3.2). Se pago, o estado deveria ser `paid`, não `accepted`: conferir o pagamento (seção 13.1). Em `paid`, não há botão: pedido pelo SAC, decisão da equipe e estorno manual (seção 6, situação C). A pendência G-8 se aplica.
    - **`paid` ou `in_progress`, sem conclusão.** O profissional precisa concluir para o cliente contestar. Sem marcação de não comparecimento (documento 04, seções 4.8 e 4.9). Pedir a versão de cada parte e decidir pelo SAC. A administração pode mudar o estado com motivo, mas sem tela (pendência G-8).
    - **`completed`.** O cliente pode contestar até 7 dias depois do fim do horário. Se ainda cabe, a contestação é do cliente. Se já passou, o caso vai pelo SAC. Quem marcou "Concluído", e quando, está no histórico (`booking_events.actor_id`).
    - **`disputed`.** Seção 5.
@@ -465,7 +465,7 @@ Como usar: substitua os colchetes. Os textos T1 a T12 são os do documento 10 (s
 - **Usar quando:** o titular pede uma cópia dos seus dados.
 - **Conferir antes:** a cópia sai em "Minha conta", em JSON. Pedido por e-mail: confirmar a identidade antes de enviar.
 - **Texto:**
-  > Olá, [NOME]. Você pode baixar uma cópia dos seus dados em "Minha conta", na seção de cópia dos dados. O arquivo sai em JSON, no formato do WorkEasy. Se não consegue entrar na conta, responda este e-mail e confirmaremos a sua identidade antes de enviar qualquer dado. Responderemos em até 15 dias corridos, pela declaração completa prevista na LGPD `[incerto: art. 19, II, não reaberto]`.
+  > Olá, [NOME]. Você pode baixar uma cópia dos seus dados em "Minha conta", no botão "Baixar meus dados". O arquivo sai em JSON, no formato do WorkEasy. Se não consegue entrar na conta, responda este e-mail e confirmaremos a sua identidade antes de enviar qualquer dado. Responderemos em até 15 dias corridos, pela declaração completa prevista na LGPD (art. 19, II).
 - **Não escreva:** que o envio sai em 24 horas; que o JSON é o formato padrão da LGPD.
 
 ### T7. Contestação de avaliação
@@ -552,7 +552,7 @@ Como usar: substitua os colchetes. Os textos T1 a T12 são os do documento 10 (s
 
 - **Usar quando:** logo depois de ocultar uma avaliação, pelos motivos a), b) ou d).
 - **Texto:**
-  > Olá, [NOME]. Ocultamos a avaliação do atendimento [NÚMERO], de [DATA], porque [MOTIVO EM TEXTO CURTO, com a letra a), b) ou d) da Política de Avaliações e Moderação]. Você pode contestar respondendo a este e-mail, em até [7 dias corridos, DECISÃO DO DONO], explicando o motivo e enviando provas. Respondemos por escrito em até [5 dias úteis, DECISÃO DO DONO].
+  > Olá, [NOME]. Ocultamos a avaliação do atendimento [NÚMERO], de [DATA], porque [MOTIVO EM TEXTO CURTO, com a letra a), b) ou d) da Política de Avaliações e Moderação]. Você pode contestar respondendo a este e-mail, em até [7 dias corridos, DECISÃO DO DONO], explicando o motivo e enviando provas. Respondemos por escrito em até [5 dias corridos, DECISÃO DO DONO].
 
 ### M17. Pedido de dados bancários para estorno de boleto
 
@@ -565,7 +565,7 @@ Como usar: substitua os colchetes. Os textos T1 a T12 são os do documento 10 (s
 
 - **Usar quando:** o estorno foi pedido ao Asaas, situação B ou C da seção 6.2.
 - **Texto:**
-  > Olá, [NOME]. Aceitamos seu pedido de [desistência / cancelamento] do atendimento [NÚMERO]. Pedimos a devolução de R$ [VALOR] pela mesma forma de pagamento, em [DATA]. O banco ou a operadora do cartão informa o prazo para o valor aparecer `[PRAZO: não conferido, seção 4, item 10]`.
+  > Olá, [NOME]. Aceitamos seu pedido de [desistência / cancelamento] do atendimento [NÚMERO]. Pedimos a devolução de R$ [VALOR] pela mesma forma de pagamento, em [DATA]. O banco ou a operadora do cartão informa o prazo para o valor aparecer `[PRAZO: cartão, até 10 dias úteis segundo o Asaas, seção 4, item 10; Pix, sem prazo documentado]`.
 
 ### M19. Resposta ao Procon-SP (CIP ou TNF)
 
@@ -645,15 +645,16 @@ Não corrigidas aqui. Cada item diz onde está e o que o dono ou o advogado deci
 | G-7 | Suspensão não bloqueia transições de atendimentos existentes (`transition_booking` não confere `providers.status`), e não pausa a cobrança do Pro. | `transition_booking`, migração 05; documento 02, cláusula 17.6 e G6 | Confirmar se é o desejado. Ver seção 9.4. |
 | G-8 | Não há tela para mudar o estado de atendimento fora de disputa. | `transition_booking` só por função; `pages/admin/` | Cancelar atendimento pago ou aceito sem cobrança não tem caminho pela tela. |
 | G-9 | `/admin/auditoria` não tem exportação. O documento 08, seção 10.2, diz "exportação em /admin/auditoria". | `pages/admin/Auditoria.tsx`; documento 08 | Inconsistência entre documentos. A evidência é por leitura. |
-| G-10 | `/admin/pagamentos` não busca por atendimento. Filtro só por ID do pagamento, situação e datas. | `pages/admin/Pagamentos.tsx` | Árvore 13.1, passo 1. |
-| G-11 | Estorno de boleto sem fluxo no app. Procedimento manual no painel do Asaas não conferido. | Documento 04, seção 5.3 (`[PLANEJADO]`) | Seção 6.4 e M17. |
+| G-10 | `/admin/pagamentos` não busca por atendimento. O filtro da tela só tem situação e datas; o ID entra pelo link `?pagamento=<id>`. | `pages/admin/Pagamentos.tsx` | Árvore 13.1, passo 1. |
+| G-11 | Estorno de boleto sem fluxo no app. O Asaas documenta o endpoint "Estornar boleto", que o app não chama. Procedimento manual no painel do Asaas não conferido. | Documento 04, seção 5.3 (`[PLANEJADO]`) | Seção 6.4 e M17. |
 | G-12 | Pedido de dados fora do app não tem registro. `account-export` grava `completed` na hora, então `pending` não é usado nesse fluxo. | Documento 10, L7; `account-export/handler.ts`, linha 59 | Seção 10 usa a planilha. |
-| G-13 | Não existe rota `/sac`, caixa de atendimento nem tabela de chamados. | Documento 10, L2 | Toda a triagem é manual. |
+| G-13 | A rota `/sac` existe, com texto provisório e sem canal (`config/legal.ts`). Não há caixa de atendimento nem tabela de chamados. | Documento 10, L2 | Toda a triagem é manual. |
 | G-14 | Não há botão de denúncia de avaliação nem de perfil. | Documento 10, L4 | Denúncia só pelo SAC. |
 | G-15 | Não há cancelamento de atendimento pago pelo app. | Documento 04, seção 2.1; documento 10, L5 | Seção 6, situação E. |
 | G-16 | Uma só conta de administrador. A separação de quem oculta e quem analisa não existe. | Documento 05, seção 8.4 | `[DECISÃO DO DONO]`. |
-| G-17 | Os documentos 01 e 02 citam o Decreto 11.034/2022, revogado pelo Decreto 13.135/2026, art. 24, conforme o documento 10, L11. | Documentos 01 e 02 | Referência a corrigir no texto para publicar. Não corrigido aqui. |
-| G-18 | Texto dos decretos 7.962/2013 e 13.135/2026 e das leis LGPD e CDC não foi aberto. O Planalto bloqueou o acesso e a Câmara não trouxe o texto. | Seção 17 | Todas as referências a esses textos ficam `[incerto]` até conferência no DOU ou no Planalto. |
+| G-17 | Os documentos 01 e 02 citam o Decreto 11.034/2022, revogado pelo Decreto 13.135/2026, art. 24, conforme o documento 10, L11. | Documentos 01 e 02 | Referência a corrigir no texto para publicar. Revogação lida no art. 24 da cópia da Câmara (2026-11-08). Não corrigido aqui. |
+| G-18 | O Planalto bloqueou o acesso a 7.962/2013, à LGPD e ao CDC. Lidos na cópia da Câmara: Decreto 7.962/2013 (art. 4º, parágrafo único; art. 5º, §§1º a 3º), Decreto 13.135/2026 (arts. 18, §4º, 19, 21, 24 e 25) e LGPD (arts. 16, I; 18, III e VI; 19, I e II). CDC, art. 49: não lido. Nada conferido no DOU. | Seção 17 | Citações do CDC ficam `[incerto]`. As demais valem como texto da cópia da Câmara até conferência no DOU. |
+| G-19 | `admin_set_provider_status` grava o motivo no audit_log, mas não encontrei verificação de motivo no corpo da função (`supabase/migrations/20261019000011_admin.sql`, linhas 165 a 212). A tela exige o motivo. | Seção 9.2, passo 5 | Conferir se o banco recusa motivo vazio antes de confiar no registro. |
 
 **Bloqueantes para operar (levar ao advogado)**
 
@@ -675,22 +676,27 @@ Não corrigidas aqui. Cada item diz onde está e o que o dono ou o advogado deci
 | Consumidor.gov.br, "Conheça o Consumidor.gov.br" | https://www.consumidor.gov.br/pages/conteudo/publico/1 | Prazos de resposta e de avaliação; contagem a partir do registro; adesão voluntária | Seções 4 e 12.2 |
 | Procon-SP, Portaria Normativa 247/2021 (consolidada com a 099/2022) | https://www.procon.sp.gov.br/portaria-normativa-247-2021/ | Arts. 18, §§2º e 3º; 19 e §2º; 29; 55. Postada em 11/11/2021. | Seção 4, itens 4 e 5; seção 12.1 |
 | Cópia do texto da Portaria 247/2021 (não oficial, usada para cruzar) | https://www.normasbrasil.com.br/norma/portaria-normativa-247-2021-sp_422759.html | Arts. 18, 29 e 55; vigência; publicação no DOE em 11/11/2021 segundo o cabeçalho | Conferência. Confirmar no DOE antes de citar. |
-| Procon-SP, Portaria Normativa 21/2005 (revogada) | https://www.procon.sp.gov.br/?p=20342 | Só a data e o status de revogação, pelo art. 55, I, da 247/2021 | Não usada como norma em vigor. |
-| Procon-SP, Espaço Consumidor | https://www.procon.sp.gov.br/espaco-consumidor/ | Aberta, mas o texto veio truncado | Nenhum número usado. |
+| Procon-SP, Portaria Normativa 21/2005 | https://www.procon.sp.gov.br/?p=20342 | Texto da 21/2005: arts. 9º, §5º (confissão por silêncio); 10, §2º, e 11, §5º (120 dias). A página não diz que ela foi revogada; a revogação vem do art. 55, I, da 247/2021 (lido nas duas cópias). | Não usada como norma em vigor. |
+| Procon-SP, Espaço Consumidor | https://www.procon.sp.gov.br/espaco-consumidor/ | Aberta. No trecho lido, nenhum prazo em dias. | Nenhum número usado. |
+| Decreto 7.962/2013, cópia da Câmara dos Deputados | https://www2.camara.leg.br/legin/fed/decret/2013/decreto-7962-15-marco-2013-775557-publicacaooriginal-139266-pe.html | Art. 4º, caput, V e parágrafo único (cinco dias); art. 5º, §§1º a 3º | Seções 4, 5 e 12.1; a cópia não substitui o DOU |
+| Decreto 13.135/2026, cópia da Câmara dos Deputados | https://www2.camara.leg.br/legin/fed/decret/2026/decreto-13135-9-outubro-2026-800053-publicacaooriginal-181591-pe.html | Arts. 18, §4º, I e II; 19; 21; 24; 25 (DOU de 13/10/2026, seção 1, p. 5) | Seção 4, linhas 2 e 19; seção 16 (G-17, G-18) |
+| LGPD (Lei 13.709/2018), cópia da Câmara dos Deputados | https://www2.camara.leg.br/legin/fed/lei/2018/lei-13709-14-agosto-2018-787077-publicacaooriginal-156212-pl.html | Arts. 16, I; 18, III e VI; 19, I e II | Seções 4 e 10 |
+| Asaas, "Estornar cobrança" | https://docs.asaas.com/reference/estornar-cobranca | Cartão e Pix; prazo de até 10 dias úteis para o cartão; erro 400 por saldo insuficiente no Pix; remissão ao endpoint "Estornar boleto" | Seções 4 (linha 10) e 6.2 |
+| Ministério da Saúde, SAMU 192 | https://www.gov.br/saude/pt-br/assuntos/samu-192 | Número 192, gratuito, 24 horas (o 190 não foi conferido) | Seções 0, 7.1 e 13.2 (T10) |
 
 **Tentativas bloqueadas ou sem texto (não lidas)**
 
-- Planalto, Decreto 7.962/2013: "Acesso Negado". Não lido.
+- Planalto, Decreto 7.962/2013: "Acesso Negado". Não lido. O texto foi lido na cópia da Câmara (seção 17.1).
 - Planalto, Lei 13.709/2018 (LGPD): "Acesso Negado". Não lido.
 - Planalto, Lei 8.078/1990 (CDC): "Acesso Negado". Não lido.
-- Câmara dos Deputados, Decreto 13.135/2026: página de busca, sem o texto do decreto. Não lido.
-- Resultados de busca sobre o Consumidor.gov.br (motivos de recusa e prazo de 15 dias do órgão gestor): só resumo, não aberto. `[incerto]`.
+- Câmara dos Deputados, CDC (Lei 8.078/1990): o endereço testado retornou 404. Não lido.
+- Busca na web (sobre o Decreto 13.135/2026 e o Consumidor.gov.br): orçamento de busca esgotado nesta sessão, nada pesquisado. Motivos de recusa e prazo de 15 dias do órgão gestor não confirmados `[incerto]`.
 
 ### 17.2 Repositório (lidos)
 
 | Arquivo | Partes lidas |
 |---|---|
-| `apps/web/docs/ARQUITETURA.md` | Integral, linhas 1 a 865 (Banco, Pagamentos, Administração, Webhook, Cobranças, Frontend) |
+| `apps/web/docs/ARQUITETURA.md` | Integral, linhas 1 a 865 (Banco, Pagamentos, Administração, Webhook, Cobranças, Frontend). Revisão de 2026-11-08: conferida por trechos citados e buscas, não de ponta a ponta |
 | `apps/web/docs/DECISOES.md` | Integral |
 | `apps/web/docs/juridico/01-termos-de-uso.md` | Cláusulas 3.6, 6.7 e 10.2, por busca |
 | `apps/web/docs/juridico/02-termos-do-prestador.md` | Cláusula 17, tabela de prazos com †, legenda, e os itens G2, G6 e G13 |
@@ -709,6 +715,10 @@ Não corrigidas aqui. Cada item diz onde está e o que o dono ou o advogado deci
 | `supabase/functions/_shared/asaas-client.ts` | Comentário do estorno, linha 9 e linhas 212 a 218 |
 | `supabase/functions/payments-void/handler.ts` | Cabeçalho |
 | `supabase/functions/account-export/handler.ts` | Linha 59 (grava `completed`) |
+| `pages/admin/Pagamentos.tsx`, `components/admin/PaymentsAttention.tsx`, `pages/admin/Lgpd.tsx`, `pages/admin/Auditoria.tsx`, `components/admin/DisputeCard.tsx`, `pages/admin/PrestadorDetalhe.tsx` | Revisão de 2026-11-08: textos, filtros e rótulos citados neste documento |
+| `supabase/functions/payments-void/index.ts`, `supabase/functions/_shared/asaas-client.ts`, `supabase/functions/_runtime/supabase.ts` | Revisão de 2026-11-08: marcação de cancelamento, comentário de estorno e endpoints |
+| `supabase/migrations/20261019000010_privacy_audit.sql` (`log_event`, prefixo `client.`), `supabase/migrations/20261019000007_quotes_reviews.sql` (políticas de avaliações), `config/legal.ts` (rota `/sac`), `pages/conta/Conta.tsx` e `services/account.ts` (texto de exclusão) | Revisão de 2026-11-08 |
+| Banco local `127.0.0.1:54322`, leitura em transação revertida | Revisão de 2026-11-08: existência de funções `admin_resolve_dispute`, `admin_review_payment`, `admin_get_payment_raw`, `transition_booking`, `anonymize_user`, `admin_set_provider_status`, `booking_transition_allowed` e `is_admin`; visões `admin_metrics`, `admin_payments_attention`, `admin_open_disputes`, `admin_provider_queue`; política `reviews_admin_update`; colunas e enums citados |
 
 ---
 

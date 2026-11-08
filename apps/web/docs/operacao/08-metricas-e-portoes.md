@@ -41,6 +41,7 @@ psql "$PGURL" -X --csv \
 
 - `contas_teste`: os `user id` de todas as contas de teste, da planilha `contas_de_teste` (O01, 11.3). Inclua as suas contas, as de familiares e as de funcionários. Sem essa lista, a consulta conta testes como clientes e prestadores.
 - O arquivo roda dentro de `BEGIN READ ONLY ... ROLLBACK`: um comando de escrita falha e nada é gravado.
+- Requer psql 12 ou superior (`--csv`); o `\if` do arquivo pede 10. Antes de rodar: `mkdir -p ~/privado`.
 - A saída contém nomes (Q04b) e números de pessoas. Fica fora do repositório (O01, 11.4). No repositório entram só números agregados.
 
 ---
@@ -64,7 +65,7 @@ psql "$PGURL" -X --csv \
 | H1 | **Horas do fundador** | Soma das horas por semana, por categoria (R, O, D, C, E, P, M, A, B) | soma da planilha `horas` | planilha `horas` (não está no banco) | Teto de 60 h por semana. Duas semanas seguidas acima: corte (O01, 13.4 item 6 e 13.5) | diária e semanal | planilha (Q13 explica) |
 | O1 | **Oferta por ocupação e distrito** (cobertura e freio) | Prestadores aprovados por ocupação e distrito, contra pedidos dos últimos 14 dias | contagem de aprovados e de pedidos por par | `provider_occupations.approved/registry_status`, `provider_neighborhoods`, `providers.status`, `requests` | Menos de 5 aprovados: recrutar reposição (O01, D24). 8 ou mais aprovados e menos de 3 pedidos em 14 dias: freio, não recrutar mais (O01, seção 4) | semanal | Q12 |
 | F1 | **Funil de prestadores** | Etapas do O01, 5.2 | contagem por etapa (acumulado) | `audit_log` (`provider.submitted`), `providers.status`, `availability`, `services`, `provider_neighborhoods`, `provider_clients`, `bookings` (`origin = 'own'`), `provider_payment_accounts.status`, `proposals`, `bookings`/`quotes` com pagamento | 50 aprovados no D45 (O01, 5.2). Agenda ativa: 5 dos 6 itens do banco | semanal | Q05 |
-| A1 | **Alertas de dinheiro** | Entradas do `audit_log` que dizem que o dinheiro saiu do esperado | contagem por tipo; "em aberto" = sem tratamento depois | `audit_log.action` (`payment.refund_failed`, `payment.received_after_cancel`, `payment.void_paid`, `payment_event.failed`, `payment_event.unverified`) | 0 em aberto. Qualquer alerta pausa o fluxo afetado até a causa (O01, 13.4 item 2) | semanal e a cada alerta | Q10 |
+| A1 | **Alertas de dinheiro** | Entradas do `audit_log` que dizem que o dinheiro saiu do esperado | contagem por tipo; "em aberto" = sem tratamento depois | `audit_log.action` (`payment.refund_failed`, `payment.received_after_cancel`, `payment.void_paid`, `payment_event.failed`, `payment_event.unverified`) | 0 em aberto. Qualquer alerta pausa o fluxo afetado até a causa (O01, 13.4 item 2) | semanal e a cada alerta | Q10. Em aberto só para `payment.refund_failed` e `payment.received_after_cancel`; os outros três entram como contagem. O bloco de integridade do Q10 também lista `occupation.approval_revoked`, que não é dinheiro |
 
 ---
 
@@ -78,7 +79,7 @@ As metas vêm do O01. As definições operacionais abaixo são as do banco. Cada
 |---|---|---|---|---|---|
 | **G1** | ≥ 30 prestadores ativos em cada uma das semanas 5 (07/12 a 13/12) e 6 (14/12 a 20/12) | Prestador **aprovado** com ao menos um evento de agenda na semana ISO (segunda a domingo, horário de São Paulo): (a) `booking_events` com `actor_id` = prestador (criou, aceitou, iniciou ou concluiu um atendimento); (b) `availability.created_at` (horário cadastrado); (c) `time_off.created_at` (folga cadastrada). Semana sem linha conta como zero | Ação de cliente; eventos de atendimentos de contas de teste (cliente ou prestador na lista); plantão do Cuidado (`shifts`), que não é agenda; evento feito por você no aparelho do prestador | D1 a D45 | Q04: linhas `2026-12-07` e `2026-12-14` |
 | **G2** | ≥ 20 serviços pagos pela plataforma (acumulado até o D45) | Atendimento ou orçamento aceito com ao menos um pagamento `received` ou `confirmed`. Conta uma vez por serviço. Reembolso ou estorno tira o serviço (o status deixa de ser recebido) | Testes de R$ 1,00; contas de teste; você, familiares, funcionários e o próprio prestador como pagador (a lista de contas é da planilha, porque CPF não está no banco); plantões do Cuidado; divisão de um serviço em vários pagamentos | D1 a D45 | Q02: soma das linhas |
-| **G3** | ≥ 70% dos pedidos válidos com proposta dentro de 2 h, com no mínimo 30 pedidos válidos | Pedido válido: categoria de lançamento, distrito do piloto, criado na janela, sem conta de teste, sem status `canceled`. Relógio: `requests.created_at`, ou a abertura da janela de atendimento se chegou fora dela (seg. a sex. 8h a 17h30; sáb. 8h a 14h; domingo abre na segunda 8h). Proposta: `proposals.created_at` | Pedido de ensaio; pedido cancelado pelo cliente; pedido sem resposta sua a uma pergunta por 2 h (registre o motivo na planilha). Trilha B (orçamento e cobrança pela conta do prestador) não tem pedido no banco: vai na planilha `pedidos` | D22 a D45 (30/11 a 23/12) | Q03: linha `TOTAL` |
+| **G3** | ≥ 70% dos pedidos válidos com proposta dentro de 2 h, com no mínimo 30 pedidos válidos | Pedido válido: categoria de lançamento, distrito do piloto, criado na janela, sem conta de teste, sem status `canceled`. Relógio: `requests.created_at`, ou a abertura da janela de atendimento se chegou fora dela (janela `[proposta]` do O01, seção 8.3: seg. a sex. 8h a 17h30; sáb. 8h a 14h; o domingo não está no O01, e aqui abre na segunda 8h `[proposta]`). Proposta: `proposals.created_at`, só de prestador que não é conta de teste | Pedido de ensaio; pedido cancelado pelo cliente; pedido sem resposta sua a uma pergunta por 2 h (registre o motivo na planilha). Trilha B (orçamento e cobrança pela conta do prestador) não tem pedido no banco: vai na planilha `pedidos` | D22 a D45 (30/11 a 23/12) | Q03: linha `TOTAL` |
 | **G4** | ≥ 3 famílias na linha Cuidado | Casa (`households`) com ao menos um plantão `completed` no período, com check-in `in` e check-out `out` (`checkins`) e relatório do dia (`daily_reports`) | Casa de teste ou de familiar seu; incidente grave aberto (não está no banco: confira a planilha `cuidado` antes de contar) | D1 a D45 | Q09: primeira linha |
 
 **Regra de conta (O01, 13.3).** g = número de portões verdes. Um portão não testado por falta de P11 sai da conta. m = menor percentual da meta entre os portões que não ficaram verdes (G1: prestadores ÷ 30; G2: serviços ÷ 20; G3: percentual ÷ 70; G4: famílias ÷ 3).
@@ -91,10 +92,10 @@ As metas vêm do O01. As definições operacionais abaixo são as do banco. Cada
 
 ### 2.3 Diferenças em relação ao O01 (o O01 deve ser corrigido)
 
-1. **G1, "atendimento criado por ele"**: o O01 cita `bookings.created_at`, mas `bookings` não guarda quem criou. Quem fez a mudança fica em `booking_events.actor_id`, gravado pelo trigger de histórico em todo `INSERT` e `UPDATE` de status (`private.log_booking_status`, `20261019000005_bookings.sql`).
+1. **G1, "atendimento criado por ele"**: esta versão do O01 (§5.1) já usa `booking_events.actor_id`, e a referência dele "(O08, nota 1)" deve apontar para esta seção, item 1. `bookings` não guarda quem criou. Quem fez a mudança fica em `booking_events.actor_id`, gravado pelo trigger de histórico em todo `INSERT` e `UPDATE` de status (`private.log_booking_status`, `20261019000005_bookings.sql`).
 2. **G1, contas de teste**: o O01 exclui contas de teste. Aqui também saem os eventos de atendimentos de conta de teste, porque um atendimento de teste não é uso real da agenda, mesmo com prestador real.
 3. **P1 (parcela paga)**: o O01 não diz a origem. Aqui vale só a origem `platform`: o CRM do próprio prestador não é o marketplace.
-4. **Estrela (E)**: o O01 não define o indicador mensal. A estrela exige conclusão; G2 exige só pagamento.
+4. **Estrela (E)**: o O01 (§11.1) dá o mesmo nome ao G2, acumulado e sem exigir conclusão. A estrela é mensal e exige conclusão; G2 exige só pagamento.
 5. **D1 (disputa)**: o O01 diz "atendimentos `disputed`". Aqui é a coorte de pagos, que é o denominador do DECISOES, seção 4.
 
 ---
@@ -102,6 +103,8 @@ As metas vêm do O01. As definições operacionais abaixo são as do banco. Cada
 ## 3. Fases e portões
 
 **Atenção com a palavra "fase".** O repositório usa "fase" pelo menos em dois sentidos: fase de construção (`ARQUITETURA.md`: prerender de SEO e assistente de IA são "fase 3") e fase de lançamento (O01: "Fase 1" é o concierge de 45 dias). Este documento usa o segundo.
+
+**Datas.** D1 = 09/11/2026 e D45 = 23/12/2026 são o calendário de referência do O01 (seção 2, "Regra do relógio"). O D1 real é a primeira segunda-feira com os itens P1, P3, P4, P6 a P10 e P13 verdes; se ele mudar, mudam as datas deste documento.
 
 **Confirme antes de usar:** o plano estratégico privado não estava acessível (O01, 16.3). As fases 2 e 3 abaixo são a sequência que os documentos do repositório permitem: o "continuar" do O01 (13.3) abre "segundo conjunto de distritos ou novas categorias"; o DECISOES coloca a comissão e o pagamento retido depois. `[incerto: confirmar com o plano privado]`.
 
@@ -133,7 +136,7 @@ Layout para a revisão de sexta (O01, seção 12). Uma tela, na ordem de leitura
 
 ## 5. O que cada resultado decide
 
-### 5.1 Regra do D45 (O01, 13.3)
+### 5.1 Regra do D45 (O01, 13.3) `[proposta]`
 
 | Decisão | Regra | O que fazer |
 |---|---|---|
@@ -167,7 +170,7 @@ Layout para a revisão de sexta (O01, seção 12). Uma tela, na ordem de leitura
 
 1. Incidente com dano físico ou conduta grave: suspender o prestador em `/admin/prestadores/:id` (motivo obrigatório) e pausar a linha. Avisar advogado e seguradora.
 2. Divergência de dinheiro (cobrança em duplicidade, split divergente, valor errado): pausar o fluxo afetado.
-3. Acesso indevido a documentos: plano de incidente (L08) `[CONDICIONAL: depende de parecer]`.
+3. Acesso indevido a documentos: plano de incidente ("L08" no O01: `docs/juridico/08-plano-de-resposta-a-incidentes.md`) `[CONDICIONAL: depende de parecer]`.
 4. Notificação formal de conselho, autoridade ou órgão de defesa do consumidor: pausar a categoria envolvida e consultar o advogado `[CONDICIONAL: depende de parecer]`.
 5. Gasto acima de 120% do orçamento do O01 (seção 14): congelar os gastos opcionais `[proposta]`.
 6. Mais de 60 h por semana em duas semanas seguidas: corte de escopo.
@@ -196,11 +199,11 @@ Layout para a revisão de sexta (O01, seção 12). Uma tela, na ordem de leitura
 
 **Execução no banco local** (PostgreSQL 17.11, `127.0.0.1:54322`, base `postgres`):
 
-- O arquivo inteiro rodou sem erro, com as variáveis padrão, dentro de `BEGIN READ ONLY ... ROLLBACK`. O banco local está vazio de pedidos, perfis e prestadores (96 bairros e 1.710 ocupações da semente). Todas as consultas devolveram linhas vazias ou zero, como esperado.
+- O arquivo inteiro rodou sem erro, com as variáveis padrão, dentro de `BEGIN READ ONLY ... ROLLBACK`. Na revisão de 08/11/2026 o banco tinha 0 pedidos, 0 atendimentos, 0 pagamentos e 0 assinaturas, mas 1 prestador aprovado de teste de integração ("QA Cuidadora", criado por outras frentes; o id muda entre execuções), 69 linhas de `audit_log` do dia 08/11 e os 96 bairros e 1.710 ocupações da semente. Por isso Q04b, Q05 e Q07 devolvem 1 onde a conta real seria 0: é o caso que `contas_teste` existe para excluir. O resto devolve zero ou linha vazia.
 - Um `CREATE TABLE` dentro da transação de leitura falha ("cannot execute CREATE TABLE in a read-only transaction"). A proteção funciona.
-- O banco local tem migrações de outras frentes que não estão neste branch (`booking_reminders`, `admin_settings_and_metrics`, `product_events`). As consultas usam só tabelas das migrações 01 a 11 deste branch.
+- O banco local aplica todas as migrações do repositório neste branch, incluídas `booking_reminders`, `admin_settings_and_metrics` e `product_events` (migrações 20261023100000, 20261023200000 e 20261108100000). As consultas usam só tabelas criadas nas migrações 01 a 11.
 
-**Teste lógico com dados sintéticos.** Copiei 21 tabelas para o schema temporário `kpi_fx` (com `LIKE`), inseri cerca de 190 linhas sintéticas (prestadores, pedidos, atendimentos, pagamentos, assinaturas, casas, plantões e auditoria), além de 96 bairros copiados da semente e rodei todo o `kpis.sql` dentro de uma transação terminada em `ROLLBACK`. Nenhuma tabela de `public` foi escrita. Os resultados batem com os valores que calculei à mão, com duas contas de teste excluídas. O teste apontou uma falha, corrigida antes de fechar (Q04 contava eventos de atendimentos de conta de teste). Outras três correções saíram de revisão, antes do teste: a contagem de cadastros (Q05) não excluía contas de teste; a visão semanal do Cuidado (Q09) não excluía cuidadores de teste; e a coorte de disputas e o custo (Q10 e Q11) contavam pagamento reembolsado.
+**Teste lógico com dados sintéticos.** Copiei 21 tabelas para o schema temporário `kpi_fx` (com `LIKE`), inseri cerca de 190 linhas sintéticas (prestadores, pedidos, atendimentos, pagamentos, assinaturas, casas, plantões e auditoria), além de 96 bairros copiados da semente e rodei todo o `kpis.sql` dentro de uma transação terminada em `ROLLBACK`. Nenhuma tabela de `public` foi escrita. Os resultados batem com os valores que calculei à mão, com duas contas de teste excluídas `[incerto]`: não há script nem saída no repositório, o schema `kpi_fx` não existe mais no banco, e esta revisão não reproduziu o teste. O teste apontou uma falha, corrigida antes de fechar (Q04 contava eventos de atendimentos de conta de teste). Outras três correções saíram de revisão, antes do teste: a contagem de cadastros (Q05) não excluía contas de teste; a visão semanal do Cuidado (Q09) não excluía cuidadores de teste; e a coorte de disputas e o custo (Q10 e Q11) contavam pagamento reembolsado.
 
 **Não conferido:**
 
@@ -208,7 +211,7 @@ Layout para a revisão de sexta (O01, seção 12). Uma tela, na ordem de leitura
 - Os registros de auditoria que o webhook grava com o Asaas real (`subscription.status`, `payment.refund_failed`). Li o código de `asaas-webhook/handler.ts` e `subscriptions-manage/handler.ts`, mas não rodei contra o Asaas.
 - Horário de verão e feriados (o relógio do G3 não desconta feriados).
 - Saída em CSV com `psql --csv` (a linha `BEGIN` aparece no arquivo).
-- psql anterior à versão 10 (o arquivo usa `\if`).
+- psql anterior à versão 12 (o `--csv` do comando da seção 0 é da versão 12; o `\if` do arquivo, da 10). Conferido na documentação do PostgreSQL: `--csv` na nota da versão 12; `\if` na página do psql 10.
 
 ---
 
@@ -216,7 +219,7 @@ Layout para a revisão de sexta (O01, seção 12). Uma tela, na ordem de leitura
 
 ### 8.1 Correções ao O01
 
-1. Seção 5.1, G1: trocar "atendimento criado por ele (`bookings.created_at`)" por "evento de atendimento com `booking_events.actor_id` = prestador".
+1. Já feito: o O01 atual (§5.1, G1) usa `booking_events.actor_id`. Falta só trocar a referência "(O08, nota 1)" dele por "O08, seção 2.3, item 1".
 2. Seção 5.1, G1 e P1: incluir as exclusões da seção 2.3 deste documento.
 3. Seção 11.1: a parcela paga no app vale só para origem `platform`.
 
@@ -227,8 +230,8 @@ Layout para a revisão de sexta (O01, seção 12). Uma tela, na ordem de leitura
 3. Não há data de aprovação em `providers`. A primeira aprovação só existe no `audit_log` (`provider.status`).
 4. Assinatura não tem histórico de estados. `subscription.cancel` não guarda o estado anterior (`from`).
 5. Proposta não tem campo estruturado de disponibilidade ("quando pode ir").
-6. Não há aviso de pedido novo ao prestador: ele vê o pedido ao abrir `/pro/pedidos` (O01, 16.1, item 2). Os seis modelos de notificação do banco não cobrem esse caso (`ARQUITETURA.md`, Notificações).
-7. A medição de eventos de produto (`product_events`, com `admin_funnel_daily`) existe em outra frente de trabalho e no banco local, mas não está neste branch. Quando entrar, pode dar datas exatas de recebimento e de primeira proposta. `[PLANEJADO]`.
+6. Não há aviso de pedido novo ao prestador: ele vê o pedido ao abrir `/pro/pedidos` (O01, 16.1, item 2). Os sete modelos de notificação do banco não cobrem esse caso: o sétimo, `agendamento_solicitado` (migração `20261109300006`), avisa só de agendamento direto, não de pedido do marketplace (`requests`). `ARQUITETURA.md` (Notificações) e o O01 (16.1, item 2) ainda dizem seis.
+7. A medição de eventos de produto (`product_events`, agregada por `admin_funnel_daily()`) está na migração `20261108100000_product_events.sql`, aplicada no banco local, mas não está implantada, e as consultas deste documento não a usam. Pode dar datas exatas de recebimento e de primeira proposta. `[PLANEJADO]` para a medição em produção.
 8. `ARQUITETURA.md` usa "fase" com sentido de construção, e o O01 com sentido de lançamento. Padronizar o termo.
 9. A lista de contas de teste é uma planilha. Nenhuma consulta a acessa; se a planilha não for completa, as métricas saem infladas.
 
