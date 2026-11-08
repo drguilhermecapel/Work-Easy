@@ -23,6 +23,9 @@ export const formatDateTime = (value: string | null | undefined): string => {
 /** First 8 characters of an identifier, for lists (the full value stays in the title). */
 export const shortId = (id: string | null | undefined): string => (id ? id.slice(0, 8) : '');
 
+/** "58%" for a part of a whole; a dash when there is no whole to be a part of (no division by zero, no "0%" that says nothing). */
+export const formatShare = (part: number, whole: number): string => (whole > 0 ? `${Math.round((part / whole) * 100)}%` : '—');
+
 /** 1200 basis points → "12,00%" */
 export const formatBps = (bps: number): string =>
   `${(bps / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;

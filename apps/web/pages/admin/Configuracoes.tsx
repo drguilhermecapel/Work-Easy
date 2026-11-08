@@ -1,7 +1,7 @@
 import React from 'react';
 import { formatDateTime } from '../../components/admin/format';
 import { BooleanSetting, NumberSetting } from '../../components/admin/SettingRows';
-import { BOOLEAN_DEFS, NUMBER_DEFS } from '../../components/admin/settingDefs';
+import { BOOLEAN_DEFS, NUMBER_DEFS, REVENUE_SETTING_KEYS } from '../../components/admin/settingDefs';
 import { Card } from '../../components/admin/ui';
 import ErrorAlert from '../../components/ErrorAlert';
 import PageStatus from '../../components/PageStatus';
@@ -9,6 +9,8 @@ import { useAsync } from '../../lib/useAsync';
 import { BOOLEAN_SETTINGS, listSettings, NUMBER_SETTINGS } from '../../services/admin';
 
 const KNOWN = new Set<string>([...BOOLEAN_SETTINGS, ...NUMBER_SETTINGS]);
+const LIMIT_DEFS = NUMBER_DEFS.filter(def => !REVENUE_SETTING_KEYS.includes(def.key));
+const REVENUE_DEFS = NUMBER_DEFS.filter(def => REVENUE_SETTING_KEYS.includes(def.key));
 
 const Configuracoes: React.FC = () => {
   const settings = useAsync(listSettings, 'settings');
@@ -39,7 +41,18 @@ const Configuracoes: React.FC = () => {
 
           <section aria-labelledby="cfg-valores" className="space-y-3">
             <h2 id="cfg-valores" className="text-lg font-bold text-gray-800">Valores e limites</h2>
-            {NUMBER_DEFS.map(def => (
+            {LIMIT_DEFS.map(def => (
+              <NumberSetting key={`${def.key}:${String(rows.find(r => r.key === def.key)?.value)}`} def={def} rows={rows} onSaved={settings.reload} />
+            ))}
+          </section>
+
+          <section aria-labelledby="cfg-receita" className="space-y-3">
+            <h2 id="cfg-receita" className="text-lg font-bold text-gray-800">Plano Pro, plano gratuito e teto da comissão</h2>
+            <p className="text-sm text-gray-600">
+              Cada valor tem o seu zero: no teste, 0 é sem teste; nas propostas do plano gratuito, 0 é sem limite; no teto, 0 é sem teto. A mudança vale para o
+              que for criado depois dela.
+            </p>
+            {REVENUE_DEFS.map(def => (
               <NumberSetting key={`${def.key}:${String(rows.find(r => r.key === def.key)?.value)}`} def={def} rows={rows} onSaved={settings.reload} />
             ))}
           </section>

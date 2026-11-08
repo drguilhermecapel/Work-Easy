@@ -3,6 +3,9 @@ import { formatCents } from '../../lib/money';
 import type { BooleanSettingKey, NumberSettingKey } from '../../services/admin';
 import { formatBps } from './format';
 
+/** 4990 cents → "49,90", the way an amount is typed in the field. */
+const reaisText = (cents: number): string => (cents / 100).toFixed(2).replace('.', ',');
+
 // Wording and shape of each setting the administration screen edits.
 
 /** Fixed warning shown next to every money feature switch. */
@@ -56,7 +59,7 @@ export const NUMBER_DEFS: NumberDef[] = [
     label: 'Valor em reais',
     hint: 'Vale para novas assinaturas, por exemplo 49,90.',
     show: formatCents,
-    toText: value => (value / 100).toFixed(2).replace('.', ','),
+    toText: reaisText,
   },
   {
     key: 'proposal_limit',
@@ -74,12 +77,42 @@ export const NUMBER_DEFS: NumberDef[] = [
     show: value => `${value} ${value === 1 ? 'dia' : 'dias'}`,
     toText: String,
   },
+  // The three revenue settings. Each has a zero of its own: no trial, no limit, no ceiling.
+  {
+    key: 'pro_trial_days',
+    title: 'Dias de teste grátis do plano Pro',
+    label: 'Dias de teste',
+    hint: 'Dias de Pro sem cobrança na primeira assinatura de cada conta; depois dela não há novo teste. 0 = sem teste. Vale para assinaturas novas.',
+    show: value => (value === 0 ? 'Sem teste grátis (0)' : `${value} ${value === 1 ? 'dia' : 'dias'}`),
+    toText: String,
+  },
+  {
+    key: 'free_proposals_per_month',
+    title: 'Propostas novas por mês no plano gratuito',
+    label: 'Propostas por mês',
+    hint: 'Quantas propostas novas um prestador do plano gratuito envia por mês (mês civil, horário de Brasília). O plano Pro não tem limite. 0 = sem limite.',
+    show: value => (value === 0 ? 'Sem limite (0)' : `${value} por mês`),
+    toText: String,
+  },
+  {
+    key: 'commission_cap_cents',
+    title: 'Teto da comissão por serviço',
+    label: 'Teto em reais',
+    hint: 'Maior comissão cobrada em um único serviço, por exemplo 150,00. 0 = sem teto. Não tem efeito enquanto a comissão estiver desligada.',
+    show: value => (value === 0 ? 'Sem teto (0)' : formatCents(value)),
+    toText: reaisText,
+  },
 ];
 
+/** The settings of the plan Pro, of the free plan and of the commission ceiling: the screen lists them apart. */
+export const REVENUE_SETTING_KEYS: readonly NumberSettingKey[] = ['pro_trial_days', 'free_proposals_per_month', 'commission_cap_cents'];
 
 export const SETTING_FIELDS = {
   commission_bps: 'commissionBps',
   pro_price_cents: 'proPriceCents',
   proposal_limit: 'proposalLimit',
   labor_lock_days_per_week: 'laborLockDaysPerWeek',
+  pro_trial_days: 'proTrialDays',
+  free_proposals_per_month: 'freeProposalsPerMonth',
+  commission_cap_cents: 'commissionCapCents',
 } as const satisfies Record<NumberSettingKey, keyof typeof DEFAULT_SETTINGS>;

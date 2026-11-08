@@ -382,6 +382,10 @@ export const newWorld = (overrides: Partial<AdminWorld> = {}): AdminWorld => ({
       { key: 'pro_price_cents', value: 4900, internal: false, updated_at: '2026-10-01T00:00:00Z' },
       { key: 'proposal_limit', value: 3, internal: false, updated_at: '2026-10-01T00:00:00Z' },
       { key: 'labor_lock_days_per_week', value: 2, internal: false, updated_at: '2026-10-01T00:00:00Z' },
+      // Migration 12 (revenue settings); appended so the position of the others in this list does not change
+      { key: 'commission_cap_cents', value: 15000, internal: false, updated_at: '2026-10-01T00:00:00Z' },
+      { key: 'free_proposals_per_month', value: 5, internal: false, updated_at: '2026-10-01T00:00:00Z' },
+      { key: 'pro_trial_days', value: 30, internal: false, updated_at: '2026-10-01T00:00:00Z' },
     ],
     payments: [],
     audit_log: [],
