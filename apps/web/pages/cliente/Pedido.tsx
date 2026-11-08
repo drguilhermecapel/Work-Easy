@@ -17,6 +17,7 @@ import { updateProfile } from '../../services/account';
 import BackendNotice from '../../components/BackendNotice';
 import ErrorAlert from '../../components/ErrorAlert';
 import TermsGate from '../../components/TermsGate';
+import { externalLinkProps } from '../../platform/external';
 import { buildConciergeMessage, conciergeLink } from './concierge';
 
 const STEPS = ['O que você precisa', 'Bairro', 'Descrição e quando', 'Contato'] as const;
@@ -193,6 +194,7 @@ const Pedido: React.FC = () => {
           }),
         )
       : null;
+  const whatsappLink = externalLinkProps(whatsappHref);
 
   const backButton =
     step > 0 ? (
@@ -427,8 +429,8 @@ const Pedido: React.FC = () => {
                 </p>
                 <div className="flex justify-between gap-3">
                   {backButton}
-                  {whatsappHref && (
-                    <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className={primaryButton} onClick={clearRequestDraft}>
+                  {whatsappLink && (
+                    <a {...whatsappLink} className={primaryButton} onClick={clearRequestDraft}>
                       <MessageCircle size={16} aria-hidden="true" /> Abrir o WhatsApp
                     </a>
                   )}
