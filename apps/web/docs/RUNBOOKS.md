@@ -235,6 +235,14 @@ Como ler o resultado:
 | Evento concluído, pagamento `received`, atendimento `accepted` | Transição recusada por regra do banco (`booking_transition_refused`). **Esse caso não grava nada no `audit_log`.** Só aparece na resposta ao Asaas e nos logs da função. | Logs da função `asaas-webhook` no painel do Supabase; depois o reparo manual abaixo |
 | Atendimento `canceled` e pagamento `received` | Pagamento depois do cancelamento. A função pede reembolso total. | S43 e a fila "Exigem atenção" em `/admin/pagamentos` |
 
+4. Pagamentos que pedem ação manual do admin (reembolso recusado ou pagamento depois do cancelamento):
+
+```sql
+select payment_id, action, at, method, amount_cents, status, booking_id
+  from public.admin_payments_attention
+ order by at desc;
+```
+
 **Correção.**
 
 - Se o Asaas confirma o pagamento e o evento pode ser reenviado: item 1, passo 3.
@@ -243,6 +251,28 @@ Como ler o resultado:
   - Pagamento já `received` ou `confirmed`: use S44, que só avança o atendimento.
   - Ambas chamam `transition_booking` como `postgres`. Se a transição for recusada, a transação inteira é desfeita.
 - **Atendimento `canceled` com pagamento recebido:** não reative o atendimento. Veja se o reembolso foi pedido (`payment.refunded_after_cancel`) ou recusado (`payment.refund_failed`) com S03. Depois trate no painel do admin, em "Exigem atenção": reembolso manual ou `admin_review_payment`, que pede motivo. S43 lista o que ainda falta tratar.
+
+Blocos de reparo manual (confirme no Asaas antes de rodar; o `commit` só deve ser dado depois da conferência):
+
+```sql
+begin;
+update public.payments
+   set status = 'received'
+ where id = '<payment_id>'
+   and status = 'pending';
+select public.transition_booking('<booking_id>', 'paid', 'reparo manual: <motivo>');
+select private.audit('payment.manual_repair', 'payments', '<payment_id>',
+                     jsonb_build_object('reason', 'reparo manual: <motivo>', 'asaas_event_id', '<evento>'));
+commit;
+```
+
+```sql
+begin;
+select public.transition_booking('<booking_id>', 'paid', 'reparo manual: <motivo>');
+select private.audit('payment.manual_repair', 'bookings', '<booking_id>',
+                     jsonb_build_object('reason', 'reparo manual: <motivo>', 'asaas_event_id', '<evento>'));
+commit;
+```
 
 **Verificação.** S06 sem a linha. Em `booking_events`, o último `to_status` é `paid`, com `reason` `asaas:...` ou `reparo manual: ...` (consulta 3 de S08). O pagamento está no status esperado.
 
@@ -301,6 +331,17 @@ Quem depende da chave da subconta: cobranças do próprio prestador (`charges-cr
 | `creating` com mais de 5 minutos e sem `asaas_wallet_id` | Procure no painel do Asaas uma subconta com o CPF ou CNPJ do prestador. Se não existe, libere a reserva com S13 e peça ao prestador que refaça a ativação. Se existe, a criação não deve ser repetida (ver abaixo). |
 | `creating` recente | Espere 5 minutos. A ativação pode estar em andamento. |
 | `key_not_stored` ou `key_not_returned` | A chave não pode ser recuperada pelo banco. Abra chamado no Asaas com o `asaas_account_id`. Procedimento de nova chave **[incerto: não localizado na documentação aberta]**. Enquanto isso, o prestador recebe pela plataforma e não tem cobrança própria. |
+
+Liberar a reserva abandonada, só quando não existe subconta no Asaas para o CPF ou CNPJ:
+
+```sql
+begin;
+delete from public.provider_payment_accounts
+ where provider_id = '<provider_id>'
+   and status = 'creating'
+   and asaas_wallet_id is null;
+commit;
+```
 
 Se a subconta já existe no Asaas e a reserva está presa, o registro precisa ser completado com os dados do painel do Asaas. O código não sabe reconciliar isso. Não invente o `walletId`:
 
@@ -564,7 +605,16 @@ PID="$(echo '<provider_id>' | tr 'A-Z' 'a-z')"
 printf '%s' "asaas-subaccount:$PID" | openssl dgst -sha256 -hmac "$ASAAS_WEBHOOK_TOKEN" | awk '{print $NF}'
 ```
 
-**Trocar o segredo do agendador no Vault.** Pegue o id com S47 e depois rode:
+**Trocar o segredo do agendador no Vault.** Pegue o id com esta consulta:
+
+```sql
+select id, name
+  from vault.secrets
+ where name in ('notify_dispatch_url', 'cron_secret')
+ order by name;
+```
+
+Depois rode:
 
 ```sql
 begin;
@@ -599,6 +649,21 @@ A validação mostrou que `vault.update_secret` não acusa erro com um id inexis
    - **Vault:** confirme se as chaves das subcontas existem. S34 (última consulta) lista contas com referência sem segredo.
    - **Storage:** documentos sem arquivo. Use S32. Esses prestadores precisam reenviar; as aprovações que dependiam deles seguem valendo até o admin revisar (ver Apêndice A, item 10).
    - **Auth:** compare `auth.users` com `profiles` em S34.
+Consultas de conferência pós-restauro (além de S40 e S39):
+
+```sql
+select max(version) as last_migration from supabase_migrations.schema_migrations;
+select jobname, schedule, active from cron.job order by jobname;
+select (select count(*) from auth.users) as auth_users,
+       (select count(*) from public.profiles) as profiles,
+       (select max(created_at) from public.payments) as last_payment,
+       (select max(at) from public.audit_log) as last_audit;
+select a.provider_id, a.status
+  from public.provider_payment_accounts a
+ where a.api_key_secret_id is not null
+   and not exists (select 1 from vault.secrets s where s.id = a.api_key_secret_id);
+```
+
 4. **Reconcilie o que aconteceu entre o ponto restaurado e o incidente:**
    - Cobranças criadas no Asaas depois do ponto restaurado não existem no banco. O webhook delas responde 200 como `unknown_payment` e não se reaplica (item 1).
    - Liste no Asaas as cobranças com referência externa `booking:<id>` (campo gravado por `payments-create`). A forma exata de busca no painel **[incerto]**.
@@ -900,6 +965,18 @@ select key, value, updated_at
   from public.platform_settings
  where key in ('commission_enabled', 'escrow_enabled', 'pro_trial_days', 'pro_grace_days')
  order by key;
+```
+
+Ajuste de `pro_trial_days` sem sessão de admin (use só se a tela de admin estiver indisponível; grava o mesmo `audit_log` com a origem de serviço):
+
+```sql
+begin;
+update public.platform_settings
+   set value = '0'::jsonb
+ where key = 'pro_trial_days';
+select private.audit('setting.changed', 'platform_setting', 'pro_trial_days',
+                     jsonb_build_object('to', 0, 'reason', 'reparo manual: <motivo>'));
+commit;
 ```
 
 Para o agendador, ler o estado e desligar:
