@@ -17,6 +17,7 @@ import {
   listConsents,
   recordConsent,
   updateProfile,
+  withdrawBackgroundCheck,
 } from '../../services/account';
 import type { ConsentPurpose, ConsentRow, ProfileRow } from '../../services/types';
 import BackendNotice from '../../components/BackendNotice';
@@ -157,7 +158,9 @@ const ConsentsSection: React.FC<{ userId: string }> = ({ userId }) => {
     setBusyPurpose(purpose);
     setError(null);
     try {
-      await recordConsent(userId, purpose, granted);
+      // Withdrawing the background check also marks its files for deletion, in the same call.
+      if (purpose === 'background_check' && !granted) await withdrawBackgroundCheck();
+      else await recordConsent(userId, purpose, granted);
       history.reload();
     } catch (err) {
       setError(err);

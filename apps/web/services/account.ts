@@ -66,6 +66,14 @@ export const recordConsent = async (
       .single(),
   );
 
+/**
+ * Withdraws the background-check consent in one call: the decision is recorded and the
+ * provider's background-check files are marked for deletion (withdraw_background_check).
+ * Returns how many files were marked.
+ */
+export const withdrawBackgroundCheck = async (version: string = CONSENT_VERSIONS.background_check): Promise<number> =>
+  unwrap<number>(await db().rpc('withdraw_background_check', { p_version: version }));
+
 /** Latest decision per purpose, from a newest-first history. */
 export const latestConsents = (history: ConsentRow[]): Partial<Record<ConsentPurpose, ConsentRow>> => {
   const latest: Partial<Record<ConsentPurpose, ConsentRow>> = {};
