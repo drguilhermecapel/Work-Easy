@@ -10,21 +10,10 @@ name: Web release builds
 # builds need the Apple Developer and Google Play accounts (see README).
 
 on:
+  # Manual or tag only: no pull request or branch push starts these builds (Actions spend).
   workflow_dispatch:
   push:
     tags: ['v*']
-  pull_request:
-    paths:
-      - 'apps/web/android/**'
-      - 'apps/web/ios/**'
-      - 'apps/web/src-tauri/**'
-      - 'apps/web/capacitor.config.ts'
-      - 'apps/web/platform/**'
-      - 'apps/web/vite.config.ts'
-      - 'apps/web/package.json'
-      - 'apps/web/package-lock.json'
-      - 'apps/web/.env.native'
-      - '.github/workflows/web-release.yml'
 
 permissions:
   contents: read

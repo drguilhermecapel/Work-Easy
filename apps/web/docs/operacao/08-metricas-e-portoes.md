@@ -51,12 +51,12 @@ psql "$PGURL" -X --csv \
 |---|---|---|---|---|---|---|---|
 | E | **Serviços concluídos e pagos no app** (estrela, por mês) | Atendimento que chegou a `completed` ou `released`, de origem `platform` ou `own`, com pagamento `received` ou `confirmed`; mais orçamento aceito com pagamento recebido | contagem por mês de `booking_events.at` onde `to_status = 'completed'`; orçamento pelo mês de `payments.updated_at` (aproximação) | `bookings.status`, `bookings.origin`, `booking_events.to_status/at`, `payments.booking_id/quote_id/status/updated_at`, `quotes.status` | Sem meta mensal no plano. No D45, G2 ≥ 20 acumulados (seção 2). A meta mensal sai do memorando do D45 `[proposta]` | mensal; semanal na revisão | Q01 |
 | G1 | **Prestadores ativos na agenda por semana** (guarda: prestadores ativos semanais) | Prestador aprovado com ao menos um evento de agenda na semana ISO (seção 2) | `count(distinct prestador)` por semana | `booking_events.actor_id/at`, `availability.provider_id/created_at`, `time_off.provider_id/created_at`, `providers.status` | ≥ 30 nas semanas 5 e 6 (O01, G1) | semanal | Q04 (lista: Q04b) |
-| G3 | **Liquidez por categoria e distrito** (guarda: pedidos com proposta em 2 h) | Pedido válido com proposta em até 2 h do relógio (seção 2) | `pedidos com proposta em 2 h ÷ pedidos válidos`, por categoria e distrito | `requests.created_at/occupation_slug/neighborhood_id/status/client_id`, `proposals.created_at/request_id`, `neighborhoods.slug` | ≥ 70% com ≥ 30 pedidos válidos (O01, G3). Abaixo de 30 pedidos o resultado é "sem prova" | semanal; em cada CP | Q03; demanda fora do escopo: Q03b |
+| G3 | **Liquidez por categoria e distrito** (guarda: pedidos com proposta em 2 h) | Pedido válido com proposta dentro de 2 h do relógio (seção 2) | `pedidos com proposta em 2 h ÷ pedidos válidos`, por categoria e distrito | `requests.created_at/occupation_slug/neighborhood_id/status/client_id`, `proposals.created_at/request_id`, `neighborhoods.slug` | ≥ 70% com ≥ 30 pedidos válidos (O01, G3). Abaixo de 30 pedidos o resultado é "sem prova" | semanal; em cada CP | Q03; demanda fora do escopo: Q03b |
 | G2 | **Serviços pagos pela plataforma** (guarda: caixa) | Serviço com pagamento recebido ou confirmado (seção 2) | contagem e soma de `payments.amount_cents` por trilha, categoria e prestador | `booking_events` (`to_status = 'paid'`), `payments.status/amount_cents/booking_id/quote_id`, `quotes.status` | ≥ 20 no D45 (O01, G2) | semanal | Q02 |
 | P1 | **Parcela paga no app** (indício de vazamento) | Atendimentos de origem `platform` concluídos no período que têm pagamento recebido ou confirmado | pagos no app ÷ concluídos (só origem `platform`) | `bookings.origin/status`, `booking_events` (`completed`), `payments` | Sem meta no plano. Sinal de investigação: queda de 10 pontos em duas semanas seguidas `[proposta]`. Não há tática contra o cliente (O01, 10.4) | semanal | Q06 |
 | P2 | **Conversão do teste do Pro** | Quem começou o teste (`trialing`) e virou pagante (`active`), ou não pagou ao fim (`past_due`) | virou ÷ (virou + não pagou ao fim do teste) | `audit_log` (`entity = 'subscriptions'`): `subscription.create` (`trial_days`), `subscription.status` (`from`/`to`) | Abaixo de 15% dos que chegaram ao fim: revisar o que o Pro entrega, não baixar o preço (DECISOES, seção 7) | semanal a partir do D34 | Q07 |
-| P3 | **Churn mensal do Pro** | Pagante no início do mês que cancela ou entra em inadimplência no mês | cancelamentos do mês ÷ pagantes no início do mês | `audit_log` (`subscription.cancel`, `subscription.status` para `canceled`/`past_due`) | Acima de 5% no mês: revisar a entrega do Pro `[proposta]`. Subir o preço só depois de 100 pagantes com churn abaixo de 5% (DECISOES, D2) | mensal | Q08 |
-| P4 | **Pagantes sobre aprovados** (conversão para Pro) | Pagantes ativos ÷ prestadores aprovados (estado atual) | `subscriptions.status = 'active'` ÷ `providers.status = 'approved'` | `subscriptions.status/provider_id`, `providers.status` | Abaixo de 3% após 90 dias com 100 ou mais prestadores grátis ativos: limite de propostas de 5 para 3 (DECISOES, D4). Aproximação: o denominador inclui os pagantes | mensal | Q07 (última linha) |
+| P3 | **Churn mensal do Pro** | Pagante no início do mês que cancela no mês (inadimplentes do mês são contados à parte) | cancelamentos do mês ÷ pagantes no início do mês | `audit_log` (`subscription.cancel`, `subscription.status` para `canceled`/`past_due`) | Acima de 5% no mês: revisar a entrega do Pro `[proposta]`. Subir o preço só depois de 100 pagantes com churn abaixo de 5% (DECISOES, D2) | mensal | Q08 |
+| P4 | **Pagantes sobre aprovados** (conversão para Pro) | Pagantes ativos ÷ prestadores aprovados (estado atual) | `subscriptions.status = 'active'` ÷ `providers.status = 'approved'` | `subscriptions.status/provider_id`, `providers.status` | Abaixo de 3% após 90 dias com 100 ou mais prestadores grátis ativos: limite de propostas de 5 para 3 (DECISOES, D4). Aproximação: o denominador é todo prestador aprovado, e não só os grátis ativos da regra do DECISOES (D4) | mensal | Q07 (última linha) |
 | C1 | **Custo por prestador aprovado e por serviço pago** (CAC) | (gasto de aquisição + horas do fundador × valor da hora) ÷ prestadores aprovados no período (ou serviços pagos) | fórmula ao lado; os numeradores ficam fora do banco | Denominadores: `audit_log` (`provider.status` de `draft`/`pending_review` para `approved`), Q02. Numeradores: planilhas `dinheiro` e `horas` (O01, 11.2) | Sem meta no repositório. O memorando do D45 fixa o teto `[proposta]` | D45 e mensal | Q11 + planilhas |
 | I1 | **Incidentes** | Ocorrências com gravidade (O01, 11.1) | contagem por gravidade | planilha `incidentes` e `cuidado`; sinais do banco: suspensões e alertas da seção 1 (Q10) | Dano físico ou conduta grave: suspender o prestador e pausar a linha (O01, 13.4) | semanal | Q10 + planilha |
 | V1 | **Violações de regra** | Promessa proibida, documento fora do app, dinheiro fora do Asaas (O01, 11.1). Só a parte de dinheiro aparece no banco | contagem | planilha `incidentes`; Q10 para alertas de dinheiro | 0 | semanal | planilha + Q10 |
@@ -78,7 +78,7 @@ As metas vêm do O01. As definições operacionais abaixo são as do banco. Cada
 |---|---|---|---|---|---|
 | **G1** | ≥ 30 prestadores ativos em cada uma das semanas 5 (07/12 a 13/12) e 6 (14/12 a 20/12) | Prestador **aprovado** com ao menos um evento de agenda na semana ISO (segunda a domingo, horário de São Paulo): (a) `booking_events` com `actor_id` = prestador (criou, aceitou, iniciou ou concluiu um atendimento); (b) `availability.created_at` (horário cadastrado); (c) `time_off.created_at` (folga cadastrada). Semana sem linha conta como zero | Ação de cliente; eventos de atendimentos de contas de teste (cliente ou prestador na lista); plantão do Cuidado (`shifts`), que não é agenda; evento feito por você no aparelho do prestador | D1 a D45 | Q04: linhas `2026-12-07` e `2026-12-14` |
 | **G2** | ≥ 20 serviços pagos pela plataforma (acumulado até o D45) | Atendimento ou orçamento aceito com ao menos um pagamento `received` ou `confirmed`. Conta uma vez por serviço. Reembolso ou estorno tira o serviço (o status deixa de ser recebido) | Testes de R$ 1,00; contas de teste; você, familiares, funcionários e o próprio prestador como pagador (a lista de contas é da planilha, porque CPF não está no banco); plantões do Cuidado; divisão de um serviço em vários pagamentos | D1 a D45 | Q02: soma das linhas |
-| **G3** | ≥ 70% dos pedidos válidos com proposta em até 2 h, com no mínimo 30 pedidos válidos | Pedido válido: categoria de lançamento, distrito do piloto, criado na janela, sem conta de teste, sem status `canceled`. Relógio: `requests.created_at`, ou a abertura da janela de atendimento se chegou fora dela (seg. a sex. 8h a 17h30; sáb. 8h a 14h; domingo abre na segunda 8h). Proposta: `proposals.created_at` | Pedido de ensaio; pedido cancelado pelo cliente; pedido sem resposta sua a uma pergunta por 2 h (registre o motivo na planilha). Trilha B (orçamento e cobrança pela conta do prestador) não tem pedido no banco: vai na planilha `pedidos` | D22 a D45 (30/11 a 23/12) | Q03: linha `TOTAL` |
+| **G3** | ≥ 70% dos pedidos válidos com proposta dentro de 2 h, com no mínimo 30 pedidos válidos | Pedido válido: categoria de lançamento, distrito do piloto, criado na janela, sem conta de teste, sem status `canceled`. Relógio: `requests.created_at`, ou a abertura da janela de atendimento se chegou fora dela (seg. a sex. 8h a 17h30; sáb. 8h a 14h; domingo abre na segunda 8h). Proposta: `proposals.created_at` | Pedido de ensaio; pedido cancelado pelo cliente; pedido sem resposta sua a uma pergunta por 2 h (registre o motivo na planilha). Trilha B (orçamento e cobrança pela conta do prestador) não tem pedido no banco: vai na planilha `pedidos` | D22 a D45 (30/11 a 23/12) | Q03: linha `TOTAL` |
 | **G4** | ≥ 3 famílias na linha Cuidado | Casa (`households`) com ao menos um plantão `completed` no período, com check-in `in` e check-out `out` (`checkins`) e relatório do dia (`daily_reports`) | Casa de teste ou de familiar seu; incidente grave aberto (não está no banco: confira a planilha `cuidado` antes de contar) | D1 a D45 | Q09: primeira linha |
 
 **Regra de conta (O01, 13.3).** g = número de portões verdes. Um portão não testado por falta de P11 sai da conta. m = menor percentual da meta entre os portões que não ficaram verdes (G1: prestadores ÷ 30; G2: serviços ÷ 20; G3: percentual ÷ 70; G4: famílias ÷ 3).
@@ -91,8 +91,8 @@ As metas vêm do O01. As definições operacionais abaixo são as do banco. Cada
 
 ### 2.3 Diferenças em relação ao O01 (o O01 deve ser corrigido)
 
-1. **G1, "atendimento criado por ele"**: o O01 cita `bookings.created_at`, mas `bookings` não guarda quem criou. O quem está em `booking_events.actor_id`, gravado pelo trigger de histórico em todo `INSERT` e `UPDATE` de status (`private.log_booking_status`, `20261019000005_bookings.sql`).
-2. **G1, contas de teste**: o O01 exclui contas de teste. Aqui também saem os eventos de atendimentos de conta de teste, porque o prestador real que atende um teste não faz agenda de verdade.
+1. **G1, "atendimento criado por ele"**: o O01 cita `bookings.created_at`, mas `bookings` não guarda quem criou. Quem fez a mudança fica em `booking_events.actor_id`, gravado pelo trigger de histórico em todo `INSERT` e `UPDATE` de status (`private.log_booking_status`, `20261019000005_bookings.sql`).
+2. **G1, contas de teste**: o O01 exclui contas de teste. Aqui também saem os eventos de atendimentos de conta de teste, porque um atendimento de teste não é uso real da agenda, mesmo com prestador real.
 3. **P1 (parcela paga)**: o O01 não diz a origem. Aqui vale só a origem `platform`: o CRM do próprio prestador não é o marketplace.
 4. **Estrela (E)**: o O01 não define o indicador mensal. A estrela exige conclusão; G2 exige só pagamento.
 5. **D1 (disputa)**: o O01 diz "atendimentos `disputed`". Aqui é a coorte de pagos, que é o denominador do DECISOES, seção 4.
@@ -101,15 +101,15 @@ As metas vêm do O01. As definições operacionais abaixo são as do banco. Cada
 
 ## 3. Fases e portões
 
-**Atenção com a palavra "fase".** O repositório usa "fase" em dois sentidos: fase de construção (`ARQUITETURA.md`: prerender de SEO e assistente de IA são "fase 3") e fase de lançamento (O01: "Fase 1" é o concierge de 45 dias). Este documento usa o segundo.
+**Atenção com a palavra "fase".** O repositório usa "fase" pelo menos em dois sentidos: fase de construção (`ARQUITETURA.md`: prerender de SEO e assistente de IA são "fase 3") e fase de lançamento (O01: "Fase 1" é o concierge de 45 dias). Este documento usa o segundo.
 
 **Confirme antes de usar:** o plano estratégico privado não estava acessível (O01, 16.3). As fases 2 e 3 abaixo são a sequência que os documentos do repositório permitem: o "continuar" do O01 (13.3) abre "segundo conjunto de distritos ou novas categorias"; o DECISOES coloca a comissão e o pagamento retido depois. `[incerto: confirmar com o plano privado]`.
 
 | Fase | Objetivo | Portões e limiares | Consultas | Quando decidir |
 |---|---|---|---|---|
 | **1. Concierge de 45 dias** (D1 09/11/2026 a D45 23/12/2026) | Provar o ciclo completo com dinheiro real, uso semanal da agenda e demanda | G1 ≥ 30 nas semanas 5 e 6; G2 ≥ 20 acumulados; G3 ≥ 70% com ≥ 30 pedidos válidos; G4 ≥ 3 famílias (só com P11 verde) | Q04, Q02, Q03, Q09 | D45, pela regra da seção 5 (O01, 13.3) |
-| **2. Ampliação de território e categorias** (só se a Fase 1 disse "continuar") | Crescer a oferta e a demanda sem mexer em dinheiro | Novo distrito: 2 semanas seguidas com G3 ≥ 70% e ≥ 8 pedidos válidos por semana (O01, 3.4) `[proposta: vem do O01]`. Nova categoria: ≥ 5 aprovados na ocupação e no distrito e ≥ 3 pedidos em 14 dias `[proposta]` | Q03, Q03b, Q12 | Por distrito ou categoria, com o mesmo semáforo |
-| **3. Dinheiro na plataforma e Cuidado aberto ao público** | Comissão, depois pagamento retido; menu Cuidado divulgado | Comissão: os cinco portões de DECISOES, seção 4 (parecer escrito; split real de R$ 1,00 conferido no painel do Asaas; termos e política publicados; ≥ 20 serviços pagos com menos de 10% em disputa; cadastro fiscal coletado). Pagamento retido: parecer, instituição autorizada fazendo a custódia e ≥ 12 meses de operação. Cuidado: pessoa jurídica aberta, seguro de responsabilidade civil cotado, parecer trabalhista e ≥ 3 famílias atendidas em modo concierge (DECISOES, seção 5) `[CONDICIONAL: depende de parecer]` | Q02 (serviços pagos), Q10 (disputas), Q07 e Q08 (Pro), Q09 (famílias) | Só com todos os itens. Nenhum número do banco substitui parecer |
+| **2. Ampliação de território e categorias** (só se a Fase 1 disse "continuar") | Crescer a oferta e a demanda sem mexer em dinheiro | Novo distrito: 2 semanas seguidas com G3 ≥ 70% e ≥ 8 pedidos válidos por semana (regra do O01, 3.4, que ele marca como proposta). Nova categoria: ≥ 5 aprovados na ocupação e no distrito e ≥ 3 pedidos em 14 dias `[proposta]` | Q03, Q03b, Q12 | Por distrito ou categoria, com o mesmo semáforo |
+| **3. Dinheiro na plataforma e Cuidado aberto ao público** | Comissão, depois pagamento retido; menu Cuidado divulgado | Comissão: os cinco portões de DECISOES, seção 4 (parecer escrito; conta Asaas de produção aprovada e split real de R$ 1,00 conferido no painel do Asaas; termos e política publicados; ≥ 20 serviços pagos com menos de 10% em disputa; cadastro fiscal coletado). Pagamento retido: parecer, instituição autorizada fazendo a custódia e ≥ 12 meses de operação. Cuidado: pessoa jurídica aberta, seguro de responsabilidade civil cotado, parecer trabalhista e ≥ 3 famílias atendidas em modo concierge (DECISOES, seção 5) `[CONDICIONAL: depende de parecer]` | Q02 (serviços pagos), Q10 (disputas), Q07 e Q08 (Pro), Q09 (famílias) | Só com todos os itens. Nenhum número do banco substitui parecer |
 
 ---
 
@@ -148,17 +148,17 @@ Layout para a revisão de sexta (O01, seção 12). Uma tela, na ordem de leitura
 |---|---|---|
 | G1 abaixo de 30 numa das semanas 5 ou 6 | Pouca agenda usada | Abaixo de 70% do ritmo por duas semanas: mudar a causa (canal ou categoria), não o esforço (O01, 13.1). Usar Q04b para ativar |
 | G3 com 70% ou mais e 30 pedidos válidos | Liquidez suficiente no piloto | Continuar. Ver Q12 antes de recrutar |
-| G3 entre 50% e 69% | Proposta lenta | Acionar 5 prestadores em vez de 3, encurtar a janela de resposta, trocar quem responde devagar (O01, CP3) |
+| G3 entre 50% e 69% (faixa minha, `[proposta]`) | Proposta lenta | Acionar 5 prestadores em vez de 3, encurtar a janela de resposta, trocar quem responde devagar (O01, CP3) |
 | G3 abaixo de 35% no CP3 | Demanda sem oferta (risco R8) | Reserva de 3 a 5 prestadores por categoria; recusar pedido fora do escopo (O01, risco R8) |
 | G3 com menos de 30 pedidos válidos | Amostra pequena | "Sem prova": não decide. Acumule até o próximo CP |
-| Alerta `freio` em Q12 | Oferta acima de 8 sem pedidos | Parar de recrutar naquela ocupação e distrito |
+| Alerta `freio` em Q12 | 8 ou mais aprovados e menos de 3 pedidos em 14 dias | Parar de recrutar naquela ocupação e distrito |
 | Alerta `reposicao` em Q12 | Menos de 5 aprovados | Recrutar reposição (O01, D24) |
 | Parcela paga no app caindo | Possível combinação por fora, ou pagamento que falha | Investigar antes de agir. Facilitar o link e o histórico; não adotar tática hostil (O01, 10.4) |
 | Conversão do teste abaixo de 15% | O Pro não entrega o que promete | Revisar a entrega do Pro. Não baixar preço (DECISOES, seção 7) |
 | Churn acima de 5% no mês | Pagantes saem | Revisar a entrega do Pro `[proposta]`. Não subir preço (DECISOES, D2) |
 | Pagantes sobre aprovados abaixo de 3% depois de 90 dias com 100 ou mais grátis | Conversão fraca | Baixar o limite de propostas de 5 para 3 (DECISOES, D4). Se menos de 30% dos aprovados enviarem a primeira proposta, subir para 8 |
-| Disputa da coorte de 10% ou mais | Problema de qualidade | Não ligar comissão (DECISOES, seção 4). Rever o caso a caso com O07 |
-| Alerta de dinheiro em aberto | Dinheiro fora do esperado | Pausar o fluxo afetado (`docs/operacao` I04 explica como desligar) até entender a causa (O01, 13.4 item 2) |
+| Disputa da coorte de 10% ou mais | Problema de qualidade | Não ligar comissão (DECISOES, seção 4). Rever o caso a caso pelo procedimento de disputas (O07) |
+| Alerta de dinheiro em aberto | Dinheiro fora do esperado | Pausar o fluxo afetado até entender a causa (O01, 13.4 item 2) |
 | Violação de regra (meta zero) | Promessa, documento ou dinheiro fora do app | Registrar na planilha `incidentes`, corrigir o material, reler a regra (O01, 11.1) |
 | Horas acima de 60 em duas semanas seguidas | Teto estourado | Corte da seção 13.5 do O01 |
 | CAC sem meta | Custo ainda não medido | Calcular uma vez no D45 e fixar teto no memorando `[proposta]` |
@@ -186,7 +186,7 @@ Layout para a revisão de sexta (O01, seção 12). Uma tela, na ordem de leitura
 | Assinatura guarda só o estado atual | Churn e conversão dependem do `audit_log` | Já coberto por Q07 e Q08; `subscription.cancel` não guarda o estado anterior |
 | "Aprovado" é o estado atual de `providers.status` | G1 e o funil não têm histórico de aprovação | Aceitar como aproximação até o fim do D45 |
 | Incidente grave e "família com incidente aberto" | Não estão no banco | Planilha `incidentes` e `cuidado` |
-| Contas de teste | Só os `user id` de `contas_teste` saem. CPF não é conferido | Manter a planilha `contas_de_teste` completa (O01, 11.3) |
+| Contas de teste | Só os `user id` de `contas_teste` saem. O banco não reconhece uma pessoa pelo CPF | Manter a planilha `contas_de_teste` completa (O01, 11.3) |
 | Feriados | O relógio do G3 não os desconta | Ajustar na planilha |
 | Horas e gastos | Não estão no banco | Planilhas `horas` e `dinheiro` |
 
@@ -200,12 +200,12 @@ Layout para a revisão de sexta (O01, seção 12). Uma tela, na ordem de leitura
 - Um `CREATE TABLE` dentro da transação de leitura falha ("cannot execute CREATE TABLE in a read-only transaction"). A proteção funciona.
 - O banco local tem migrações de outras frentes que não estão neste branch (`booking_reminders`, `admin_settings_and_metrics`, `product_events`). As consultas usam só tabelas das migrações 01 a 11 deste branch.
 
-**Teste lógico com dados sintéticos.** Copiei 20 tabelas para o schema temporário `kpi_fx` (com `LIKE`), inseri cerca de 250 linhas (prestadores, pedidos, atendimentos, pagamentos, assinaturas, casas, plantões e auditoria) e rodei todo o `kpis.sql` dentro de uma transação terminada em `ROLLBACK`. Nenhuma tabela de `public` foi escrita. Os resultados batem com os valores que calculei à mão, com duas contas de teste excluídas. O teste apontou uma falha, corrigida antes de fechar (Q04 contava eventos de atendimentos de conta de teste). Outras três correções saíram de revisão, antes do teste: a contagem de cadastros (Q05) não excluía contas de teste; a visão semanal do Cuidado (Q09) não excluía cuidadores de teste; e a coorte de disputas e o custo (Q10 e Q11) contavam pagamento reembolsado.
+**Teste lógico com dados sintéticos.** Copiei 21 tabelas para o schema temporário `kpi_fx` (com `LIKE`), inseri cerca de 190 linhas sintéticas (prestadores, pedidos, atendimentos, pagamentos, assinaturas, casas, plantões e auditoria), além de 96 bairros copiados da semente e rodei todo o `kpis.sql` dentro de uma transação terminada em `ROLLBACK`. Nenhuma tabela de `public` foi escrita. Os resultados batem com os valores que calculei à mão, com duas contas de teste excluídas. O teste apontou uma falha, corrigida antes de fechar (Q04 contava eventos de atendimentos de conta de teste). Outras três correções saíram de revisão, antes do teste: a contagem de cadastros (Q05) não excluía contas de teste; a visão semanal do Cuidado (Q09) não excluía cuidadores de teste; e a coorte de disputas e o custo (Q10 e Q11) contavam pagamento reembolsado.
 
 **Não conferido:**
 
 - Desempenho com volume real. Não há dados reais.
-- Os textos de auditoria que o webhook grava com dados reais (`subscription.status`, `payment.refund_failed`). Li o código de `asaas-webhook/handler.ts` e `subscriptions-manage/handler.ts`, mas não rodei contra o Asaas.
+- Os registros de auditoria que o webhook grava com o Asaas real (`subscription.status`, `payment.refund_failed`). Li o código de `asaas-webhook/handler.ts` e `subscriptions-manage/handler.ts`, mas não rodei contra o Asaas.
 - Horário de verão e feriados (o relógio do G3 não desconta feriados).
 - Saída em CSV com `psql --csv` (a linha `BEGIN` aparece no arquivo).
 - psql anterior à versão 10 (o arquivo usa `\if`).
@@ -219,7 +219,6 @@ Layout para a revisão de sexta (O01, seção 12). Uma tela, na ordem de leitura
 1. Seção 5.1, G1: trocar "atendimento criado por ele (`bookings.created_at`)" por "evento de atendimento com `booking_events.actor_id` = prestador".
 2. Seção 5.1, G1 e P1: incluir as exclusões da seção 2.3 deste documento.
 3. Seção 11.1: a parcela paga no app vale só para origem `platform`.
-4. Seção 16.1, item 8: o admin não mede agenda nem tempo de resposta, o que é verdade; a consulta de agenda desta página é feita pelo `kpis.sql`.
 
 ### 8.2 Lacunas do produto (não corrigidas aqui)
 
@@ -228,18 +227,16 @@ Layout para a revisão de sexta (O01, seção 12). Uma tela, na ordem de leitura
 3. Não há data de aprovação em `providers`. A primeira aprovação só existe no `audit_log` (`provider.status`).
 4. Assinatura não tem histórico de estados. `subscription.cancel` não guarda o estado anterior (`from`).
 5. Proposta não tem campo estruturado de disponibilidade ("quando pode ir").
-6. O evento de "pedido novo" não avisa o prestador: ele só vê o pedido ao abrir `/pro/pedidos` (O01, 16.1 item 2).
+6. Não há aviso de pedido novo ao prestador: ele vê o pedido ao abrir `/pro/pedidos` (O01, 16.1, item 2). Os seis modelos de notificação do banco não cobrem esse caso (`ARQUITETURA.md`, Notificações).
 7. A medição de eventos de produto (`product_events`, com `admin_funnel_daily`) existe em outra frente de trabalho e no banco local, mas não está neste branch. Quando entrar, pode dar datas exatas de recebimento e de primeira proposta. `[PLANEJADO]`.
 8. `ARQUITETURA.md` usa "fase" com sentido de construção, e o O01 com sentido de lançamento. Padronizar o termo.
-9. A lista de contas de teste é uma planilha. Nenhuma consulta a acessa; se a planilha não for completa, as métricas saem inflados.
+9. A lista de contas de teste é uma planilha. Nenhuma consulta a acessa; se a planilha não for completa, as métricas saem infladas.
 
 ### 8.3 Pendências da conferência
 
 - Confirmar com o plano estratégico privado os nomes e os limiares das fases 2 e 3 (seção 3).
 - Rodar `kpis.sql` com dados reais no primeiro ensaio (O01, P10) e comparar a planilha com o banco (O01, 11.3, item 3).
 - CSV: decidir se o `BEGIN` e o `ROLLBACK` devem sair da saída.
-
-CI footprint: PRs opened=0; PR heads pushed=0; dispatches=0; runs cancelled=0.
 
 ---
 

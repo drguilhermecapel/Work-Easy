@@ -14,7 +14,7 @@ Rascunho para revisão de advogado. Não é parecer jurídico.
 - **Não encontrei empresa brasileira chamada WorkEasy** nas buscas na web (nenhum CNPJ com esse nome). Encontrei uma empresa norte-americana ativa com o mesmo nome, WORKEASY SOFTWARE, LLC (Pembroke Pines, Flórida), que vende software de gestão de jornada e escalas. O site aberto não mostra presença no Brasil.
 - **Risco provisório: médio.** Sobe para alto se a busca no INPI mostrar pedido ou registro de nome igual ou muito parecido em classes ligadas a software, intermediação ou serviços do app (9, 35 e 42). Só desce para baixo depois da busca feita e da análise de um advogado de propriedade intelectual.
 - **Classes a avaliar:** 9 (aplicativo para download) e 42 (software como serviço) são as mais prováveis; 35 depende de como o marketplace for descrito. 44 e 45 só entram se a marca for usada para serviços de saúde, estética, jurídicos, de segurança ou pessoais, e isso exige cuidado de linguagem, porque a plataforma não presta serviço clínico.
-- **Custos:** a consulta de classificação no INPI custa R$ 170,00 (GRU código 357, até cinco itens). O valor do pedido de registro não foi conferido na tabela oficial, que não pôde ser lida nesta sessão. Uma fonte secundária indica R$ 880 sem desconto por classe, para especificação pré-aprovada. Há datas de vigência da tabela em conflito entre as fontes.
+- **Custos:** a consulta de classificação no INPI custa R$ 170,00 (GRU código 357, até cinco itens). O pedido de registro custa R$ 880,00 por classe (especificação pré-aprovada) ou R$ 1.720,00 (livre preenchimento), segundo a tabela oficial do INPI (PDF lido na verificação de 2026-11-08). A concessão no primeiro decênio não tem retribuição (código 372, R$ 0,00). A prorrogação aos 10 anos custa R$ 1.000,00 por classe (código 374). Há datas de vigência da tabela em conflito entre as fontes, e o texto lido da tabela não traz data de vigência.
 
 ## Método e limites
 
@@ -22,9 +22,9 @@ Rascunho para revisão de advogado. Não é parecer jurídico.
 
 **O que não foi aberto ou falhou.**
 - Base de marcas do INPI (busca.inpi.gov.br): HTTP 503 em todas as tentativas. [incerto]
-- Lei 9.279/96 (texto oficial): o Planalto devolveu páginas de bloqueio ("Acesso Negado"). Não tentei contornar o bloqueio. A Câmara devolveu 404 e o Legjur devolveu 403. Os artigos da lei não foram lidos. [incerto]
-- Tabela de retribuições do INPI (PDF de 20/12/2025): o arquivo foi aberto, mas chegou como conteúdo binário. Nenhum valor foi extraído dele.
-- Lista de classes do INPI (PDF da NCL 11, em português): aberta, mas ilegível pela mesma razão. Os títulos de classe usados neste dossiê são os textos da OMPI, em inglês.
+- Lei 9.279/96 (texto oficial): o Planalto devolveu página de bloqueio ("Esta requisição foi bloqueada.", com código de referência). Não tentei contornar o bloqueio. A Câmara devolveu 404 e o Legjur devolveu 403. O texto oficial dos artigos não foi lido. O art. 126 foi lido em site secundário (modeloinicial.com.br) que cita o Planalto como fonte; o art. 125 só apareceu em resumo de busca. [incerto]
+- Tabela de retribuições do INPI (PDF): a leitura direta pela ferramenta chegou como conteúdo binário. Na verificação de 2026-11-08, o arquivo baixado foi lido com pdftotext, e os valores da seção 5.2 vêm dele.
+- Lista de classes do INPI (PDF da NCL 11, em português): a leitura direta falhou, mas o arquivo baixado foi lido com pdftotext na verificação. Ele traz no cabeçalho "Classificação de Nice (11ª Edição – Versão 2017)", que não bate com a edição 2020 citada na página de classificação (ver 3.3). Os títulos de classe usados no dossiê são os textos da OMPI, em inglês, conferidos contra os títulos em português.
 - Base de marcas da OMPI (branddb.wipo.int): página com captcha em JavaScript, sem resultados lidos. [incerto]
 - markinton.com e trademarkdir.com: falha de DNS nesta sessão. Os dados de registros dos EUA vêm de trechos de busca, não de páginas abertas. [incerto]
 - Receita Federal (consulta de CNPJ), Junta Comercial e lojas de aplicativos: não consultadas.
@@ -54,8 +54,8 @@ O guia do INPI (aberto em 2026-11-08) diz que a busca pode ser feita "por palavr
 ### 2. Nomes de empresas e produtos na web (item b)
 
 **2.1 Titular estrangeiro na mesma área de software.**
-- **WORKEASY SOFTWARE, LLC.** Site https://www.workeasysoftware.com/ (aberto em 2026-11-08). Segundo o resumo da página, a empresa vende "workforce management software and time clock hardware": software de jornada, escalas, folgas e dados de RH, além de relógios de ponto. A interface é em inglês. O endereço do rodapé é "1200 SW 145th Ave, Suite 200, Pembroke Pines, FL 33027". A página diz "over 10,000 customers", afirmação da própria empresa, não conferida. Não há endereço, CNPJ, preço em reais nem texto em português.
-- **Aplicativo.** Trecho de busca da central de ajuda (help.workeasysoftware.com) indica aplicativo nas lojas App Store e Google Play. Não aberto.
+- **WORKEASY SOFTWARE, LLC.** Site https://www.workeasysoftware.com/ (aberto em 2026-11-08). Segundo o resumo da página, a empresa vende "workforce management software" (software de tempo e presença, escalas, folgas e dados de RH) e relógios de ponto da linha Xenio. A interface é em inglês. O endereço do rodapé é "1200 SW 145th Ave, Suite 200, Pembroke Pines, FL 33027". A página diz "Trusted By 10,000+ Customers Worldwide", afirmação da própria empresa, não conferida. Não há endereço no Brasil, CNPJ, preço em reais nem texto em português.
+- **Aplicativo.** Confirmado na página inicial aberta: seção "Download Our App", com links para a App Store e o Google Play. A central de ajuda (help.workeasysoftware.com) não foi aberta.
 - **Registro nos EUA.** Trecho de busca de agregador de marcas indica o registro WORKEASY nº 7645841, classe 42, titular WORKEASY SOFTWARE, LLC, pedido de 2023-10-12 e registro de 2025-01-07. Fonte não aberta. [incerto]
 - **Registros históricos dos EUA.** Trechos indicam um registro de 1991 (classes 36 e 38, titular Digital Promotions, hoje inativo) e um pedido de 1996 abandonado. Sem relação direta com o Brasil.
 
@@ -74,13 +74,13 @@ O guia do INPI (aberto em 2026-11-08) diz que a busca pode ser feita "por palavr
 | Classe | Título (texto da OMPI, em inglês, como aberto) | Aderência ao WorkEasy (a confirmar) |
 |---|---|---|
 | 9 | "Scientific, research, navigation, surveying, photographic, cinematographic, audiovisual, optical, weighing, measuring, ... recorded and downloadable media, computer software, blank digital or analogue recording and storage media ..." (texto longo, cortado) | Aplicativo para download (Android, iOS, desktop), se a marca aparecer no app. |
-| 35 | "Advertising; business management; business administration; office functions." | Marketplace e gestão de negócios de profissionais. A redação exata de "intermediação" na lista do INPI não foi lida. [incerto] |
-| 42 | "Scientific and technological services and research and design relating thereto; industrial analysis, industrial research and industrial design services; quality control and authentication services; design and development of computer hardware and software." Indicação listada: "software as a service [SaaS]". | Software como serviço (painel de gestão do profissional). |
+| 35 | "Advertising; business management; business administration; office functions." | Marketplace e gestão de negócios de profissionais. Na lista em português do INPI, o título da classe 35 é "Propaganda; gestão de negócios; administração de negócios; funções de escritório." A OMPI (em inglês) lista "commercial intermediation services" entre os exemplos. Termo equivalente a intermediação no título em português não foi localizado. [incerto] |
+| 42 | "Scientific and technological services and research and design relating thereto; industrial analysis, industrial research and industrial design services; quality control and authentication services; design and development of computer hardware and software." Nota explicativa da OMPI (em inglês): "software as a service (SaaS)". A lista em português do INPI não cita SaaS. | Software como serviço (painel de gestão do profissional). |
 | 44 | "Medical services; veterinary services; hygienic and beauty care for human beings or animals; agriculture, aquaculture, horticulture and forestry services." | Só se a marca for usada para serviços de saúde, estética ou cuidado. A plataforma informa que não presta serviço clínico. |
-| 45 | "Legal services; security services for the physical protection of tangible property and individuals; dating services, online social networking services; funerary services; babysitting." | Só se houver categorias jurídicas, de segurança ou pessoais no catálogo. |
+| 45 | "Legal services; security services for the physical protection of tangible property and individuals; personal and social services rendered by others to meet the needs of individuals." (título da OMPI; dating services, online social networking services, funerary services e babysitting são exemplos da nota explicativa, não do título) | Só se houver categorias jurídicas, de segurança ou pessoais no catálogo. |
 
 **3.3 Observações.**
-- Os títulos acima estão em inglês e vêm da OMPI. A redação em português que o INPI usa no formulário não foi lida. É preciso conferir na lista bilíngue do INPI, que aparece linkada na página de classificação mas não foi aberta.
+- Os títulos acima estão em inglês e vêm da OMPI (edição 2020). A lista em português do INPI (PDF "Classificação de Nice (11ª Edição – Versão 2017)"), lida na verificação de 2026-11-08, tem títulos próximos, mas diferentes em alguns pontos: a classe 42 não traz "controle de qualidade e autenticação" nem "design industrial", e a classe 44 não cita aquicultura. As classes 35 e 45 conferem com a OMPI. Título em português da classe 45: "Serviços jurídicos; serviços de segurança para proteção física de bens tangíveis e de pessoas; serviços pessoais e sociais prestados por terceiros para satisfazer necessidades de indivíduos." Como o PDF do INPI é de 2017 e a página do INPI diz NCL 11-2020, a edição vigente deve ser confirmada. [incerto]
 - As páginas da OMPI abertas com o parâmetro `version=20200101` não dizem qual edição está marcada; a ligação com a edição 11-2020 é inferência desse parâmetro. A página padrão da OMPI mostra a edição 13-2027 com a frase "This Edition-Version has not yet entered into force." Por isso a edição vigente no INPI deve ser confirmada. [incerto]
 
 ### 4. Risco e alternativas (item d)
@@ -95,7 +95,7 @@ Justificativa:
 5. **A pesquisa é incompleta** pela indisponibilidade do INPI. Não há leitura de anterioridade no Brasil.
 
 **4.2 O que mudaria o nível.**
-- **Sobe para alto:** pedido ou registro de terceiro com nome igual ou muito parecido, vigente, em classe 9, 35 ou 42; ou pedido de titular estrangeiro no Brasil; ou indício de marca de alto renome ou notoriamente conhecida (o texto da lei não foi lido; um trecho de busca cita o art. 126 da Lei 9.279/96, sem confirmação). [incerto]
+- **Sobe para alto:** pedido ou registro de terceiro com nome igual ou muito parecido, vigente, em classe 9, 35 ou 42; ou pedido de titular estrangeiro no Brasil; ou indício de marca de alto renome ou notoriamente conhecida. O art. 126 da Lei 9.279/96 (marca notoriamente conhecida) foi lido em site secundário que cita o Planalto, não no texto oficial; o art. 125 (alto renome) aparece só em resumo de busca. [incerto] A tabela do INPI também traz o código 393, "Pedido de reconhecimento de alto renome", no valor de R$ 37.580,00, custo que só se aplica se o titular pedir esse reconhecimento.
 - **Desce para baixo:** só com a busca do INPI feita nas classes escolhidas, sem sinal relevante, com análise do advogado e com nome empresarial e de lojas conferidos.
 - **Situação atual:** médio, pela combinação de item 2 e item 1 (busca não feita).
 
@@ -112,7 +112,7 @@ Trocar o nome depois de lançar nas lojas tem custo de marca, de loja e de usuá
 **5.1 Passos.** Fonte: guia básico do INPI (https://www.gov.br/inpi/pt-br/servicos/marcas/guia-basico), aberto em 2026-11-08. Resumo de leitor automático; conferir na página.
 
 1. **Entender a marca.** O guia diz que é preciso fazer o registro no INPI para ter exclusividade.
-2. **Busca prévia.** O guia recomenda a busca na base do INPI e avisa que marca muito parecida com outra já registrada para produtos ou serviços semelhantes não pode ser registrada (paráfrase do resumo).
+2. **Busca prévia.** O guia recomenda a busca na base do INPI e avisa que marca muito parecida com outra já registrada para produtos ou serviços semelhantes não pode ser registrada (frase confirmada na verificação de 2026-11-08: "Você não poderá registrar uma marca muito parecida com marca já registrada por outra pessoa para identificar produtos ou serviços semelhantes").
 3. **Classificar.** O guia manda ver "como classificar corretamente". A página de classificação oferece consulta à comissão do INPI (CCPS), com GRU código 357 e R$ 170,00 para até cinco itens.
 4. **Pagar a GRU antes.** O guia diz: "Antes de entrar com o pedido de registro de marca, você deve pagar a Guia de Recolhimento da (GRU)." A GRU é emitida e paga em meu.inpi.gov.br/pag/. É preciso guardar o número da GRU.
 5. **Cadastro.** Se for o primeiro acesso, há link de cadastro no guia. A página não detalha o login.
@@ -120,20 +120,24 @@ Trocar o nome depois de lançar nas lojas tem custo de marca, de loja e de usuá
 7. **Acompanhamento.** A revista (RPI) é publicada às terças-feiras. Ao incluir o pedido em "Meus Pedidos", chega um e-mail a cada etapa. O guia diz que podem ser pedidos outros documentos durante a análise. Não há prazo de exame, nem menção a "exigência" ou a "publicação para oposição".
 8. **Deferimento e certificado.** "Após o deferimento do pedido, a marca será concedida automaticamente, com a posterior emissão do certificado." Nessa etapa não há nova retribuição. A renovação é "a cada dez anos".
 
-O guia também diz que há descontos para pessoa física, microempresa, MEI, empresa de pequeno porte, cooperativa, instituição de ensino e pesquisa, entidade sem fins lucrativos e órgão público. O percentual e o valor ficam na tabela, que não foi lida.
+O guia também diz que há descontos para pessoa física, microempresa, MEI, empresa de pequeno porte, cooperativa, instituição de ensino e pesquisa, entidade sem fins lucrativos e órgão público. A nota da tabela do INPI (lida na verificação) traz as condições do desconto de 50%: pessoas naturais sem participação em empresa do ramo, microempresas, microempreendedor individual, empresas de pequeno porte, empresas simples de inovação, ICT, entidades sem fins lucrativos e órgãos públicos. A nota não cita cooperativas, que o guia lista; confirmar antes de usar. Pessoas físicas hipossuficientes e PcD têm 100% de desconto nos serviços de entrada elegíveis, que incluem os códigos 389 e 394 (pedido de registro).
 
-**5.2 Taxas.** Valores só valem depois de conferidos na tabela oficial.
+**5.2 Taxas.** Valores conferidos no PDF da tabela oficial do INPI (lido em 2026-11-08). A vigência da tabela ainda precisa ser confirmada.
 
 | Item | Valor | Fonte | Situação |
 |---|---|---|---|
-| Consulta à classificação (CCPS), até 5 itens | R$ 170,00 (GRU código 357) | INPI, página de classificação (en), aberta em 2026-11-08 | Primário. A página não mostra data de vigência. |
-| Pedido de registro de marca (por classe) | Não conferido. Fonte secundária: R$ 880 sem desconto (especificação pré-aprovada), R$ 440 com desconto de 50%; especificação de livre preenchimento: R$ 1.720 sem desconto e R$ 860 com desconto. | Contajá, blog, aberto em 2026-11-08 | [incerto]. A tabela oficial não foi lida. |
-| Exame de mérito | Fonte secundária: "Não existe mais taxa separada de deferimento: o valor pago na entrada já cobre a concessão e os primeiros 10 anos." | Contajá | [incerto] |
+| Consulta à classificação (CCPS), até 5 itens | R$ 170,00 (GRU código 357); R$ 20,00 por item adicional | INPI, página de classificação (en), aberta em 2026-11-08; confirmado na tabela do INPI (código 357) | Primário. A página não mostra data de vigência. |
+| Pedido de registro de marca (por classe) | Especificação pré-aprovada (código 389): R$ 880,00, com desconto de 50%: R$ 440,00. Especificação de livre preenchimento (código 394): R$ 1.720,00, com desconto: R$ 860,00. | Tabela de retribuições do INPI (PDF, lido com pdftotext em 2026-11-08). Contajá (secundária) dá os mesmos valores. | Primário. Vigência da tabela em conflito (ver abaixo). |
+| Concessão e primeiro decênio (código 372) | R$ 0,00 por classe no prazo ordinário (código 373, prazo extraordinário, também R$ 0,00). | Tabela do INPI (PDF lido). A frase "não existe mais taxa separada de deferimento" é da Contajá (secundária). | Primário para o valor. |
 | Expedição de certificado | Sem nova retribuição: "Não há mais pagamento de retribuição para esta etapa." | Guia do INPI | Primário. |
-| Renovação aos 10 anos | Valor não conferido. | Guia do INPI cita a renovação. | [incerto] |
+| Prorrogação (renovação) aos 10 anos (código 374) | R$ 1.000,00 por classe no prazo ordinário; R$ 500,00 com desconto. Prazo extraordinário (código 375): R$ 2.000,00 por classe, R$ 1.000,00 com desconto. | Tabela do INPI (PDF lido). O guia do INPI cita a renovação a cada dez anos. | Primário, sujeito à vigência da tabela. |
+| Oposição, por classe (código 332) | R$ 520,00; R$ 260,00 com desconto. | Tabela do INPI (PDF lido). | Primário, sujeito à vigência da tabela. |
+| Cumprimento de exigência (código 340) | R$ 180,00; R$ 90,00 com desconto. | Tabela do INPI (PDF lido). | Primário, sujeito à vigência da tabela. |
 
 **Data de vigência da tabela, em conflito:**
-- Página de preços do INPI (aberta): "Publicado em 20/12/2025 04h00" e "Atualizado em 19/12/2025 19h24". Não diz vigência.
+- Página de preços do INPI (aberta): "Publicado em 20/12/2025 04h00" e "Atualizado em 19/12/2025 19h24" (a data de atualização é anterior à de publicação). Não diz vigência.
+- Tabela do INPI (PDF lido na verificação): o cabeçalho cita "Portaria GM/MDIC nº 110/2025, Portaria INPI/PR nº 10/2025 e apostila 31/10/2025". O texto lido não traz data de vigência.
+- WIPO Lex (página aberta): a Portaria nº 516/2019 (tabela anterior, da época do Ministério da Economia) aparece como revogada pela Ordenanza GM/MDIC nº 110, de 5/5/2025, o mesmo ato citado pela tabela e pela Contajá.
 - Contajá (secundária, aberta): "em vigor desde 20 de setembro de 2025", citando a Portaria GM/MDIC nº 110/2025 e a Portaria INPI/PR nº 10/2025.
 - Trechos de busca (não abertos): um aponta "Desde 20/12/2025" para a nova tabela; outro aponta 07/08/2025.
 
@@ -142,12 +146,12 @@ Essas datas se contradizem. O advogado ou o próprio INPI devem confirmar a vig�
 ## Perguntas para o profissional
 
 1. Quem faz a busca completa no INPI (termos, grafias próximas e titular) e em quais classes? Qual critério de colidência será usado?
-2. A WORKEASY SOFTWARE, LLC tem pedido ou registro no Brasil? Há risco de oposição ou de alto renome/notoriedade? O texto da Lei 9.279/96 não foi lido nesta sessão; os artigos precisam ser checados no texto oficial.
+2. A WORKEASY SOFTWARE, LLC tem pedido ou registro no Brasil? Há risco de oposição ou de alto renome/notoriedade? O texto oficial da Lei 9.279/96 não foi lido (Planalto bloqueado); só o art. 126 foi lido em site secundário. Os artigos precisam ser checados no texto oficial.
 3. "WorkEasy" tem problema de distintividade ou de descrição para software e serviços em português? Como o INPI costuma tratar termos em inglês de uso comum?
 4. Quais classes escolher para o app (9), o software como serviço (42), o marketplace e a gestão de negócios (35) e, se houver, categorias de saúde e estética (44) ou jurídicas, de segurança e pessoais (45)? Qual é a redação aceita pelo INPI para cada item?
-5. O pedido deve ser em nome de pessoa física ou de empresa? Isso muda a titularidade quando a empresa for constituída e a elegibilidade a descontos?
+5. O pedido deve ser em nome de pessoa física ou de empresa? Isso muda a titularidade quando a empresa for constituída e a elegibilidade a descontos? A nota da tabela limita o desconto de 50% a pessoas naturais sem participação em empresa do ramo.
 6. É preciso conferir a Junta Comercial e a Receita (CNPJ) antes de depositar? Há algum nome empresarial parecido no mesmo estado?
-7. Qual é o valor da GRU por classe na tabela vigente, e qual é a data de vigência, dado o conflito entre 07/08/2025, 20/09/2025 e 20/12/2025?
+7. A tabela do INPI (PDF lido) dá os valores por classe. Falta confirmar a data de vigência, dado o conflito entre 07/08/2025, 20/09/2025 e 20/12/2025, e se a "apostila de 31/10/2025" altera algum valor.
 8. Usar o nome nas lojas antes do depósito cria algum risco ou prioridade no Brasil? Não há base nesta pesquisa para responder.
 9. Se a busca mostrar conflito, quais alternativas de nome o advogado recomenda e como testá-las?
 10. Qual é o prazo de exame e de publicação para oposição hoje no INPI? As páginas consultadas não informam.
@@ -156,7 +160,7 @@ Essas datas se contradizem. O advogado ou o próprio INPI devem confirmar a vig�
 ## Próximos passos sugeridos (para o dono)
 
 - Repetir a busca no INPI quando o site responder, com os termos da seção 1. Idealmente, o advogado faz essa busca.
-- Obter a tabela de retribuições e a lista de classes em texto legível (por pedido ao INPI ou por cópia do PDF).
+- Confirmar com o INPI a data de vigência da tabela de retribuições. O texto do PDF foi lido, mas não traz essa data.
 - Abrir o texto oficial da Lei 9.279/96 por uma fonte acessível, já que o Planalto bloqueou a consulta nesta sessão.
 - Levar este dossiê e as perguntas acima a um advogado de propriedade intelectual antes de decidir o nome de publicação.
 
@@ -170,17 +174,18 @@ Abertas em 2026-11-08:
 | 2 | https://www.gov.br/inpi/pt-br/servicos/marcas | INPI, página de marcas | Aberta (resumo). |
 | 3 | https://www.gov.br/inpi/pt-br/servicos/marcas/guia-basico | INPI, guia básico: busca, GRU, e-Marcas, RPI, certificado, renovação | Aberta (resumo). |
 | 4 | https://www.gov.br/inpi/pt-br/servicos/marcas/custos | INPI, preços e pagamento: "Publicado em 20/12/2025 04h00" | Aberta (resumo). |
-| 5 | https://www.gov.br/inpi/pt-br/servicos/custos-e-pagamento/NovaTabeladeRetribuiesINPI_MARCAS_Final_20_dez_25.pdf | INPI, tabela de retribuições de marcas (PDF) | Aberta, conteúdo binário, sem valores lidos. |
-| 6 | https://www.gov.br/inpi/pt-br/assuntos/arquivos-dirma-1/NCL11Listadeclassesenotasexplicativas.pdf | INPI, lista NCL 11 e notas (PDF) | Aberta, conteúdo binário, ilegível. |
+| 5 | https://www.gov.br/inpi/pt-br/servicos/custos-e-pagamento/NovaTabeladeRetribuiesINPI_MARCAS_Final_20_dez_25.pdf | INPI, tabela de retribuições de marcas (PDF) | Leitura direta binária; arquivo baixado lido com pdftotext em 2026-11-08. Códigos 332, 340, 357, 372-375, 389, 393 e 394 conferidos. Cabeçalho: Portaria GM/MDIC nº 110/2025, Portaria INPI/PR nº 10/2025 e apostila 31/10/2025. Sem data de vigência no texto. |
+| 6 | https://www.gov.br/inpi/pt-br/assuntos/arquivos-dirma-1/NCL11Listadeclassesenotasexplicativas.pdf | INPI, lista NCL 11 e notas (PDF) | Leitura direta binária; arquivo baixado lido com pdftotext em 2026-11-08. Cabeçalho: "Classificação de Nice (11ª Edição – Versão 2017)". Títulos em português das classes 9, 35, 42, 44 e 45 conferidos. |
 | 7 | https://nclpub.wipo.int/enfr/?basic_numbers=show&class_number=42 | OMPI, Nice, classe 42; mostra 13-2027 "not yet entered into force" | Aberta (lida). |
 | 8 | https://nclpub.wipo.int/enfr/?basic_numbers=show&class_number=42&version=20200101 | OMPI, Nice, classe 42 (parâmetro 2020) | Aberta (lida). Edição não rotulada. |
 | 9 | https://nclpub.wipo.int/enfr/?basic_numbers=show&class_number=9&version=20200101 | OMPI, Nice, classe 9 | Aberta (lida). Edição não rotulada. |
 | 10 | https://nclpub.wipo.int/enfr/?basic_numbers=show&class_number=35&version=20200101 | OMPI, Nice, classe 35 | Aberta (lida). Edição não rotulada. |
 | 11 | https://nclpub.wipo.int/enfr/?basic_numbers=show&class_number=44&version=20200101 | OMPI, Nice, classe 44 | Aberta (lida). Edição não rotulada. |
 | 12 | https://nclpub.wipo.int/enfr/?basic_numbers=show&class_number=45&version=20200101 | OMPI, Nice, classe 45 | Aberta (lida). Edição não rotulada. |
-| 13 | https://www.workeasysoftware.com/ | WorkEasy Software, LLC: produto, endereço no rodapé | Aberta (resumo). |
+| 13 | https://www.workeasysoftware.com/ | WorkEasy Software, LLC: produto, endereço no rodapé, seção de apps (App Store e Google Play) | Aberta (resumo). |
 | 14 | https://contaja.com.br/blog/quanto-custa-registrar-uma-marca/ | Blog secundário: valores de 2025 | Aberta (resumo). Fonte secundária, não confere com a tabela oficial. |
-| 15 | https://www.wipo.int/wipolex/es/legislation/details/19255 | Registro WIPO Lex: é a Portaria MDIC 516/2019, revogada, e não a Lei 9.279/96 | Aberta, usada só para identificar o documento. |
+| 15 | https://www.wipo.int/wipolex/es/legislation/details/19255 | Registro WIPO Lex: Portaria nº 516, de 24/09/2019 (tabela de retribuições do INPI, à época do Ministério da Economia), marcada como revogada pela Ordenanza GM/MDIC nº 110, de 5/5/2025; não é a Lei 9.279/96 | Aberta (lida). Usada para identificar o ato, não para valores. |
+| 16 | https://modeloinicial.com.br/lei/LPI/lei-propriedade-industrial/art-126 | Lei 9.279/96, art. 126 (site secundário que cita o Planalto como fonte): marca notoriamente conhecida | Aberta (trecho). Secundária. Não substitui o texto oficial. |
 
 Falhas ou bloqueios (não lidas):
 
@@ -189,8 +194,8 @@ Falhas ou bloqueios (não lidas):
 | https://busca.inpi.gov.br/pePI/ | HTTP 503 |
 | https://busca.inpi.gov.br/pePI/jsp/marcas/Pesquisa_num_processo.jsp | HTTP 503 |
 | https://busca.inpi.gov.br/pePI/jsp/marcas/Pesquisa_classe_basica.jsp | HTTP 503 (três vezes) |
-| https://www.planalto.gov.br/ccivil_03/leis/l9279.htm | Página de bloqueio "Acesso Negado" (Lei 9.279/96) |
-| https://www.planalto.gov.br/ccivil_03/Leis/L9279.htm | Página de bloqueio "Acesso Negado" (Lei 9.279/96) |
+| https://www.planalto.gov.br/ccivil_03/leis/l9279.htm | Página de bloqueio ("Esta requisição foi bloqueada.", verificação de 2026-11-08) |
+| https://www.planalto.gov.br/ccivil_03/Leis/L9279.htm | Não reaberta na verificação de 2026-11-08 (a versão em minúsculas acima foi reaberta) |
 | https://www2.camara.leg.br/legin/fed/lei/1996/lei-9279-14-maio-1996-362415-publicacaooriginal-1-pl.html | HTTP 404 |
 | https://www.legjur.com/legislacao/nivel/lei_00092791996/-titulo-iii-das-marcas | HTTP 403 |
 | https://www.wipo.int/classifications/nice/en/ | Página vazia na leitura |
