@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CONSENT_VERSIONS, LEGAL_DOCS, company, legalDocById, legalInForce } from '../config/legal';
-import { parseMarkdown, safeHref } from '../lib/markdownParser';
+import { parseMarkdown, safeHref, stripFrontMatter } from '../lib/markdownParser';
 import type { ConsentPurpose } from '../services/types';
 
 const COMPANY_VARIABLES = ['VITE_COMPANY_NAME', 'VITE_COMPANY_CNPJ', 'VITE_COMPANY_ADDRESS', 'VITE_SAC_EMAIL', 'VITE_SAC_WHATSAPP'];
@@ -121,7 +121,8 @@ describe('content/legal', () => {
     const source = read(id);
     expect(source.trim()).not.toBe('');
     expect(source.length).toBeLessThan(500_000);
-    const blocks = parseMarkdown(source);
+    // the page renders the body: the front matter (description for the build) is not part of the text
+    const blocks = parseMarkdown(stripFrontMatter(source));
     expect(blocks.length).toBeGreaterThan(0);
     // pages/legal/LegalDocPage.tsx prints the title itself and leaves a leading "#" out
     expect(blocks[0]).toMatchObject({ type: 'heading', level: 1 });

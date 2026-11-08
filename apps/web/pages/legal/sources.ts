@@ -1,4 +1,5 @@
 import type { LegalDocId } from '../../config/legal';
+import { stripFrontMatter } from '../../lib/markdownParser';
 
 // The texts are Markdown files in content/legal/, bundled as strings (?raw) in
 // a chunk of their own: they load only when a legal page opens.
@@ -10,12 +11,12 @@ const LOADERS: Record<LegalDocId, () => Promise<{ default: string }>> = {
 
 const cache = new Map<LegalDocId, Promise<string>>();
 
-/** Markdown source of a legal text, loaded once (a failed load is forgotten, so a retry loads again). */
+/** Markdown body of a legal text (front matter left out), loaded once (a failed load is forgotten, so a retry loads again). */
 export const loadLegalSource = (id: LegalDocId): Promise<string> => {
   let source = cache.get(id);
   if (!source) {
     source = LOADERS[id]().then(
-      module => module.default,
+      module => stripFrontMatter(module.default),
       error => {
         cache.delete(id); // a failed load (e.g. offline) can be tried again
         throw error;

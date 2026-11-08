@@ -978,3 +978,12 @@ function parseBlocks(lines: string[], depth: number): Block[] {
 
 /** Parses a Markdown text into a tree of plain text and structure. Never throws on any input. */
 export const parseMarkdown = (source: string): Block[] => parseBlocks(prepare(source), 0);
+
+/**
+ * The text without the "key: value" front matter at its top, between two "---" lines. The build reads
+ * it for the page description (scripts/prerender.mjs); a legal page shows only the body.
+ */
+export const stripFrontMatter = (source: string): string => {
+  const text = (source.startsWith(BOM) ? source.slice(1) : source).replace(/\r\n?/g, '\n');
+  return text.replace(/^---\n[\s\S]*?\n---\n?/, '');
+};
