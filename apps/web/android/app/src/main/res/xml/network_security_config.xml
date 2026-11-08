@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Cleartext (http://) traffic is refused. Capacitor serves the bundle from
+    https://localhost (see capacitor.config.ts), so no exception is needed.
+    Only the system trust store is used; user-installed certificates are not trusted.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
