@@ -12,6 +12,7 @@ import { proRoutes } from './pages/pro/routes';
 import { publicoRoutes } from './pages/publico/routes';
 import { adminRoutes } from './pages/admin/routes';
 import { cuidadoRoutes } from './pages/cuidado/routes';
+import { captacaoRoutes } from './pages/captacao/routes';
 import { plantoesRoutes } from './pages/pro/plantoes/routes';
 import AccessibilityLayer, { MAIN_ID } from './components/AccessibilityLayer';
 import RoutePrefetcher from './components/RoutePrefetcher';
@@ -56,6 +57,7 @@ const AppShell: React.FC = () => (
           {adminRoutes}
           {cuidadoRoutes}
           {plantoesRoutes}
+          {captacaoRoutes}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
