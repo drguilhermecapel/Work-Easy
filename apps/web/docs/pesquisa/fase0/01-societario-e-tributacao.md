@@ -12,7 +12,7 @@ Rascunho para revisão de advogado. Não é parecer jurídico.
 
 - **MEI é improvável para o dono.** A página do gov.br (registro do MEI, última modificação 15/12/2025) diz que o MEI não pode "participar como sócio, administrador ou titular de outra empresa" e pode ter no máximo um empregado. O teto é de R$ 81.000 por ano na Tabela A; a página registra também uma Tabela B de R$ 251.600, que conflita com a página do teto. A atividade da plataforma não foi conferida no Anexo XI.
 - **SLU para um sócio; LTDA para dois.** A base legal da SLU no Código Civil não foi lida (Planalto bloqueado). O art. 41 da Lei 14.195/2021, lido na Câmara, trata de empresas individuais de responsabilidade limitada que viram SLU; não cria o tipo.
-- **Simples Nacional: o anexo decide.** Anexo III ou V depende do fator R (limiar de 28% citado em resumos, não lido). Sem folha, a tendência é o Anexo V, de alíquota inicial mais alta. Com valores não conferidos, a diferença ilustrativa é de cerca de R$ 21 mil por ano sobre R$ 240 mil de receita. A LC 227/2026 altera a LC 123 com efeitos a partir de 30/11/2026 e 1º/1/2027 (aberto no Senado).
+- **Simples Nacional: o anexo decide.** Anexo III ou V depende do fator R (limiar de 28% citado em resumos, não lido). Sem folha, a tendência é o Anexo V, de alíquota inicial mais alta [incerto]. Com valores não conferidos, a diferença ilustrativa é de cerca de R$ 21 mil por ano sobre R$ 240 mil de receita. A LC 227/2026 altera a LC 123 com efeitos a partir de 30/11/2026 e 1º/1/2027 (aberto no Senado).
 - **ISS.** O item 10.05 da LC 116/2003 (aberto) cita "bens móveis ou imóveis". A Prefeitura de SP, na Solução de Consulta SF/DEJUG nº 15/2026 (aberta), trata a intermediação no subitem 10.05 com base de cálculo na comissão do intermediário. A alíquota paulistana não foi conferida (Lei 13.701/2003 ilegível). Os itens 1.05, 1.07 e 1.08 podem atrair parte da receita.
 - **LC 214/2025, art. 22 e CNAE ficam em aberto.** O art. 22 foi alterado pela LC 227/2026 e perdeu os §§ 8º e 9º (aberto no Senado), mas o caput e a data de início da responsabilidade solidária não foram conferidos. Os códigos CNAE não foram conferidos no IBGE (HTTP 403).
 
@@ -21,7 +21,7 @@ Rascunho para revisão de advogado. Não é parecer jurídico.
 **Abertos e lidos em 08/11/2026** (detalhes na seção Fontes): página do teto do MEI e página de registro do MEI (gov.br); LC 227/2026 no Senado (norma e retificação) e a emenda ao PLP 108/2024; LC 116/2003 na Câmara (publicação original); Lei 14.195/2021 na Câmara (dados da norma e publicação original, lida parcialmente); Soluções de Consulta SF/DEJUG 2026 da Prefeitura de SP (listagem); artigo de opinião na ConJur (fonte secundária); página inicial do eSocial.
 
 **Não lidos, com motivo:**
-- Planalto (Código Civil, LC 123, LC 116 e LC 214): a página respondeu "Esta requisição foi bloqueada" (aviso de bloqueio da Presidência) nas tentativas via WebFetch; uma tentativa via curl não obteve resposta. Não tentei contornar o bloqueio. O texto do Código Civil, da LC 123 e do art. 22 da LC 214 não foi lido.
+- Planalto (Código Civil, LC 123, LC 116 e LC 214): a página respondeu "Esta requisição foi bloqueada" (página "Acesso Negado!", confirmada na releitura de 08/11/2026) nas tentativas via WebFetch; uma tentativa via curl não obteve resposta. Não tentei contornar o bloqueio. O texto do Código Civil, da LC 123 e do art. 22 da LC 214 não foi lido.
 - IBGE (página de busca CNAE, página de classe e página de classificação): HTTP 403.
 - Receita Federal (PDF de evolução dos anexos e página de normas do Anexo V): PDF comprimido e ilegível; página de normas sem conteúdo utilizável.
 - Câmara (LC 155/2016 consolidada e Lei 14.195/2021 consolidada): PDFs ilegíveis.
@@ -48,7 +48,7 @@ Rascunho para revisão de advogado. Não é parecer jurídico.
 | Pluralidade de sócios (dissolução) | Não se aplica ao SLU | Aplica-se | [incerto]: resumos divergem sobre o art. 1.033, IV (revogado ou mantido pela Lei 14.195/2021). Não lido. |
 | Custo mensal de contabilidade e registro | Não estimado | Não estimado | Sem fonte conferida. |
 
-**Leitura.** A Lei 14.195/2021, art. 41, lida na publicação original da Câmara, diz que "as empresas individuais de responsabilidade limitada existentes na data da entrada em vigor desta Lei serão transformadas em sociedades limitadas unipessoais independentemente de qualquer alteração em seu ato constitutivo". Ou seja, o artigo trata de conversão de empresas existentes, não da criação do tipo. Não li o artigo de vigência da lei (a leitura parou no art. 56 do texto de 107.830 caracteres).
+**Leitura.** A Lei 14.195/2021, art. 41, lida na publicação original da Câmara, diz que "as empresas individuais de responsabilidade limitada existentes na data da entrada em vigor desta Lei serão transformadas em sociedades limitadas unipessoais independentemente de qualquer alteração em seu ato constitutivo". Ou seja, o artigo trata de conversão de empresas existentes, não da criação do tipo. O mesmo artigo remete a ato do DREI para disciplinar a transformação. Não li o artigo de vigência da lei: a releitura de 08/11/2026 cobriu só os primeiros 100.000 de 107.830 caracteres do texto, e a página não mostrou o artigo de vigência.
 
 **Não analisado:** sociedade simples (um resumo de busca cita veto da Lei 14.195/2021 sobre esse tipo) e a escolha entre regimes de tributação do lucro (presumido ou real). Ficam como perguntas.
 
@@ -81,7 +81,7 @@ Rascunho para revisão de advogado. Não é parecer jurídico.
 
 ### 3. Simples Nacional (anexos III e V, faixas e fator R)
 
-**Aberto:** LC 227/2026 (Senado) altera a LC 123/2006 com efeitos diferidos para 30/11/2026 e 1º/1/2027. O texto desses dispositivos não foi lido.
+**Aberto (sumário do Senado, sem texto dos artigos):** a LC 227/2026 altera, acrescenta e revoga dispositivos da LC 123/2006 (18 itens no sumário: alterações nos arts. 18, 18-A, 21, 22, 33, 38-B, 39 e 41, acréscimos e revogações, inclusive do art. 87-B, caput). Efeitos indicados: revogação do § 4º do art. 31 em 30/11/2026; alterações aos arts. 18, 18-A, 21, 38-B e ao § 1º-C do art. 33 a partir de 1º/1/2027; revogação do inc. VI do § 4º do art. 18 em 1º/1/2033. O texto desses dispositivos não foi lido.
 
 **Não conferido (candidatos de resumos de busca; tabelas oficiais ilegíveis):**
 - Anexo III, alíquotas nominais: 6,00%; 11,20%; 13,50%; 16,00%; 21,00%; 33,00%. Parcelas a deduzir: R$ 0; 9.360; 17.640; 35.640; 125.640; 648.000.
@@ -104,7 +104,7 @@ Rascunho para revisão de advogado. Não é parecer jurídico.
 
 - **6319-4/00**, portais, provedores de conteúdo e outros serviços de informação na internet. Título visto em resumo de busca de página do IBGE; a página não pôde ser aberta (HTTP 403). [incerto]
 - **7490-1/04**, atividades de intermediação e agenciamento de serviços e negócios em geral, exceto imobiliários. Título e nota (intermediação que vincula profissionais e empresas) vistos em resumo de busca; página do IBGE não aberta. [incerto]
-- **Desenvolvimento de programas de computador:** código e título a conferir na Tabela CNAE. Não consultado nesta pesquisa; o código que aparece na minha memória não é fonte e não é citado.
+- **Desenvolvimento de programas de computador:** código e título a conferir na Tabela CNAE. Não consultado nesta pesquisa; nenhum código foi citado a partir de memória.
 - **Versão da CNAE** (2.3 ou outra, em vigor em 2026): não conferida.
 - **Mapeamentos municipais** (resumos, não abertos): Anápolis associa 6319-4/00 ao item 1.07 da LC 116 e 7490-1/04 aos itens 10.02, 10.04, 10.05 e 10.08. Mogi das Cruzes inclui os dois códigos em regime reduzido de ISS para TIC. Não usar sem conferência.
 - **Principal e secundários:** a escolha do código principal pela maior receita é regra a confirmar com o contador.
@@ -119,9 +119,9 @@ Rascunho para revisão de advogado. Não é parecer jurídico.
 - Art. 3º: regra geral de incidência no estabelecimento do prestador, com exceções nos incisos. Não li todos os incisos (I a XXII).
 
 **Aberto (Prefeitura de SP, Solução de Consulta SF/DEJUG nº 15, de 28/07/2026, na listagem de 2026):**
-- Ementa: "ISS. Intermediação. Subitem 10.05 da Lista de Serviços da Lei nº 13.701, de 24 de dezembro de 2003." (a ementa é cortada na listagem).
+- Ementa: "ISS. Intermediação. Subitem 10.05 da Lista de Serviços da Lei nº 13.701, de 24 de dezembro de 2003." (a leitura da listagem não indicou corte; o texto integral da solução não foi aberto).
 - Base de cálculo: "Preço do serviço correspondente à comissão do intermediário."
-- Também na listagem: nº 8/2026 (intermediação imobiliária, subitem 10.05) e nº 18/2026 (subitem 10.03, propriedade artística).
+- Também na listagem: nº 8/2026 (intermediação imobiliária, subitem 10.05) e nº 18/2026 (assunto: intermediação de direitos de propriedade artística; subitem não confirmado).
 
 **Não conferido:** a alíquota de SP para o subitem 10.05 na intermediação por pessoa jurídica (Lei 13.701 ilegível); a retenção pela tomadora ou pela plataforma (resumo cita o art. 9 da lei). Um resumo cita 5% para corretor de imóveis pessoa física e 2% para plataforma de transporte de passageiros; não se aplicam diretamente e não foram conferidos.
 
@@ -129,9 +129,9 @@ Rascunho para revisão de advogado. Não é parecer jurídico.
 
 ### 6. LC 214/2025, art. 22 (IBS e CBS)
 
-**Aberto (Senado, LC 227/2026, DOU de 14/01/2026):** a lei altera o art. 22 da LC 214/2025, revoga os §§ 8º e 9º, remete ao art. 182 para a produção de efeitos e altera a LC 123 com efeitos diferidos (30/11/2026 e 1º/1/2027). A retificação publicada no DOU de 14/01/2026 corrige o art. 172 e não altera o art. 22.
+**Aberto (Senado, LC 227/2026, DOU de 14/01/2026):** a lei altera o art. 22 da LC 214/2025, revoga os §§ 8º e 9º, remete ao art. 182 quanto aos efeitos (observação "vide o art. 182" do sumário) e altera a LC 123 nas datas indicadas na seção 3. A retificação (no sumário do Senado, datada de 23/01/2026; a própria página não mostra data) corrige o art. 172 e não menciona o art. 22. O sumário também registra uma "Republicação de Dispositivo" de 15/01/2026, não lida.
 
-**Secundário (ConJur, artigo de opinião de 29/12/2025, autora Letícia Cordeiro):** descreve a plataforma como intermediária entre compradores e vendedores em operações não presenciais que controla pelo menos um elemento essencial (cobrança, pagamento, termos e condições ou entrega), com base no art. 22, caput e §1º, I e II. É paráfrase, não citação literal; o artigo cita arts. 21, 22 e 23.
+**Secundário (ConJur, artigo de opinião de 29/12/2025, autora Letícia Cordeiro):** descreve a plataforma como intermediária entre compradores e vendedores em operações não presenciais que controla pelo menos um elemento essencial (cobrança, pagamento, termos e condições ou entrega), com base no art. 22, caput e §1º, I e II. É paráfrase do próprio artigo, sem aspas para a lista de elementos (que ele atribui ao art. 22, § 1º, I e II, com palavras que variam entre as duas passagens); o artigo cita arts. 21, 22 e 23.
 
 **Não conferido:** o texto literal do caput e do §1º; a data de início da responsabilidade solidária; o art. 182; a inscrição obrigatória da plataforma (art. 23, citado só pela ConJur). A data de 16/01/2025 da LC 214 aparece em resumos, não lidos.
 
@@ -164,7 +164,7 @@ Rascunho para revisão de advogado. Não é parecer jurídico.
 1. **Não usar MEI para a plataforma**, pela regra de sócio em outra empresa, pelo teto e pela atividade a conferir. Antes de tudo, confirmar se o dono é sócio de alguma empresa, inclusive da Pulso Vital.
 2. **Preferir SLU** se o dono for o único titular e o advogado confirmar o art. 1.052 do Código Civil em texto oficial. Se entrar um segundo sócio, a migração para LTDA é alteração contratual (a confirmar).
 3. **Tratar o Simples Nacional como hipótese de trabalho**, não como decisão. A diferença entre Anexo III e Anexo V pode ser maior que qualquer economia do regime; num modelo sem folha, o fator R tende ao Anexo V. Antes de escolher, pedir uma simulação com as tabelas oficiais para os cenários de zero e de dois ou mais empregados.
-4. **Itens que bloqueiam a decisão, por prazo:** (i) texto do Código Civil; (ii) anexo e fator R da atividade; (iii) alíquota e item de ISS em SP; (iv) efeitos da LC 227/2026 em 30/11/2026, a 22 dias desta data, e LC 214, art. 22. O item (iv) é o mais urgente.
+4. **Itens que bloqueiam a decisão, por prazo:** (i) texto do Código Civil; (ii) anexo e fator R da atividade; (iii) alíquota e item de ISS em SP; (iv) efeitos da LC 227/2026 na LC 123 (30/11/2026 para a revogação do § 4º do art. 31; 1º/1/2027 para as alterações aos arts. 18, 18-A, 21, 38-B e § 1º-C do art. 33), e LC 214, art. 22. O item (iv) é o mais urgente: 30/11/2026 está a 22 dias desta data.
 5. **Justificativa.** Os dados abertos sustentam a exclusão do MEI e o alerta sobre o fator R e o ISS. A escolha entre SLU e LTDA depende de um texto (Código Civil) que não foi lido. Nenhuma recomendação aqui autoriza cobrança de comissão: o PREAMBLE mantém comissão e escrow desligados até parecer jurídico.
 
 ## Perguntas para o profissional
@@ -194,12 +194,12 @@ Abertas e lidas em 08/11/2026:
 | 1 | https://www.gov.br/memp/pt-br/teto-do-mei | Teto do MEI (Portal Gov.br); publicado em 29/06/2026, modificado em 16/09/2026 | Lida. R$ 81 mil; PLP 186/2026 em tramitação; excesso até 20% |
 | 2 | https://www.gov.br/pt-br/servicos/realizar-registro-como-microempreendedor-individual-mei | Registro do MEI; citação à Resolução CGSN nº 140/2018, Anexo XI | Lida (última modificação 15/12/2025). Sócio em outra empresa, um empregado, Tabela A (R$ 81.000) e Tabela B (R$ 251.600) |
 | 3 | https://legis.senado.gov.br/norma/42042119 | Lei Complementar nº 227, de 13/01/2026 (DOU de 14/01/2026): alterações a LC 214 art. 22 (§§ 8º e 9º revogados), art. 182 e LC 123 | Lida no sumário de alterações; sem texto dos artigos |
-| 4 | https://legis.senado.gov.br/norma/42042119/publicacao/42694069 | Retificação da LC 227/2026 (DOU de 14/01/2026), art. 172 | Lida; não altera o art. 22 |
+| 4 | https://legis.senado.gov.br/norma/42042119/publicacao/42694069 | Retificação da LC 227/2026 (data no sumário do Senado: 23/01/2026; a página não mostra data), art. 172 | Lida; corrige o art. 172; não menciona o art. 22 |
 | 5 | https://legis.senado.leg.br/sdleg-getter/documento?dm=9980177 | Emenda CCJ ao PLP 108/2024, de 17/06/2025 | Lida; não é norma em vigor; cita "§ 8º do art. 22" da LC 214 |
 | 6 | https://www2.camara.leg.br/legin/fed/leicom/2003/leicomplementar-116-31-julho-2003-492028-publicacaooriginal-1-pl.html | LC 116/2003: Lista de Serviços (itens 1.03, 1.05 a 1.08, 10.01 a 10.05) e art. 3º | Lida (DOU de 01/08/2003, p. 3); art. 3º lido em parte |
 | 7 | https://www2.camara.leg.br/legin/fed/lei/2021/lei-14195-26-agosto-2021-791684-norma-pl.html | Lei 14.195/2021: dados da norma | Lida (DOU de 27/08/2021, p. 4); sem texto dos artigos |
-| 8 | https://www2.camara.leg.br/legin/fed/lei/2021/lei-14195-26-agosto-2021-791684-publicacaooriginal-163359-pl.html | Lei 14.195/2021, art. 41 (conversão de empresas individuais de responsabilidade limitada em SLU) | Lida até o art. 56 (leitura parcial; artigo de vigência não lido) |
-| 9 | https://prefeitura.sp.gov.br/web/fazenda/w/legislacao/35016 | Soluções de Consulta 2026 (SF/DEJUG nº 8, 15 e 18) | Lida (listagem; ementa de nº 15 cortada) |
+| 8 | https://www2.camara.leg.br/legin/fed/lei/2021/lei-14195-26-agosto-2021-791684-publicacaooriginal-163359-pl.html | Lei 14.195/2021, art. 41 (conversão de empresas individuais de responsabilidade limitada em SLU) | Art. 41 confirmado na releitura de 08/11/2026; texto lido em parte (vigência não lida) |
+| 9 | https://prefeitura.sp.gov.br/web/fazenda/w/legislacao/35016 | Soluções de Consulta 2026 (SF/DEJUG nº 8, 15 e 18) | Lida (listagem; ementa de nº 15 exibida sem indicação de corte; assuntos de nº 8 e nº 18 confirmados) |
 | 10 | https://www.conjur.com.br/2025-dez-29/responsabilidade-tributaria-das-plataformas-digitais-na-reforma//?print=1 | Artigo de opinião sobre a LC 214/2025, art. 21 a 23 (fonte secundária) | Lido; paráfrase, data de 29/12/2025 |
 | 11 | https://www.gov.br/esocial/pt-br | Página inicial do eSocial | Lida; sem critério por número de empregados |
 
