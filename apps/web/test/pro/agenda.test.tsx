@@ -322,3 +322,81 @@ describe('/pro/agenda: bookings', () => {
     expect(within(past).getAllByRole('link', { name: 'Cobrar' })).toHaveLength(1);
   });
 });
+
+describe('/pro/agenda: review link', () => {
+  const finished = (id: string, overrides: Record<string, unknown> = {}) =>
+    booking(id, {
+      origin: 'platform',
+      client_id: 'cl-1',
+      provider_client_id: null,
+      status: 'completed',
+      period: '[2026-10-10T12:00:00Z,2026-10-10T14:00:00Z)',
+      ...overrides,
+    });
+  const payment = (bookingId: string, status = 'received') => ({
+    id: `pay-${bookingId}`,
+    booking_id: bookingId,
+    quote_id: null,
+    method: 'pix',
+    amount_cents: 15000,
+    platform_fee_cents: 0,
+    status,
+    invoice_url: null,
+    pix_qr_code: null,
+    pix_payload: null,
+    due_date: null,
+    created_at: '2026-10-10T15:00:00Z',
+  });
+  const policy = (ranking: boolean) => (call: TableCall) =>
+    ok([policyRow('diarista', { labor_lock: false, price_units: ['dia'], rating_ranking: ranking })].filter(row => inValues(call).includes(row.occupation_slug)));
+  const GROUP = { name: 'Pedir avaliação do atendimento' };
+
+  it('offers the link to the booking page for a finished job paid in the app', async () => {
+    const user = userEvent.setup();
+    bookings = [finished('b-done')];
+    fake.tables.payments = () => ok([payment('b-done')]);
+    fake.tables.occupation_policies = policy(true);
+    renderPro('/pro/agenda');
+
+    const group = await screen.findByRole('group', GROUP);
+    const href = within(group).getByRole('link', { name: 'Enviar por WhatsApp' }).getAttribute('href') as string;
+    expect(href).toMatch(/^https:\/\/wa\.me\/\?text=/);
+    expect(decodeURIComponent(href.split('?text=')[1])).toMatch(/\/atendimentos\/b-done$/);
+    await user.click(within(group).getByRole('button', { name: 'Copiar link da avaliação' }));
+    expect(await navigator.clipboard.readText()).toMatch(/\/atendimentos\/b-done$/);
+  });
+
+  it('offers it only for a finished platform job that was paid, in an occupation that allows public ratings', async () => {
+    bookings = [
+      finished('b-done'),
+      finished('b-unpaid'),
+      finished('b-pending'),
+      finished('b-own', { origin: 'own', client_id: null, provider_client_id: 'cli-1' }),
+      finished('b-active', { status: 'accepted', period: '[2030-01-15T12:00:00Z,2030-01-15T16:00:00Z)' }),
+    ];
+    fake.tables.payments = () => ok([payment('b-done'), payment('b-pending', 'pending'), payment('b-own'), payment('b-active')]);
+    fake.tables.occupation_policies = policy(true);
+    renderPro('/pro/agenda');
+    await screen.findByRole('heading', { name: 'Anteriores' });
+    expect(screen.getAllByRole('group', GROUP)).toHaveLength(1);
+  });
+
+  it('offers nothing when the occupation does not allow public ratings', async () => {
+    bookings = [finished('b-done')];
+    fake.tables.payments = () => ok([payment('b-done')]);
+    fake.tables.occupation_policies = policy(false);
+    renderPro('/pro/agenda');
+    await screen.findByRole('heading', { name: 'Anteriores' });
+    expect(screen.queryByRole('group', GROUP)).not.toBeInTheDocument();
+  });
+
+  it('offers nothing, and keeps the agenda, when the payments cannot be read', async () => {
+    bookings = [finished('b-done')];
+    fake.tables.payments = () => ({ data: null, error: { code: '42501', message: 'rls' } });
+    fake.tables.occupation_policies = policy(true);
+    renderPro('/pro/agenda');
+    await screen.findByRole('heading', { name: 'Anteriores' });
+    expect(screen.queryByRole('group', GROUP)).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+});

@@ -2,7 +2,9 @@ import { AppError } from '../lib/errors';
 import { toE164BR } from '../lib/phone';
 import type { Tables } from '../lib/database.types';
 import { db, unwrap, unwrapMaybe } from './client';
+import type { BookingStatus, BookingView } from './proAgenda';
 import { guard } from './proErrors';
+import type { QuoteRow, QuoteStatus } from './quotes';
 
 export type ClientRow = Pick<Tables<'provider_clients'>, 'id' | 'client_id' | 'name' | 'phone' | 'email' | 'notes' | 'origin' | 'created_at'>;
 
@@ -69,3 +71,34 @@ export const countBookingsByClient = (providerId: string): Promise<Record<string
     for (const row of rows) if (row.provider_client_id) counts[row.provider_client_id] = (counts[row.provider_client_id] ?? 0) + 1;
     return counts;
   });
+
+/** One line of a client's history: a booking or a quote of this provider for this CRM entry. */
+export type HistoryEntry = { key: string; at: Date; cents: number } & (
+  | { kind: 'booking'; occupationSlug: string; status: BookingStatus }
+  | { kind: 'quote'; title: string; status: QuoteStatus }
+);
+
+/** The provider's bookings and quotes for one CRM entry, newest first (a booking counts from its start, a quote from its creation). */
+export const clientHistory = (clientId: string, bookings: BookingView[], quotes: QuoteRow[]): HistoryEntry[] =>
+  [
+    ...bookings
+      .filter(item => item.provider_client_id === clientId)
+      .map((item): HistoryEntry => ({
+        key: `booking-${item.id}`,
+        at: item.period.start,
+        cents: item.price_cents,
+        kind: 'booking',
+        occupationSlug: item.occupation_slug,
+        status: item.status,
+      })),
+    ...quotes
+      .filter(item => item.provider_client_id === clientId)
+      .map((item): HistoryEntry => ({
+        key: `quote-${item.id}`,
+        at: new Date(item.created_at),
+        cents: item.total_cents,
+        kind: 'quote',
+        title: item.title,
+        status: item.status,
+      })),
+  ].sort((a, b) => b.at.getTime() - a.at.getTime());

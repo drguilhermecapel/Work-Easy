@@ -7,20 +7,34 @@ import { AppError } from '../../lib/errors';
 import { formatCents } from '../../lib/money';
 import { formatDateBR, todayInSaoPaulo } from '../../lib/timezone';
 import { useAsync } from '../../lib/useAsync';
-import { listMyProposals, listOpenRequests, sendProposal, withdrawProposal, type OpenRequest } from '../../services/proMarketplace';
+import { getFreeProposalsPerMonth } from '../../services/proBilling';
+import { listMyProposals, listOpenRequests, proposalAllowance, sendProposal, withdrawProposal, type OpenRequest } from '../../services/proMarketplace';
 import { parseReaisToCents } from '../../services/proFormat';
-import type { ProposalRow } from '../../services/types';
+import type { ProposalRow, ProviderRow } from '../../services/types';
 import ErrorAlert from '../../components/ErrorAlert';
 import PageStatus from '../../components/PageStatus';
 import ProPage from '../../components/pro/ProPage';
 import { useProvider } from '../../components/pro/proContext';
+import ProposalAllowanceNote from '../../components/pro/ProposalAllowance';
 import { PROPOSAL_STATUS_LABELS, PROPOSAL_STATUS_STYLES, PROVIDER_STATUS_HELP } from '../../components/pro/labels';
 import { Badge, Card, ConfirmButton, EmptyState, Field, SectionTitle } from '../../components/pro/ui';
 import { inputClass, linkClass, primaryButton, secondaryButton } from '../../components/pro/styles';
 
-const load = async (providerId: string) => {
-  const [requests, proposals, settings] = await Promise.all([listOpenRequests(), listMyProposals(providerId), loadPublicSettings()]);
-  return { requests, proposals, limit: settings.proposalLimit, today: todayInSaoPaulo() };
+const load = async (provider: Pick<ProviderRow, 'id' | 'plan'>) => {
+  const [requests, proposals, settings, freeLimit] = await Promise.all([
+    listOpenRequests(),
+    listMyProposals(provider.id),
+    loadPublicSettings(),
+    // Only the free plan has a monthly limit; when it cannot be read the allowance line is just left out
+    provider.plan === 'pro' ? Promise.resolve(null) : getFreeProposalsPerMonth().catch(() => null),
+  ]);
+  return {
+    requests,
+    proposals,
+    limit: settings.proposalLimit,
+    today: todayInSaoPaulo(),
+    allowance: proposalAllowance({ plan: provider.plan, limit: freeLimit, proposals }),
+  };
 };
 
 type Data = Awaited<ReturnType<typeof load>>;
@@ -176,7 +190,7 @@ const Requests: React.FC = () => {
   const { provider } = useProvider();
   const approved = provider.status === 'approved';
   // A provider that is not approved never calls the function: the database answers empty for them
-  const data = useAsync(() => (approved ? load(provider.id) : Promise.resolve(null)), `${provider.id}:${approved}`);
+  const data = useAsync(() => (approved ? load(provider) : Promise.resolve(null)), `${provider.id}:${approved}:${provider.plan}`);
   const [error, setError] = useState<unknown>(null);
 
   if (!approved) {
@@ -212,6 +226,7 @@ const Requests: React.FC = () => {
             Pedidos de clientes para as suas ocupações e os bairros que você atende. O telefone e o e-mail do cliente não aparecem aqui:
             se ele escolher a sua proposta, o atendimento entra na sua agenda.
           </p>
+          <ProposalAllowanceNote allowance={data.data.allowance} />
           <section aria-labelledby="ped-abertos" className="space-y-3">
             <SectionTitle id="ped-abertos">Pedidos abertos</SectionTitle>
             {data.data.requests.length === 0 ? (

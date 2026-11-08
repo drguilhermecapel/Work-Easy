@@ -231,7 +231,8 @@ select is((select status::text from public.requests where id = (select id from i
 select is((select status::text from public.requests where id = (select id from ids where name = 'req1')), 'matched',
           'expire_stale leaves matched requests alone');
 select results_eq($$select jobname::text from cron.job where jobname like 'workeasy-%' order by 1$$,
-                  array['workeasy-dispatch-notifications', 'workeasy-expire-stale'], 'the scheduler jobs exist');
+                  array['workeasy-booking-reminders', 'workeasy-dispatch-notifications', 'workeasy-expire-stale'],
+                  'the scheduler jobs exist');
 
 -- ---------------------------------------------------------------- accept_proposal edge cases
 insert into public.requests (client_id, occupation_slug, neighborhood_id, description) values

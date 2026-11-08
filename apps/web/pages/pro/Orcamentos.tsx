@@ -27,6 +27,7 @@ import PageStatus from '../../components/PageStatus';
 import ProPage from '../../components/pro/ProPage';
 import { useProvider } from '../../components/pro/proContext';
 import QuoteAssist from '../../components/pro/QuoteAssist';
+import { NfseLink, NfseNote } from '../../components/pro/Nfse';
 import QuoteDocument from '../../components/pro/QuoteDocument';
 import { QUOTE_STATUS_LABELS, QUOTE_STATUS_STYLES } from '../../components/pro/labels';
 import { Badge, Card, ConfirmButton, CopyButton, EmptyState, Field, SectionTitle } from '../../components/pro/ui';
@@ -89,7 +90,7 @@ const SharePanel: React.FC<{ quote: QuoteRow }> = ({ quote }) => {
       <div className="flex flex-wrap items-center gap-3">
         <CopyButton text={url} label="Copiar link" />
         <a href={quoteWhatsAppUrl(quote)} target="_blank" rel="noopener noreferrer" className={secondaryButton}>
-          <MessageCircle size={16} aria-hidden="true" /> Abrir no WhatsApp
+          <MessageCircle size={16} aria-hidden="true" /> Enviar por WhatsApp
         </a>
         <a href={url} target="_blank" rel="noopener noreferrer" className={secondaryButton}>
           <ExternalLink size={16} aria-hidden="true" /> Ver como o cliente vê
@@ -316,9 +317,15 @@ const Editor: React.FC<{
             <SectionTitle id="orc-compartilhar">Compartilhar</SectionTitle>
             <SharePanel quote={saved} />
             {saved.status === 'accepted' && (
-              <p className="text-sm mt-3">
-                O cliente aceitou. <Link to={`/pro/cobrancas?orcamento=${saved.id}`} className={linkClass}>Cobrar este orçamento</Link>
-              </p>
+              <div className="mt-3 space-y-1">
+                <p className="text-sm">
+                  O cliente aceitou. <Link to={`/pro/cobrancas?orcamento=${saved.id}`} className={linkClass}>Cobrar este orçamento</Link>
+                </p>
+                <p>
+                  <NfseLink />
+                </p>
+                <NfseNote />
+              </div>
             )}
             <div className="flex flex-wrap items-center gap-3 mt-4">
               {saved.status === 'sent' && (
@@ -407,9 +414,22 @@ const Quotes: React.FC = () => {
               {quote.client_name ?? 'Sem cliente'} · {formatCents(quote.total_cents)}
               {quote.valid_until ? ` · válido até ${formatDateBR(quote.valid_until)}` : ''}
             </p>
-            <button type="button" className={`${secondaryButton} mt-3`} onClick={() => setSelected(quote.id)} aria-label={`Abrir ${quote.title}`}>
-              Abrir
-            </button>
+            <div className="flex flex-wrap items-center gap-3 mt-3">
+              <button type="button" className={secondaryButton} onClick={() => setSelected(quote.id)} aria-label={`Abrir ${quote.title}`}>
+                Abrir
+              </button>
+              {effectiveQuoteStatus(quote, data.data?.today ?? '') === 'sent' && (
+                <a
+                  href={quoteWhatsAppUrl(quote)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={secondaryButton}
+                  aria-label={`Enviar por WhatsApp: ${quote.title}`}
+                >
+                  <MessageCircle size={16} aria-hidden="true" /> Enviar por WhatsApp
+                </a>
+              )}
+            </div>
           </Card>
         ))}
       </ul>

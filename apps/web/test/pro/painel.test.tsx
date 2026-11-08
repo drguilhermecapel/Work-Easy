@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, within } from '@testing-library/react';
-import { baseTables, occupationRow, ok, policyRow, providerRow, signInProvider, type ProFake, type TableCall } from './fake';
+import { baseTables, isEq, occupationRow, ok, policyRow, providerRow, signInProvider, type ProFake, type TableCall } from './fake';
 
 vi.mock('../../lib/supabase', async () => {
   const { createProFake } = await import('./fake');
@@ -151,5 +151,86 @@ describe('/pro (panel)', () => {
     renderPro('/pro');
     expect(await screen.findByRole('alert')).toHaveTextContent('Você não tem permissão');
     expect(screen.getByRole('heading', { name: 'Hoje' })).toBeInTheDocument();
+  });
+});
+
+describe('/pro (panel): proposal allowance', () => {
+  const freeLimit = (value: unknown) => (call: TableCall) => ok(isEq(call, 'key', 'free_proposals_per_month') ? { value } : null);
+  const proposal = (id: string, createdAt: string) => ({
+    id,
+    request_id: `r-${id}`,
+    provider_id: 'prov-1',
+    price_cents: 10000,
+    message: null,
+    valid_until: null,
+    status: 'sent',
+    created_at: createdAt,
+  });
+  const approvedFree = providerRow({ status: 'approved', plan: 'free' });
+  const requestsCard = async () => (await screen.findByRole('heading', { name: /Pedidos abertos/ })).closest('section') as HTMLElement;
+
+  it('shows how many free proposals were used this month, counting from the first day in São Paulo', async () => {
+    setup(approvedFree, {
+      platform_settings: freeLimit(5),
+      proposals: () =>
+        ok([
+          proposal('last-month', '2026-10-01T02:59:59Z'), // 30/09 23:59:59 in São Paulo
+          proposal('first-instant', '2026-10-01T03:00:00Z'), // 01/10 00:00 in São Paulo
+          proposal('recent', '2026-10-20T12:00:00Z'),
+        ]),
+    });
+    renderPro('/pro');
+    const card = await requestsCard();
+    expect(await within(card).findByText(/Você usou 2 de 5 propostas grátis neste mês\./)).toBeInTheDocument();
+    expect(within(card).getByRole('link', { name: 'Ver o plano Pro' })).toHaveAttribute('href', '/pro/assinatura');
+  });
+
+  it('says so when the allowance is used up, and that the count restarts', async () => {
+    setup(approvedFree, {
+      platform_settings: freeLimit(2),
+      proposals: () => ok([proposal('a', '2026-10-02T12:00:00Z'), proposal('b', '2026-10-03T12:00:00Z')]),
+    });
+    renderPro('/pro');
+    const card = await requestsCard();
+    expect(
+      await within(card).findByText(/Você usou 2 de 2 propostas grátis neste mês\. A contagem recomeça no primeiro dia do mês; no plano Pro não há limite\./),
+    ).toBeInTheDocument();
+  });
+
+  it('shows unlimited proposals on Pro, without reading the allowance', async () => {
+    setup(providerRow({ status: 'approved', plan: 'pro' }), { platform_settings: freeLimit(5) });
+    renderPro('/pro');
+    const card = await requestsCard();
+    expect(await within(card).findByText('Propostas ilimitadas no plano Pro.')).toBeInTheDocument();
+    expect(fake.tableCalls.filter(call => call.table === 'proposals')).toEqual([]);
+    expect(fake.tableCalls.filter(call => call.table === 'platform_settings')).toEqual([]);
+  });
+
+  it('shows nothing when no limit is set', async () => {
+    setup(approvedFree, { platform_settings: freeLimit(0), proposals: () => ok([proposal('a', '2026-10-02T12:00:00Z')]) });
+    renderPro('/pro');
+    await requestsCard();
+    expect(await screen.findByText(/1 pedido espera a sua proposta/)).toBeInTheDocument();
+    expect(screen.queryByText(/propostas grátis/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Propostas ilimitadas/)).not.toBeInTheDocument();
+  });
+
+  it('does not make up a number when the proposals cannot be read, and says so', async () => {
+    setup(approvedFree, {
+      platform_settings: freeLimit(5),
+      proposals: () => ({ data: null, error: { code: '42501', message: 'rls' } }),
+    });
+    renderPro('/pro');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Você não tem permissão');
+    expect(screen.getByRole('heading', { name: 'Hoje' })).toBeInTheDocument();
+    expect(screen.queryByText(/propostas grátis/)).not.toBeInTheDocument();
+  });
+
+  it('shows no allowance before the approval, and reads nothing for it', async () => {
+    setup(providerRow({ status: 'draft', plan: 'free' }), { platform_settings: freeLimit(5) });
+    renderPro('/pro');
+    expect(await screen.findByText(/Os pedidos aparecem aqui depois que o seu cadastro for aprovado/)).toBeInTheDocument();
+    expect(screen.queryByText(/propostas grátis/)).not.toBeInTheDocument();
+    expect(fake.tableCalls.filter(call => call.table === 'proposals')).toEqual([]);
   });
 });

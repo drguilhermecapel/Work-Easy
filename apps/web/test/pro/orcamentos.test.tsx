@@ -242,7 +242,7 @@ describe('/pro/orcamentos', () => {
     expect(await screen.findByText('Copiado.')).toBeInTheDocument();
     expect(await navigator.clipboard.readText()).toBe(link.value);
 
-    const whatsapp = screen.getByRole('link', { name: 'Abrir no WhatsApp' });
+    const whatsapp = screen.getByRole('link', { name: 'Enviar por WhatsApp' });
     expect(whatsapp).toHaveAttribute('target', '_blank');
     expect(whatsapp).toHaveAttribute('rel', expect.stringContaining('noopener'));
     const href = whatsapp.getAttribute('href') as string;
@@ -299,5 +299,40 @@ describe('/pro/orcamentos', () => {
     renderPro('/pro/orcamentos?cliente=cli-1');
     expect(await screen.findByLabelText('Cliente cadastrado')).toHaveValue('cli-1');
     expect(screen.getByLabelText('Nome do cliente')).toHaveValue('Carlos Dias');
+  });
+});
+
+describe('/pro/orcamentos: sharing from the list and the invoice shortcut', () => {
+  it('shares a sent quote by WhatsApp straight from the list, and not a draft', async () => {
+    quotes = [quote({ id: 'q-sent', status: 'sent' }), quote({ id: 'q-draft', title: 'Rascunho', status: 'draft', public_token: 'other' })];
+    renderPro('/pro/orcamentos');
+    const link = await screen.findByRole('link', { name: 'Enviar por WhatsApp: Pintura da sala' });
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
+    const href = link.getAttribute('href') as string;
+    expect(href).toMatch(/^https:\/\/wa\.me\/5511987654321\?text=/);
+    expect(decodeURIComponent(href.split('?text=')[1])).toContain(`/orcamento/${TOKEN}`);
+    expect(screen.queryByRole('link', { name: 'Enviar por WhatsApp: Rascunho' })).not.toBeInTheDocument();
+  });
+
+  it('offers the NFS-e shortcut once the client accepted, with the honest note', async () => {
+    quotes = [quote({ status: 'accepted' })];
+    const user = userEvent.setup();
+    renderPro('/pro/orcamentos');
+    await user.click(await screen.findByRole('button', { name: 'Abrir Pintura da sala' }));
+    const link = await screen.findByRole('link', { name: 'Emitir nota fiscal (NFS-e)' });
+    expect(link).toHaveAttribute('href', 'https://www.nfse.gov.br/EmissorNacional');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(screen.getByText(/O WorkEasy não emite nota fiscal/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Cobrar este orçamento' })).toHaveAttribute('href', '/pro/cobrancas?orcamento=q-1');
+  });
+
+  it('does not offer the NFS-e shortcut before the client accepted', async () => {
+    quotes = [quote({ status: 'sent' })];
+    const user = userEvent.setup();
+    renderPro('/pro/orcamentos');
+    await user.click(await screen.findByRole('button', { name: 'Abrir Pintura da sala' }));
+    await screen.findByLabelText('Link do orçamento');
+    expect(screen.queryByRole('link', { name: /NFS-e/ })).not.toBeInTheDocument();
   });
 });

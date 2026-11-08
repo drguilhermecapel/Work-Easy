@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { baseTables, isEq, ok, providerRow, ruleError, signInProvider, type ProFake, type TableCall } from './fake';
@@ -158,5 +158,54 @@ describe('/pro/pedidos', () => {
     await user.click(screen.getByRole('button', { name: 'Sim, retirar' }));
     await waitFor(() => expect(proposals[0].status).toBe('withdrawn'));
     expect(await screen.findByText('Retirada')).toBeInTheDocument();
+  });
+});
+
+describe('/pro/pedidos: proposal allowance', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /** The allowance is one platform_settings row read by key; the public settings are the whole table. */
+  const settings = (call: TableCall) =>
+    call.single
+      ? ok(isEq(call, 'key', 'free_proposals_per_month') ? { value: 5 } : null)
+      : ok([{ key: 'proposal_limit', value: 3 }]);
+  const sent = (id: string, status: string, createdAt: string) => ({
+    id,
+    request_id: `req-${id}`,
+    provider_id: 'prov-1',
+    price_cents: 9000,
+    message: null,
+    valid_until: null,
+    status,
+    created_at: createdAt,
+  });
+
+  it('shows the free proposals used this month on the free plan', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-22T15:00:00Z'));
+    fake.tables.platform_settings = settings;
+    proposals = [sent('this-month', 'sent', '2026-10-05T12:00:00Z'), sent('last-month', 'accepted', '2026-09-30T12:00:00Z')];
+    renderPro('/pro/pedidos');
+    expect(await screen.findByText(/Você usou 1 de 5 propostas grátis neste mês\./)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Ver o plano Pro' })).toHaveAttribute('href', '/pro/assinatura');
+  });
+
+  it('shows unlimited proposals on Pro, without reading the limit', async () => {
+    fake.tables.providers = () => ok(providerRow({ status: 'approved', plan: 'pro' }));
+    fake.tables.platform_settings = settings;
+    renderPro('/pro/pedidos');
+    expect(await screen.findByText('Propostas ilimitadas no plano Pro.')).toBeInTheDocument();
+    expect(fake.tableCalls.some(call => call.table === 'platform_settings' && call.single)).toBe(false);
+  });
+
+  it('leaves the line out, and keeps the screen, when the limit cannot be read', async () => {
+    fake.tables.platform_settings = (call: TableCall) =>
+      call.single ? { data: null, error: { code: '42501', message: 'rls' } } : ok([{ key: 'proposal_limit', value: 3 }]);
+    renderPro('/pro/pedidos');
+    expect(await screen.findByRole('heading', { name: 'Diarista' })).toBeInTheDocument();
+    expect(screen.queryByText(/propostas grátis/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });

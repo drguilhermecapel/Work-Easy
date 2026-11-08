@@ -7,13 +7,14 @@ import { todayInSaoPaulo } from '../../lib/timezone';
 import { useAsync } from '../../lib/useAsync';
 import { getPolicies, listMyDocuments, listMyNeighborhoodIds, listMyOccupations } from '../../services/providers';
 import { listAvailability, listMyBookings, type BookingView } from '../../services/proAgenda';
-import { listOpenRequests } from '../../services/proMarketplace';
+import { getProposalAllowance, listOpenRequests } from '../../services/proMarketplace';
 import { listMyServices } from '../../services/proServices';
 import type { ProviderRow } from '../../services/types';
 import ErrorAlert from '../../components/ErrorAlert';
 import PageStatus from '../../components/PageStatus';
 import ProPage from '../../components/pro/ProPage';
 import { useProvider } from '../../components/pro/proContext';
+import ProposalAllowanceNote from '../../components/pro/ProposalAllowance';
 import { Badge, Card, EmptyState, SectionTitle } from '../../components/pro/ui';
 import { BOOKING_STATUS_LABELS, BOOKING_STATUS_STYLES, PROVIDER_STATUS_HELP, PROVIDER_STATUS_LABELS, PROVIDER_STATUS_STYLES } from '../../components/pro/labels';
 import { computePendencies } from '../../components/pro/pendencies';
@@ -33,7 +34,7 @@ const settle = async <T,>(read: () => Promise<T>, fallback: T, errors: unknown[]
 const loadPanel = async (provider: ProviderRow) => {
   const errors: unknown[] = [];
   const approved = provider.status === 'approved';
-  const [bookings, occupations, neighborhoodIds, documents, services, availability, requests] = await Promise.all([
+  const [bookings, occupations, neighborhoodIds, documents, services, availability, requests, allowance] = await Promise.all([
     settle(() => listMyBookings(provider.id), [], errors),
     settle(() => listMyOccupations(provider.id), [], errors),
     settle(() => listMyNeighborhoodIds(provider.id), [], errors),
@@ -42,6 +43,8 @@ const loadPanel = async (provider: ProviderRow) => {
     settle(() => listAvailability(provider.id), [], errors),
     // Only an approved provider receives requests; the function answers empty for the others
     approved ? settle(() => listOpenRequests(), [], errors) : Promise.resolve([]),
+    // Only an approved provider sends proposals; a failed read hides the line instead of showing a made-up number
+    approved ? settle(() => getProposalAllowance(provider), null, errors) : Promise.resolve(null),
   ]);
   const policies = await settle(() => getPolicies(occupations.map(item => item.occupation_slug)), {}, errors);
   const today = todayInSaoPaulo();
@@ -53,6 +56,7 @@ const loadPanel = async (provider: ProviderRow) => {
     today: live.filter(item => overlaps(item.period, day)),
     laterThisWeek: live.filter(item => item.period.start >= day.end && overlaps(item.period, week)),
     openRequests: requests.filter(item => item.my_proposal_id === null).length,
+    allowance,
     pendencies: computePendencies({
       provider,
       occupations,
@@ -138,6 +142,7 @@ const Panel: React.FC = () => {
                 ) : (
                   <p className="text-sm text-gray-600">Os pedidos aparecem aqui depois que o seu cadastro for aprovado.</p>
                 )}
+                {approved && <ProposalAllowanceNote allowance={panel.data.allowance} className="mt-2" />}
               </Card>
               <Card as="section">
                 <SectionTitle id="painel-pendencias">
