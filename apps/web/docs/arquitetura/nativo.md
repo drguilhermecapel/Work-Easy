@@ -141,6 +141,10 @@ Decisões dos adaptadores:
   mas mexer nele exige checar o mínimo de iOS do Capacitor 8 (hoje 15.0 no projeto).
 - `contentInset: 'never'` (Capacitor) faz o conteúdo ir sob a barra de status; as áreas
   seguras dependem do CSS (ver 2.4, item 6). **A verificar** em iPhone com entalhe.
+- Botão **Fotografar** do cadastro: o `<input>` criado por `platform/files.ts` fica oculto
+  (`hidden`) e é aberto por `click()` dentro do toque. Em iOS antigos isso pode não abrir a
+  câmera. **A verificar** em iPhone com iOS atual e, se necessário, mudar o input para
+  visível fora da tela.
 
 ## 4. Tauri (`src-tauri`)
 
