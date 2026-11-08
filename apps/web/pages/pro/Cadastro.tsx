@@ -276,14 +276,25 @@ const ProfileSummary: React.FC<{ provider: ProviderRow; onSaved: () => void }> =
 
 // ---- Step 2: neighborhoods ----------------------------------------------------
 
+const NO_CHANGES: Map<string, boolean> = new Map();
+
 const NeighborhoodsStep: React.FC<{ providerId: string }> = ({ providerId }) => {
   const all = useAsync(() => listNeighborhoods(), 'neighborhoods');
   const mine = useAsync(() => listMyNeighborhoodIds(providerId), providerId);
   const [filter, setFilter] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
+  // Escolha otimista: o checkbox reflete o clique na hora e o servidor confirma depois.
+  // A marca vale só para a lista de origem; quando o servidor devolve outra lista, ela deixa de valer.
+  const [optimistic, setOptimistic] = useState<{ base: unknown; changes: Map<string, boolean> }>({ base: undefined, changes: new Map() });
+  const pendingChanges = optimistic.base === mine.data ? optimistic.changes : NO_CHANGES;
 
-  const selected = useMemo(() => new Set(mine.data ?? []), [mine.data]);
+  const saved = useMemo(() => new Set(mine.data ?? []), [mine.data]);
+  const selected = useMemo(() => {
+    const effective = new Set(saved);
+    pendingChanges.forEach((on, id) => (on ? effective.add(id) : effective.delete(id)));
+    return effective;
+  }, [saved, pendingChanges]);
   const visible = useMemo(() => {
     const term = filter.trim().toLowerCase();
     return (all.data ?? []).filter(item => !term || item.name.toLowerCase().includes(term) || (item.zone ?? '').toLowerCase().includes(term));
@@ -292,11 +303,21 @@ const NeighborhoodsStep: React.FC<{ providerId: string }> = ({ providerId }) => 
   const toggle = async (id: string, on: boolean) => {
     setBusyId(id);
     setError(null);
+    setOptimistic(prev => {
+      const changes = new Map(prev.base === mine.data ? prev.changes : undefined);
+      changes.set(id, on);
+      return { base: mine.data, changes };
+    });
     try {
       if (on) await addMyNeighborhood(providerId, id);
       else await removeMyNeighborhood(providerId, id);
       mine.reload();
     } catch (err) {
+      setOptimistic(prev => {
+        const changes = new Map(prev.changes);
+        changes.delete(id);
+        return { base: prev.base, changes };
+      });
       setError(err);
     } finally {
       setBusyId(null);

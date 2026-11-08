@@ -215,6 +215,20 @@ describe('/pro/cadastro: steps of a draft provider', () => {
     expect(screen.queryByRole('checkbox', { name: /Pinheiros/ })).not.toBeInTheDocument();
   });
 
+  it('reverts a neighborhood the server refuses to save, so the list shows what was saved', async () => {
+    draft();
+    fake.tables.neighborhoods = () => ok(NEIGHBORHOODS);
+    fake.tables.provider_neighborhoods = (call: TableCall) =>
+      call.op === 'insert' ? ruleError('neighborhood_unavailable') : ok(selected.map(id => ({ neighborhood_id: id })));
+    const user = userEvent.setup();
+    renderPro('/pro/cadastro');
+
+    expect(await screen.findByText('Nenhum bairro escolhido.')).toBeInTheDocument();
+    await user.click(await screen.findByRole('checkbox', { name: /Lapa/ }));
+    expect(await screen.findByText('Nenhum bairro escolhido.')).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: /Lapa/ })).not.toBeChecked();
+  });
+
   it('asks for the documents the policy requires, uploads to the private bucket and records them', async () => {
     draft();
     const user = userEvent.setup();
