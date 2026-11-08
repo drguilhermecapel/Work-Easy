@@ -256,6 +256,16 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
+# The sign-in and confirmation e-mails carry the 6-digit code ({{ .Token }}). Without it the
+# app asks for a code that never arrives (the template only had a link).
+[auth.email.template.magic_link]
+subject = "Seu código de acesso ao WorkEasy"
+content_path = "./supabase/templates/magic_link.html"
+
+[auth.email.template.confirmation]
+subject = "Confirme seu e-mail no WorkEasy"
+content_path = "./supabase/templates/confirmation.html"
+
 # Uncomment to customize email template
 # [auth.email.template.invite]
 # subject = "You have been invited"
