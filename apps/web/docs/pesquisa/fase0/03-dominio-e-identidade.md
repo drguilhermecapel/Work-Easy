@@ -1,3 +1,5 @@
+Rascunho para revisão de advogado. Não é parecer jurídico.
+
 Dossiê de pesquisa. Não é parecer jurídico, contábil, tributário nem de propriedade intelectual; serve de base para a conversa com o profissional competente.
 
 # F03: Domínio, nome de desenvolvedor e identidade nas lojas
@@ -10,11 +12,12 @@ Data de referência: 2026-11-08. Fase 0, frente F03. Idioma: pt-BR. Todas as fon
 - **Os identificadores `br.com.workeasy` não aparecem como publicados** nas duas consultas feitas (iTunes lookup por bundle ID: 0 resultados; Google Play: HTTP 404). Isso não prova que o ID está livre, porque essas consultas só veem apps publicados. Já o **nome "WorkEasy"** tem pelo menos dois apps publicados no App Store (Brasil) com nome parecido. Esse ponto é de marca e deve cruzar com o dossiê de INPI.
 - **Custos oficiais lidos:** Apple Developer Program US$ 99 por ano (valor em reais não conferido); Google Play US$ 25, taxa única. O preço do `.com.br` no Registro.br não foi conferido (página vazia; trecho de busca sugere R$ 40 por ano, [incerto]).
 - **Prazos lidos:** D-U-N-S da Apple em até 5 dias úteis, mais até 2 dias úteis para a Apple receber os dados; D-U-N-S do Google em até 30 dias. Conta de organização exige D-U-N-S nas duas lojas. A Apple exige site público no domínio da empresa e e-mail de trabalho no mesmo domínio.
-- **Resend:** a verificação exige registros DKIM e SPF copiados exatamente do painel. Costuma verificar em cerca de 15 minutos, mas pode levar até 72 horas. Quem controla o DNS do domínio precisa fazer isso, e a página recomenda enviar por subdomínio.
+- **Resend:** a verificação exige registros DKIM e SPF copiados exatamente do painel. Costuma verificar em cerca de 15 minutos; a página diz que a propagação do DNS pode levar até 72 horas. Quem controla o DNS do domínio precisa fazer isso, e a página recomenda enviar por subdomínio.
 
 ## Método e limites
 
 - **Foi aberto (WebFetch) com conteúdo lido:** RDAP do `workeasy.com.br`; Apple (inscrição; D-U-N-S; criação de app, FAQ de nome); Google Play (ajudas 6112435, 13628312 e 14151465); Resend (add-a-domain); Capacitor (config); Tauri (reference/config, primeiros 100 mil caracteres de 151 mil).
+- **Revisão independente (2026-11-08):** reabertas as fontes de RDAP (os quatro domínios 404 e o `workeasy.com.br` ativo), Apple (inscrição, D-U-N-S, criação de app), Google Play (6112435, 13628312, 14151465), Resend, Capacitor, Tauri, iTunes (lookup e search), Play (404) e Registro.br (regras e domínio, ainda vazias). Correções aplicadas onde a fonte não sustentava o texto. Não foram reabertos o Planalto, a página de preço do Registro.br e `developer.apple.com/br/programs/`.
 - **Registro.br: nenhuma página institucional retornou texto.** As páginas de regras, categorias, registro de novos domínios, pagamento, busca de domínio, whois e a página de preços retornaram "page text is empty" no WebFetch. Tudo o que está abaixo sobre regras de titularidade, prazos e preço do Registro.br vem de **trechos de resultados de busca, não abertos**, e está marcado [incerto]. A única parte do Registro.br que respondeu foi o RDAP.
 - **Planalto bloqueado.** `planalto.gov.br` respondeu "Esta requisição foi bloqueada" para a LGPD e para o Decreto 7.962/2013. Nenhum artigo de lei foi lido nesta tarefa, e nenhum artigo é citado como texto de lei. Os pontos sobre e-mail de contato e encarregado ficam como [incerto].
 - **Consultas de lojas com cobertura limitada.** A busca iTunes (país br) funcionou. A Google Play não tem busca pública de nome aberta aqui, só a página de detalhe por pacote. O portal de desenvolvedor da Apple exige login, e é a única fonte autoritativa de bundle ID já reservado. Não foi possível consultá-lo.
@@ -46,7 +49,7 @@ Fontes: resultados de busca de 2026-11-08 para `https://registro.br/dominio/regr
 
 | Domínio | Resposta RDAP (`rdap.registro.br/domain/...`) | Leitura |
 |---|---|---|
-| `workeasy.com.br` | registro ativo; registro em 2020-05-19; última alteração em 2025-06-06; expira em 2027-05-19; DNSSEC assinado | **Indisponível.** O titular não é reproduzido aqui (dado pessoal, e o RDAP da consulta omitiu os contatos). |
+| `workeasy.com.br` | registro ativo; registro em 2020-05-19; última alteração em 2025-06-06; expira em 2027-05-19; DNSSEC assinado | **Indisponível.** O titular não é reproduzido aqui (dado pessoal). |
 | `workeasy.net.br` | HTTP 404 | Sem registro encontrado. Não basta para afirmar que está livre (ver regra de domínio equivalente, seção 1.1). |
 | `workeasyapp.com.br` | HTTP 404 | Idem. |
 | `workeasybr.com.br` | HTTP 404 | Idem. |
@@ -68,7 +71,7 @@ Se o domínio não for do dono, a troca é de configuração e de testes, mas at
 | Identificador | Valor | Onde está |
 |---|---|---|
 | Capacitor `appId` | `br.com.workeasy` | `apps/web/capacitor.config.ts`, linha 6 |
-| iOS bundle ID (`PRODUCT_BUNDLE_IDENTIFIER`) | `br.com.workeasy` | `apps/web/ios/App/App.xcodeproj/project.pbxproj`, linhas 312 e 333 |
+| iOS bundle ID (`PRODUCT_BUNDLE_IDENTIFIER`) | `br.com.workeasy` | `apps/web/ios/App/App.xcodeproj/project.pbxproj`, linhas 316 e 337 |
 | Android `applicationId` / `namespace` | `br.com.workeasy` | `apps/web/android/app/build.gradle`, linhas 4 e 7 |
 | Tauri `identifier` | `br.com.workeasy` | `apps/web/src-tauri/tauri.conf.json`, linha 5 |
 | Nome de exibição | `WorkEasy` | `capacitor.config.ts` (`appName`) e `tauri.conf.json` (`productName`, não lido linha a linha) |
@@ -78,15 +81,15 @@ O repositório já tem um kit de lojas (`apps/web/docs/lojas/app-store.md`, linh
 ### 2.2 O que as fontes oficiais dizem (abertas em 2026-11-08)
 
 - **Capacitor** (`https://capacitorjs.com/docs/config`, Version v8): `appId` é "The unique identifier of your packaged app", em notação de domínio reverso, "generally representing a domain name that you or your company owns". Vale como Bundle ID no iOS e Application ID no Android. A página não lista caracteres nem tamanho máximo. `appName` "should be what you'd see in the App Store" e pode ser mudado depois em cada plataforma.
-- **Tauri** (`https://v2.tauri.app/reference/config/`): `identifier` deve ser "unique across applications", com só letras, números, hífen e ponto. O valor padrão `com.tauri.dev` é recusado pelo `tauri build`. A página não diz nada sobre terminar em `.app` no macOS. Essa regra [não verificado]; não deve ser afirmada sem outra fonte.
+- **Tauri** (`https://v2.tauri.app/reference/config/`): `identifier` deve ser "unique across applications", com só letras, números, hífen e ponto. O valor padrão `com.tauri.dev` é recusado pelo `tauri build`. A página não põe sufixo `.app` como regra do campo `identifier`; ela menciona o bundle `.app` do macOS só em outros campos (`BundleType`, `productName`). A regra para o `identifier` fica [não verificado]; não deve ser afirmada sem outra fonte.
 
 ### 2.3 Conflito com apps publicados
 
 - **App Store (iTunes Lookup, `bundleId=br.com.workeasy`, país br, 2026-11-08):** `resultCount: 0`. Não há app publicado com esse bundle ID nesse país.
 - **Google Play (`play.google.com/store/apps/details?id=br.com.workeasy`, 2026-11-08):** HTTP 404. Não há app publicado com esse pacote.
 - **Limitação:** essas consultas só veem apps publicados. Um ID reservado no portal da Apple ou no console do Google não aparece. Não há fonte aberta que confirme a regra de unicidade do bundle ID na conta do desenvolvedor.
-- **Nome "WorkEasy" na App Store (busca iTunes, `term=workeasy`, país br, `entity=software`, 2026-11-08):** 6 resultados. Os mais próximos: "WorkEasy Software" (`com.workeasysoftware.app`, vendedor "EasyWorkforce Software Inc."), "WorkEasy.Team" (`com.easyworkforce.workeasy`, mesmo vendedor), "WorkEasy Software Time Kiosk" (`com.workeasysoftware.kiosk`, mesmo vendedor). Também aparecem "Work e-asy HK" e "办公易" (`com.kaishing.workeasy`). Isso é risco de nome e de marca, não prova de colisão legal. A análise cabe ao dossiê de INPI.
-- **Regra de nome da Apple** (`https://developer.apple.com/help/app-store-connect/create-an-app-record/add-a-new-app/`, aberta em 2026-11-08, FAQ "What can I do if the app name I want to use on the App Store is unavailable?"): "You can use an app name for one app per localization." Se um app da própria conta já usa o nome, dá para atualizar esse app ou removê-lo. Se outro desenvolvedor usa o nome e o dono tem direitos de marca, cabe reclamação pelo formulário indicado na página. A página não diz que o nome é único na loja inteira, e não diz se a Apple recusa o cadastro quando outro desenvolvedor usa o nome [incerto]. O risco com os apps "WorkEasy" de terceiros é, portanto, de marca, e a análise cabe ao dossiê de INPI.
+- **Nome "WorkEasy" na App Store (busca iTunes, `term=workeasy`, país br, `entity=software`, 2026-11-08):** 6 resultados. Os mais próximos: "WorkEasy Software" (`com.workeasysoftware.app`, vendedor "EasyWorkforce Software Inc."), "WorkEasy.Team" (`com.easyworkforce.workeasy`, mesmo vendedor), "WorkEasy Software Time Kiosk" (`com.workeasysoftware.kiosk`, mesmo vendedor). Também aparecem "Work e-asy HK", "办公易" (`com.kaishing.workeasy`) e "コロム（corom）" (`jp.workeasy.corom`, vendedor "workeasy, Inc.", app japonês, sexto resultado). Isso é risco de nome e de marca, não prova de colisão legal. A análise cabe ao dossiê de INPI.
+- **Regra de nome da Apple** (`https://developer.apple.com/help/app-store-connect/create-an-app-record/add-a-new-app/`, aberta em 2026-11-08, FAQ "What can I do if the app name I want to use on the App Store is unavailable?"): "You can use an app name for one app per localization." Se um app da própria conta já usa o nome, dá para atualizar esse app ou removê-lo. Se outro desenvolvedor usa o nome e o dono tem direitos de marca, cabe reclamação pelo link "submit a claim", que leva a uma página jurídica da Apple. A página não diz que o nome é único na loja inteira, e não diz se a Apple recusa o cadastro quando outro desenvolvedor usa o nome [incerto]. O risco com os apps "WorkEasy" de terceiros é, portanto, de marca, e a análise cabe ao dossiê de INPI.
 - **Google Play:** sem busca de nome aberta. [incerto]
 
 ## 3. Contas de desenvolvedor
@@ -94,9 +97,9 @@ O repositório já tem um kit de lojas (`apps/web/docs/lojas/app-store.md`, linh
 ### 3.1 Apple Developer Program (organização)
 
 - **Taxa:** "The Apple Developer Program is 99 USD per membership year. Prices may vary by region and are listed in local currency during the enrollment process." Fonte: `https://developer.apple.com/programs/enroll/`, aberta em 2026-11-08. Valor em reais: [incerto]. A página `developer.apple.com/br/programs/` retornou 404.
-- **Organização:** precisa de D-U-N-S, exceto entidade governamental. A entidade precisa ser pessoa jurídica que assina contratos. "We do not accept DBAs, fictitious business names, trade names, or branches." O nome da organização vira o nome do vendedor na App Store. Fonte: mesma página.
-- **Site e e-mail:** o site precisa estar público e funcionar, e o domínio precisa estar associado à organização. O e-mail de trabalho precisa estar associado ao domínio da organização. Links de redes sociais ou sites com pouco conteúdo não são aceitos. Fonte: mesma página.
-- **Quem inscreve:** o titular da conta precisa ter poder legal para vincular a organização a contratos. Se não for o dono ou fundador, precisa de referência que confirme a autoridade. Fonte: mesma página.
+- **Organização:** precisa de D-U-N-S, exceto entidade governamental. A entidade precisa ser pessoa jurídica que pode assinar contratos com a Apple. "We do not accept DBAs, fictitious business names, trade names, or branches." O nome da organização vira o nome do vendedor na App Store. Fonte: mesma página.
+- **Site e e-mail:** o site precisa estar público e funcionar, e o domínio precisa estar associado à organização. O e-mail de trabalho precisa estar associado ao domínio da organização. Links de redes sociais, sites com pouco conteúdo ou que exibam mensagem de registrador de domínio não são aceitos. Por isso o domínio precisa ter site funcional próprio, não só registro. Fonte: mesma página.
+- **Quem inscreve:** o titular da conta precisa ter poder legal para vincular a organização a contratos. Se não for o dono ou fundador, a página lista como alternativas membro da equipe executiva, líder de projeto sênior ou funcionário com autoridade concedida por um superior sênior. Não há exigência de referência escrita na página. Fonte: mesma página.
 - **Prazo da aprovação da inscrição:** a página não informa. [incerto]. O kit do repo também marca como [incerto] (`app-store.md`, linha 143).
 
 ### 3.2 D-U-N-S (usado pela Apple e pelo Google)
@@ -109,11 +112,11 @@ O repositório já tem um kit de lojas (`apps/web/docs/lojas/app-store.md`, linh
 ### 3.3 Google Play Console
 
 - **Taxa:** "There is a US$25 one-time registration fee." Fonte: `https://support.google.com/googleplay/android-developer/answer/6112435?hl=en`, aberta em 2026-11-08. A página diz que a taxa não é devolvida se as informações de identidade forem consideradas inválidas.
-- **Tipos de conta:** pessoal e de organização. "Verification requirements depend on the account type chosen." Fonte: mesma página.
+- **Tipos de conta:** pessoal e de organização. "Verification requirements depend on the account type chosen in Step 4." Fonte: mesma página.
 - **Organização** (`https://support.google.com/googleplay/android-developer/answer/13628312?hl=en`, aberta em 2026-11-08): "You will not be able to create a developer account for an organization without one" (D-U-N-S). O D-U-N-S "can take up to 30 days". Itens exigidos: nome do desenvolvedor, D-U-N-S e nome e endereço da organização (conforme o perfil de pagamento), telefone e site da organização, contato com nome, e-mail e telefone, e e-mail e telefone do perfil do desenvolvedor. O e-mail de contato "should not be generic or a personal email address". Não diz se um `contato@` no domínio próprio é "genérico" [incerto].
 - **Verificação de pagamento:** "Verification can take up to 5 days". Fonte: mesma página 13628312.
 - **Pessoal** (mesma página 13628312): nome legal e endereço vêm do perfil de pagamento.
-- **Pessoal, testes** (`https://support.google.com/googleplay/android-developer/answer/14151465?hl=en`, aberta em 2026-11-08): "Google Play requires personal developer accounts created after November 13, 2023, to test their apps." O teste fechado precisa de "minimum of 12 testers who have been opted in continuously for at least 14 days". Antes do pedido de produção, "you must run a closed test that meets Google Play criteria". A revisão "usually takes seven days or less".
+- **Pessoal, testes** (`https://support.google.com/googleplay/android-developer/answer/14151465?hl=en`, aberta em 2026-11-08): "Google Play requires personal developer accounts created after November 13, 2023, to test their apps." O teste fechado precisa de "minimum of 12 testers who have been opted in continuously for at least 14 days". Antes do pedido de produção, "You must run a closed test before applying to publish your app to production." A revisão "usually takes seven days or less".
 - **Pessoal, dispositivo** (`https://support.google.com/googleplay/android-developer/answer/6112435?hl=en`, aberta em 2026-11-08): "personal account owners must verify access to an Android device" antes de publicar. A página 14151465 não trata desse ponto.
 
 ### 3.4 Qual conta
@@ -127,9 +130,9 @@ O repositório já tem um kit de lojas (`apps/web/docs/lojas/app-store.md`, linh
 
 Fonte: `https://resend.com/docs/add-a-domain`, aberta em 2026-11-08.
 
-- Passos: adicionar o domínio no painel, "enter a domain that includes a subdomain", escolher a região de envio, opcionalmente definir subdomínio Return-Path (padrão `send.<domínio>`).
+- Passos: adicionar o domínio no painel, "Enter a domain including a subdomain to use for your Resend emails", escolher a região de envio, opcionalmente definir subdomínio Return-Path (padrão `send.<domínio>`).
 - Registros: "Provide the DKIM and SPF configurations" em TXT e MX ou CNAME. Os valores "must match exactly what Resend generated". Se aparecer CNAME, não usar proxy (como o do Cloudflare).
-- Tempo: "your domain will often verify within 15 minutes"; pode levar "up to 72 hours"; depois disso, o botão "Restart verification".
+- Tempo: "your domain will often verify within 15 minutes"; a propagação do DNS pode levar "up to 72 hours" (texto: "DNS changes can occasionally take up to 72 hours to propagate globally"); o botão "Restart verification" não foi conferido nesta revisão.
 - DMARC é um passo separado, depois da verificação.
 - A página não diz se o registro vai no domínio raiz ou no subdomínio; manda conferir a aba Records.
 
@@ -156,13 +159,13 @@ Resultado: o remetente atual do código (`avisos@workeasy.com.br`) usa o domíni
 | 8 | Conta Apple de organização | US$ 99 por ano (BRL [incerto]) | Aprovação [incerto]; D-U-N-S e +2 dias úteis | D-U-N-S; site público no domínio; e-mail no domínio; titular com poder legal | Dono (Account Holder) |
 | 9 | Conta Google Play de organização | US$ 25, taxa única | D-U-N-S até 30 dias; verificação de pagamento até 5 dias | D-U-N-S; site da organização; e-mails | Dono |
 | 10 | Alternativa: conta Google Play pessoal | US$ 25, taxa única | Teste de 12 testadores por 14 dias para produção; verificação de dispositivo Android | Dispositivo Android; testadores | Dono |
-| 11 | Domínio de envio no Resend | [incerto] (plano não conferido) | 15 min a 72 h | Acesso ao DNS; decisão raiz ou subdomínio | Dono ou quem gerencia o DNS |
+| 11 | Domínio de envio no Resend | [incerto] (plano não conferido) | Costuma 15 min; até 72 h de propagação do DNS | Acesso ao DNS; decisão raiz ou subdomínio | Dono ou quem gerencia o DNS |
 | 12 | DMARC depois da verificação do Resend | 0 | Após item 11 | Item 11 | Dono ou quem gerencia o DNS |
 | 13 | Endereços contato@, sac@, privacidade@ | 0 | Após o domínio | Item 1; conferir exigências legais | Dono |
 
 **Passos que só o dono pode fazer:**
 - Confirmar quem é o titular de `workeasy.com.br` e se pode adquirir ou usar outro nome.
-- Escolher o nome comercial e o identificador (`br.com.workeasy` ou outro). O repo afirma que o identificador fica fixo depois do primeiro upload (`google-play.md`, linha 134; `app-store.md`, linha 810). **Não verificado** em fonte oficial aberta: a página da Apple sobre criação de app não trata do assunto (aberta em 2026-11-08), e a documentação do Google sobre o nome do pacote não foi aberta com esse texto.
+- Escolher o nome comercial e o identificador (`br.com.workeasy` ou outro). O repo afirma que o identificador fica fixo depois do primeiro upload (`google-play.md`, linha 134; `app-store.md`, linha 810). **Não verificado** em fonte oficial aberta: a página da Apple sobre criação de app (aberta em 2026-11-08) menciona o bundle ID como campo e diz que todas as plataformas compartilham o mesmo, mas não diz que ele fica fixo depois do primeiro upload. A documentação do Google sobre o nome do pacote não foi aberta com esse texto.
 - Abrir a PJ e obter o D-U-N-S, com dados que só ele tem.
 - Ser o titular da conta Apple (Account Holder) e aceitar os termos. Pagar a taxa e concluir a verificação de identidade.
 - Entrar no Registro.br com gov.br ou certificado e-CNPJ, e pedir o registro ou a transferência.
@@ -202,7 +205,7 @@ Todas as datas são de abertura em 2026-11-08. "Aberta" = WebFetch retornou cont
 | `https://developer.apple.com/programs/enroll/` | Inscrição; taxa US$ 99; organização; D-U-N-S; titular | Aberta |
 | `https://developer.apple.com/help/account/membership/D-U-N-S/` | D-U-N-S: até 5 dias úteis; +2 dias úteis; gratuito | Aberta |
 | `https://developer.apple.com/br/programs/` | Preço em BRL | 404 |
-| `https://developer.apple.com/help/app-store-connect/create-an-app-record/add-a-new-app/` | Nome do app: um app por localização; reclamação por marca. Nada sobre bundle ID | Aberta |
+| `https://developer.apple.com/help/app-store-connect/create-an-app-record/add-a-new-app/` | Nome do app: um app por localização; reclamação por marca. Bundle ID aparece só como campo, com a frase "todas as plataformas compartilham o mesmo bundle ID"; nada sobre permanência | Aberta |
 | `https://support.google.com/googleplay/android-developer/answer/6112435?hl=en` | Taxa US$ 25, taxa única; tipos de conta; dispositivo Android em conta pessoal | Aberta |
 | `https://support.google.com/googleplay/android-developer/answer/13628312?hl=en` | Dados exigidos; D-U-N-S até 30 dias; pagamento até 5 dias | Aberta |
 | `https://support.google.com/googleplay/android-developer/answer/14151465?hl=en` | Teste para conta pessoal (12 testadores, 14 dias) | Aberta |
