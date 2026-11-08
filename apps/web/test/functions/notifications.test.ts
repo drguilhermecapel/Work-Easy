@@ -65,7 +65,7 @@ describe('WhatsApp template payload', () => {
 
   it('has text for every contract template', () => {
     expect(Object.keys(TEMPLATES).sort()).toEqual([
-      'atendimento_confirmado', 'lembrete_atendimento', 'orcamento_respondido', 'pagamento_recebido',
+      'agendamento_solicitado', 'atendimento_confirmado', 'lembrete_atendimento', 'orcamento_respondido', 'pagamento_recebido',
       'plantao_oferecido', 'proposta_recebida',
     ]);
     for (const [name, spec] of Object.entries(TEMPLATES)) {

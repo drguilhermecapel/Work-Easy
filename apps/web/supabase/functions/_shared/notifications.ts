@@ -18,6 +18,7 @@ export const WHATSAPP_LANGUAGE = 'pt_BR';
 export const RESEND_URL = 'https://api.resend.com/emails';
 
 export type TemplateName =
+  | 'agendamento_solicitado'
   | 'proposta_recebida'
   | 'atendimento_confirmado'
   | 'lembrete_atendimento'
@@ -55,6 +56,11 @@ export const TEMPLATES: Record<TemplateName, TemplateSpec> = {
     params: ['amount_cents', 'client_name'],
     subject: 'Pagamento recebido',
     body: 'O pagamento de {amount_cents} de {client_name} foi recebido pelo Asaas. Os detalhes estão no WorkEasy.',
+  },
+  agendamento_solicitado: {
+    params: ['starts_at'],
+    subject: 'Solicitação de agendamento',
+    body: 'Há uma solicitação de agendamento para {starts_at}. Abra o WorkEasy para aceitar ou recusar.',
   },
   orcamento_respondido: {
     // The quote title is free text typed by the client, so it stays out of the message.
