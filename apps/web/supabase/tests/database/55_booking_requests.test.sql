@@ -33,12 +33,12 @@ select is((select status::text from public.bookings where id = (select id from i
 -- A second stale request that the sweep has not reached yet, on the slot book_direct will take.
 insert into public.bookings (id, client_id, provider_id, occupation_slug, period, price_cents, status, created_at)
 values (md5('s55-stale2')::uuid, tests.uid('client_b'), tests.uid('provider_c'), 't-reparo',
-        tests.sp_period(tests.at(53, 0, '09:00'), 1), 5000, 'requested', now() - interval '49 hours');
+        tests.sp_period(tests.at(45, 0, '09:00'), 1), 5000, 'requested', now() - interval '49 hours');
 insert into ids values ('stale2', md5('s55-stale2')::uuid);
 
 select tests.authenticate_as('client_a');
 select lives_ok($$select public.book_direct(tests.uid('provider_c'), (select id from ids where name = 'svc'),
-                    tests.sp_period(tests.at(53, 0, '09:00'), 1))$$,
+                    tests.sp_period(tests.at(45, 0, '09:00'), 1))$$,
                 'the provider''s agenda is free: a new request takes the slot of an expired one');
 select tests.clear_authentication();
 select is((select status::text from public.bookings where id = (select id from ids where name = 'stale2')), 'canceled',
