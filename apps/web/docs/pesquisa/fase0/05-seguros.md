@@ -14,7 +14,7 @@ Rascunho para revisão de advogado. Não é parecer jurídico.
 - **Não encontrei seguro de cuidador autônomo avulso.** A única cobertura de "cuidador" achada está como assistência dentro de apólice residencial (resumo de busca). Ela é acionada por sinistro do segurado, não pelo serviço contratado numa plataforma.
 - **O regime do seguro privado mudou.** A página do Senado (aberta) informa que a Lei 15.040/2024 revoga os arts. 757 a 802 do Código Civil, que tratavam do contrato de seguro, inclusive o de RC. Não li o texto dos artigos da lei nova sobre RC. Referências ao art. 787 do Código Civil são históricas.
 - **Garantia estendida da SUSEP é de bem, não de serviço.** A página da SUSEP (aberta) a define como extensão da garantia do fornecedor "de um bem adquirido". O seguro garantia (Circular SUSEP 662/2022) é, pelos resumos, voltado a obrigações contratuais; o texto da circular não foi legível. Não há base para prometer garantia de serviço.
-- **Cyber e LGPD têm prazo e multa definidos em lei.** A LGPD (art. 52, II, aberto) prevê multa de até 2% do faturamento, limitada a R$ 50 milhões por infração. A ANPD (página aberta, modificada em 26/08/2026) indica 3 dias úteis para comunicar incidente, pela Resolução CD/ANPD nº 15/2024. O seguro cyber, se contratado, cobre parte do dano, com exclusões a conferir; não substitui as medidas internas.
+- **Cyber e LGPD: a multa está na lei; o prazo de comunicação não está.** A LGPD (art. 52, II, aberto) prevê multa de até 2% do faturamento, limitada a R$ 50 milhões por infração. O art. 48, § 1º, manda comunicar o incidente em "prazo razoável, conforme definido pela autoridade nacional". A ANPD (página aberta, modificada em 26/08/2026) indica 3 dias úteis, pela Resolução CD/ANPD nº 15/2024, e a própria página ressalva prazo previsto em legislação específica. O seguro cyber, se contratado, cobre parte do dano, com exclusões a conferir; não substitui as medidas internas.
 
 ## Método e limites
 
@@ -42,14 +42,16 @@ Rascunho para revisão de advogado. Não é parecer jurídico.
 
 **Chamadas de ferramenta:** cerca de 38, dentro do orçamento de cerca de 60.
 
+**Verificação independente (08/11/2026):** reabertas 9 fontes (Senado, LC 150 e Lei 15.040; Câmara, LGPD; ANPD; SUSEP, RC e garantia estendida; Legismap; Planalto, CDC, de novo bloqueado; Tokio Marine, E&O, vazia). Corrigidos: citação da revogação da Lei 15.040 e ementa; situação da LGPD (leitura parcial); ANPD (complementação, ressalva); SUSEP RC (juízo arbitral); Circular 637 (art. 4º, III); garantia estendida (CNSP 408/2021); referência da trava (§12 do manual; D12, linha 73); LC 150 (não CLT). Não reverificados: Porto Seguro, Bradesco, Tokio Marine RC Locais de Terceiros, Circular 662/2022 (datas), prêmio R$ 99 e demais itens só de resumo, que continuam [incerto].
+
 ## Corpo
 
 ### 1. Enquadramento legal que muda a resposta
 
 **1.1 Código Civil e Lei 15.040/2024.** A página do Senado (aberta em 08/11/2026) informa:
 - Lei nº 15.040, de 09/12/2024, publicada no Diário Oficial da União em 10/12/2024.
-- Ementa: "Dispõe sobre normas de seguro privado; e revoga dispositivos da Lei nº 10.406, de 10 de janeiro de 2002 (Código Civil)".
-- Revogação de "Arts. 757 a 802" do Código Civil (e do art. 206, § 1º, II), além dos arts. 9 a 14 do Decreto-Lei nº 73/1966.
+- Ementa: "Dispõe sobre normas de seguro privado; e revoga dispositivos da Lei nº 10.406, de 10 de janeiro de 2002 (Código Civil), e do Decreto-Lei nº 73, de 21 de novembro de 1966."
+- Revogação dos arts. 757 a 802 do Código Civil, que a página lista um a um (e do art. 206, § 1º, II), além dos arts. 9 a 14 do Decreto-Lei nº 73/1966. A página não usa a expressão "Arts. 757 a 802".
 - A página remete ao art. 134 para a vigência, cujo texto não apareceu. Ela indica que "as alterações entram em vigor em 10/12/2025".
 
 Consequência: o regime do seguro de RC hoje está na Lei 15.040/2024, cujo texto sobre RC não li. Os arts. 787 e 788 do Código Civil (de 2002) estão na faixa revogada. O resumo de busca descreve o art. 787 como regra de aviso à seguradora "tão logo" o segurado saiba do fato, de não reconhecer culpa e de não acordar sem autorização, e o art. 788 como pagamento direto ao terceiro nos seguros obrigatórios. Não li esses textos e não os cito como regra vigente. [incerto]
@@ -62,18 +64,18 @@ Consequência: o regime do seguro de RC hoje está na Lei 15.040/2024, cujo text
 - Art. 48, caput: o controlador deve comunicar à autoridade nacional e ao titular a ocorrência de incidente de segurança "que possa acarretar risco ou dano relevante aos titulares". O § 1º manda a comunicação "em prazo razoável, conforme definido pela autoridade nacional".
 - Art. 52, caput e incisos I e II: advertência, e multa simples "de até 2% (dois por cento) do faturamento da pessoa jurídica de direito privado, grupo ou conglomerado no Brasil no seu último exercício, excluídos os tributos, limitada, no total, a R$ 50.000.000,00 (cinquenta milhões de reais) por infração".
 
-A página da Câmara lista alterações posteriores (Lei 15.134/2025 e Lei 15.352/2026). Não verifiquei se afetam estes artigos. [incerto]
+Releitura em 08/11/2026 (página lida até cerca de 100 mil de 123 mil caracteres): a Lei 13.853/2019 mexe nos §§ 2º, 3º e 5º a 7º e nos incisos X a XII do art. 52; a Lei 15.134/2025 veta o § 2º-A do art. 52; a Lei 15.352/2026 mexe no art. 5º e no capítulo IX. Nenhuma das alterações listadas (Lei 13.853/2019, 14.460/2022, 15.134/2025, 15.352/2026) alcança os arts. 42, 46 e 48 nem o caput e os incisos I e II do art. 52, na parte lida. A parte final da página não foi lida.
 
 ### 2. (a) Seguro de responsabilidade civil profissional e de empresa de intermediação
 
 **2.1 Quadro SUSEP.**
-- **Circular SUSEP 637/2021 (consolidação do RC).** A coluna de Walter A. Polido (aberta; data da coluna 30/07/2021) traz a data da norma, 27/07/2021, e enumera os ramos: RC geral, RC profissional (E&O), RC ambiental, RC cyber e D&O. A coluna não cita artigo que defina os ramos, e o texto oficial não foi lido. Resumos de busca dizem que a norma entrou em vigor em 1º/09/2021 e revogou as Circulares 336/2007, 348/2007, 437/2012, 476/2013 e 553/2017. [incerto]
+- **Circular SUSEP 637/2021 (consolidação do RC).** A coluna de Walter A. Polido (aberta; data da coluna 30/07/2021) traz a data da norma, 27/07/2021, e enumera os ramos: RC geral, RC profissional (E&O), RC ambiental, RC cyber e D&O. A coluna não cita artigo que defina os ramos (só o art. 4º, III, para o RC Riscos Ambientais), e o texto oficial não foi lido. A coluna não menciona a vigência em 1º/09/2021 nem as circulares revogadas. Resumos de busca dizem que a norma entrou em vigor em 1º/09/2021 e revogou as Circulares 336/2007, 348/2007, 437/2012, 476/2013 e 553/2017; não confirmado. [incerto]
 - **Página SUSEP "Seguro de Responsabilidade Civil" (aberta):**
   - o seguro garante "a proteção contra as indenizações" que o segurado for obrigado a pagar "a título de reparação" a terceiros;
-  - indeniza sentença judicial transitada em julgado, decisão arbitral, decisão administrativa ou acordo com o terceiro; no acordo, exige "anuência e concordância expressa da seguradora";
+  - indeniza sentença judicial transitada em julgado, decisão em juízo arbitral, ou acordo com o terceiro (a página cita "decisão administrativa" só na descrição geral); no acordo, exige "anuência e concordância expressa da seguradora";
   - o pagamento é "mediante reembolso e/ou pagamento das indenizações a que o segurado for condenado";
   - atos intencionais são, "em geral", risco excluído;
-  - no RC Profissional, as seguradoras "consideram os Danos Morais como Risco Excluído", embora algumas ofereçam cobertura adicional;
+  - no RC Profissional, as seguradoras "consideram os Danos Morais como Risco Excluído", embora algumas ofereçam cobertura adicional [incerto: frase não conferida na releitura];
   - muitas apólices excluem reclamações decorrentes de cirurgias plásticas, estéticas ou reparadoras;
   - no RC D&O, atos de gestão de má-fé são risco excluído.
 
@@ -104,11 +106,11 @@ Essa assistência é benefício do segurado da residência. Não garante a respo
 
 **3.3 Projeto de lei.** O PL 5487/2026 (resumo de notícia, não aberto) propõe que planos de saúde cubram cuidador de pessoa idosa em internação domiciliar que substitua a internação hospitalar. É projeto, não norma vigente. [incerto]
 
-**3.4 Acidente do empregado doméstico.** A LC 150/2015 trata de encargos do empregador doméstico. O resumo de busca cita 0,8% para seguro contra acidente no art. 34, III, e o art. 20 como base da condição de segurado obrigatório. A página do Senado não mostra esses textos. Essa contribuição vale só se a família for empregadora de um cuidador pela CLT doméstica, o que é tema da trava de 2 dias (`operacao/06-manual-do-cuidado.md`, linha 788, e D12 em `DECISOES.md`), que depende de parecer trabalhista. [incerto]
+**3.4 Acidente do empregado doméstico.** A LC 150/2015 trata de encargos do empregador doméstico. O resumo de busca cita 0,8% para seguro contra acidente no art. 34, III, e o art. 20 como base da condição de segurado obrigatório. A página do Senado não mostra esses textos. Essa contribuição vale só se a família for empregadora de um cuidador pela LC 150/2015, o que é tema da trava de 2 dias (D12 em `DECISOES.md`, linha 73; trava descrita em `operacao/06-manual-do-cuidado.md`, §12, a partir da linha 740), que depende de parecer trabalhista. O manual repete a alíquota de 0,8% na linha 788, sem confirmação na página do Senado. [incerto]
 
 ### 4. (c) Cyber risk e vazamento de dados (LGPD)
 
-**4.1 Obrigações de comunicação (ANPD, aberta).** A página da ANPD indica três dias úteis para comunicar o incidente à ANPD e aos titulares, citando a Resolução CD/ANPD nº 15, de 24/04/2024, arts. 6º e 9º. A página foi modificada em 26/08/2026. Ela não diz explicitamente que a contagem começa no conhecimento do incidente. Um resumo da resolução diz que sim, e que a complementação pode ser feita em 20 dias úteis. [incerto no ponto da contagem e da complementação]
+**4.1 Obrigações de comunicação (ANPD, aberta).** A página da ANPD indica três dias úteis para comunicar o incidente à ANPD e aos titulares, citando a Resolução CD/ANPD nº 15, de 24/04/2024, arts. 6º e 9º. A página foi modificada em 26/08/2026. Ela ressalva "a existência de prazo para comunicação previsto em legislação específica" e, numa resposta de FAQ, chama o prazo de "recomendado". A complementação, "de maneira fundamentada, no prazo de vinte dias úteis", conta-se "a partir da data da comunicação", segundo a página. A página não diz quando começa a contagem dos três dias. Um resumo da resolução (não aberto) diz que começa no conhecimento do incidente. [incerto no ponto da contagem]
 
 **4.2 Cobertura típica (resumos de corretoras e revistas; não abertos).**
 - Indenização de terceiros por vazamento de dados pessoais ou corporativos.
@@ -139,7 +141,7 @@ Regras informadas pela página:
 - vedado condicionar a compra do bem à contratação do seguro, e vedado condicionar desconto a esse seguro;
 - desistência em 7 dias corridos após a proposta ou a emissão do bilhete;
 - renovação automática vedada;
-- norma citada: Resolução CNSP nº 408/2021 (contratação remota). A página só informa o ano.
+- norma citada: Resolução CNSP nº 408/2021, citada para a contratação remota. O texto da resolução não foi lido.
 
 Conclusão: o produto é ligado a bem adquirido. A página não trata de serviço. O WorkEasy não deve chamar esse produto de garantia de serviço.
 
@@ -245,14 +247,14 @@ Todas abertas em 08/11/2026, salvo indicação. "Lido" = texto útil; "ilegível
 | 10 | https://www.gov.br/susep/pt-br/arquivos/arquivos-dos-documentos-e-publicacoes/arquivos-normas-em-consulta-publica/consultas-publicas-passadas-de-2021/SEI_SUSEP0952843VOTOEletrnico.pdf | Voto SUSEP sobre consolidação do RC (consulta de 2021) | Página sem texto do voto |
 | 11 | https://www2.camara.leg.br/legin/fed/lei/2002/lei-10406-10-janeiro-2002-432893-publicacaooriginal-1-pl.html | Código Civil de 2002: arts. 787 e 788 | Truncado antes do art. 787 |
 | 12 | https://www.planalto.gov.br/ccivil_03/leis/2002/l10406compilada.htm | Código Civil compilado | Falhou: página de bloqueio |
-| 13 | https://www.planalto.gov.br/ccivil_03/leis/l8078compilado.htm | CDC, art. 14 e art. 50 | Não aberto; apenas resumo de busca [incerto] |
+| 13 | https://www.planalto.gov.br/ccivil_03/leis/l8078compilado.htm | CDC, art. 14 e art. 50 | Falhou: nova tentativa em 08/11/2026 deu a página de bloqueio ("Esta requisição foi bloqueada"); só resumo de busca [incerto] |
 | 14 | https://www.portoseguro.com.br/NovoInstitucional/static_files/CGs/responsabilidade_civil/00458.17.01.I%20-%20CG%20Resp%20Civil%20Geral%20JAN18.pdf | Porto Seguro, condições gerais de RC Geral (jan/2018) | Falhou: HTTP 502 |
 | 15 | https://www.tokiomarine.com.br/wp-content/uploads/2021/09/responsabilidade-civil-profissional-condicoes-gerais-082021v02.pdf | Tokio Marine, condições gerais de RC Profissional (082021v02) | Falhou: HTTP 403 |
 | 16 | https://www.tokiomarine.com.br/seguros/seguro-responsabilidade-civil-prestacao-de-servicos-em-locais-de-terceiros e https://www.tokiomarine.com.br/seguros/seguro-responsabilidade-civil-profissional-eo | Tokio Marine, páginas de produto | Conteúdo vazio; resumo de busca [incerto] |
 | 17 | https://www.allianz.com.br/content/dam/onemarketing/iberolatam/allianz-br/doc-para-links/FAQ%20-%20RC%20Profissional%20Allianz.pdf | Allianz, FAQ de RC Profissional | Ilegível |
 | 18 | https://www.aig.com.br/content/dam/aig/lac/brazil/2026/folder-de-limites-aiggo-15-06-2026.pdf.coredownload.pdf | AIG Aiggo, folder de limites (2026) | Ilegível |
 | 19 | https://www.gov.br/susep/pt-br/assuntos/meu-futuro-seguro (busca) | Garantia estendida e seguro garantia | Resumos de busca |
-| 20 | Só resumos de busca, não abertos: cqcs.com.br (Bradesco Seguros e Swiss Re, mai/2025); revistaapolice.com.br (Segurar.com, R$ 99); migalhas.com.br (cyber); conjur.com.br, legislacao Lockton e cerlatam.com (Circular 662/2022); demarest.com.br (Circular 637/2021); portoseguro.com.br (condições residenciais 2024 e 2025); atlaspublico.com.br (PL 5487/2026); legismap.com.br (Circular 662/2022 e garantia) | Vários | [incerto] |
+| 20 | Só resumos de busca, não abertos: cqcs.com.br (Bradesco Seguros e Swiss Re, mai/2025); revistaapolice.com.br (Segurar.com, R$ 99); migalhas.com.br (cyber); conjur.com.br, legislacao Lockton, cerlatam.com e Tozzini Freire (Circular 662/2022; URL não anotada); demarest.com.br (Circular 637/2021); portoseguro.com.br (condições residenciais 2024 e 2025); atlaspublico.com.br (PL 5487/2026); legismap.com.br (Circular 662/2022 e garantia) | Vários | [incerto] |
 | 21 | apps/web/docs/operacao/06-manual-do-cuidado.md (§13 e 13.2, linhas 802 a 830, e linhas 991 a 1031); apps/web/docs/juridico/02-termos-do-prestador.md (linhas 94, 383, 632, 704); apps/web/docs/juridico/04-politica-de-cancelamento-e-reembolso.md (busca por "seguro", sem resultado); apps/web/docs/juridico/06-ripd-relatorio-de-impacto.md (linhas 182, 311); apps/web/docs/juridico/03-politica-de-privacidade.md (linha 45); apps/web/docs/juridico/10-sac-e-atendimento.md (linha 284); apps/web/docs/DECISOES.md (linhas 73 e 114) | Documentos internos do repositório | Lidos |
 
 ## Confiança e lacunas (resumo para o revisor)

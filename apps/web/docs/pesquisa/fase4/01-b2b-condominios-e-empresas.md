@@ -8,7 +8,7 @@ Rascunho para revisão de advogado. Não é parecer jurídico.
 
 ## Resumo
 
-- **Lei 14.442/2022 não trata de cuidado de pais.** Abri o texto: ela trata de auxílio-alimentação (Lei 6.321/1976 e CLT, art. 457, § 2º) e de teletrabalho. O reembolso-creche está na Lei 14.457/2022, e vale só para filhos de até 5 anos e 11 meses. Não encontrei norma que dê ao cuidado de pais ou idosos o mesmo tratamento. Pela regra do caput do art. 28, § 9º, da Lei 8.212/1991 ("exclusivamente"), um benefício sem enquadramento específico tende a ser salarial. Isso é inferência a confirmar com contador e advogado.
+- **Lei 14.442/2022 não trata de cuidado de pais.** Abri o texto: ela trata de auxílio-alimentação (Lei 6.321/1976 e CLT) e de teletrabalho. O reembolso-creche está na Lei 14.457/2022, e vale só para filhos de até 5 anos e 11 meses. Não encontrei norma que dê ao cuidado de pais ou idosos o mesmo tratamento. Pela regra do caput do art. 28, § 9º, da Lei 8.212/1991 ("exclusivamente"), um benefício sem enquadramento específico tende a ser salarial. Isso é inferência a confirmar com contador e advogado.
 - **Número de condomínios em São Paulo: sem fonte oficial.** A melhor cifra que abri é de uma administradora (Data Lello, dados de 2024): cerca de 31 mil condomínios, 92% residenciais. É dado comercial, não censo.
 - **Preço publicado: um só preço datado.** Abri um informe publicitário de 09/03/2022 sobre um app de gestão da manutenção (R$ 59,90 e R$ 89,90 por mês). Não achei preço publicado de benefício corporativo de cuidado de pais.
 - **Riscos principais:** a LC 150/2015 fala em contrato "à pessoa ou à família, no âmbito residencial destas", e a dúvida sobre um condomínio contratante precisa de advogado. Contratar autônomo exige cuidado com a CLT (art. 442-B, caput). Dado de saúde de morador é dado pessoal sensível (LGPD, art. 5º, II).
@@ -20,7 +20,7 @@ Rascunho para revisão de advogado. Não é parecer jurídico.
 - LC 150/2015, art. 1º (caput e parágrafo único) e art. 2º (caput), pela Câmara dos Deputados.
 - Lei 14.442/2022, art. 1º, 2º, 5º e 6º, pela Câmara dos Deputados. A leitura foi feita com a ferramenta de leitura de páginas, sem conferência em outra fonte.
 - Lei 14.457/2022, arts. 2º, 3º, 4º e 5º (parágrafo único), pela Câmara dos Deputados.
-- Lei 8.212/1991, art. 28, § 9º (caput e alíneas e, q, s, t, z), por um espelho da ANTT do texto consolidado. O trecho veio truncado e não li todas as alíneas (a até z).
+- Lei 8.212/1991, art. 28, § 9º (caput e alíneas q, s e t), por um espelho da ANTT do texto consolidado. O trecho veio truncado. As alíneas e e z não foram conferidas na verificação de 08/11/2026, e não li todas as alíneas (a até z).
 - Código Civil (Lei 10.406/2002), arts. 1.348 (caput, incisos I, II, V e VIII, § 2º) e 1.349 (caput), pelo texto da Câmara.
 - Lei 13.467/2017 (Câmara), para o art. 442-B da CLT (caput) e o § 5º do art. 458 da CLT.
 - LGPD (Lei 13.709/2018), art. 5º, II, pela Câmara dos Deputados.
@@ -29,7 +29,7 @@ Rascunho para revisão de advogado. Não é parecer jurídico.
 - Página de faixas de preço de cuidador de idosos, de um blog (atualizada em 03/08/2026; publicada em 28/04/2025).
 
 **Não consegui abrir:**
-- Planalto, em todas as tentativas: LC 150/2015, Lei 14.442/2022, Lei 8.212/1991 e Código Civil. A página devolve "acesso negado". Usei as cópias da Câmara e da ANTT.
+- Planalto, em todas as tentativas: LC 150/2015, Lei 14.442/2022, Lei 8.212/1991 e Código Civil. A página devolve "acesso negado". Na reconferência de 08/11/2026, a LC 150/2015 no Planalto respondeu "Esta requisição foi bloqueada". Usei as cópias da Câmara e da ANTT.
 - FAQ do empregador doméstico no portal do eSocial (HTTP 503).
 - Cartilha do eSocial "trabalhadores domésticos" e Guia do MTE sobre trabalho doméstico e de cuidados: os PDFs não devolveram texto legível. Não confirmei o que dizem sobre porteiro, zelador ou cuidador.
 - Termo de adesão de auxílio a cuidador de idoso no portal Saúde Petrobras (HTTP 403). Só aparece como pista.
@@ -41,7 +41,7 @@ Rascunho para revisão de advogado. Não é parecer jurídico.
 
 **Pistas de busca que não abri** (não usadas como fato neste dossiê): preços de Superlógica, In Motion CONDOS, LAR.app, Socialcondo, Condosin e Nok Nox; parceria Secovi-SP e Data Lello; decisões da Receita (Solução de Consulta Cosit 152/2018 e 4/2019) e da PGFN (Parecer SEI 2181/2019); projetos de lei PL 2225/2011, PL 6000/2023, PL 8.395/2017 e um PL paulista sobre "Bolsa Cuidador Familiar"; pesquisas de benefícios da Robert Half (2025 e 2026).
 
-**Fontes internas (contexto do produto, não são fonte jurídica):** apps/web/docs/DECISOES.md (perguntas ao advogado, linhas 100 a 130); apps/web/docs/operacao/02-recrutamento-de-prestadores.md (portão 9, linha 72; trava de dois dias, item 8 do roteiro); apps/web/docs/operacao/03-aquisicao-de-clientes-e-bairros.md (autorização por escrito do síndico); apps/web/docs/pesquisa/fase0/05-seguros.md (seguro, pista).
+**Fontes internas (contexto do produto, não são fonte jurídica):** apps/web/docs/DECISOES.md (perguntas ao advogado, linhas 109 a 117); apps/web/docs/operacao/02-recrutamento-de-prestadores.md (portão 9, linha 72; trava de 2 dias, pergunta 8 da triagem, linha 370); apps/web/docs/operacao/03-aquisicao-de-clientes-e-bairros.md (autorização por escrito do síndico); apps/web/docs/pesquisa/fase0/05-seguros.md (seguro, pista).
 
 ## Corpo
 
@@ -51,7 +51,7 @@ Rascunho para revisão de advogado. Não é parecer jurídico.
 - Leitura: o síndico é quem opera o dia a dia, mas a alçada para contratar, e até onde pode ir sem assembleia, depende da convenção do condomínio. Não li os incisos que faltam, então a regra exata fica [incerto].
 - Para o produto: o comprador é um mandatário que pode ser destituído. Isso pesa no ciclo de venda e no risco de o síndico não renovar.
 
-**A2. Mercado: número de condomínios.** Não achei fonte oficial (não abri IBGE nem Prefeitura). A cifra mais recente que abri é do Mapa dos Condomínios 2025, da Data Lello. Segundo a reportagem da SíndicoNet publicada em 07/04/2025 (aberta em 08/11/2026), o número chegou a cerca de 31 mil condomínios em 2024, dos quais 28.655 residenciais (92%). O texto não explica o método nem diz se é estimativa, e descreve a Lello como a maior administradora do país. Trate como dado comercial e ordem de grandeza. Cifras de anos anteriores (23 mil em 2014, 28 mil em 2022) vieram de resumos de busca, não de páginas abertas.
+**A2. Mercado: número de condomínios.** Não achei fonte oficial (não abri IBGE nem Prefeitura). A cifra mais recente que abri é do Mapa dos Condomínios 2025, da Data Lello. Segundo a reportagem da SíndicoNet publicada em 07/04/2025 (aberta em 08/11/2026), o número chegou a cerca de 31 mil condomínios na capital paulista em 2024, dos quais 28.655 residenciais (92%). O texto não explica o método nem diz se é estimativa, e descreve a Lello como a maior administradora do país. Trate como dado comercial e ordem de grandeza. Cifras de anos anteriores (23 mil em 2014, 28 mil em 2022) vieram de resumos de busca, não de páginas abertas.
 - Uso: serve para dimensionar a prospecção do piloto. Não serve para projetar receita.
 
 **A3. Concorrentes e preços publicados.**
@@ -80,10 +80,10 @@ Rascunho para revisão de advogado. Não é parecer jurídico.
 
 **B3. Tributação do benefício (empregador e empregado).** Ponto de partida: a Lei 8.212/1991, art. 28, § 9º, caput, diz que não integram o salário-de-contribuição, "exclusivamente", as parcelas listadas. Como a lista é fechada, o que não aparece nela tende a integrar a base. Pelas alíneas que consegui ler:
 - **Alínea q:** assistência prestada por serviço médico ou odontológico (e medicamentos, óculos, órteses, próteses e despesas médico-hospitalares). O § 5º do art. 458 da CLT, dado pela Lei 13.467/2017, afirma que esse valor não integra o salário nem o salário de contribuição, para efeitos da alínea q. Cuidado não médico não se encaixa nessa linguagem (inferência). Além disso, o produto não pode usar linguagem clínica (regra 3 de PREAMBLE).
-- **Alínea s:** "o reembolso creche pago em conformidade com a legislação trabalhista" (trecho truncado). A Lei 14.457/2022, art. 2º, cita essa alínea e fixa o limite de idade em "5 (cinco) anos e 11 (onze) meses". Uma pista de busca fala em seis anos na alínea. Não confirmei esse ponto. [incerto]
-- **Alínea t:** plano educacional ou bolsa de estudo para educação básica de empregados. É sobre educação, não cuidado.
+- **Alínea s:** "o reembolso creche pago em conformidade com a legislação trabalhista, observado o limite máximo de seis anos de idade" (espelho ANTT, texto consolidado; trecho lido em 08/11/2026). A Lei 14.457/2022, art. 2º, cita essa alínea e fixa o limite de idade em "5 (cinco) anos e 11 (onze) meses", para o benefício que ela regula. Os dois limites (seis anos na alínea, cinco anos e onze meses na lei nova) não estão conciliados nas fontes abertas, e o espelho pode não refletir alterações posteriores. [incerto]; ver pergunta 8.
+- **Alínea t:** plano educacional ou bolsa de estudo para educação básica de empregados e dependentes. É sobre educação, não cuidado.
 - **Lei 14.457/2022, art. 4º** (aberto): o reembolso-creche "não possuem natureza salarial", "não se incorporam à remuneração para quaisquer efeitos", "não constituem base de incidência de contribuição previdenciária ou do Fundo de Garantia do Tempo de Serviço (FGTS)" e "não configuram rendimento tributável da empregada ou do empregado". Art. 2º: a adoção é opcional ("ficam os empregadores autorizados"). Art. 3º: exige acordo individual, coletivo ou convenção. A norma é só para filhos.
-- **Lei 14.442/2022** (aberta): não trata de cuidado de pais nem de benefício indenizatório. Trata de auxílio-alimentação (art. 2º: o uso deve ser para refeições ou gêneros alimentícios) e, no art. 6º, de prioridade em vagas de teletrabalho para empregados com filhos de até 4 anos (leitura da ferramenta, não conferi o texto integral).
+- **Lei 14.442/2022** (aberta): não trata de cuidado de pais nem de benefício indenizatório. Trata de auxílio-alimentação (art. 2º: o uso deve ser para refeições ou gêneros alimentícios) e, no art. 6º, prioridade na alocação em vagas de teletrabalho (novo art. 75-F da CLT, segundo a leitura da ferramenta) para empregados com deficiência e para empregados com filhos ou criança sob guarda judicial de até 4 anos de idade (texto integral não conferido).
 
 Conclusão de B3: para cuidado de pais não encontrei enquadramento equivalente ao da creche. Pela lista fechada, o valor em dinheiro ou em serviço tende a ser salário-de-contribuição e rendimento tributável do empregado. Isso é inferência que precisa de contador e advogado. Não há base aberta para prometer isenção ou redução.
 
@@ -113,7 +113,7 @@ Conclusão de B3: para cuidado de pais não encontrei enquadramento equivalente 
 - **Condomínio: decisores e canais.** O síndico (C3). A administradora, que pode ser canal, mas exige acordo comercial próprio. Não achei dado sobre quantos condomínios cada administradora atende. Conselho fiscal: não li o papel dele. Cartazes e convites só com autorização escrita (operacao/03).
 - **Ciclo de venda, condomínio:** depende de síndico, administradora e, se necessário, assembleia. Não achei dado sobre duração típica ou mandato do síndico em São Paulo. [incerto]
 - **Empresa:** decisores prováveis são RH e área de benefícios, com orçamento anual. Não achei fonte sobre o ciclo. [incerto]
-- **Ticket.** Ticket de software de condomínio: referência da Manu (R$ 59,90 a R$ 89,90 por mês, 2022). Ticket do serviço de cuidador, que é o que a família paga e não a receita da plataforma: um blog, com tabela atualizada em 03/08/2026, dá diária de 12 horas de R$ 180 a R$ 320, plantão de 24 horas de R$ 260 a R$ 450, mensalista de 12 horas de R$ 2.800 a R$ 4.500 e internato de 24 horas de R$ 3.800 a R$ 6.500. O mesmo blog traz outra faixa para a diária (R$ 150 a R$ 260 diurna e R$ 200 a R$ 350 noturna) e não cita fonte. Use só como ordem de grandeza. [estimativa de blog]
+- **Ticket.** Ticket de software de condomínio: referência da Manu (R$ 59,90 a R$ 89,90 por mês, 2022). Ticket do serviço de cuidador, que é o que a família paga e não a receita da plataforma: um blog, com tabela atualizada em 03/08/2026, dá diária de 12 horas de R$ 180 a R$ 320, plantão de 24 horas de R$ 260 a R$ 450, mensalista de 12 horas de R$ 2.800 a R$ 4.500 e internato de 24 horas de R$ 3.800 a R$ 6.500. O mesmo blog traz outra faixa para a diária (R$ 150 a R$ 260 diurna e R$ 200 a R$ 350 noturna) e outra para o plantão de 24 horas (R$ 320 a R$ 450, contra R$ 260 a R$ 450 na tabela), e não cita fonte. Use só como ordem de grandeza. [estimativa de blog]
 - **CAC.** Não há faixa com fonte. Não estimo número. Método para medir no piloto: custo do canal (horas de visita, deslocamento, material, tempo de administradora) dividido pelo número de condomínios ou empresas fechados, com a mesma conta para cada canal. Sem dado, não há CAC a comparar.
 
 ### E. Hipóteses, pilotos, critérios de sucesso e decisão recomendada
@@ -149,7 +149,7 @@ Conclusão de B3: para cuidado de pais não encontrei enquadramento equivalente 
 
 **Contador ou tributarista**
 7. Cuidado de pais, pago em dinheiro ou em serviço pela empresa, integra o salário-de-contribuição (Lei 8.212/1991, art. 28, § 9º)? Há alguma alínea que se aplique a cuidado não médico?
-8. Reembolso-creche (Lei 14.457/2022, art. 2º, II, e alínea s): hoje o limite de idade é 5 anos e 11 meses ou seis anos? Qual ato do Poder Executivo fixa os limites de valor?
+8. Reembolso-creche: a Lei 14.457/2022, art. 2º, II, fixa 5 anos e 11 meses; a alínea s do § 9º do art. 28 da Lei 8.212/1991 (texto do espelho ANTT) diz seis anos. Qual dos dois vale hoje? Qual ato do Poder Executivo fixa os limites de valor (Lei 14.457/2022, art. 2º, parágrafo único)?
 9. Plano de saúde corporativo com inclusão de pais: qual é a regra tributária (alínea q; CLT, art. 458, § 5º)? Confirmar que não se aplica a cuidador não médico.
 10. Qual é o tratamento do valor pago ao funcionário quando ele contrata o cuidador com recursos do benefício?
 
@@ -167,7 +167,7 @@ Abertas em 08/11/2026, salvo indicação:
 | # | URL | Norma, artigo ou trecho | Resultado |
 |---|---|---|---|
 | 1 | https://www2.camara.leg.br/legin/fed/leicom/2015/leicomplementar-150-1-junho-2015-780907-publicacaooriginal-147120-pl.html | LC 150/2015, art. 1º (caput e parágrafo único) e art. 2º (caput) | Aberta |
-| 2 | https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp150.htm | LC 150/2015 | Falhou: acesso negado |
+| 2 | https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp150.htm | LC 150/2015 | Falhou: bloqueio ("Esta requisição foi bloqueada"), na reconferência de 08/11/2026 |
 | 3 | https://www2.camara.leg.br/legin/fed/lei/2022/lei-14442-2-setembro-2022-793187-publicacaooriginal-166035-pl.html | Lei 14.442/2022, arts. 1º, 2º, 5º e 6º | Aberta (leitura pela ferramenta) |
 | 4 | https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2022/lei/l14442.htm | Lei 14.442/2022 | Falhou: acesso negado |
 | 5 | https://anttlegis.antt.gov.br/action/ActionDatalegis.php?acao=abrirTextoAto&tipo=LEI&numeroAto=00008212&seqAto=000&valorAno=1991&orgao=NI&nomeTitulo=codigos&desItem=&desItemFim=&cod_modulo=420&cod_menu=7145 | Lei 8.212/1991, art. 28, § 9º (caput e alíneas e, q, s, t, z), espelho ANTT | Aberta, truncada |
@@ -185,6 +185,6 @@ Abertas em 08/11/2026, salvo indicação:
 | 17 | https://meutudo.com.br/blog/?p=190386 | Faixas de preço de cuidador de idosos (2026); sem fonte citada; atualizado em 03/08/2026; publicado em 28/04/2025 | Aberta; blog, [estimativa] |
 | 18 | https://saudepetrobras.com.br/data/files/0D/50/D8/A3/B56F4910228D1F49A9B8F9C2/ACI_TermoAdesao.pdf | Termo de adesão a auxílio para cuidador de idoso (Saúde Petrobras) | Falhou: HTTP 403 |
 
-Fontes internas do repositório (contexto de produto, não são fonte jurídica): apps/web/docs/DECISOES.md (linhas 100 a 130); apps/web/docs/operacao/02-recrutamento-de-prestadores.md (linhas 72 e 370); apps/web/docs/operacao/03-aquisicao-de-clientes-e-bairros.md; apps/web/docs/pesquisa/fase0/05-seguros.md (pista).
+Fontes internas do repositório (contexto de produto, não são fonte jurídica): apps/web/docs/DECISOES.md (linhas 109 a 117); apps/web/docs/operacao/02-recrutamento-de-prestadores.md (linhas 72 e 370); apps/web/docs/operacao/03-aquisicao-de-clientes-e-bairros.md; apps/web/docs/pesquisa/fase0/05-seguros.md (pista).
 
 Pistas de busca não abertas, sem uso como fato: ver "Método e limites".

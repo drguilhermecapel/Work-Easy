@@ -11,10 +11,10 @@ Convenção: [aberto] = fonte primária ou oficial aberta nesta sessão; [secund
 ## Resumo
 
 - **Emissão de NFS-e por ME/EPP do Simples**: as notícias oficiais abertas (Receita Federal, 14/08/2026; Portal NFS-e, 11/08/2026 e 29/10/2026) dizem que a emissão pelo Emissor Nacional (web ou API) passa a ser exigida a partir de 01/11/2026, citando a Resolução CGSN nº 191, de 04/08/2026. O texto da resolução não foi aberto. O texto oficial aberto não trata de MEI nem de pessoa física como obrigados.
-- **Quem pode emitir em nome do prestador**: a plataforma só deve atuar em nome do prestador com procuração eletrônica válida registrada na Receita Federal ou vínculo no cadastro do CNPJ (Portal NFS-e, 31/10/2026, disponível a partir de 01/11/2026). Sem isso, o app não deve emitir nem assinar nota por ele. A notícia não diz quem responde pela nota emitida por representante.
+- **Quem pode emitir em nome do prestador**: a plataforma só deve atuar em nome do prestador com procuração eletrônica válida cadastrada nos serviços da Receita Federal ou vínculo no cadastro do CNPJ (Portal NFS-e, 31/10/2026, disponível a partir de 01/11/2026). Sem isso, o app não deve emitir nem assinar nota por ele. A notícia não diz quem responde pela nota emitida por representante.
 - **Retenções**: em São Paulo, o tomador pessoa jurídica deve reter ISS em subitens listados, com dispensa para MEI optante do SIMEI e para profissional autônomo estabelecido no município (SF/SP, aberto; página com data de 24/02/2021). Para INSS de 11%, a Receita (aberta) liga a retenção a cessão de mão de obra e empreitada; a Súmula 425 do STJ (aberta) afasta a retenção previdenciária pelo tomador quando o prestador é optante do Simples. IRRF e CSRF (PIS/COFINS/CSLL) não tiveram fonte primária aberta: tratar como pergunta para o contador. Não foi encontrado texto que obrigue a plataforma a reter tributos quando intermedeia pagamento.
-- **Limites**: MEI de R$ 81.000 por ano, proporcional a R$ 6.750 por mês de atividade (gov.br/memp, aberto; última modificação 16/09/2026). Há conflito sobre aumento: o gov.br mostra o PLP 186/2026 em tramitação, e uma notícia de 22/10/2026 (secundária) diz que a LC 238/2026 elevaria o teto para R$ 110.000 em 2027. O DOU não abriu (erro 502). Simples: teto de R$ 4.800.000 de receita bruta anual (gov.br, aberto).
-- **Asaas**: a documentação aberta diz que o split é calculado sobre o `netValue` (valor após taxas aplicáveis) e não menciona retenção de impostos no split nem quem emite a NFS-e da cobrança com split. A API de NFS-e aceita campos de tributos (ISS, IR, PIS/COFINS, CSLL) e calcula o tipo de retenção PIS/COFINS. Informe de rendimentos: não localizado nas páginas abertas.
+- **Limites**: MEI de R$ 81.000 por ano, proporcional a R$ 6.750 por mês de atividade (gov.br/memp, aberto; última modificação 16/09/2026). Há conflito sobre aumento: o gov.br mostra o PLP 186/2026 em tramitação, e uma notícia de 21/10/2026 (secundária) diz que a LC 238/2026 elevaria o teto para R$ 110.000 em 2027. O DOU não abriu (erro 502). Simples: teto de R$ 4.800.000 de receita bruta anual (gov.br, aberto).
+- **Asaas**: a documentação aberta diz que o split é calculado sobre o `netValue` (valor após taxas aplicáveis) e não menciona retenção de impostos no split nem quem emite a NFS-e da cobrança com split. A API de NFS-e aceita campos de tributos (`iss`, `ir`, `inss`, `pis`, `cofins`, `csll`, `retainIss`) e calcula o tipo de retenção PIS/COFINS (`pisCofinsRetentionType`). Informe de rendimentos: não localizado nas páginas abertas.
 
 ## Método e limites
 
@@ -25,10 +25,10 @@ Convenção: [aberto] = fonte primária ou oficial aberta nesta sessão; [secund
 - gov.br, "Optar pelo Simples Nacional" (última modificação 21/08/2026).
 - STJ, Súmula 425 (via scon.stj.jus.br).
 - Prefeitura de São Paulo, Secretaria Municipal da Fazenda, "Imposto sobre Serviços (ISS) - Responsabilidade Tributária" (página iss/2494; data exibida 24/02/2021).
-- Asaas (docs.asaas.com): "Emitindo notas fiscais de serviço" (updatedAt 31/08/2026); "Configurações de retenção e situação tributária de PIS/COFINS" (updatedAt 31/08/2026); "Split de pagamentos" (updatedAt 03/11/2026); "FAQ do Split" (aberto em 08/11/2026; sem data na página).
+- Asaas (docs.asaas.com): "Emitindo notas fiscais de serviço" (updatedAt 31/08/2026); "Configurações de retenção e situação tributária de PIS/COFINS" (updatedAt 31/08/2026); "Split de pagamentos" (página mostra "Updated 5 days ago", ou seja, por volta de 03/11/2026); "FAQ do Split" (aberto em 08/11/2026; updatedAt 27/08/2026 no metadado da página).
 - LexML: metadados da LC 214/2025 (lei de 16/01/2025), da Lei 10.833/2003 (lei de 29/12/2003) e da LC 123/2006 (lei de 14/12/2006). Só ficha catalográfica, sem texto dos artigos.
 - Senado Federal: emenda ao PLP 108/2024 (15/07/2025), que propõe alterar o art. 22 da LC 214/2025. É proposta, não lei.
-- Senior, Portal de Exigências Legais (22/10/2026): notícia sobre a LC 238/2026. Fonte secundária, usada só como pista.
+- Senior, Portal de Exigências Legais (21/10/2026): notícia sobre a LC 238/2026. Fonte secundária, usada só como pista.
 
 **Não abertas (falhas):**
 - planalto.gov.br: LC 214/2025 (lcp214.htm e Lcp214.htm), LC 116/2003 (lcp116.htm), Lei 10.833/2003 (l10.833.htm) e LC 123/2006 (lcp123.htm). Todas devolveram "requisição bloqueada".
@@ -39,7 +39,7 @@ Convenção: [aberto] = fonte primária ou oficial aberta nesta sessão; [secund
 - Receita Federal, Perguntas e respostas da pessoa jurídica (PDF 2024, 843 páginas): o PDF não tinha texto legível.
 - STJ, viewFile da Súmula 425 (404). Usado o endereço scon.stj.jus.br.
 
-**Consequência**: nenhum artigo de lei, instrução normativa ou resolução citado abaixo foi lido no texto integral. Para LC 214/2025, art. 22; Lei 10.833/2003, art. 30; LC 123/2006, arts. 3º e 18-A; Lei 8.212/1991, art. 31; IN RFB 2.110/2022; IN RFB 2.289/2025 e Resolução CGSN 191/2026, o que consta aqui vem de notícia oficial, de página de órgão ou de trecho de busca, e está marcado.
+**Consequência**: nenhum artigo de lei, instrução normativa ou resolução citado abaixo foi lido no texto integral. Para LC 214/2025, art. 22; Lei 10.833/2003, art. 30; LC 123/2006, arts. 3º e 18-A; IN RFB 2.110/2022; IN RFB 2.289/2025 e Resolução CGSN 191/2026, o que consta aqui vem de notícia oficial, de página de órgão ou de trecho de busca, e está marcado.
 
 **Fora do escopo ou não pesquisado**: conselhos profissionais (matriz por conselho é outra frente); IRRF sobre serviços entre pessoas jurídicas (sem fonte primária aberta); IBS/CBS em detalhe; imposto de renda do próprio prestador (IRPF/IRPJ); obrigações acessórias (DASN-SIMEI, DAS, EFD-Reinf).
 
@@ -48,9 +48,9 @@ Convenção: [aberto] = fonte primária ou oficial aberta nesta sessão; [secund
 ### (a) Nota fiscal de serviço pelo prestador
 
 **ME e EPP do Simples Nacional** [aberto]:
-- Receita Federal (14/08/2026): a obrigação atinge "microempresas e empresas de pequeno porte optantes pelo Simples Nacional que prestem serviços sujeitos à emissão de NFS-e"; início "a partir de 1º de novembro de 2026"; a Resolução CGSN nº 191, de 04/08/2026, revoga a Resolução CGSN nº 189/2026, que previa 01/09/2026.
+- Receita Federal (14/08/2026): a obrigação atinge "As ME e EPP optantes pelo Simples Nacional que prestem serviços sujeitos à emissão de NFS-e"; início "a partir de 1º de novembro de 2026"; a Resolução CGSN nº 191, de 04/08/2026, revoga a Resolução CGSN nº 189/2026, que previa 01/09/2026.
 - Portal NFS-e (11/08/2026): a exigência "foi adiada para 1º de novembro de 2026" (Resolução CGSN nº 191, de 4 de agosto de 2026).
-- Portal NFS-e (29/10/2026): ME e EPP optantes "devem emitir exclusivamente pelo Emissor Nacional (Web ou API)", a partir de 01/11/2026; a regra vale, segundo o trecho citado, "independentemente de o município possuir emissor próprio"; municípios com emissor próprio devem bloquear emissão para optantes do Simples; o critério de competência é a "Data de Competência do serviço".
+- Portal NFS-e (29/10/2026): ME e EPP optantes "devem emitir a NFS-e exclusivamente pelo Emissor Nacional (Web ou API)", a partir de 01/11/2026; a regra vale, segundo o trecho citado, "independentemente de o município possuir emissor próprio"; municípios com emissor próprio devem bloquear emissão para optantes do Simples se a competência for igual ou posterior a 01/11/2026; o critério de competência é a "Data de Competência do serviço".
 - **Divergência**: a notícia da Receita (14/08/2026) fala em serviços "sujeitos à emissão de NFS-e"; a notícia do Portal NFS-e (29/10/2026) fala em validade independentemente do município. Fontes de busca (não abertas) dizem que a obrigação depende da legislação municipal. Tratar como [incerto] até conferir o texto da resolução.
 - A data de 01/11/2026 já passou na data de referência (08/11/2026). Pelo texto oficial aberto, a exigência valeria desde então; isso precisa ser conferido pelo contador.
 - Receita (14/08/2026): as regras de CBS e IBS para optantes do Simples produzem efeitos "a partir de 1º de janeiro de 2027"; até 31/12/2026, não se aplicam regras de CBS e IBS no Simples.
@@ -61,10 +61,10 @@ Convenção: [aberto] = fonte primária ou oficial aberta nesta sessão; [secund
 - A obrigação de NFS-e do MEI e do autônomo depende, na prática, do município. Não foi aberta fonte municipal de São Paulo sobre emissão (apenas sobre retenção, ver item b).
 
 **Emissão em nome do prestador por terceiro** [aberto]:
-- Portal NFS-e (31/10/2026, disponível a partir de 01/11/2026): o usuário poderá atuar em nome de pessoas físicas ou jurídicas que represente "legitimamente". Situações citadas: responsável legal da empresa; alternância entre estabelecimentos com a mesma raiz de CNPJ; "atuação em nome de terceiros mediante procuração eletrônica válida para os serviços da NFS-e".
+- Portal NFS-e (31/10/2026, disponível a partir de 01/11/2026): o usuário poderá atuar em nome de pessoas físicas ou jurídicas que represente "legitimamente". Situações citadas: responsável legal da empresa; alternância entre estabelecimentos ou empresas que possuam a mesma raiz de CNPJ; "atuação em nome de terceiros mediante procuração eletrônica válida para os serviços da NFS-e".
 - Formas de autorização: "procuração eletrônica cadastrada nos serviços da Receita Federal do Brasil" ou "vínculos existentes na base cadastral do CNPJ".
 - As APIs de emissão e distribuição também podem ser usadas em nome de terceiros com essas autorizações.
-- A notícia não diz quem responde pela nota emitida por representante.
+- A notícia não diz quem responde pela nota emitida por representante; ela remete à documentação técnica e ao manual do Emissor Web, que não foram abertos.
 
 **O que a plataforma não pode fazer em nome do prestador** (leitura das fontes abertas; não é norma expressa):
 - Emitir, assinar ou cancelar NFS-e do prestador sem que ele tenha dado procuração eletrônica ou vínculo no CNPJ (item acima).
@@ -80,7 +80,7 @@ Convenção: [aberto] = fonte primária ou oficial aberta nesta sessão; [secund
 ### (b) Retenções na fonte quando o tomador é pessoa jurídica
 
 **(b1) INSS de 11% (contribuição previdenciária)**:
-- Receita Federal (13/11/2025) [aberto]: a IN RFB nº 2.110/2022 "prevê a retenção de 11%". Em contratações públicas, na empreitada parcial e na cessão de mão de obra "há retenção". A IN RFB nº 2.289/2025 (de 30/10/2025) reúne hipóteses de dispensa (a notícia diz sete e nomeia cinco: avulsos via sindicato ou Ogmo; entidades beneficentes imunes; empreitada total; transporte de cargas; serviços executados nas instalações do próprio prestador).
+- Receita Federal (13/11/2025) [aberto]: a IN RFB nº 2.110/2022 prevê a "retenção previdenciária de 11%". Em empreitada parcial ou cessão de mão de obra, "há retenção" (nas contratações públicas, a dispensa alcança a empreitada total). A IN RFB nº 2.289/2025 (de 30/10/2025) reúne hipóteses de dispensa (a notícia diz sete e nomeia cinco: avulsos via sindicato ou Ogmo; entidades beneficentes imunes; empreitada total; transporte de cargas; execução nas dependências da própria prestadora).
 - A mesma notícia diz que a IN "alinha regra aplicável às empresas do Simples Nacional" e que cessão ou locação de mão de obra "só enseja exclusão do regime nas hipóteses previstas em lei".
 - Súmula 425 do STJ [aberto]: "A retenção da contribuição para a seguridade social pelo tomador do serviço não se aplica às empresas optantes pelo Simples." Julgada em 10/03/2010 (Primeira Seção); DJe de 13/05/2010.
 - Trecho de busca (não aberto): anexo III do Simples não sofre retenção, mas é excluído do regime se fizer cessão de mão de obra; anexo IV sofre retenção. Não foi confirmado.
@@ -89,12 +89,12 @@ Convenção: [aberto] = fonte primária ou oficial aberta nesta sessão; [secund
 
 **(b2) ISS (São Paulo)** [aberto, com ressalva de data]:
 - SF/SP, página iss/2494 (data exibida 24/02/2021, sem campo de atualização): a retenção do ISS está nos arts. 7º, 9º, 9º-A e 13 da Lei 13.701/2003.
-- Art. 9º: responsáveis pela retenção (inclui pessoas jurídicas, inclusive imunes ou isentas, e condomínios) "desde que estabelecidos no município de São Paulo", para subitens listados. Quando o prestador é de fora, a retenção se aplica se não houver inscrição no CPOM (art. 9º-A).
+- Art. 9º: responsáveis pela retenção (inclui pessoas jurídicas, ainda que imunes ou isentas, e condomínios edilícios) "desde que estabelecidos no município de São Paulo", para subitens listados. Quando o prestador emite documento autorizado por outro município, a retenção se aplica se ele não estiver inscrito no CPOM (art. 9º-A).
 - Art. 7º: o tomador responde pelo ISS se o prestador deveria emitir nota e não emitiu, ou se estava dispensado mas não entregou recibo com dados mínimos.
 - Art. 13: responsabilidade solidária (não retenção), em hipóteses como a de obras sem documentação.
-- Dispensas (art. 9º, item 5): o responsável fica desobrigado quando o prestador é: profissional autônomo estabelecido no Município de São Paulo; sociedade de profissionais habilitados; prestador isento estabelecido em SP; prestador imune; MEI optante do SIMEI.
-- Comprovação: autônomos e sociedades de profissionais comprovam pela Declaração Cadastral. Se o enquadramento deixar de existir, o prestador responde pelo imposto integral, com multa e acréscimos, desde a data em que deixou de atender às condições. A página não diz quem comprova o enquadramento de MEI e de ME/EPP.
-- ME e EPP optantes do Simples: sem dispensa; os serviços sujeitam-se à retenção com alíquotas dos Anexos III a VI da LC 123/2006; sem alíquota na nota, aplica-se a maior alíquota do anexo.
+- Dispensas (para os responsáveis do art. 9º; são cinco hipóteses, e o MEI é a quinta): o responsável fica desobrigado quando o prestador é: profissional autônomo estabelecido no Município de São Paulo; sociedade de profissionais habilitados; prestador isento estabelecido em SP; prestador imune; MEI optante do SIMEI.
+- Comprovação: autônomos e sociedades de profissionais podem comprovar seu enquadramento por meio de Declaração Cadastral. Se o enquadramento deixar de existir, o prestador responde pelo imposto integral, multa e demais acréscimos legais, a partir da data em que deixou de atender às condições (a página limita o período até "a data da notificação do desenquadramento"). A página não diz quem comprova o enquadramento de MEI e de ME/EPP.
+- ME e EPP optantes do Simples: não constam da lista de dispensas; os serviços sujeitam-se à retenção com alíquotas dos Anexos III a VI da LC 123/2006; sem alíquota na nota, aplica-se a maior alíquota do anexo.
 - Divergência: trecho de busca diz "autônomo inscrito no CCM"; a página aberta diz "estabelecido no Município de São Paulo". Usar a página aberta, com ressalva.
 - Trecho de busca (não aberto): manual da NFTS (tomador e intermediário, 2026) diz que o MEI fica desobrigado da NFTS. Não confirmado; é outra obrigação.
 - Fora de São Paulo: a regra depende do município do tomador e do prestador. Não pesquisado.
@@ -118,12 +118,12 @@ Convenção: [aberto] = fonte primária ou oficial aberta nesta sessão; [secund
 
 **MEI** [aberto]:
 - gov.br/memp, "Teto do MEI" (publicado 29/06/2026; modificado 16/09/2026): limite anual vigente de R$ 81 mil; valor proporcional de R$ 6.750 por mês de atividade para quem inicia no ano.
-- Mesma página: PLP 186/2026 "em tramitação no Congresso Nacional"; propostas de R$ 110 mil (2027) e R$ 140 mil (2028), "ainda não em vigor".
-- Notícia da Senior (22/10/2026) [secundária]: diz que a LC 238/2026 foi publicada no DOU de 21/10/2026 e eleva o teto do MEI para R$ 110 mil em 2027 e R$ 140 mil em 2028, dependendo de previsão de renúncia de receita na lei orçamentária; vigência "majoritariamente em 1º de janeiro de 2027".
+- Mesma página: PLP 186/2026 "em tramitação no Congresso Nacional"; propostas de R$ 110 mil (2027) e R$ 140 mil (2028), "ainda não estão em vigor".
+- Notícia da Senior (publicada em 21/10/2026; URL com data 22/10/2026) [secundária]: diz que a LC 238/2026 foi publicada no DOU de 21/10/2026 (data que consta no nome do link do DOU) e eleva o teto do MEI para R$ 110 mil em 2027 e R$ 140 mil em 2028, dependendo de previsão de renúncia de receita na lei orçamentária; vigência "majoritariamente em 1º de janeiro de 2027".
 - Conflito: a página do gov.br foi modificada em 16/09/2026, antes da data da LC 238/2026 que a notícia cita, por isso não resolve o conflito. O DOU não abriu (erro 502). Status: [incerto]. Não codificar o valor do teto sem conferir o DOU.
 
 **Simples Nacional** [aberto]:
-- gov.br, "Optar pelo Simples Nacional" (última modificação 21/08/2026): "Ter receita bruta anual igual ou inferior a R$ 4.800.000,00" (página aplica o limite a ME e EPP em conjunto).
+- gov.br, "Optar pelo Simples Nacional" (última modificação 21/08/2026): "Ter receita bruta anual igual ou inferior a R$ 4.800.000,00" (a página lista o requisito sob ME e EPP, sem dizer se o limite é conjunto ou separado).
 - Faixa de ME (receita de até R$ 360 mil): citada em trecho de busca de página do gov.br não aberta. [incerto] até conferir a LC 123/2006, art. 3º, I.
 - Sublimites estaduais de ICMS e, por consequência, de ISS: mencionados em trechos de busca, sem valores conferidos. Uma página da SEFAZ-BA citada em busca traz R$ 3.600.000 (anterior a 2018); não usar. [incerto].
 - Trecho de busca (não aberto): receitas de matriz e filial somam-se para o teto; empresas com o mesmo sócio entram na mesma conta; excesso de até 20% leva a efeitos no ano seguinte. Não confirmado.
@@ -133,9 +133,9 @@ Convenção: [aberto] = fonte primária ou oficial aberta nesta sessão; [secund
 ### (d) O que o Asaas faz automaticamente e o que fica para a plataforma
 
 **Automático, conforme documentação aberta** [aberto]:
-- Split: "após o recebimento, o Asaas calcula o Split sobre o valor líquido da cobrança"; "o Split é calculado sobre o `netValue`, ou seja, o valor da cobrança após o desconto das taxas aplicáveis" (split de pagamentos, updatedAt 03/11/2026; FAQ do split).
-- Split: percentual ou valor fixo; cada recebedor precisa de conta Asaas e de `walletId` (FAQ do split, aberto); a antecipação reduz o líquido (FAQ do split, aberto). [secundário, trecho de busca] A soma dos percentuais não passa de 100% e há evento de webhook por split liquidado.
-- NFS-e pela API: campos de tributos (ISS, IR, PIS/COFINS, CSLL) e `retainIss`; cálculo do tipo de retenção PIS/COFINS pelo Asaas; NT-007 para Regime Normal desde 30/06/2026; clientes do Simples não precisam mudar o payload por causa da NT-007.
+- Split: "após o recebimento, o Asaas calcula o Split sobre o valor líquido da cobrança"; "o Split é calculado sobre o `netValue`, ou seja, o valor da cobrança após o desconto das taxas aplicáveis" (split de pagamentos, marcado como "Updated 5 days ago", ou seja, por volta de 03/11/2026; FAQ do split, updatedAt 27/08/2026).
+- Split: percentual ou valor fixo; cada recebedor precisa de conta Asaas e de `walletId` (FAQ do split, aberto); a antecipação reduz o líquido (FAQ do split, aberto). A soma dos percentuais não passa de 100% (FAQ do split, aberto). [secundário, trecho de busca] Há evento de webhook por split liquidado.
+- NFS-e pela API: campos de tributos (`iss`, `ir`, `inss`, `pis`, `cofins`, `csll`) e `retainIss` (página de emissão); cálculo do tipo de retenção PIS/COFINS pelo Asaas (página de PIS/COFINS); NT-007: segundo a página de PIS/COFINS, suas regras "alteram o preenchimento de PIS e COFINS para clientes do Regime Normal", desde 30/06/2026; que clientes do Simples não precisem mudar o payload é inferência, não consta na página.
 - [secundário, trecho de busca] Eventos `INVOICE_AUTHORIZED` e `INVOICE_ERROR` para acompanhar a emissão; deduções não mudam o total da nota, mas mudam a base de cálculo do ISS. Confirmar na documentação antes de usar.
 
 **Não automático ou não documentado nas páginas abertas**:
@@ -160,19 +160,19 @@ Legenda do status: [aberto] = fonte oficial aberta; [incerto] = não confirmado 
 | Tipo de prestador | Obrigação | Quem cumpre (segundo a fonte) | Fonte | Status |
 |---|---|---|---|---|
 | Autônomo PF sem CNPJ, estabelecido em SP | Emitir NFS-e | Não localizado para PF; depende do município | - | [incerto] |
-| Autônomo PF sem CNPJ, estabelecido em SP | Retenção de ISS pelo tomador PJ | Dispensa do tomador se o prestador comprovar enquadramento por Declaração Cadastral; sem comprovação, o prestador responde pelo imposto integral | SF/SP, iss/2494 (página de 24/02/2021) | [aberto] |
+| Autônomo PF sem CNPJ, estabelecido em SP | Retenção de ISS pelo tomador PJ | Dispensa do tomador para autônomo estabelecido em SP; o enquadramento pode ser comprovado por Declaração Cadastral; se deixar de existir, o prestador responde pelo imposto integral, multa e acréscimos | SF/SP, iss/2494 (página de 24/02/2021) | [aberto] |
 | Autônomo PF sem CNPJ | INSS de 11% | Só em cessão de mão de obra ou empreitada, segundo a Receita; PF em serviço comum não aparece | Receita, 13/11/2025 | [incerto] para PF |
 | Autônomo PF sem CNPJ | IRRF e CSRF | CSRF é regra de pagamento entre PJ (texto não aberto); IRRF sem fonte primária | Lei 10.833/2003, art. 30 (metadados) | [incerto] |
 | MEI | Emitir NFS-e no padrão nacional | Não consta no texto aberto da resolução; depende do município | Portal NFS-e, 29/10/2026 (silencioso sobre MEI) | [incerto] |
-| MEI | Teto de faturamento | Prestador: R$ 81 mil/ano (R$ 6.750/mês proporcional). Possível aumento para R$ 110 mil em 2027 (LC 238/2026, fonte secundária) | gov.br/memp (29/06/2026; mod. 16/09/2026); Senior (22/10/2026) | [aberto] para R$ 81 mil; [incerto] para o aumento |
+| MEI | Teto de faturamento | Prestador: R$ 81 mil/ano (R$ 6.750/mês proporcional). Possível aumento para R$ 110 mil em 2027 (LC 238/2026, fonte secundária) | gov.br/memp (29/06/2026; mod. 16/09/2026); Senior (21/10/2026) | [aberto] para R$ 81 mil; [incerto] para o aumento |
 | MEI | Retenção de ISS pelo tomador PJ em SP | Dispensa para MEI optante do SIMEI | SF/SP, iss/2494 | [aberto] |
 | MEI | INSS, IRRF e CSRF | Sem fonte aberta sobre MEI | - | [incerto] |
 | ME/EPP Simples | Emitir NFS-e | ME/EPP, pelo Emissor Nacional (web ou API), a partir de 01/11/2026 | Receita, 14/08/2026; Portal NFS-e, 11/08 e 29/10/2026; Resolução CGSN 191/2026 (não aberta) | [aberto], com divergência sobre a dependência do município |
-| ME/EPP Simples | Retenção de ISS pelo tomador PJ em SP | Tomador PJ retém em subitens listados; sem dispensa para ME/EPP; alíquotas dos Anexos III a VI | SF/SP, iss/2494 (página de 24/02/2021) | [aberto], com ressalva de data |
+| ME/EPP Simples | Retenção de ISS pelo tomador PJ em SP | Tomador PJ retém em subitens listados; ME/EPP não constam da lista de dispensas; alíquotas dos Anexos III a VI | SF/SP, iss/2494 (página de 24/02/2021) | [aberto], com ressalva de data |
 | ME/EPP Simples | INSS de 11% | Sem retenção pelo tomador (Súmula 425); IN RFB 2.289/2025 trata das dispensas (texto não aberto) | STJ, Súmula 425; Receita, 13/11/2025 | [aberto] |
 | ME/EPP Simples | CSRF e IRRF | Sem fonte primária aberta; fontes divergem | Lei 10.833/2003, art. 30 (metadados); busca | [incerto] |
-| ME/EPP Simples | Teto de receita | Até R$ 4.800.000 (ME e EPP em conjunto); faixa de ME até R$ 360 mil em trecho não aberto | gov.br/optar (21/08/2026) | [aberto] para R$ 4,8 mi; [incerto] para R$ 360 mil |
-| Empresa com CNPJ (Lucro Presumido ou Real), com ou sem conselho | Emitir NFS-e | Prestador, conforme o município; no Regime Normal, emissão pelo Portal Nacional exige campos de PIS/COFINS (NT-007) | Asaas, PIS/COFINS (31/08/2026); Portal NFS-e | [aberto] para o campo do Asaas; [incerto] para a regra municipal |
+| ME/EPP Simples | Teto de receita | Até R$ 4.800.000 (página não diz se o limite é conjunto para ME e EPP); faixa de ME até R$ 360 mil em trecho não aberto | gov.br/optar (21/08/2026) | [aberto] para R$ 4,8 mi; [incerto] para R$ 360 mil |
+| Empresa com CNPJ (Lucro Presumido ou Real), com ou sem conselho | Emitir NFS-e | Prestador, conforme o município; no Regime Normal, a NT-007 altera o preenchimento de PIS e COFINS na emissão pelo Portal Nacional | Asaas, PIS/COFINS (31/08/2026); Portal NFS-e | [aberto] para o campo do Asaas; [incerto] para a regra municipal |
 | Empresa com CNPJ | Retenção de ISS pelo tomador PJ em SP | Tomador PJ retém em subitens listados quando o prestador é de SP ou de fora sem CPOM | SF/SP, iss/2494 | [aberto] |
 | Empresa com CNPJ | INSS de 11% | Só em cessão de mão de obra ou empreitada | Receita, 13/11/2025 | [aberto] para a hipótese; [incerto] para a aplicação |
 | Empresa com CNPJ | IRRF e CSRF | Sem fonte primária aberta | - | [incerto] |
@@ -215,12 +215,12 @@ Abertas (data de abertura: 08/11/2026):
 11. https://docs.asaas.com/docs/emitindo-notas-fiscais-de-servico - Asaas, "Emitindo notas fiscais de serviço"; updatedAt 31/08/2026.
 12. https://docs.asaas.com/docs/configura%C3%A7%C3%B5es-de-reten%C3%A7%C3%A3o-e-situa%C3%A7%C3%A3o-tribut%C3%A1ria-de-piscofins - Asaas, "Configurações de retenção e situação tributária de PIS/COFINS"; updatedAt 31/08/2026.
 13. https://docs.asaas.com/docs/split-de-pagamentos - Asaas, "Split de pagamentos"; updatedAt 03/11/2026.
-14. https://docs.asaas.com/docs/faq-do-split - Asaas, "FAQ do Split"; aberto em 08/11/2026 (sem data na página).
+14. https://docs.asaas.com/docs/faq-do-split - Asaas, "FAQ do Split"; aberto em 08/11/2026 (updatedAt 27/08/2026 no metadado da página).
 15. https://www.lexml.gov.br/urn/urn:lex:br:federal:lei.complementar:2025-01-16;214 - LC 214/2025, metadados apenas (lei de 16/01/2025; DOU edição extra de 16/01/2025; veto parcial rejeitado publicado em 02/07/2025). Texto dos artigos não aberto.
 16. https://www.lexml.gov.br/urn/urn:lex:br:federal:lei:2003-12-29;10833 - Lei 10.833/2003, metadados apenas (lei de 29/12/2003; DOU de 30/12/2003). Texto do art. 30 não aberto.
 17. https://www.lexml.gov.br/urn/urn:lex:br:federal:lei.complementar:2006-12-14;123 - LC 123/2006, metadados apenas (lei de 14/12/2006). Texto dos arts. 3º e 18-A não aberto.
 18. https://legis.senado.leg.br/sdleg-getter/documento?dm=9997193 - Senado Federal, emenda do Senador Fernando Farias ao PLP 108/2024 (15/07/2025), propondo alterar o art. 22 da LC 214/2025. Proposta, não lei.
-19. https://documentacao.senior.com.br/exigenciaslegais/noticias/federal/2026/2026-10-22-simples-nacional-lei-complementar-no-238-2026-nova-lei-amplia-limite-de-faturamento-do-mei-e-preve-perdao-de-dividas - Senior, Portal de Exigências Legais, notícia de 22/10/2026 sobre a LC 238/2026. Fonte secundária; cita o DOU, sem confirmação.
+19. https://documentacao.senior.com.br/exigenciaslegais/noticias/federal/2026/2026-10-22-simples-nacional-lei-complementar-no-238-2026-nova-lei-amplia-limite-de-faturamento-do-mei-e-preve-perdao-de-dividas - Senior, Portal de Exigências Legais, notícia publicada em 21/10/2026 (URL com data 22/10/2026) sobre a LC 238/2026. Fonte secundária; cita o DOU, sem confirmação.
 
 Falhas (não abertas; tratadas como [incerto]):
 

@@ -10,7 +10,7 @@ Rascunho para revisão de advogado. Não é parecer jurídico.
 
 - **Candidatas:** Rio de Janeiro (6.731.133 habitantes), Brasília (3.009.996), Fortaleza (2.582.360), Salvador (2.559.945) e Belo Horizonte (2.415.451). População é estimativa do IBGE, entre as oito cidades que consultei, sem São Paulo. Renda per capita municipal e população urbana não saíram de fonte oficial: marquei [incerto].
 - **Regulação:** o ISS é municipal e tem teto de 5% (LC 116/2003, art. 8º, inciso II). Não confirmei a alíquota de nenhuma das cinco cidades em fonte primária. Segundo a Agência Câmara (06/01/2026), o IBS entra em transição a partir de 2029 e o ISS deve ser extinto em 2033.
-- **Concorrência:** em todas as cinco cidades, as buscas acharam plataformas nacionais (GetNinjas, Parafuzo, Cronoshare) e classificados. Apps locais confirmados foram poucos. Ausência nas buscas não prova ausência de concorrente.
+- **Concorrência:** as buscas citaram plataformas nacionais (GetNinjas, Parafuzo, Cronoshare, Maria Brasileira, Clickasa) em quatro das cinco cidades, e classificados (OLX, Cronoshare) em quatro; em vários casos a cobertura local não foi confirmada. Em Fortaleza só apareceu o GetNinjas; em Belo Horizonte, operadores locais (Engehall, S.O.S do Lar) e OLX. Apps locais confirmados foram poucos. Ausência nas buscas não prova ausência de concorrente.
 - **Regra do plano:** nenhuma cidade deve entrar antes de medir liquidez num bairro-piloto. A regra escrita no O01 vale para distritos de São Paulo (duas semanas seguidas com G3 de 70% ou mais e ao menos 8 pedidos válidos por semana, `[proposta]`). Para outra cidade, não há regra escrita.
 - **Recomendação:** não expandir agora. Levantar os dados que faltam (CEMPRE por categoria, painel NFS-e de cada município, Pix por município) e revisar a ordem depois que o piloto de São Paulo tiver liquidez medida. A ordem preliminar da parte (c) é provisória.
 
@@ -53,9 +53,9 @@ Os limiares abaixo são propostas `[proposta]` ou ficam em aberto. Nenhum limiar
 | # | Critério | O que mede | Fonte e limite | Situação nesta pesquisa |
 |---|---|---|---|---|
 | 1 | Densidade de demanda | População e renda das famílias que compram serviços residenciais | IBGE, estimativas de população (SIDRA 6579): população total, não demanda. Censo 2022 por município (renda domiciliar): não acessei. Anatel, densidade: PDF não lido. | População obtida. Renda municipal [incerto]. Limiar: a definir pelo dono. |
-| 2 | Prestadores por categoria | Empresas e MEI por CNAE no município | IBGE, CEMPRE. A tabela 9510 dá divisões para municípios com 50 mil habitantes ou mais; a 9528 chega à classe, mas conta unidades locais. Limite: CNAE não é ocupação, e parte dos prestadores atua sem CNPJ. | Extração falhou (HTTP 400). [incerto] |
-| 3 | Regulação municipal | ISS (alíquota e lugar da incidência), código de posturas e, se a categoria incluir transporte, licença de transporte por aplicativo | LC 116/2003 (art. 3º, caput; art. 8º, II); Lei 13.640/2018 (art. 11-A: competência municipal); painel NFS-e (alíquota por município). Leis municipais não abertas. | Parcial. Ver parte (c). |
-| 4 | Pagamento Pix | Volume de transações Pix por município e penetração | BCB, recurso "Transações Pix por Município" (mensal, ODbL). Dá contagem, não penetração; a penetração exige a população como divisor. Nacional, Cetic 2024: Pix citado por 84% no ambiente digital, contra 66% em 2022 (nota de 31/10/2024). | Fonte existe e é aberta. Números municipais não extraídos. |
+| 2 | Prestadores por categoria | Empresas e MEI por CNAE no município | IBGE, CEMPRE. O conteúdo das tabelas 9510 e 9528 não foi verificado (a 9510 falhou com HTTP 400; a 9528 não foi aberta). Limite: CNAE não é ocupação, e parte dos prestadores atua sem CNPJ. | Extração falhou (HTTP 400). [incerto] |
+| 3 | Regulação municipal | ISS (alíquota e lugar da incidência), código de posturas e, se a categoria incluir transporte, licença de transporte por aplicativo | LC 116/2003 (art. 3º, caput; art. 8º, II); Lei 13.640/2018 (art. 11-A: competência exclusiva dos Municípios e do Distrito Federal); painel NFS-e (alíquota por município). Leis municipais não abertas. | Parcial. Ver parte (c). |
+| 4 | Pagamento Pix | Volume de transações Pix por município e penetração | BCB, recurso "Transações Pix por Município" (conjunto com atualização mensal, licença ODbL). Dá contagem, não penetração; a penetração exige a população como divisor. Nacional, Cetic 2024: Pix citado por 84% no ambiente digital, contra 66% em 2022 (nota de 31/10/2024). | Fonte existe e é aberta. Números municipais não extraídos. |
 | 5 | Conectividade | Domicílios com internet | Cetic TIC 2024 (nota de 31/10/2024): 85% dos domicílios urbanos e 74% dos rurais. Dado por situação do domicílio, não por município. Anatel: conjunto de acessos existe, leitura não feita. | Nacional, urbano e rural obtidos. Municipal [incerto]. |
 | 6 | Liquidez medida no bairro-piloto | Pedidos válidos com proposta qualificada dentro de 2 h (G3, meta interna, nunca prometida ao cliente) | O01, linha 38 e linha 219: G3 de 70% ou mais, com no mínimo 30 pedidos válidos na janela. Regra de expansão de distrito: duas semanas seguidas com G3 de 70% ou mais e ao menos 8 pedidos válidos por semana (O01, linha 180, §3.4, `[proposta]`). Liquidez por categoria e distrito: O03, §6 (rascunho não executado). | Regra existe só para distritos de São Paulo. |
 | 7 | Oferta de prestadores aptos | Quantos prestadores aprovados por ocupação e bairro | O01, linha 201, estimativa do próprio plano: entre 5 e 7,5 aptos por ocupação e distrito para o pedido chegar a 3 propostas (resposta de 40% a 60%). Não há medição. | Ponto de partida, por categoria. |
@@ -94,9 +94,9 @@ Notas:
 ### Rio de Janeiro (RJ)
 
 - **Regulação municipal relevante:**
-  - ISS: alíquota da cidade [incerto]. Uma tabela secundária dá 2% a 5% e não cita lei municipal. Outro blog indica 5% para o Rio; não abri a fonte primária.
+  - ISS: alíquota da cidade [incerto]. Uma tabela secundária dá 2% a 5% e não cita lei municipal. Outro blog indica 5% para o Rio (só trecho de busca; não abri a página nem a fonte primária).
   - Código de posturas para serviço a domicílio: [incerto]. Não pesquisei.
-  - Transporte por aplicativo: a competência é do município (Lei 13.640/2018, art. 11-A). A lei carioca não foi aberta.
+  - Transporte por aplicativo: a competência é exclusiva dos Municípios e do Distrito Federal, cada um em seu território (Lei 13.640/2018, art. 11-A, caput). A lei carioca não foi aberta.
 - **Concorrência observável:**
   - GetNinjas tem páginas de diarista e de eletricista no Rio (trechos de busca). As páginas mostram média de avaliação e número de avaliações, que são declarações da própria empresa; não conferi.
   - Parafuzo aparece em loja de app com diarista e menção a eletricista e encanador (mwm.ai, trecho de busca).
@@ -107,8 +107,8 @@ Notas:
 ### Brasília (DF)
 
 - **Regulação municipal relevante:**
-  - ISS: [incerto]. A tabela secundária diz que o DF "acumula competência estadual e municipal" e não traz alíquota.
-  - Transporte por aplicativo: a Lei 13.640/2018, art. 11-A, dá competência de regulação e fiscalização ao Distrito Federal. Regra distrital não aberta.
+  - ISS: [incerto]. A tabela secundária diz que o DF "acumula competência estadual e municipal" e traz só a faixa de 2% a 5%, sem alíquota específica do DF.
+  - Transporte por aplicativo: a Lei 13.640/2018, art. 11-A, dá competência exclusiva de regulamentação e fiscalização aos Municípios e ao Distrito Federal, no âmbito de cada território. Regra distrital não aberta.
   - Código de posturas: [incerto].
 - **Concorrência observável:**
   - Não achei app local confirmado de eletricista ou diarista no DF.
@@ -145,7 +145,7 @@ Notas:
 ### Belo Horizonte (MG)
 
 - **Regulação municipal relevante:**
-  - ISS: [incerto]. Uma tabela secundária dá 2% a 5%, sem alíquota de BH. Outro blog cita 5% para BH, sem lei citada. As duas fontes são secundárias e não batem.
+  - ISS: [incerto]. Uma tabela secundária dá 2% a 5%, sem alíquota de BH. Outro blog (só trecho de busca, não aberto) cita 5% para BH, sem lei citada. As duas fontes são secundárias: a aberta dá a faixa de 2% a 5%, sem alíquota de BH.
   - Transporte por aplicativo: competência municipal (Lei 13.640/2018, art. 11-A). Lei de BH não aberta.
   - Código de posturas: [incerto].
 - **Concorrência observável:**
@@ -203,16 +203,16 @@ Abertas em 08/11/2026:
 
 | # | URL | Norma, artigo ou seção | Resultado |
 |---|---|---|---|
-| 1 | https://apisidra.ibge.gov.br/values/t/6579/n6/3304557,5300108,2927408,2304400,3106200,1302603,4106902,2611606/v/9324/p/last | IBGE, SIDRA, tabela 6579 (estimativas de população), última referência | Lida por leitura de página; conferir no SIDRA antes de usar |
-| 2 | https://apisidra.ibge.gov.br/values/t/5938/n6/3304557,5300108,2927408,2304400,3106200,1302603,4106902,2611606/v/37/p/last | IBGE, SIDRA, tabela 5938 (PIB dos municípios), PIB a preços correntes, 2023 | Lida |
-| 3 | https://apisidra.ibge.gov.br/values/t/5938/n6/3304557/v/all/p/last | IBGE, SIDRA, tabela 5938, Rio de Janeiro, todas as variáveis | Lida; confirmou o PIB do Rio |
-| 4 | https://apisidra.ibge.gov.br/values/t/5938/n6/3304557,5300108,2927408,2304400,3106200,1302603,4106902,2611606/v/498/p/last | IBGE, SIDRA, tabela 5938, variável 498 | Retornou valor adicionado bruto, não PIB per capita |
-| 5 | https://www2.camara.leg.br/legin/fed/leicom/2003/leicomplementar-116-31-julho-2003-492028-publicacaooriginal-1-pl.html | LC 116/2003, art. 3º, caput; art. 8º, inciso II | Lida. Publicação original (DOU de 1/8/2003). Sem art. 8º-A |
+| 1 | https://apisidra.ibge.gov.br/values/t/6579/n6/3304557,5300108,2927408,2304400,3106200,1302603,4106902,2611606/v/9324/p/last | IBGE, SIDRA, tabela 6579 (estimativas de população), última referência | Reaberta em 08/11/2026 na verificação independente: população 2026 confere nas oito cidades |
+| 2 | https://apisidra.ibge.gov.br/values/t/5938/n6/3304557,5300108,2927408,2304400,3106200,1302603,4106902,2611606/v/37/p/last | IBGE, SIDRA, tabela 5938 (PIB dos municípios), PIB a preços correntes, 2023 | Reaberta na verificação: valores das oito cidades conferem (mil reais) |
+| 3 | https://apisidra.ibge.gov.br/values/t/5938/n6/3304557/v/all/p/last | IBGE, SIDRA, tabela 5938, Rio de Janeiro, todas as variáveis | Lida; confirmou o PIB do Rio (R$ 418.462.360 mil) e que nenhuma variável retornada para o Rio tem 'per capita' no nome |
+| 4 | https://apisidra.ibge.gov.br/values/t/5938/n6/3304557,5300108,2927408,2304400,3106200,1302603,4106902,2611606/v/498/p/last | IBGE, SIDRA, tabela 5938, variável 498 | Retornou 'Valor adicionado bruto a preços correntes total', não PIB per capita (reconferido) |
+| 5 | https://www2.camara.leg.br/legin/fed/leicom/2003/leicomplementar-116-31-julho-2003-492028-publicacaooriginal-1-pl.html | LC 116/2003, art. 3º, caput; art. 8º, inciso II | Lida. Publicação original (DOU de 1/8/2003, data não reconferida). Art. 3º, caput, art. 8º, II, e ausência de art. 8º-A reconferidos |
 | 6 | https://www2.camara.leg.br/legin/fed/lei/2018/lei-13640-26-marco-2018-786385-publicacaooriginal-155125-pl.html | Lei 13.640/2018: inciso X do art. 4º da Lei 12.587/2012 (incluído); art. 11-A, caput | Lida. DOU de 27/3/2018 |
 | 7 | https://www.camara.leg.br/noticias/1237089-reforma-tributaria-comeca-fase-de-transicao-com-testes-de-novos-impostos-em-2026/ | Agência Câmara, notícia sobre a transição da reforma tributária | Lida. Publicada em 06/01/2026 |
 | 8 | https://www.cetic.br/pt/noticia/em-duas-decadas-proporcao-de-lares-urbanos-brasileiros-com-internet-passou-de-13-para-85-aponta-tic-domicilios-2024/ | Cetic.br, TIC Domicílios 2024 | Lida. Publicada em 31/10/2024 |
 | 9 | https://dadosabertos.bcb.gov.br/dataset/pix | BCB, Portal de Dados Abertos, "Estatísticas do Pix" | Lida: lista de recursos e licença. Dados não lidos |
-| 10 | https://www.bcb.gov.br/estabilidadefinanceira/pixstatistics | BCB, página de estatísticas do Pix | Abriu sem números |
+| 10 | https://www.bcb.gov.br/estabilidadefinanceira/pixstatistics | BCB, página de estatísticas do Pix | Abriu sem números (a captura trouxe só o título 'Banco Central do Brasil') |
 | 11 | https://www.contabilidadezen.com.br/blog/tabela-iss-capitais-brasileiros-2026/ | Fonte secundária: tabela de ISS das capitais, atualizada em 01/07/2026 | Lida. Sem alíquota padrão por capital |
 
 **Falhas de acesso:** cidades.ibge.gov.br (panorama de Rio, HTTP 403); apisidra.ibge.gov.br/desc/t/5938 (HTTP 403); apisidra.ibge.gov.br, tabela 9510 (HTTP 400); seade.gov.br (HTTP 503); agenciadenoticias.ibge.gov.br (nota de rendimento per capita 2022, HTTP 403); anatel.gov.br/dadosabertos/PDA/Acessos/Densidades.pdf (PDF comprimido, ilegível).

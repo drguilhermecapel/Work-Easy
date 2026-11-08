@@ -11,10 +11,10 @@ Rascunho para revisão de advogado. Não é parecer jurídico.
 ## Resumo
 
 - **A ordem é ditada pela pessoa jurídica.** Apple, Google Play, Meta e Asaas pedem CNPJ, D-U-N-S (nas lojas) ou site público com os dados da empresa. Pela documentação do Asaas, só conta CNPJ cria subcontas (docs.asaas.com, aberto em 2026-11-08). Contas gratuitas de apoio (GitHub, Supabase Free, Cloudflare Pages, Resend Free) podem ser abertas já, desde que o titular do domínio seja confirmado (F03).
-- **Custos fixos com fonte aberta hoje:** Apple US$ 99 por ano (valor em reais não conferido); Google Play US$ 25, taxa única; Supabase Pro a partir de US$ 25 por mês; Resend Pro US$ 20 por mês; GitHub organização gratuita; Asaas sem mensalidade declarada; API da Anthropic por uso, com créditos pré-pagos. Contabilidade e cartório não foram estimados.
-- **Prazos e bloqueios com fonte:** D-U-N-S de até 5 dias úteis mais até 2 dias úteis para a Apple, e até 30 dias para o Google; verificação de pagamento do Google de até 5 dias; avaliação regulatória do Asaas de até 60 dias corridos a partir da primeira subconta em produção, com novas subcontas e cobranças bloqueadas até o fim do processo; DNS do Resend de 15 minutos a 72 horas.
+- **Custos fixos com fonte aberta hoje:** Apple 99 USD por ano (valor em reais não conferido); Google Play US$ 25, taxa única; Supabase Pro a partir de US$ 25 por mês (a página mostra só "$", sem moeda nomeada); Resend Pro US$ 20 por mês; GitHub organização gratuita; Asaas com "zero mensalidade" na página (texto truncado); API da Anthropic por uso, com créditos pré-pagos (tabela em "$", sem moeda nomeada). Contabilidade e cartório não foram estimados.
+- **Prazos e bloqueios com fonte:** D-U-N-S de até 5 dias úteis mais até 2 dias úteis para a Apple, e até 30 dias para o Google; verificação de pagamento do Google de até 5 dias; avaliação regulatória do Asaas de até 60 dias corridos a partir da primeira subconta em produção; ao atingir algum limite (quantidade, valor ou prazo), novas subcontas e cobranças ficam bloqueadas até o fim do processo; DNS do Resend de 15 minutos a 72 horas.
 - **Fontes oficiais de abertura de empresa não foram lidas:** Redesim (bloqueio anti-robô), Receita Federal (página do CNPJ, HTTP 404), Jucesp (PDF da tabela 2026, HTTP 503), CCM da Prefeitura de São Paulo (a página retornada era do CPOM) e Banco Central sobre Pix (só o título). Documentos da PJ, inscrição municipal, custo de abertura e regras de Pix para CNPJ ficam [incerto].
-- **Brasil consta na lista de países suportados pela API da Anthropic**, com a indicação "Effective Nov 12, 2026" na página lida em 2026-11-08. Vale reler a página antes de faturar.
+- **Brasil consta na lista de países suportados pela API da Anthropic**, com os campos "Effective" e "Nov 12, 2026" na página lida em 2026-11-08 (a página não diz a que a data se aplica). Vale reler a página antes de faturar.
 
 ## Método e limites
 
@@ -34,13 +34,15 @@ Rascunho para revisão de advogado. Não é parecer jurídico.
 
 **Orçamento:** cerca de 50 chamadas de ferramenta.
 
+**Verificação independente (2026-11-08):** um verificador reabriu 20 páginas citadas (lista ao final, em "Fontes consultadas", item "Reabertas na verificação independente") e corrigiu no texto o que não conferia: moeda e valores de Pix do Asaas, a tabela de preços da API (cinco linhas, não quatro), a vigência da Anthropic, o prazo de 14 dias úteis da Meta (não confirmado), "regras de branch" do GitHub, a citação de CLAUDE.md e as citações entre aspas do Asaas. Itens não reabertos seguem como estavam.
+
 ## 1. Ordem de abertura
 
 | Ordem | Conta ou item | Só começa depois de | Prazo típico (fonte) | Custo (fonte, data) |
 |---|---|---|---|---|
 | 1 | Domínio `workeasy.com.br`: confirmar titular | nada | imediato | renovação [incerto]; vencimento 2027-05-19 (RDAP, F03) |
 | 2 | GitHub: conta do dono com 2FA e organização | nada | [estimativa] | organização grátis; Team US$ 4 por usuário por mês, opcional (github.com/pricing, 2026-11-08) |
-| 3 | Supabase: organização Free e projeto em `sa-east-1` | nada | [estimativa] | Free US$ 0; Pro a partir de US$ 25 por mês (supabase.com/pricing, 2026-11-08) |
+| 3 | Supabase: organização Free e projeto em `sa-east-1` | nada | [estimativa] | Free $0; Pro a partir de $25 por mês (supabase.com/pricing, 2026-11-08; a página mostra "$" sem nomear a moeda) |
 | 4 | API da Anthropic (Console): organização e créditos | nada; papel Admin ou Billing para comprar créditos | [estimativa] | por uso, créditos pré-pagos (claude.com/pricing, 2026-11-08) |
 | 5 | Cloudflare Pages (plano Free) | domínio (item 1) para usar domínio próprio | [estimativa] | Free; preço não confirmado [incerto] |
 | 6 | Resend: domínio de envio | item 1 e acesso ao DNS | 15 minutos a 72 horas (F03, 2026-11-08) | Free US$ 0; Pro US$ 20 por mês (resend.com/pricing, 2026-11-08) |
@@ -51,7 +53,7 @@ Rascunho para revisão de advogado. Não é parecer jurídico.
 | 11 | Conta bancária PJ com Pix | CNPJ e contrato social | [incerto] | [incerto] |
 | 12 | Apple Developer (organização) | D-U-N-S, site e e-mail no domínio | aprovação [incerto] | US$ 99 por ano (F03) |
 | 13 | Google Play (organização) | D-U-N-S, site e contatos da organização | verificação de pagamento até 5 dias (F03) | US$ 25 taxa única (F03) |
-| 14 | Meta: portfólio, verificação, conta WhatsApp Business, número | PJ e site HTTPS com os mesmos dados | até 14 dias úteis (`whatsapp-e-email.md`, passo 15) | cobrança por mensagem entregue (seção 2.7) |
+| 14 | Meta: portfólio, verificação, conta WhatsApp Business, número | PJ e site HTTPS com os mesmos dados | [incerto]: "até 14 dias úteis" vem só de `whatsapp-e-email.md`, passo 15; a página oficial de verificação não dá prazo | cobrança por mensagem entregue (seção 2.7) |
 | 15 | Asaas: conta da plataforma (CNPJ) | PJ | [incerto] | sem mensalidade declarada (seção 2.8) |
 | 16 | Asaas: subcontas dos prestadores | conta-pai CNPJ criada | avaliação regulatória de até 60 dias corridos após a primeira subconta em produção | taxas por transação (seção 2.8) |
 
@@ -73,7 +75,7 @@ Para cada item: documentos; quem assina; prazo; custo; dependências; risco de b
 - **Documentos:** conta pessoal do dono. A página de 2FA não pede documento de empresa.
 - **Quem assina:** o dono, como proprietário (owner) da organização.
 - **Prazo:** [estimativa], minutos.
-- **Custo:** organização grátis (US$ 0; "Unlimited public/private repositories" no plano Free). Team a US$ 4 por usuário por mês, opcional. Algumas funções de repositório privado (regras de branch, code owners, pull request em rascunho, Pages) ficam restritas a repositórios públicos no plano Free (github.com/pricing, aberto em 2026-11-08).
+- **Custo:** organização grátis (US$ 0; "Unlimited public/private repositories" no plano Free). Team a US$ 4 por usuário por mês, opcional. Algumas funções de repositório privado (regras de repositório, "repository rules", code owners, pull request em rascunho, Pages e wikis) ficam restritas a repositórios públicos no plano Free (github.com/pricing, aberto em 2026-11-08; a página não cita "branch protection" pelo nome).
 - **Dependências:** 2FA na conta do dono antes de exigir 2FA dos membros.
 - **Risco:** a organização pode exigir 2FA de membros, colaboradores externos e gestores de cobrança. Membros sem 2FA perdem acesso aos recursos e continuam ocupando assento. Colaboradores externos sem 2FA são removidos e podem voltar em três meses se ativarem 2FA (docs.github.com, página de 2FA da organização, aberta em 2026-11-08).
 
@@ -84,8 +86,8 @@ Para cada item: documentos; quem assina; prazo; custo; dependências; risco de b
 - **Prazo:** [estimativa], minutos para criar projeto.
 - **Custo (supabase.com/pricing, aberto em 2026-11-08, sem data):**
   - Free: a partir de US$ 0.
-  - Pro: a partir de US$ 25 por mês, cobrado antecipadamente a cada mês. Inclui 8 GB de disco por projeto (excedente a US$ 0,125 por GB), crédito de compute de US$ 10 por mês (cobre uma instância Micro), 100 mil usuários mensais ativos (depois US$ 0,00325 por usuário), 100 GB de armazenamento (depois US$ 0,0213 por GB).
-  - Limite de gasto ("spend cap") ativo por padrão no Pro, podendo ser desligado.
+  - Pro: a partir de US$ 25 por mês (a página mostra "$" e não nomeia a moeda; "cobrado antecipadamente a cada mês" não foi reconfirmado na releitura de 2026-11-08 [incerto]). Inclui 8 GB de disco por projeto (excedente a US$ 0,125 por GB), crédito de compute de US$ 10 por mês (cobre uma instância Micro), 100 mil usuários mensais ativos (depois US$ 0,00325 por usuário), 100 GB de armazenamento (depois US$ 0,0213 por GB).
+  - Limite de gasto ("spend cap") ativo por padrão no Pro ("Spend caps are on by default on the Pro Plan"); a possibilidade de desligar não foi reconfirmada [incerto].
   - Impostos ("VAT, GST e outros") aplicados conforme o endereço de cobrança.
   - A página não mostra a moeda da cobrança [incerto].
 - **Cobrança por organização:** a assinatura vale para a organização inteira e é cobrada uma vez (docs, org-based-billing, aberto em 2026-11-08). Planos não podem ser misturados dentro da mesma organização. Cada projeto soma custo de compute.
@@ -99,17 +101,17 @@ Para cada item: documentos; quem assina; prazo; custo; dependências; risco de b
 - **Documentos:** conta no Console, organização e descrição de uso. A página de pagamento lida diz que a organização é criada e o pagamento é feito pelo Console; a lista de documentos de cadastro não foi lida [incerto].
 - **Quem assina:** quem tem papel de Admin ou Billing no Console, que é quem compra créditos (support.claude.com, artigo 8977456, aberto em 2026-11-08).
 - **Prazo:** [estimativa], minutos. Créditos comprados ficam disponíveis na hora (página de pagamento).
-- **Custo (tabela de preços, aberta em 2026-11-08, sem data, preços em US$ por milhão de tokens, sem imposto):**
-  - Faixa "Entrada" (primeira linha): entrada US$ 10, saída US$ 50, leitura de cache US$ 0,25, escrita de cache US$ 12,50.
-  - Faixa "Intermediário" (segunda linha): entrada US$ 4, saída US$ 20, leitura de cache US$ 0,20, escrita de cache US$ 5.
-  - Faixa "Topo" (terceira linha): entrada US$ 2, saída US$ 10, leitura de cache US$ 0,10, escrita de cache US$ 2,50.
-  - Uma quarta linha, sem rótulo confirmado, traz preços por faixa de 100 mil tokens [incerto].
+- **Custo (tabela de preços, aberta em 2026-11-08, sem data, preços em "$" por milhão de tokens; a tabela não nomeia a moeda, e a nota "Prices shown don't include applicable tax" está na seção de planos de assinatura, não na tabela da API [incerto para impostos]):**
+  - Faixa "Entrada" (primeira linha; rótulo do dossiê, não da página): entrada $10, saída $50, leitura de cache $0,25, escrita de cache $12,50.
+  - Faixa "Intermediário" (segunda linha; rótulo do dossiê): entrada $4, saída $20, leitura de cache $0,20, escrita de cache $5.
+  - Faixa "Topo" (terceira linha; rótulo do dossiê): entrada $2, saída $10, leitura de cache $0,10, escrita de cache $2,50.
+  - Duas linhas finais (quarta e quinta) são do modelo de menor porte, separadas pelo tamanho do prompt: até 100 mil tokens (entrada $0,10; saída $0,50; leitura de cache $0,01; escrita de cache $0,125) e acima de 100 mil tokens (entrada $0,50; saída $2,50; leitura de cache $0,05; escrita de cache $0,625). Não entram nos cálculos acima.
   - Lote ("batch"): a página diz "Save 50% with batch processing."
   - Cálculo ilustrativo, não é estimativa de uso do produto: 1.000 tokens de entrada e 500 de saída na faixa "Topo" dão (1.000 × 2 + 500 × 10) ÷ 1.000.000 = US$ 0,007 por chamada, antes de imposto e sem cache nem lote.
   - Custo mensal do produto: [estimativa, sem dados de uso].
 - **Cobrança:** créditos pré-pagos são o padrão. Sem saldo, a API para até nova compra. Créditos expiram um ano após a compra. Recarga automática soma "applicable taxes". Organizações com acordo pela equipe comercial recebem fatura mensal emitida pela Stripe. A moeda e a lista completa de meios de pagamento não constam da página de suporte [incerto].
-- **País:** a página de países suportados lista "Brazil" e diz que o uso é restrito em região não listada, inclusive por entidade "incorporated or headquartered" em região não listada (anthropic.com/supported-countries, aberto em 2026-11-08, "Effective Nov 12, 2026"). Como o Brasil está listado, a empresa brasileira não cai nessa regra, mas a data de vigência é 12/11/2026.
-- **Dependências:** a PJ para faturamento em nome da empresa é pergunta em aberto. A chave da API nunca vai ao cliente (CLAUDE.md, PREAMBLE, regra 4).
+- **País:** a página de países suportados lista "Brazil" e diz que o uso é restrito em região não listada, inclusive por entidade "incorporated or headquartered" em região não listada (anthropic.com/supported-countries, aberto em 2026-11-08). A página mostra os campos "Effective" e "Nov 12, 2026", sem dizer a que se aplicam. Inferência do dossiê, [estimativa]: como o Brasil está listado, a empresa brasileira não se enquadra nessa restrição. A data de vigência é 12/11/2026.
+- **Dependências:** a PJ para faturamento em nome da empresa é pergunta em aberto. A chave da API nunca vai ao cliente (PREAMBLE, regra 4).
 - **Risco:** custo por chamada sem teto definido no projeto; é preciso limite de gasto e de chamadas antes de abrir a assistente ao público.
 
 ### 2.5 Cloudflare Pages
@@ -118,7 +120,7 @@ Para cada item: documentos; quem assina; prazo; custo; dependências; risco de b
 - **Quem assina:** o dono da conta [estimativa].
 - **Prazo:** [estimativa], minutos.
 - **Custo:** a página de limites trata de "Free plan" e não de preço. A página de planos e a página de Pages não mostram o preço do plano Free (cloudflare.com/plans e cloudflare.com/developer-platform/products/pages, abertas em 2026-11-08). O preço do Free ficou [incerto].
-- **Limites do plano Free (developers.cloudflare.com/pages/platform/limits, aberta em 2026-11-08):** 100 projetos por conta; 500 builds por mês; um build simultâneo; builds cortados após 20 minutos; até 20 mil arquivos por site; 25 MiB por arquivo; 100 domínios personalizados por projeto. Projetos novos têm restrições nas primeiras 48 horas de uso.
+- **Limites do plano Free (developers.cloudflare.com/pages/platform/limits, reconferida em 2026-11-08; última atualização da página: 5 de setembro de 2026):** 100 projetos por conta; 500 builds por mês; um build simultâneo; builds cortados após 20 minutos; até 20 mil arquivos por site; 25 MiB por arquivo; 100 domínios personalizados por projeto. Projetos novos têm restrições nas primeiras 48 horas de uso.
 - **Ponto de atenção:** o projeto gera cerca de 13 mil páginas estáticas no prerender (PREAMBLE, seção 4). Com os arquivos de apoio, o total pode se aproximar do limite de 20 mil arquivos do plano Free. Conferir antes do lançamento [estimativa].
 - **Dependências:** domínio e DNS (item 2.1).
 - **Risco:** o limite de 500 builds por mês pode bloquear o ritmo de publicação se houver muitos deploys; o limite de arquivos é o mais próximo do uso real.
@@ -141,40 +143,40 @@ Para cada item: documentos; quem assina; prazo; custo; dependências; risco de b
 - **Roteiro completo:** `apps/web/docs/pesquisa/whatsapp-e-email.md`, seção 6.C, passos 13 a 21, e seção 7 (variáveis). Não repito aqui.
 - **Documentos:** razão social, endereço, telefone e site "exatamente iguais" aos da entidade legal, e site que carregue por HTTPS (whatsapp-e-email.md, passos 13 e 15). Se a Meta não encontrar a empresa, enviar documentos oficiais (por exemplo licença ou contrato social) (passo 15). A lista de documentos aceitos não foi lida [incerto]: os artigos da Central de Ajuda da Meta abertos mostraram só o título.
 - **Quem assina:** a verificação só pode ser feita por quem tem papel de administrador do negócio, dentro do Business Manager (developers.facebook.com, "Business verification", aberto em 2026-11-08).
-- **Prazo:** "até 14 dias úteis" (whatsapp-e-email.md, passo 15; fonte original não reaberta).
-- **Moeda:** a página de preços para desenvolvedores diz que contas elegíveis no Brasil podem ser cobradas em BRL, com tarifas por mensagem publicadas em "rate cards" (developers.facebook.com/docs/whatsapp/pricing, aberta em 2026-11-08). Que a moeda não muda depois é afirmação de whatsapp-e-email.md, passo 16 [incerto nesta frente].
+- **Prazo:** não confirmado. A página de verificação de negócio, aberta em 2026-11-08, não dá prazo nem lista de documentos. "Até 14 dias úteis" vem só de whatsapp-e-email.md, passo 15 (fonte original não reaberta) [incerto].
+- **Moeda:** a página de preços para desenvolvedores (developers.facebook.com/docs/whatsapp/pricing, releitura de 2026-11-08) diz que provedores e empresas elegíveis com país de faturamento Brasil podem criar contas de mensagens em BRL, faturadas pela Facebook Brasil, e que as tarifas estão em "rate cards" com vigência em 1º de outubro de 2026. Que a moeda não muda depois é afirmação de whatsapp-e-email.md, passo 16 [incerto nesta frente].
 - **Custo (duas páginas, abertas em 2026-11-08):**
   - Cobrança quando a mensagem é entregue, não quando é enviada (whatsappbusiness.com/products/platform-pricing).
-  - Segundo a página de desenvolvedores, cada número recebe 1.000 mensagens de atendimento grátis por mês e as cobranças começam na 1.001ª a partir de 1º de outubro de 2026. Essa frase veio de leitura automatizada da página, deve ser conferida no texto original [incerto].
-  - Tarifas de utilidade e de autenticação para o Brasil: a página cita um valor em centavos, sem moeda declarada, e remete às tabelas em BRL. Tabelas não lidas [incerto].
+  - A página de desenvolvedores diz "one free tier of 1,000 delivered service messages per month" por número, com cobrança a partir da 1.001ª mensagem de atendimento entregue, "as of 12am by Messaging account timezone on October 1, 2026". Confirmado na releitura de 2026-11-08; só vale para mensagens de atendimento.
+  - Tarifas de utilidade e de autenticação para o Brasil: a página cita, numa tabela comparativa, "0.68 ¢ per message" para o Brasil, sem moeda declarada, e remete às tabelas em BRL (CSV e PDF). Tabelas não lidas [incerto].
   - Custo fixo de número: [incerto].
 - **Dependências:** PJ (item 2.9, D-U-N-S não é exigido pela Meta nesta página, mas a razão social é), site HTTPS (item 2.13), política de privacidade e termos publicados (frente jurídica), número dedicado (não pode estar em uso no WhatsApp comum sem ser apagado antes; whatsapp-e-email.md, M12), forma de pagamento no Billing Hub antes do primeiro envio (passo 17).
-- **Risco:** alterar dados da empresa depois da verificação exige refazer a verificação (passo 15). O prazo de 14 dias úteis pode atrasar o item de WhatsApp e não o lançamento do site.
+- **Risco:** alterar dados da empresa depois da verificação exige refazer a verificação (passo 15). O prazo de 14 dias úteis, não confirmado na página oficial, pode atrasar o item de WhatsApp e não o lançamento do site.
 
 ### 2.8 Asaas: conta da plataforma e subcontas
 
-- **Pré-requisito:** "Only a CNPJ account can create subaccounts. CPF accounts cannot." (docs.asaas.com, "Criação de subcontas", página atualizada em 2026-10-27, aberta em 2026-11-08). A conta da plataforma é, portanto, uma conta de pessoa jurídica.
+- **Pré-requisito:** "Contas de pessoa física (CPF) não podem criar subcontas" e "a criação de subcontas é permitida apenas para contas de pessoa jurídica (CNPJ)" (docs.asaas.com, "Criação de subcontas", página atualizada em 2026-10-27, aberta em 2026-11-08; o texto é em português, conferido em 2026-11-08). A conta da plataforma é, portanto, uma conta de pessoa jurídica.
 - **Campos de subconta (exemplo oficial de CNPJ; campos de CPF não confirmados):**
   - `incomeValue`: "O campo `incomeValue` é obrigatório" (para os dois tipos, sem restrição declarada).
-  - `birthDate`: só para pessoa física; "não é enviada para empresas".
+  - `birthDate`: a página diz que o campo "não é enviado" e "é aplicável somente quando o titular da subconta for pessoa física" (conferido em 2026-11-08).
   - `cpfCnpj`, `name`, `email`, `phone`/`mobilePhone`, `address`, `addressNumber`, `complement`, `province`, `postalCode`.
   - `companyType` e `taxRegime`: `taxRegime` só para CNPJ e é opcional.
   - `webhooks`: opcional.
   - Cidade e estado, site e documentos não aparecem nesse exemplo [incerto].
   - A página manda consultar a API Reference para os campos obrigatórios vigentes.
-- **Documentos:** a página de fluxo diz que, normalmente, a análise cadastral pede "documento de identificação e selfie do titular ou responsável"; associações podem precisar de mais (exemplo: ata de eleição) (docs.asaas.com, "Detalhamento do fluxo de aprovação de subcontas", updatedAt 2026-08-28, aberta em 2026-11-08). Documentos da própria empresa (contrato social, cartão CNPJ) não aparecem nas páginas lidas [incerto].
+- **Documentos:** a página de fluxo diz que, normalmente, a análise cadastral inclui "documento de identificação e selfie do titular ou responsável" (conferido em 2026-11-08); associações podem precisar de mais (exemplo: ata de eleição) (docs.asaas.com, "Detalhamento do fluxo de aprovação de subcontas", updatedAt 2026-08-28, aberta em 2026-11-08). Documentos da própria empresa (contrato social, cartão CNPJ) não aparecem nas páginas lidas [incerto].
 - **Envio:** na subconta padrão, o titular envia os documentos pela interface do Asaas. Na BaaS, pelo `onboardingUrl` ou pela API, e "Nunca tente enviar via API um documento que possui onboardingUrl" (o envio é recusado). Aguardar 15 segundos após a criação antes de consultar documentos pendentes.
 - **Quem assina:** titular ou responsável, segundo a página de fluxo.
 - **Prazo:**
   - Não há prazo de aprovação declarado. Conta totalmente aprovada quando `general` retorna `APPROVED`.
-  - Avaliação regulatória "pode durar até 60 dias corridos" a partir da primeira subconta criada em produção. Até a conclusão, novas subcontas e cobranças ficam bloqueadas.
+  - Avaliação regulatória "pode durar até 60 dias corridos" a partir da primeira subconta criada em produção (conferido em 2026-11-08). Após atingir qualquer limite (quantidade, valor ou prazo), a criação de novas subcontas e a emissão de cobranças adicionais são bloqueadas até a conclusão do processo.
 - **Custo (asaas.com/precos-e-taxas, aberta em 2026-11-08, texto truncado, sem data):**
   - Conta sem mensalidade ("zero mensalidade e taxa de emissão"); abertura e manutenção listadas como grátis.
-  - Pix recebido: R$ 2,15 e R$ 1,08 "por transação recebida"; a página não diz qual vale para cada caso.
-  - Boleto: mesmos valores, por transação recebida.
+  - Pix recebido: na releitura de 2026-11-08, R$ 1,99 e R$ 0,99 "por transação recebida"; a página não diz qual vale para cada caso. A leitura original deste dossiê citava R$ 2,15 e R$ 1,08. Conflito não resolvido [incerto].
+  - Boleto: os mesmos dois valores do Pix na releitura de 2026-11-08, por transação recebida [incerto quanto a qual valor].
   - Cartão de débito: R$ 0,35 mais 1,89% por transação recebida. Taxas de crédito não aparecem no trecho lido [incerto].
   - Pix e transferência de saída: grátis, "válido somente para cadastros de pessoa física". Para saída de conta PJ, a taxa não consta [incerto].
-  - Resultado de busca de blog do Asaas fala em R$ 1,99 e R$ 0,99 por Pix recebido, com taxas reduzidas nos três primeiros meses. Conflito com a página lida, não resolvido [incerto].
+  - Resultado de busca de blog do Asaas fala em R$ 1,99 e R$ 0,99 por Pix recebido, com taxas reduzidas nos três primeiros meses. Esses valores batem com a releitura da página, mas não com a leitura original. Taxa vigente não confirmada [incerto].
 - **Dependências:** PJ (item 2.9); site da empresa (item 2.13); decisão de ativar ou não comissão (PREAMBLE: comissão e escrow desligados até parecer jurídico); definição F01 sobre ISS.
 - **Risco:** o bloqueio de subcontas durante a avaliação regulatória de até 60 dias corridos; a dúvida sobre o modelo (BaaS, padrão ou white label, com e sem painel para o prestador) afeta quem envia os documentos; taxa de saída de PJ não conferida.
 
@@ -229,10 +231,10 @@ Para cada item: documentos; quem assina; prazo; custo; dependências; risco de b
 
 ### 2.14 Apple Developer Program (organização)
 
-- **Documentos:** D-U-N-S; nome legal da entidade (sem DBA, nome fictício ou marca comercial); site público no domínio; e-mail de trabalho no domínio da empresa; titular com poder legal para vincular a organização a contratos. Se o titular não for dono ou fundador, é preciso referência que confirme a autoridade (F03, página de inscrição, lida em 2026-11-08).
+- **Documentos:** D-U-N-S; nome legal da entidade (sem DBA, nome fictício, nome comercial ou filial, segundo a página); site público no domínio; e-mail de trabalho no domínio da empresa; titular com poder legal para vincular a organização a contratos. Se o titular não for dono, fundador, membro do time executivo ou líder sênior de projeto, a autoridade precisa ser concedida por um funcionário sênior (página de inscrição, releitura de 2026-11-08). A página não pede documento de referência para isso.
 - **Quem assina:** o titular da conta, com poder legal (F03).
 - **Prazo:** a página não informa o prazo de aprovação [incerto].
-- **Custo:** US$ 99 por ano; o valor em reais não foi conferido (F03; busca não achou preço em reais).
+- **Custo:** "99 USD per membership year" na página (releitura de 2026-11-08); a página diz que os preços variam por região e aparecem em moeda local durante a inscrição. O valor em reais não foi conferido.
 - **Dependências:** itens 2.9, 2.12 e 2.13.
 - **Risco:** o nome do vendedor na App Store é o nome da organização. O nome do app não pode ser decidido sem o dossiê de marca (F02) e o de identidade (F03).
 
@@ -251,7 +253,7 @@ Para cada item: documentos; quem assina; prazo; custo; dependências; risco de b
 - **Documentos:** CPF, RG ou CNH, comprovante de endereço do dono. São exigidos nas contas de organização, na conta bancária e como responsável em Asaas (quando a conta não é da própria empresa) [estimativa].
 - **Quem assina:** o dono.
 - **Custo:** nenhum declarado.
-- **Risco:** dados pessoais do dono e dos prestadores entram nas contas (Asaas coleta `birthDate`, `incomeValue` e documento de identidade). Coleta e finalidade devem passar pela frente jurídica e pela LGPD (ver perguntas).
+- **Risco:** dados pessoais do dono e dos prestadores entram nas contas (Asaas coleta `incomeValue`, documento de identidade e, para pessoa física, `birthDate`). Coleta e finalidade devem passar pela frente jurídica e pela LGPD (ver perguntas).
 
 ## 3. Perguntas para o profissional
 
@@ -265,7 +267,7 @@ Para cada item: documentos; quem assina; prazo; custo; dependências; risco de b
 
 4. Os dados que o Asaas pede (CPF, data de nascimento, renda e documento de identidade com selfie, para prestadores e para o dono) precisam de aviso ou consentimento específico na política de privacidade? Qual é a base legal para cada um?
 5. A conta de organização da Apple e a do Google podem ser abertas pelo dono sozinho, ou exigem sócio com poderes registrados no contrato?
-6. A assistente que chama a API da Anthropic (com dados de usuário) exige cláusula nova na política ou nos termos? Os termos de uso da API da Anthropic para empresa brasileira foram conferidos?
+6. A assistente que chama a API da Anthropic (com dados de usuário) exige qual cláusula nova na política de privacidade ou nos termos? Os termos comerciais da API para empresa brasileira não foram lidos neste dossiê: qual é o texto vigente?
 
 **Banco:**
 
@@ -275,8 +277,8 @@ Para cada item: documentos; quem assina; prazo; custo; dependências; risco de b
 **Asaas (suporte comercial e documentação):**
 
 9. Qual é a lista atual de documentos da empresa (contrato social, cartão CNPJ) para a conta da plataforma e para as subcontas de prestadores CPF e CNPJ? A página lida não tem essa lista.
-10. Qual é a taxa de Pix de saída para conta PJ, já que a página só fala de pessoa física? Qual dos dois valores de Pix recebido vale para a conta: R$ 2,15 ou R$ 1,99?
-11. Qual é o prazo típico de aprovação das subcontas, e quais estados aparecem durante a avaliação regulatória?
+10. Qual é a taxa de Pix de saída para conta PJ, já que a página só fala de pessoa física? Qual par de valores de Pix recebido vale para a conta: R$ 1,99 e R$ 0,99 (releitura de 2026-11-08) ou R$ 2,15 e R$ 1,08 (leitura original)?
+11. Qual é o prazo típico de aprovação das subcontas, e que status a conta da plataforma e o prestador veem durante a avaliação regulatória?
 12. A conta da plataforma precisa de conta bancária PJ própria para repasses, ou o saldo fica no Asaas?
 
 **Supabase, Anthropic e Meta:**
@@ -298,7 +300,7 @@ Todas as datas são de abertura em 2026-11-08. "Lido" significa texto lido na p�
 
 1. https://docs.asaas.com/docs/criacao-de-subcontas: criação de subcontas (página atualizada em 2026-10-27 segundo a própria página); campos, `incomeValue`, `birthDate`, "Only a CNPJ account can create subaccounts".
 2. https://docs.asaas.com/docs/detalhamento-do-fluxo-de-aprova%C3%A7%C3%A3o-de-subcontas: fluxo de aprovação (updatedAt 2026-08-28); documentos, `general` APPROVED, avaliação regulatória de até 60 dias corridos.
-3. https://www.asaas.com/precos-e-taxas: taxas (texto truncado, sem data).
+3. https://www.asaas.com/precos-e-taxas: taxas (texto truncado, sem data); valores de Pix divergentes entre leituras, ver 2.8.
 4. https://supabase.com/pricing: planos Free e Pro, spend cap, cobrança, impostos (sem data).
 5. https://supabase.com/docs/guides/platform/regions: região São Paulo (`sa-east-1`) listada sem restrição.
 6. https://supabase.com/docs/guides/platform/org-based-billing: cobrança por organização.
@@ -310,16 +312,16 @@ Todas as datas são de abertura em 2026-11-08. "Lido" significa texto lido na p�
 12. https://github.com/pricing: planos de organização (US$ 0 Free; US$ 4 por usuário por mês no Team); rodapé de 2026.
 13. https://docs.github.com/en/organizations/keeping-your-organization-secure/managing-two-factor-authentication-for-your-organization/requiring-two-factor-authentication-in-your-organization: 2FA obrigatório na organização (sem data).
 14. https://claude.com/pricing (redirecionado de https://www.anthropic.com/pricing): tabela de preços da API, cache, lote e impostos (sem data).
-15. https://www.anthropic.com/supported-countries: "Brazil" listado; "Effective Nov 12, 2026".
+15. https://www.anthropic.com/supported-countries: "Brazil" listado; campos "Effective" e "Nov 12, 2026" (sem frase única).
 16. https://support.claude.com/en/articles/8977456-how-do-i-pay-for-my-claude-api-usage: créditos pré-pagos, papéis Admin ou Billing, faturamento mensal por acordo comercial; "Updated over a week ago" (sem data).
 17. https://developers.facebook.com/docs/development/release/business-verification: verificação de negócio, papel de administrador, Business Manager.
-18. https://developers.facebook.com/docs/whatsapp/pricing/: BRL para contas elegíveis no Brasil; 1.000 mensagens de atendimento; alteração de 1º de outubro de 2026 (leitura automatizada da página).
+18. https://developers.facebook.com/docs/whatsapp/pricing/: BRL para contas elegíveis no Brasil; 1.000 mensagens de atendimento entregues; cobrança a partir de 1º de outubro de 2026 (confirmado na releitura de 2026-11-08).
 19. https://whatsappbusiness.com/products/platform-pricing/ (redirecionado de https://business.whatsapp.com/products/platform-pricing): cobrança na entrega; janela de atendimento de 24 horas sem cobrança; tarifa por calculadora interativa.
 20. https://prefeitura.sp.gov.br/fazenda/w/servicos/cpom/2388: CPOM, não CCM (página datada de 7 de junho de 2022 no texto).
 21. Repositório: `apps/web/docs/pesquisa/fase0/03-dominio-e-identidade.md`, seções 1, 3, 4 e 5 (leitura local). Cita páginas da Apple (developer.apple.com/programs/enroll/ e developer.apple.com/help/account/membership/D-U-N-S/), do Google Play (support.google.com/googleplay/android-developer/answer/6112435, 13628312 e 14151465), do Resend (resend.com/docs/add-a-domain) e o RDAP do Registro.br para workeasy.com.br, abertas por F03 em 2026-11-08.
 22. Repositório: `apps/web/docs/pesquisa/fase0/01-societario-e-tributacao.md` (leitura local), para tipo societário e regime.
 23. Repositório: `apps/web/docs/pesquisa/whatsapp-e-email.md`, seção 6.C, passos 13 a 21, e seção 7 (leitura local); fontes M12, M13, M14, M16, M17 não reabertas.
-24. Repositório: `PREAMBLE.md` (escopo, regras e número de páginas do prerender) e `CLAUDE.md` (chave da API nunca no cliente).
+24. Brief do orquestrador: `PREAMBLE.md` (fora do repositório; escopo, regras e número de páginas do prerender). `CLAUDE.md` não existe na raiz de /home/user/work-easy (conferido em 2026-11-08), por isso a citação dele foi retirada do texto.
 
 **Abertas sem texto útil (tentadas em 2026-11-08):**
 
@@ -342,3 +344,5 @@ Todas as datas são de abertura em 2026-11-08. "Lido" significa texto lido na p�
 38. Blogs de inscrição municipal em São Paulo (sem fonte oficial aberta).
 
 **Buscas sem resultado útil:** preço da Apple em reais; moeda e meios de pagamento do Supabase.
+
+**Reabertas na verificação independente (2026-11-08):** docs.asaas.com (criação de subcontas e fluxo de aprovação); asaas.com/precos-e-taxas; supabase.com/pricing; supabase.com/docs/guides/platform/regions; supabase.com/docs/guides/platform/org-based-billing; resend.com/pricing; developers.cloudflare.com/pages/platform/limits; anthropic.com/supported-countries; claude.com/pricing; support.claude.com/en/articles/8977456; developers.facebook.com/docs/whatsapp/pricing; developers.facebook.com/docs/development/release/business-verification; github.com/pricing; docs.github.com (2FA obrigatório na organização); developer.apple.com/help/account/membership/D-U-N-S/; developer.apple.com/programs/enroll/; support.google.com/googleplay/android-developer/answer/6112435, 13628312 e 14151465. Confirmados sem alteração: Resend, Cloudflare Pages, Supabase (preços, região e cobrança por organização), Google (US$ 25, D-U-N-S de até 30 dias, verificação de pagamento de até 5 dias), Apple (D-U-N-S de até 5 e 2 dias úteis). Não reabertos: F03, F01, whatsapp-e-email.md, páginas da Receita, Redesim, Jucesp, Banco Central, Cloudflare Plans e a página do CPOM.

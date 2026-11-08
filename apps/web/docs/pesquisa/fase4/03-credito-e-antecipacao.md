@@ -8,7 +8,7 @@ Data de referência: 2026-11-08. Escopo: fase 4 do plano WorkEasy, oferta de ant
 
 ## Resumo
 
-- O produto de antecipação descrito é do Asaas, não da WorkEasy. A página oficial diz que o Asaas é "uma instituição de pagamentos", que a antecipação é "sujeita a análise de crédito" e que as taxas partem de 1,25% ao mês no cartão e de 5,79% ao mês no boleto. A página não diz quem financia. O blog do próprio Asaas, em 26/04/2024, diz que as antecipações de cartão são financiadas por FIDC, com cota sênior de investidores institucionais.
+- O produto de antecipação descrito é do Asaas, não da WorkEasy. A página oficial diz que o Asaas é "a 31ª instituição de pagamentos autorizada pelo Banco Central", que a antecipação é "sujeita a análise de crédito" e que as taxas partem de 1,25% ao mês no cartão e de 5,79% ao mês no boleto. A página não diz quem financia. O blog do próprio Asaas, em 26/04/2024, diz que uma segunda captação de FIDC (R$ 50 milhões) serve para "acelerar o processo de antecipação de recebíveis de cartão de crédito", com cota sênior adquirida por investidores institucionais.
 - Correções ao pedido: a norma de correspondentes é a Resolução CMN 4.935/2021 (não "BCB"), vigente desde 1/2/2022. A Resolução CMN 4.656/2018 aparece como revogada a partir de 1/1/2025 (pela Resolução CMN 5.177/2024), mas esse dado veio de trecho de busca, não de página aberta. A norma de SCD e SEP que costuma ser citada hoje é a Resolução CMN 5.050/2022, cujo status atual não foi confirmado.
 - Sem licença, o único caminho que as fontes abertas deixam aberto é um encaminhamento neutro ao Asaas, sem comissão, sem receber valores, sem análise de crédito e sem garantia. Se houver comissão por indicação ou um papel de correspondente, o enquadramento muda e nenhuma fonte aberta resolve essa questão. Isso precisa de advogado.
 - O CDC exige, na oferta de crédito, informações como a taxa efetiva anual, o custo efetivo total (CET) e a soma total a pagar (arts. 52 e 54-B). Se o prestador é "consumidor" quando toma crédito para a própria atividade é questão aberta. A LGPD exige base legal e transparência para usar dados do app numa análise de crédito (arts. 7, 9 e 20).
@@ -50,23 +50,23 @@ Fonte principal: página oficial https://asaas.com/antecipacao-de-recebiveis, ab
 | Item | Valor informado na página |
 |---|---|
 | Cartão, cobranças online | "A partir de 1,25% ao mês" |
-| Boleto | "A partir de 5,79% ao mês", mais "taxa de R$ 0,79" no simulador |
+| Boleto | "A partir de 5,79% ao mês". No simulador de boleto à vista: "Já incluso taxa de R$ 1,08", seguido de "+ taxa de antecipação de 5,79% ao mês" |
 | Antecipação automática | "as taxas são de 1,15%" (período não informado) |
 | Asaas Tap, à vista | "taxa zero de antecipação para crédito à vista" |
 | Asaas Tap, parcelado | "a partir de 1,25% ao mês" |
 | Imposto | "O Asaas não cobra taxa de IOF." Afirmação do Asaas; o tratamento tributário não foi verificado |
 | Prazo de recebimento | "Receba em até 2 dias úteis para cartão e 3 dias úteis para boleto", sujeito a análise |
 
-Exemplo da própria página: cobrança de R$ 990,00 com vencimento em 32 dias, antecipada em 2 dias úteis, com recebimento de R$ 932,43. Cálculo nosso: a diferença de R$ 57,57 equivale a 5,8% do valor. É o custo total do exemplo, não uma taxa anualizada.
+Exemplo da própria página (texto alternativo de uma imagem): cobrança de R$ 990,00 com vencimento em 32 dias, com opção de antecipar em 2 dias úteis e receber R$ 932,43. Cálculo nosso: a diferença de R$ 57,57 equivale a 5,8% do valor. É o custo total do exemplo, não uma taxa anualizada.
 
 **Quem financia**
 
-- A página não informa a origem dos recursos. Afirma que o Asaas é "uma instituição de pagamentos" (resposta de FAQ) e menciona uma "licença para atuar como sociedade de crédito, financiamento e investimento". O título "Use seu próprio dinheiro e liberte-se de outras fontes de crédito" é frase de marketing e não responde à pergunta.
-- Blog do Asaas, "Publicado em 26 de abril de 2024" (https://blog.asaas.com/?p=266806): a segunda emissão de FIDC, de R$ 50 milhões, serve para "acelerar o processo de antecipação de recebíveis de cartão de crédito". A cota sênior foi comprada por "investidores institucionais". O Asaas detém "100% da cota subordinada". A estruturação foi do Itaú BBA e a gestão da Oliveira Trust. O post não diz quem é o cedente nem o servicer.
+- A página não informa a origem dos recursos. Afirma que o Asaas é "a 31ª instituição de pagamentos autorizada pelo Banco Central" e menciona uma "licença para atuar como sociedade de crédito, financiamento e investimento". O título "Use seu próprio dinheiro e liberte-se de outras fontes de crédito" é frase de marketing e não responde à pergunta.
+- Blog do Asaas, "Publicado em 26 de abril de 2024" (https://blog.asaas.com/?p=266806): a "segunda captação de Fundo de Investimento em Direitos Creditórios (FIDC), no valor de R$ 50 milhões" serve para "acelerar o processo de antecipação de recebíveis de cartão de crédito". A cota sênior foi "adquirida por investidores institucionais". A página do post mostra também "Atualizado em 13 de agosto de 2026". O Asaas detém "100% da cota subordinada". A estruturação foi do Itaú BBA e a gestão da Oliveira Trust. O post não diz quem é o cedente nem o servicer.
 - Blog do Asaas, "Publicado em 13 de agosto de 2024" (https://blog.asaas.com/release/asaas-sociedade-de-credito-direto/?noamp=mobile): a licença de SCD permite "operações de crédito com recursos próprios". O post não menciona antecipação de recebíveis nem FIDC. Em resultado de busca havia a informação de que essa licença foi em 2022; o post aberto é de 2024, e não abri a fonte de 2022.
 - Blog do Asaas, "Publicado em 20 de janeiro de 2026" (https://blog.asaas.com/release/licenca-scfi/?noamp=mobile): licença de SCFI "concedida pelo Banco Central", com novas fontes de captação (CDB, LC e RDB). Não liga a licença à antecipação.
 - Em resultado de busca, sem abrir a fonte, aparece uma nova emissão de FIDC de R$ 300 milhões noticiada em outubro de 2026. Não verificado [incerto].
-- Conclusão: pelas fontes do próprio Asaas, a antecipação de cartão é financiada por FIDC, com cota subordinada do Asaas. Se parte vem de recursos próprios, não está declarado. O registro do fundo na CVM e a licença no BCB não foram verificados.
+- Conclusão: o post de 2024 do próprio Asaas liga uma captação de FIDC (com cota subordinada do Asaas) à antecipação de recebíveis de cartão. Isso não prova a origem dos recursos das antecipações atuais, pois a página não declara essa origem. Se parte vem de recursos próprios, não está declarado. O registro do fundo na CVM e a licença no BCB não foram verificados.
 
 ## 2. Regulação aplicável (b)
 
@@ -83,9 +83,9 @@ Exemplo da própria página: cobrança de R$ 990,00 com vencimento em 32 dias, a
 | Lei 4.595/1964, art. 17 caput | Consideram-se instituições financeiras as pessoas jurídicas "que tenham como atividade principal ou acessória a coleta, intermediação ou aplicação de recursos financeiros próprios ou de terceiros" | Texto da publicação original, aberto. Não é o texto consolidado; alterações posteriores não conferidas |
 | Lei 4.595/1964, art. 18 caput | "As instituições financeiras sòmente poderão funcionar no País mediante prévia autorização do Banco Central" | Mesma observação |
 | Res. CMN 4.656/2018 (SCD e SEP) | Substituída. Arts. 1 a 26, 47 e 48 revogados desde 1/1/2023 (5.050, art. 34) | Revogação integral a partir de 1/1/2025 segundo trecho de busca [incerto] |
-| Res. CMN 5.050/2022 (SCD e SEP) | Art. 7 caput: SCD opera "exclusivamente por meio de plataforma eletrônica", com funding de "capital próprio" ou cessão de créditos (art. 8). Art. 10, I: SCD não pode "captar recursos do público, exceto mediante emissão de ações". Art. 15 caput: SEP opera "exclusivamente por meio de plataforma eletrônica". Art. 22, I: SEP não pode "realizar operações de empréstimo e de financiamento com recursos próprios". Art. 2, II: plataforma é o "sistema eletrônico que conecta credores e devedores por meio de sítio na internet ou de aplicativo" | Cópia de terceiro (normasbrasil), não o DOU. Vigência em 1/1/2023. Status atual [incerto] |
+| Res. CMN 5.050/2022 (SCD e SEP) | Art. 7 caput: SCD opera "exclusivamente por meio de plataforma eletrônica", com recursos que tenham como origem "capital próprio". Art. 8: o financiamento pode vir também da cessão de créditos (inciso I). Art. 10, I: SCD não pode "captar recursos do público, exceto mediante emissão de ações". Art. 15 caput: SEP opera "exclusivamente por meio de plataforma eletrônica". Art. 22, I: SEP não pode "realizar operações de empréstimo e de financiamento com recursos próprios". Art. 2, II: plataforma é o "sistema eletrônico que conecta credores e devedores por meio de sítio na internet ou de aplicativo" | Cópia de terceiro (normasbrasil), não o DOU. Vigência em 1/1/2023. Status atual [incerto] |
 | Res. CMN 5.159/2024 | Altera a 5.050 para permitir financiamento de SCD por cessão de créditos | Só em trecho de busca [incerto] |
-| Res. CMN 4.935/2021 (correspondentes) | Resumo Felsberg: instituições contratantes precisam de política escrita aprovada pela diretoria ou órgão executivo e de controles internos. Atividades citadas: recepção e encaminhamento de propostas de abertura de contas de depósito e de pagamento; movimentação dessas contas; atendimento por sítio, aplicativo ou outra plataforma em rede. Trecho de busca (cópia do DOU, não aberto) indica que o art. 2 §1º exige correspondente no País para serviços "de forma pessoal ou por meio de plataforma eletrônica" e que o art. 2 §2º define a plataforma do correspondente | Texto primário não aberto. Não encontrei no que foi lido que o correspondente possa encaminhar propostas de crédito [incerto] |
+| Res. CMN 4.935/2021 (correspondentes) | Resumo Felsberg: instituições contratantes precisam de política escrita aprovada "pelo conselho de administração ou diretoria" (a menção a controles internos não foi reconfirmada na releitura). Atividades citadas, com verbo facultativo ("poderá"): recepção e encaminhamento de propostas de abertura de contas de depósito e de pagamento; movimentação dessas contas; atendimento por sítio, aplicativo ou outra plataforma em rede. O resumo não menciona crédito. Trecho de busca (cópia do DOU, não aberto) indica que o art. 2 §1º exige correspondente no País para serviços "de forma pessoal ou por meio de plataforma eletrônica" e que o art. 2 §2º define a plataforma do correspondente | Texto primário não aberto. Não encontrei no que foi lido que o correspondente possa encaminhar propostas de crédito [incerto] |
 | Lei 12.414/2011 (cadastro positivo) | Página de dados da norma (Câmara) mostra alteração do caput e dos §§ 4º a 8º do art. 4 pela LC 166/2019 e revogação parcial dos §§ 1º e 2º | Texto dos artigos não obtido [incerto] |
 | CDC, Lei 8.078/1990, arts. 2, 7, 25, 34, 52 e 54-B | Ver item 3.2 | Consolidado da Câmara, aberto |
 | LGPD, Lei 13.709/2018, arts. 7, 9 e 20 | Ver item 4 | Consolidado da Câmara (HTML), aberto. Ementa com alteração da Lei 13.853/2019 |
@@ -106,8 +106,8 @@ Exemplo da própria página: cobrança de R$ 990,00 com vencimento em 32 dias, a
 
 Fonte: Código de Defesa do Consumidor, versão consolidada da Câmara dos Deputados (https://www2.camara.leg.br/legin/fed/lei/1990/lei-8078-11-setembro-1990-365086-normaatualizada-pl.html), aberta em 2026-11-08.
 
-- Art. 52, caput: quem outorga crédito ou concede financiamento ao consumidor deve informá-lo "prévia e adequadamente" sobre, entre outros, o preço em moeda nacional (I), "os juros de mora e a taxa efetiva anual de juros" (II), os "acréscimos legalmente previstos" (III), o "número e periodicidade das prestações" (IV) e a "soma total a pagar, com e sem financiamento" (V). O texto aberto não traz inciso VI.
-- Art. 54-B, caput: o fornecedor deve informar o consumidor "prévia e adequadamente, no momento da oferta". O §1º exige que essas informações constem "de forma clara e resumida" do contrato, da fatura ou de instrumento apartado. O §2º diz que o custo efetivo total "consistirá em taxa percentual anual". O artigo foi inserido pela Lei 14.181/2021, segundo a nota de alteração do texto aberto.
+- Art. 52, caput: quem outorga crédito ou concede financiamento ao consumidor deve informá-lo "prévia e adequadamente" sobre, entre outros, o preço em moeda nacional (I), "montante dos juros de mora e da taxa efetiva anual de juros" (II), os "acréscimos legalmente previstos" (III), o "número e periodicidade das prestações" (IV) e a "soma total a pagar, com e sem financiamento" (V). O texto aberto não traz inciso VI.
+- Art. 54-B, caput: no fornecimento de crédito, "além das informações obrigatórias previstas no art. 52 deste Código e na legislação aplicável à matéria, o fornecedor ou o intermediário deverá informar o consumidor, prévia e adequadamente, no momento da oferta, sobre" os itens do caput, que não foram lidos. O texto cita expressamente o intermediário, o que importa para o papel da WorkEasy (item 3.1). O §1º exige que essas informações constem "de forma clara e resumida" do contrato, da fatura ou de instrumento apartado. O §2º diz que o custo efetivo total "consistirá em taxa percentual anual". O artigo foi inserido pela Lei 14.181/2021, segundo a nota de alteração do texto aberto.
 - Consumidor ou não: o art. 2 define consumidor como "toda pessoa física ou jurídica que adquire ou utiliza produto ou serviço como destinatário final". O prestador que toma crédito para a própria atividade pode ou não ser consumidor nessa operação. A jurisprudência não foi pesquisada [incerto].
 - Responsabilidade: o art. 7, parágrafo único, o art. 25, §1º, e o art. 34 tratam de responsabilidade solidária. O art. 34 diz que "o fornecedor do produto ou serviço é solidariamente responsável pelos atos de seus prepostos ou representantes autônomos". Se a WorkEasy atuar como representante do fornecedor de crédito, essa regra pode alcançá-la. Isso precisa de parecer.
 
@@ -143,7 +143,7 @@ Os dados do próprio app (atendimentos, valores recebidos, avaliações) são da
 | Parecer de advogado sobre o papel da WorkEasy (informação, indicação remunerada ou correspondente) | Itens 2 e 3 | Pendente, obrigatório antes de qualquer oferta |
 | Termos do contrato com o Asaas sobre indicação, afiliação e uso de marca | Não foi aberto | Pendente |
 | Status vigente de 4.656, 5.050, 5.159, 5.177 e 4.935 conferido no BCB | Divergências do item 2 | Pendente |
-| Texto primário da Res. CMN 4.935/2021, art. 12 (atividades de correspondente) | Não foi aberto | Pendente |
+| Texto primário da Res. CMN 4.935/2021, artigo que lista as atividades de correspondente (número não confirmado; o resumo Felsberg não cita artigo) | Não foi aberto | Pendente |
 | Base legal LGPD e texto de consentimento específico para análise de crédito | Item 4 | Pendente |
 | Pagamentos reais em produção com volume medido por prestador | Item 5 | Não existe hoje |
 | Comunicação sem promessa de prazo ou taxa em nome da WorkEasy | PREAMBLE.md, seção 2 | A fazer |
@@ -171,7 +171,9 @@ Fora dessa hipótese, precisa de parecer antes:
 
 Não possível sem licença, segundo as normas lidas:
 
-- Captar recursos do público, emprestar com recursos próprios, ser parte do contrato de crédito ou reter valores para pagar a antecipação (Res. CMN 5.050, arts. 10, I e 22, I, na cópia lida).
+- Captar recursos do público (Res. CMN 5.050, art. 10, I, na cópia lida).
+- Emprestar com recursos próprios é a atividade que a licença de SCD permite (art. 7, caput, "capital próprio"). O art. 22, I, veda a mesma operação às SEP.
+- Ser parte do contrato de crédito ou reter valores para pagar a antecipação não é norma citada nas fontes lidas. É inferência deste dossiê [incerto] e precisa de parecer.
 
 ## 9. Recomendação
 
@@ -183,11 +185,11 @@ Não possível sem licença, segundo as normas lidas:
 
 ## Perguntas para o profissional
 
-1. Um link informativo para a página do Asaas, sem comissão e sem participação na contratação, é correspondência (Res. CMN 4.935/2021), intermediação (Lei 4.595, art. 17) ou apenas divulgação de terceiro? Qual o texto vigente do art. 12 da Res. CMN 4.935/2021?
+1. Um link informativo para a página do Asaas, sem comissão e sem participação na contratação, é correspondência (Res. CMN 4.935/2021), intermediação (Lei 4.595, art. 17) ou apenas divulgação de terceiro? Qual o texto vigente do artigo que lista as atividades de correspondente na Res. CMN 4.935/2021 (número a confirmar)?
 2. Uma comissão por contrato fechado muda a resposta? Quando a indicação remunerada passa a ser intermediação de recursos ou remuneração de correspondente?
 3. Qual é a norma vigente de SCD e SEP hoje? A Res. CMN 5.050/2022 foi revogada pela 5.177/2024? A Res. CMN 4.656/2018 está integralmente revogada desde 1/1/2025?
 4. Um prestador que toma crédito para a própria atividade profissional é consumidor (CDC, art. 2)? Se for, valem os deveres dos arts. 52 e 54-B, e em que formato?
-5. Se a WorkEasy for considerada representante do fornecedor de crédito, a responsabilidade solidária (arts. 7, parágrafo único, 25, §1º, e 34) a alcança?
+5. Se a WorkEasy for considerada representante do fornecedor de crédito, ou "intermediário" (art. 54-B, caput), a responsabilidade solidária (arts. 7, parágrafo único, 25, §1º, e 34) a alcança?
 6. Qual base legal da LGPD (art. 7, I, II, V ou X) serve para usar dados do app numa análise de crédito? Precisa de consentimento específico? Como cumprir a transparência do art. 9 e a revisão do art. 20?
 7. A plataforma pode consultar bancos de dados de crédito (Lei 12.414/2011, texto vigente após a LC 166/2019)? Quais limites?
 8. O contrato com o Asaas permite indicação de terceiros, comissão de afiliado e uso da marca Asaas na WorkEasy?
