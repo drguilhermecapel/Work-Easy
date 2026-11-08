@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versão | 2026-10-rascunho |
+| Versão | 2026-10-rascunho (mesma edição 2026-10 de `apps/web/config/legal.ts`; este documento não tem entrada própria nele) |
 | Vigência | [DATA DE VIGÊNCIA] |
 | Controlador (a constituir) | [RAZÃO SOCIAL], [CNPJ], [ENDEREÇO] |
 | Canal do SAC | [E-MAIL DO SAC] |
@@ -30,7 +30,7 @@
 
 1.2 Incidente de segurança é "qualquer evento adverso confirmado, relacionado à violação das propriedades de confidencialidade, integridade, disponibilidade e autenticidade da segurança de dados pessoais" (Resolução CD/ANPD nº 15/2024, art. 3º, XII). Suspeita não é evento confirmado. A triagem (seção 4) confirma ou descarta. O registro é obrigatório também para incidente que não é comunicado (art. 10).
 
-1.3 Papéis de tratamento: [CONDICIONAL: depende de parecer]. O documento 02 (Termos do Prestador, cláusulas 18.3 e 18.4) trata o WorkEasy como controlador dos dados da conta e como operador dos dados do CRM do prestador. Este plano segue essa leitura até o advogado confirmá-la.
+1.3 Papéis de tratamento: [CONDICIONAL: depende de parecer]. O documento 02 (Termos do Prestador) trata o prestador como controlador dos dados dos seus clientes (cláusula 18.3) e o WorkEasy como operador do CRM dele (cláusula 18.4). Essas cláusulas não dizem quem controla os dados da conta. Este plano supõe que o WorkEasy é controlador deles até o advogado confirmar (Q1).
 
 1.4 Fora do escopo: indisponibilidade de terceiro sem dado pessoal afetado. O cenário 9.6 trata só a parte operacional.
 
@@ -43,8 +43,8 @@
 | Documentos de prestador | Bucket `provider-documents` privado (`public = false`), limite de 10 MiB, só imagem ou PDF. Link assinado vale 300 s. | migração `20261019000003_providers.sql`; `services/admin.ts` |
 | Login | Por código (OTP). `otp_expiry = 3600`, `jwt_expiry = 3600`, 30 verificações por 5 min por IP. | `supabase/config.toml` |
 | MFA | TOTP desligado (`enroll_enabled = false`, `verify_enabled = false`). | `supabase/config.toml` |
-| Alertas automáticos | Nenhum no repositório. A busca por Sentry, PagerDuty, uptime e similares não achou nada. | [PLANEJADO] |
-| Registro de leitura de documento ou de contato | Não existe. `audit_log` registra `payment.raw_viewed`, mas não leitura de documento. | `services/admin.ts` |
+| Alertas automáticos | Sem alerta de segurança nem de backend. Sentry (`@sentry/react`) relata erros do navegador só quando `VITE_SENTRY_DSN` está definida. Não há PagerDuty nem monitor de uptime no repositório. | `lib/observability.ts`; alertas de segurança: [PLANEJADO] |
+| Registro de leitura de documento ou de contato | Leitura de documento pelo painel admin grava `document.viewed` antes de emitir o link (RPC `admin_log_document_view`; `createDocumentUrl` em `services/admin.ts`). Leitura direta pelo Storage não é registrada. Leitura de contato não existe. `audit_log` registra também `payment.raw_viewed`. | `services/admin.ts`; migração `20261109100004_admin_document_view_audit.sql` |
 | Reconciliação de eventos do Asaas perdidos | Não existe no código. | [PLANEJADO] |
 | Modo manutenção | Não há chave de plataforma que desligue o app. | [PLANEJADO] |
 
@@ -62,9 +62,9 @@ Consequência: hoje o plano é um roteiro de contenção com passos manuais. O t
 | Comunicação (C) | Redige e envia mensagens a titulares, prestadores e fornecedores | Titular | Pessoa de atendimento |
 | Encarregado (E) | Canal com a ANPD. Faz ou representa a comunicação. | [E-MAIL DO ENCARREGADO] | Pessoa designada (ver 3.3) |
 
-3.2 A comunicação à ANPD é feita pelo encarregado ou por representante legalmente constituído do controlador (página da ANPD sobre a comunicação, lida em 08/11/2026). Documentos que provam a representação: ato de designação do encarregado, procuração ou atos constitutivos.
+3.2 A comunicação à ANPD é feita pelo encarregado ou por representante legalmente constituído do controlador (página da ANPD sobre a comunicação, lida em 08/11/2026). Documentos que provam a representação, segundo a página: procuração e atos constitutivos (contrato ou estatuto social). Ato de designação do encarregado é sugestão do plano [PROPOSTA].
 
-3.3 Encarregado com uma pessoa só: [CONDICIONAL: depende de parecer]. O documento 03, Q15, cita a Resolução CD/ANPD nº 2/2022, art. 11, que dispensa encarregado de agente de pequeno porte, salvo alto risco [incerto: citação do documento 03, não reaberta nesta tarefa]. O plano mantém o papel E mesmo assim, porque a ANPD aceita a comunicação só por encarregado ou representante.
+3.3 Encarregado com uma pessoa só: [CONDICIONAL: depende de parecer]. A Resolução CD/ANPD nº 2/2022, art. 11, dispensa o encarregado de agente de pequeno porte (texto lido em 08/11/2026). A exclusão por alto risco está no art. 3º, I, e os critérios no art. 4º. O documento 03, Q15, diz o mesmo. O plano mantém o papel E mesmo assim, porque a ANPD aceita a comunicação só por encarregado ou representante legalmente constituído (página da ANPD, lida em 08/11/2026).
 
 ### 3.4 RACI
 
@@ -124,14 +124,14 @@ R = executa. A = aprova (um por linha). C = consultado. I = informado.
 | `payment_events` | Tabela; leitura do admin (`payment_events_select_admin`). | `asaas_event_id` único, `event_type`, `payload` redigido, `processed_at`. | Payload já redigido. A prova completa fica no painel do Asaas [incerto: exportação não verificada]. |
 | Logs de Edge Function | Painel do Supabase, tipo "Edge Function". | Nome e mensagem do erro. `logError` grava só `nome: mensagem`, sem corpo da requisição. | Retenção depende do plano e não consta na página lida [incerto]. Exporta CSV ou JSON, até 1.000 linhas por download. |
 | Logs de Auth, API Gateway, Postgres, Storage, PostgREST | Mesmo painel de logs. | Eventos de cada serviço. | Mesma retenção. |
-| Advisors de segurança | `supabase db advisors` (CLI), Security Advisor no painel, `get_advisors` pelo MCP. | Checks citados pela página: `0013_rls_disabled_in_public`, `0010_security_definer_view`, `0002_auth_users_exposed`, `0023_sensitive_columns_exposed`, `0024_permissive_rls_policy`, `0028` e `0029` (função `SECURITY DEFINER` executável por anônimo ou autenticado). | Roda sob demanda, não é contínuo. Achados podem demorar a sair depois da correção. |
-| Histórico do agendador | `cron.job_run_details`. Jobs: `workeasy-dispatch-notifications` e `workeasy-expire-stale` (migração 08). | Execuções dos jobs. | Não é limpo automaticamente. |
+| Advisors de segurança | `supabase db advisors` (CLI), Security Advisor no painel, `get_advisors` pelo MCP. | Checks citados pela página: `0013_rls_disabled_in_public`, `0010_security_definer_view`, `0002_auth_users_exposed`, `0023_sensitive_columns_exposed`, `0024_permissive_rls_policy`, `0028` e `0029` (função `SECURITY DEFINER` executável por anônimo ou autenticado). | Roda sob demanda, não é contínuo. Achados de saúde (`log_*_error_rate_high`) podem demorar a sair depois da correção, porque medem taxa de erro em um período. |
+| Histórico do agendador | `cron.job_run_details`. Jobs: `workeasy-dispatch-notifications` e `workeasy-expire-stale` (migração 08), e outros `workeasy-*` das migrações seguintes. | Execuções dos jobs. | Não é limpo automaticamente. |
 | Notificações falhas | Tabela `notifications`, status `failed`. | Mensagens que não saíram. | Só cobre o fluxo do app. |
 | Painel "Exigem atenção" | `/admin/pagamentos`. | Reembolso recusado e pagamento recebido depois do cancelamento. | Só casos de pagamento. |
 | Canal de relato | E-mail do SAC: [E-MAIL DO SAC]. | Relatos de clientes e prestadores. | Depende de alguém relatar. |
 | Testes | `supabase test db` (pgTAP) e `npm run test:integration`. | Falhas de RLS e de regra no pré-lançamento. | É prevenção, não detecção. |
 
-Lacunas, sem fonte de detecção: acesso a documento no bucket (`createDocumentUrl` não tem chamador em `pages/` nem em `services/`, e não grava auditoria); leitura de contatos; login fora do padrão; alertas em tempo real. [PLANEJADO]
+Lacunas, sem fonte de detecção: leitura direta de documento pelo Storage (a política do bucket ainda deixa o admin ler o arquivo sem passar pelo painel, segundo o comentário da migração 20261109100004); leitura de contatos; login fora do padrão; alertas em tempo real. [PLANEJADO]
 
 ## 6. Linha do tempo e prazos
 
@@ -151,11 +151,11 @@ Lacunas, sem fonte de detecção: acesso a documento no bucket (`createDocumentU
 | Três meses | Se não houver contato direto possível, divulgar em canal visível por pelo menos três meses. | art. 9º, §3º |
 | Cinco anos | Manter o registro do incidente, mesmo sem comunicação. | art. 10 |
 
-6.3 Prazos em dobro para agente de pequeno porte: art. 6º, §8º (ANPD) e art. 9º, §6º (titulares), com referência à Resolução CD/ANPD nº 2/2022. Só vale se J confirmar o porte [CONDICIONAL: depende de parecer].
+6.3 Prazos em dobro para agente de pequeno porte: art. 6º, §8º (caput e §3º, para a ANPD) e art. 9º, §6º (só o caput, para os titulares), com referência à Resolução CD/ANPD nº 2/2022. O §4º do art. 9º não é dobrado. A Resolução CD/ANPD nº 2/2022, art. 3º, I, exclui do porte quem faz tratamento de alto risco, e o art. 4º define alto risco (dado sensível, de crianças, de adolescentes ou de idosos, e larga escala). Só vale se J confirmar o porte [CONDICIONAL: depende de parecer].
 
-6.4 Sobre "72 horas". O prazo legal é de três dias úteis, não 72 horas. A meta de 72 horas que aparece neste plano é interna [PROPOSTA]. Dias úteis não contam fins de semana, então o prazo pode durar mais de 72 horas corridas. Feriados e o início da contagem são pontos para J [incerto].
+6.4 Sobre "72 horas". O prazo legal é de três dias úteis, não 72 horas. A meta de 72 horas que aparece neste plano é interna [PROPOSTA]. Dias úteis, em regra, não contam fins de semana, então o prazo pode durar mais de 72 horas corridas. A resolução não define dia útil. Feriados e o início da contagem são pontos para J [incerto].
 
-6.5 A ANPD aceita comunicação em duas etapas: preliminar e complementar. A complementar é protocolada no mesmo processo, por petição intercorrente. Isso é excepcional e precisa de justificativa (página da ANPD).
+6.5 A ANPD aceita comunicação em duas etapas: preliminar e complementar. A complementar é protocolada no mesmo processo, por petição intercorrente (página da ANPD). Precisa de fundamentação (art. 6º, §3º).
 
 6.6 Quando não cabe comunicação direta, a comunicação pode ser feita por publicação em meios de comunicação. Isso também é excepcional e precisa de justificativa, com alcance máximo dos titulares (página da ANPD; art. 9º, §3º).
 
@@ -183,7 +183,7 @@ Lacunas, sem fonte de detecção: acesso a documento no bucket (`createDocumentU
 | VII | Data da ocorrência, quando possível, e data do conhecimento | H0 (seção 6). Início do evento, se os logs mostrarem. | — |
 | VIII | Dados do encarregado ou de quem representa o controlador | [E-MAIL DO ENCARREGADO] e nome do encarregado | — |
 | IX | Identificação do controlador e declaração de porte, se for o caso | [RAZÃO SOCIAL], [CNPJ], [ENDEREÇO]. Porte: [CONDICIONAL: depende de parecer]. | — |
-| X | Identificação do operador, quando aplicável | Supabase (banco, arquivos, login e funções), conforme o documento 06. Asaas (cobrança). | Papel do Asaas [incerto] |
+| X | Identificação do operador, quando aplicável | Supabase (banco, arquivos, login e funções), conforme o documento 06. Asaas (cobrança), Resend (e-mail), Meta (WhatsApp) e Anthropic (assistente), conforme o documento 07. Provedor de SMS e SMTP do Auth: [a definir] no documento 07. | Papel do Asaas [incerto]. Prazo de aviso de incidente: Supabase, "quando viável, em 48 horas" (documento 07, S1); Resend, "without undue delay" (S3, cl. 8.6); Asaas, "em prazo razoável" (S2, cl. 9.1); Meta e Anthropic [incerto] |
 | XI | Descrição do incidente, com a causa principal se for possível | Texto curto, sem conjecturas | — |
 | XII | Total de titulares cujos dados são tratados nas atividades afetadas | Total de contas (`profiles`) das atividades afetadas | [PROPOSTA] |
 
@@ -271,7 +271,7 @@ Você decide como avisar esses clientes. Esta mensagem traz o que você precisa 
 
 - Preservar antes de corrigir (seção 10).
 - Mudar segredo não exige redeploy. As Edge Functions leem o valor novo na hora (página de segredos do Supabase).
-- Não desligar a verificação de JWT para contornar um problema. `supabase functions deploy --no-verify-jwt` desliga a verificação da função, e não a para (página da CLI). `--prune` apaga funções remotas que não existem localmente.
+- Não desligar a verificação de JWT para contornar um problema. `supabase functions deploy --no-verify-jwt` desliga a verificação de JWT dessa função (página da CLI: "Disable JWT verification for the Function"). `--prune` apaga funções remotas que não existem localmente (página da CLI).
 - Não editar migração já existente. Criar uma nova (regra do plano).
 - Parar o envio de mensagens do agendador, se houver envio em massa indevido:
 
@@ -298,10 +298,10 @@ select cron.schedule('workeasy-dispatch-notifications', '* * * * *', 'select pri
   3. Copiar os objetos para uma área de preservação com acesso restrito, antes de remover. Storage não entra no backup do banco (seção 10).
   4. Links já emitidos valem até 300 s (`SIGNED_URL_SECONDS` em `services/admin.ts`). Não é possível revogar um link antes disso. A remoção do objeto corta o acesso a novos links.
   5. Remover o objeto pela Storage API com a chave de serviço (o método `remove` já é usado em `services/providers.ts`). Não há botão de remoção no painel admin [PLANEJADO].
-  6. Se o link saiu do painel admin, registrar a ação à mão no registro do incidente. A tela não grava auditoria (ver seção 5).
+  6. Conferir `document.viewed` no `audit_log` desde a suspeita (quem pediu link). Acesso direto ao arquivo pelo Storage não gera esse registro: anotar à mão no registro do incidente (ver seção 5).
   7. Enquadrar a gravidade (seção 4) e seguir a seção 6.
-- Evidência: cópia dos objetos; lista de `storage.objects`; relato de quem achou o link.
-- Limite hoje: não há log de leitura de documento e não há botão de remoção.
+- Evidência: cópia dos objetos; lista de `storage.objects`; `audit_log` com `document.viewed` do período; relato de quem achou o link.
+- Limite hoje: o log de leitura cobre só o link emitido pelo painel (`document.viewed`); não há log de acesso direto ao Storage nem botão de remoção.
 
 9.2 Conta tomada
 
@@ -352,8 +352,8 @@ select cron.schedule('workeasy-dispatch-notifications', '* * * * *', 'select pri
 
 - Chaves do sistema: `SUPABASE_SERVICE_ROLE_KEY` (legada, JWT), chave `sb_secret_...`, `ASAAS_API_KEY` (conta raiz), chaves de subconta guardadas no Vault (`api_key_secret_id`), `ANTHROPIC_API_KEY`.
 - Ações, na ordem:
-  1. Supabase: em Settings > API Keys, criar primeiro a nova chave secreta e depois desabilitar a comprometida. Criar a nova não revoga as legadas `anon` e `service_role`, que valem até serem desabilitadas. A página avisa que essas duas serão descontinuadas até o fim de 2026. O guia de chave vazada citado pela página não foi lido [incerto].
-  2. As Edge Functions recebem `SUPABASE_SECRET_KEYS` e `SUPABASE_SERVICE_ROLE_KEY` da plataforma. Confirmar, depois da troca, que as funções usam a chave nova [incerto].
+  1. Supabase: em Settings > API Keys, criar primeiro a nova chave secreta e depois desabilitar a comprometida. Criar a nova não revoga as legadas `anon` e `service_role`, que valem até serem desabilitadas. A página avisa que essas duas serão descontinuadas até o fim de 2026. A página cita o guia "Rotate a leaked or compromised API key", não lido nesta revisão [incerto]. Ela também diz para trocar a chave assim que a causa do vazamento for corrigida, e para usar uma chave secreta separada por componente do backend.
+  2. As Edge Functions recebem `SUPABASE_SECRET_KEYS` e `SUPABASE_SERVICE_ROLE_KEY` da plataforma (página de segredos do Supabase). O código lê `SUPABASE_SERVICE_ROLE_KEY` antes de `SUPABASE_SECRET_KEYS` (`supabase/functions/_shared/config.ts`, linha 61). Por isso, enquanto a service role legada estiver habilitada, as funções podem continuar usando a chave antiga. Confirmar, depois da troca, qual chave está em uso [incerto: não testado].
   3. `ASAAS_API_KEY`: gerar nova chave no painel do Asaas [incerto: passo não lido] e depois:
      ```bash
      supabase secrets set ASAAS_API_KEY='<nova chave>'
@@ -371,10 +371,10 @@ select cron.schedule('workeasy-dispatch-notifications', '* * * * *', 'select pri
 
 9.6 Indisponibilidade do Asaas
 
-- Sinal: erros vindos do Asaas em `payments-create`, `charges-create` ou `subscriptions-manage`; `payment_event.failed` com `asaas_5xx`.
+- Sinal: erros vindos do Asaas em `payments-create`, `charges-create` ou `subscriptions-manage`; `payment_event.failed` com `asaas_400` ou `asaas_422`. Erro 5xx do Asaas no webhook não grava `payment_event.failed`: o erro é relançado e o Asaas reenvia (`handler.ts`, linhas 128 a 150).
 - Estado em 08/11/2026: a página de status (status.asaas.com) mostrou todos os componentes operacionais. A última ocorrência encerrada foi "Instabilidades em serviços Pix", resolvida em 04/11/2026 às 20:06 (GMT-03:00). A leitura foi automática, então confira antes de usar [incerto].
 - Ações, na ordem:
-  1. Não repetir cobranças à mão. `payments-create` devolve a cobrança `pending` existente quando o método é o mesmo (ARQUITETURA), então repetir o pedido não gera cobrança dupla.
+  1. Não repetir cobranças à mão. `payments-create` devolve a cobrança `pending` existente quando o método é o mesmo e o vencimento não passou. Se o método mudou ou venceu, cancela a anterior no Asaas e cria outra (ARQUITETURA). Por isso repetir o pedido, com os mesmos dados, não gera cobrança dupla.
   2. Avisar o usuário pelo canal disponível. Aviso dentro do app [PLANEJADO].
   3. Ao voltar, conferir a fila de webhook do Asaas. Se o endpoint do WorkEasy falhou em 15 entregas seguidas, a fila está pausada. Reativar (9.3, item 4).
   4. Eventos não entregues: reler as cobranças no Asaas, na conta certa, e atualizar `payments` com a mesma regra do webhook. Não há reconciliação automática [PLANEJADO].
@@ -401,7 +401,7 @@ select cron.schedule('workeasy-dispatch-notifications', '* * * * *', 'select pri
 9.8 Phishing ou falsificação de identidade contra cliente ou prestador
 
 1. Publicar aviso no canal oficial (modelo 8.3) pedindo que ninguém responda mensagem que peça código.
-2. Denúncia ao CERT.br, facultativa. A página do CERT.br aceita relato por e-mail como canal principal, com telefone como alternativa e formulário web para usuário final. Recomenda logs completos com data, hora e fuso, dados pessoais removidos, texto simples e 70 a 80 caracteres por linha (página lida em 08/11/2026). Em phishing, o contato a usar é o da rede do IP ou do registrador do domínio, e não o do próprio domínio [incerto: trecho de busca, não lido na página]. Para órgão federal (.gov.br), a notificação também vai ao CTIR Gov [incerto].
+2. Denúncia ao CERT.br, facultativa. A página do CERT.br aceita relato por e-mail como canal principal, com telefone como alternativa e formulário web para usuário final. Recomenda logs completos com data, hora e fuso, dados pessoais removidos, formato texto e 70 a 80 caracteres por linha (página lida em 08/11/2026). Em phishing, o contato a usar é o da rede do IP (e do registrador do domínio), e não o do próprio domínio, que pode ser do fraudador. Para órgão federal (.gov.br), a notificação também vai ao CTIR Gov [incerto].
 3. A denúncia ao CERT.br não substitui a comunicação do art. 48. Ela é facultativa.
 
 ## 10. Preservação de evidências
@@ -424,7 +424,7 @@ select cron.schedule('workeasy-dispatch-notifications', '* * * * *', 'select pri
 | Histórico do agendador | `select * from cron.job_run_details` | Não é limpo automaticamente |
 | Estado dos advisors | `npx supabase db advisors`, com saída guardada | Sob demanda |
 | Objetos do Storage afetados | Cópia por script com chave de serviço [PLANEJADO] | Storage não entra no backup do banco |
-| Cópia do banco antes da correção | `supabase db dump` (cópia lógica, página da CLI) | Contém dados pessoais: guardar com acesso restrito |
+| Cópia do banco antes da correção | `supabase db dump` (cópia lógica; a página de backups recomenda o comando para o plano gratuito) | Contém dados pessoais: guardar com acesso restrito |
 | Configuração antes da troca | Copiar `config.toml` e os nomes dos segredos, nunca os valores | — |
 
 10.3 Retenção de backup do banco (página do Supabase lida em 08/11/2026): planos Pro, Team e Enterprise têm backup diário, com 7, 14 e até 30 dias de acesso. No plano gratuito a página não informa retenção e recomenda exportação regular. PITR é complemento pago nos planos Pro, Team e Enterprise. O plano do projeto ainda não foi escolhido [PLANEJADO].
@@ -491,8 +491,8 @@ Roteiro (o facilitador lê cada inject no tempo indicado):
 
 | Item | Situação hoje | Tag | Ação sugerida |
 |---|---|---|---|
-| Alertas em tempo real | Não existem | [PLANEJADO] | Definir fonte e canal de alerta |
-| Registro de leitura de documento | Não existe. `createDocumentUrl` não grava auditoria e não tem chamador nas telas lidas. | [PLANEJADO] | Decisão do owner e mudança de código |
+| Alertas em tempo real | Sem alerta de segurança ou de backend. Sentry só relata erros do navegador, com `VITE_SENTRY_DSN` | [PLANEJADO] | Definir fonte e canal de alerta |
+| Registro de leitura de documento | Existe para o link emitido pelo painel (`document.viewed`). Não existe para leitura direta no Storage, que a política ainda permite ao admin. | [PLANEJADO] para o acesso direto | Fechar a política de leitura do bucket, em migração nova |
 | Registro de leitura de contato | Não existe | [PLANEJADO] | Idem |
 | IP e user agent no `audit_log` | Não existem | [PLANEJADO] | Nova migração e mudança em `log_event` |
 | MFA para administradores | TOTP desligado em `config.toml` | [PLANEJADO] | Decisão do owner |
@@ -520,7 +520,7 @@ Roteiro (o facilitador lê cada inject no tempo indicado):
 - **Q9. Publicação em meios de comunicação** (art. 9º, §3º). Quando é aceita e como registrar.
 - **Q10. Boletim de ocorrência** para acesso indevido ou extorsão. Não pesquisado [incerto].
 - **Q11. Retenção.** Registro de incidente por cinco anos (art. 10) e regras de eliminação do documento 03.
-- **Q12. Texto oficial.** A leitura da Resolução CD/ANPD nº 15/2024 veio de cópia do Ministério da Justiça e de um agregador (LegisWeb, cópia não oficial). O DOU retornou erro 502 nesta revisão. Confirmar no DOU. As cópias dão 24/04/2024. Um glossário da ANPD, visto em busca, cita 27/04/2024 [incerto].
+- **Q12. Texto oficial.** A leitura da Resolução CD/ANPD nº 15/2024 veio de cópia do Ministério da Justiça e de um agregador (LegisWeb, cópia não oficial). O DOU retornou erro 502 nesta revisão e de novo na reconferência de 08/11/2026. Confirmar no DOU. As cópias dão 24/04/2024. Um glossário da ANPD, visto em busca, cita 27/04/2024 [incerto].
 - **Q13. Formulário.** Confirmar no formulário real os campos e se o SEI exige e-mail do encarregado.
 
 14.2 Lista consolidada de [incerto]:
@@ -533,9 +533,11 @@ Roteiro (o facilitador lê cada inject no tempo indicado):
 - Dia útil e feriados (Q3).
 - Texto oficial da Resolução CD/ANPD nº 15/2024 (Q12).
 - Templates de WhatsApp para comunicação de incidente (8.1).
-- CTIR Gov e contato do CERT.br para phishing (9.8).
+- CTIR Gov (9.8). O contato para phishing, segundo o CERT.br, foi conferido.
+- Prazo de aviso de incidente da Meta e da Anthropic, conforme o documento 07 (7.3, item X).
 - Leitura automática de status.asaas.com (9.6).
 - Papel do Asaas como operador ou controlador (7.3, item X).
+- Confirmar a lista de operadores do documento 07 (Resend, Meta, Anthropic, SMS e SMTP) e o papel de cada um (7.3, item X).
 - Classificação de templates de documento como dado sensível ou biométrico (Q7).
 
 ## 15. Fontes consultadas
@@ -547,16 +549,16 @@ Todas as datas de acesso são 08/11/2026.
 | 1 | https://www2.camara.leg.br/legin/fed/lei/2018/lei-13709-14-agosto-2018-787077-publicacaooriginal-156212-pl.html | Lei nº 13.709/2018 (LGPD), publicação original | Art. 48, caput e §§ 1º e 2º | Texto original. O Planalto não foi usado. |
 | 2 | https://bibliotecadigital.mj.gov.br/bitstream/1/12879/2/RES_ANPD_2024_15.html | Resolução CD/ANPD nº 15, de 24/04/2024 | Arts. 3º, XII; 4º; 5º; 6º (caput, §§1º, 2º I–XII, 3º, 8º); 9º (caput I–VII, §§1º a 4º, 6º); 10 | Cópia de reprodução (SEI/MJ), que diz não substituir o DOU. Conferir no DOU. |
 | 3 | https://legisweb.com.br/legislacao/?id=458235 | Resolução CD/ANPD nº 15/2024 | Art. 6º, §2º I–XII (conferência cruzada) | Cópia não oficial de agregador. Usada só para conferir a lista da fonte 2. |
-| 4 | https://www.in.gov.br/en/web/dou/-/resolucao-cd/anpd-n-15-de-24-de-abril-de-2024-556243024 | DOU, Resolução nº 15/2024 | Não lido: retornou HTTP 502 | Confirmar no DOU (Q12). |
+| 4 | https://www.in.gov.br/en/web/dou/-/resolucao-cd/anpd-n-15-de-24-de-abril-de-2024-556243024 | DOU, Resolução nº 15/2024 | Não lido: HTTP 502 em duas tentativas (08/11/2026) | Confirmar no DOU (Q12). |
 | 5 | https://www.gov.br/anpd/pt-br/canais_atendimento/agente-de-tratamento/comunicado-de-incidente-de-seguranca-cis | ANPD, página do Comunicado de Incidente de Segurança (CIS) | Prazos; canal SEI!ANPD; "Processo Novo"; formulário preliminar ou completo; representação; comunicação em etapas; publicação em meios de comunicação | Página "Modificado em 26/08/2026". Não lista os campos do formulário. |
-| 6 | https://cert.br/docs/notificacoes/ | CERT.br, Recomendações para notificações de incidentes de segurança | Canais; conteúdo do relato; dados pessoais; formato; modelos | Versão 1.4, 14/11/2025. Lida até o limite da ferramenta. |
+| 6 | https://cert.br/docs/notificacoes/ | CERT.br, Recomendações para notificações de incidentes de segurança | Canais; conteúdo do relato; dados pessoais; formato; modelos | Versão 1.4, 14/11/2025. Lida até 100.000 caracteres (canais, teor, formato, phishing). CTIR Gov não lido. |
 | 7 | https://supabase.com/docs/guides/functions/secrets | Supabase, segredos de Edge Functions | Segredo lido na hora, sem redeploy; segredos padrão; papel para criar ou apagar | — |
 | 8 | https://supabase.com/docs/reference/cli/supabase-secrets-set | Supabase CLI, `secrets set`, `list`, `unset` | Sintaxe; `--env-file`; `--project-ref` | — |
 | 9 | https://supabase.com/docs/reference/cli/supabase-functions-delete | Supabase CLI, `functions delete` e `deploy` | Sintaxe; não remove o código local; `--no-verify-jwt`; `--prune` | — |
 | 10 | https://supabase.com/docs/reference/javascript/auth-admin-signout | Supabase Auth, `signOut` | Parâmetros `jwt` e `scope` | Significado de `scope` não confirmado. |
 | 11 | https://supabase.com/docs/reference/javascript/auth-admin-updateuserbyid | Supabase Auth, `updateUserById` | Exemplo com `ban_duration: '876000h'` | Efeito do bloqueio não confirmado. |
 | 12 | https://supabase.com/docs/guides/database/database-advisors | Supabase, advisors | Checks citados; execução sob demanda; `supabase db advisors` | — |
-| 13 | https://supabase.com/docs/guides/api/api-keys | Supabase, chaves de API | Tipos de chave; legadas válidas até desabilitar; aviso sobre chave secreta | Passo a passo de chave vazada não lido. |
+| 13 | https://supabase.com/docs/guides/api/api-keys | Supabase, chaves de API | Tipos de chave; legadas válidas até desabilitar; aviso sobre chave secreta | Guia "Rotate a leaked or compromised API key" citado, não lido. |
 | 14 | https://supabase.com/docs/guides/platform/logs | Supabase, logs | Tipos de log; exportação; log drains | Retenção não informada. |
 | 15 | https://supabase.com/docs/guides/cron/quickstart | Supabase, pg_cron | `cron.unschedule`; `cron.job_run_details`; `cron.alter_job` | — |
 | 16 | https://supabase.com/docs/guides/platform/backups | Supabase, backups | Retenção por plano; PITR; Storage fora do backup; `db dump` | — |
@@ -573,3 +575,4 @@ Todas as datas de acesso são 08/11/2026.
 | 27 | `apps/web/supabase/migrations/20261019000003_providers.sql` e `…08_notifications.sql` | Repositório | Bucket privado; jobs do pg_cron | — |
 | 28 | `apps/web/docs/ARQUITETURA.md` | Repositório | Tabelas, funções, regras de token, notificações, backups | — |
 | 29 | `apps/web/docs/juridico/02-termos-do-prestador.md`, `03-politica-de-privacidade.md` (Q15), `06-ripd-relatorio-de-impacto.md` | Repositório | Cláusulas 18.3 e 18.4; porte; operadores | Citadas como referência interna, não reabertas. |
+| 30 | https://www.gov.br/anpd/pt-br/acesso-a-informacao/institucional/atos-normativos/regulamentacoes_anpd/resolucao-cd-anpd-no-2-de-27-de-janeiro-de-2022 | Resolução CD/ANPD nº 2, de 27/01/2022 (porte) | Arts. 3º, I; 4º; 11; 14, I a IV | Página do gov.br, lida em 08/11/2026. Art. 14, III: prazo em dobro da declaração do art. 19, II, da LGPD. |

@@ -5,7 +5,7 @@
 | Campo | Valor |
 |---|---|
 | Documento | O04 da pasta `docs/operacao/`: como operar o marketplace à mão, com as telas e as funções reais |
-| Data de referência | 08/11/2026. D1 do piloto = segunda, 09/11/2026 (O01, §6) |
+| Data de referência | 08/11/2026. D1 do piloto = segunda, 09/11/2026 (O01, §6), se o Go da Semana 0 (O01, §2) estiver registrado. Em 08/11/2026 o repositório não registra esse Go |
 | Para quem | Você, que opera sozinho. Advogado (seção 12). Quem lê as regras de contato (O02, O05) |
 | Estado do produto | Protótipo. MVP em `main`, sem implantação e sem usuário real. Notificações automáticas, WhatsApp, Asaas e Resend não foram testados com contas reais. Onde o produto depende de automação, este documento manda fazer à mão |
 | Marcas | `[PLANEJADO]` não existe no produto hoje. `[proposta]` decisão a tomar, sem dado ainda. `[estimativa]` cálculo ou juízo. `[incerto]` não conferido em fonte aberta. `[DECISÃO DO DONO]` só você decide. `[CONDICIONAL: depende de parecer]` depende de advogado |
@@ -15,7 +15,7 @@
 ## 0. Resumo
 
 1. **O produto não casa pedido com profissional sozinho.** Você escolhe quem chamar, confere a proposta, leva ao cliente e acompanha até o pagamento (O01, §0 e §10).
-2. **Dois caminhos.** Pedido feito no app segue a **Trilha A** (proposta aceita e cobrança no app). Pedido que chegou pelo WhatsApp segue a **Trilha B** (orçamento com link e cobrança na conta Asaas do próprio profissional). Detalhe na seção 3.
+2. **Dois caminhos.** Pedido feito no app segue a **Trilha A** (proposta aceita e cobrança no app). Pedido que chegou pelo WhatsApp segue a **Trilha B** (orçamento com link e cobrança na conta Asaas do próprio profissional). Detalhe na seção 3. Há ainda o agendamento direto (`/agendar/:slug`), sem pedido nem proposta (L17).
 3. **Você não cria pedido, proposta, aceite, cobrança nem pagamento em nome de ninguém.** Cada ação é feita pelo cliente ou pelo profissional, na própria conta. Você orienta, confere o status e registra.
 4. **O painel `/admin` mostra contagens, a fila de prestadores, as disputas e os pagamentos que pedem atenção.** Não mostra a lista de pedidos nem a de atendimentos (lacuna L1, seção 1.2).
 5. **Nunca marque nada como pago, cancelado ou devolvido fora do que o app e o Asaas mostram.** Comprovante enviado no WhatsApp não muda status.
@@ -33,8 +33,9 @@
 |---|---|---|---|
 | Criar pedido | Cliente, em `/pedido` (login por código) | Não. Pedido de WhatsApp vai para a planilha | Política `requests_insert_own`: só com `client_id = auth.uid()` (`migrations/20261019000004_marketplace.sql`) |
 | Enviar proposta | Prestador aprovado, em `/pro/pedidos` | Não | `proposals_insert_own` (`provider_id = auth.uid()`); a tela só envia e retira |
-| Mudar preço de proposta enviada | Nenhuma tela | Não | O banco permite `update` de preço, mensagem e validade enquanto a proposta está `sent` (guard de `proposals`); o app não tem formulário para isso |
+| Mudar preço de proposta enviada | Nenhuma tela | Não | Não se muda. Desde a migration `20261109000001_proposal_integrity.sql`, preço, mensagem e validade ficam congelados quando a proposta está `sent`; só vale `sent → withdrawn`. Retirar e reenviar no mesmo pedido não funciona (`unique (request_id, provider_id)`) |
 | Aceitar proposta | Cliente dono do pedido, em `/pedidos/:id` | Orienta | `accept_proposal` (dia, início e fim em horário de São Paulo) |
+| Agendamento direto (sem pedido nem proposta) | Cliente, em `/agendar/:slug` (`book_direct`); prestador aceita ou recusa em `/pro/agenda` | Não | Atendimento nasce `requested`. Sem resposta em 48 h, o banco cancela (`expire_booking_requests`, a cada 15 min). Ver L17 |
 | Gerar cobrança do atendimento (Trilha A) | Cliente do atendimento, em `/atendimentos/:id` (PaymentPanel) | Orienta | `payments-create`: só o cliente do atendimento e só com status `accepted`; senão 403 ou 409 `booking_not_payable` |
 | Gerar cobrança de orçamento aceito ou de cliente próprio (Trilha B) | Profissional com plano Pro, em `/pro/cobrancas` | Orienta | `charges-create`: exige `plan = 'pro'` (403 `pro_required`) e orçamento `accepted` |
 | Iniciar, concluir, cancelar atendimento | Profissional, em `/pro/agenda`; cliente, em `/atendimentos/:id` | Orienta | `transition_booking` (matriz na seção 2) |
@@ -54,19 +55,20 @@ Estas lacunas são do produto. Não foram corrigidas aqui. Cada uma tem o contor
 | L1 | Não há tela de admin com a lista de pedidos nem de atendimentos. `admin_metrics` mostra só contagens. O admin lê `requests` por RLS (`requests_select` inclui `is_admin()`), mas nenhuma tela usa isso | Você não vê o texto de um pedido feito no app pelo painel | Para o texto de um pedido do app, peça ao cliente pelo WhatsApp (roteiro S2 do O03). Acesso de leitura ao banco só se o dono definir `[CONDICIONAL: depende de parecer]` |
 | L2 | Não há formulário para registrar no banco um pedido que chegou pelo WhatsApp (O01, §9: `[PLANEJADO]`) | Prestador não vê pedido de WhatsApp em `/pro/pedidos` | Trilha B: o profissional emite orçamento |
 | L3 | Não há gatilho em `requests`. O prestador não é avisado de pedido novo (O03, §1) | Quem não abre `/pro/pedidos` não sabe que há pedido | Você avisa por WhatsApp (MS-01), só a quem deu consentimento |
-| L4 | Proposta não se edita pela tela. Depois de retirada, o mesmo prestador não reenvia no mesmo pedido (`unique (request_id, provider_id)`) | Mudança de preço não tem caminho na Trilha A | Mudança de preço vira orçamento novo na Trilha B (SOP-04, seção 6.4) |
+| L4 | Proposta enviada não muda de preço, mensagem nem validade (migration `20261109000001`), e a tela não tem edição. Depois de retirada, o mesmo prestador não reenvia no mesmo pedido (`unique (request_id, provider_id)`) | Mudança de preço não tem caminho na Trilha A | Mudança de preço vira orçamento novo na Trilha B (SOP-04, seção 6.4) |
 | L5 | `/admin/prestadores/:id` mostra "Aprovar prestador" também para cadastro em `draft` (`firstApproval`), e `admin_set_provider_status` não checa `pending_review` | Dá para aprovar cadastro que nunca foi enviado para análise | Só aprove quem está em "Em análise" (seção 5). `[DECISÃO DO DONO]` se o banco deve recusar |
 | L6 | `admin_set_provider_status('approved')` não exige ocupação aprovada | Prestador aprovado sem ocupação aprovada não aparece na busca | Aprove o prestador só depois de aprovar ao menos uma ocupação |
 | L7 | O painel não mostra os bairros atendidos de cada prestador. `PrestadorDetalhe.tsx` não exibe `provider_neighborhoods` | Você não confere o bairro pela tela | Confira na planilha `prestadores` (O02, §13) e pergunte ao prestador |
-| L8 | Não há cancelamento administrativo de atendimento pela tela. Resolver contestação para `canceled` não cancela cobrança em aberto nem devolve dinheiro (`admin_resolve_dispute` só move `status`) | Cobrança pode continuar aberta ou paga depois do cancelamento | Peça ao cliente ou ao profissional que cancele pelo app (remove a cobrança aberta). Ver SOP-10 |
+| L8 | Fora da contestação, não há cancelamento administrativo de atendimento pela tela. Resolver contestação para `canceled` não cancela cobrança em aberto nem devolve dinheiro (`admin_resolve_dispute` só move `status`) | Cobrança pode continuar aberta ou paga depois do cancelamento | Peça ao cliente ou ao profissional que cancele pelo app (remove a cobrança aberta). Ver SOP-10 |
 | L9 | Não existe marca de "não compareceu" para atendimento. `no_show` existe só em `shifts` (plantão de Cuidado) | Falta do profissional não tem estado próprio | SOP-12 (6.3) |
 | L10 | Não há expiração automática de atendimento `accepted` sem pagamento. `PAYMENT_OVERDUE` não muda o atendimento (`asaas-events.ts`) | Atendimento aceito pode ficar parado para sempre | SOP-07 e 6.2 |
 | L11 | O profissional pode iniciar a partir de `accepted`, antes do pagamento (`Agenda.tsx` mostra "Iniciar" para `accepted` e `paid`) | Serviço pode começar sem cobrança paga | Regra desta SOP: decida caso a caso e registre (SOP-07) |
-| L12 | Estorno do Asaas com atendimento já `disputed` ou `canceled`: o webhook (`PAYMENT_REFUNDED`) pede a transição para `canceled`, mas a matriz do serviço só aceita `paid → canceled`, e não tem `disputed → canceled` (`private.booking_transition_allowed`). `[incerto: não testado]` | Pagamento devolvido pode ficar com atendimento em contestação | Não devolva no painel do Asaas sem conferir o status do atendimento e registrar. Ver 6.6 |
+| L12 | Estorno do Asaas com atendimento já `disputed` ou `canceled`: `bookingTransition` (`asaas-events.ts`, linhas 158 a 165) só leva a `canceled` a partir de `paid`, então o webhook (`PAYMENT_REFUNDED`) não pede a transição. A matriz do banco também recusa `disputed → canceled` para o serviço (`private.booking_transition_allowed`, conferido por consulta de leitura em transação revertida). Não testado com webhook real | Pagamento devolvido pode deixar o atendimento em contestação, sem aviso na tela | Não devolva no painel do Asaas sem conferir o status do atendimento e registrar. Ver 6.6 |
 | L13 | Admin pode aplicar qualquer transição com motivo (ramo `v_admin` de `transition_booking`), inclusive `accepted → paid`, sem pagamento | Marcar pago sem dinheiro é possível por SQL | Proibido nesta SOP: ninguém muda `status` fora do app. `[DECISÃO DO DONO]` restringir no banco |
-| L14 | Lembrete automático só existe para atendimento que começa mais de 24 h depois do aceite (`notify_booking_status`) | Atendimento próximo não recebe lembrete automático | SOP-08 |
+| L14 | Lembretes automáticos de 24 h e de 2 h, com varredura a cada 15 min (`private.enqueue_booking_reminders`, migration `20261023100000`). Saem só com contato confirmado e credenciais de WhatsApp ou Resend; sem credencial, a linha fica `skipped`. Cliente sem login (CRM do prestador) não recebe | Você não sabe se o aviso saiu sem olhar a tabela `notifications` | Conferir o status em `notifications`; se não saiu, MS-07 manual, uma vez (SOP-08) |
 | L15 | Não há campo de endereço em `requests` nem em `bookings` | Endereço é combinado fora do app | Não grave endereço completo na planilha. Combine só entre cliente e profissional (SOP-06) `[CONDICIONAL: depende de parecer]` |
-| L16 | O01, §10.1 fala em "3 a 5" prestadores. Na Trilha A o banco aceita `proposal_limit` propostas por pedido (padrão 3, faixa 1 a 10 em `platform_settings`) | Quinto prestador acionado recebe recusa do banco | Na Trilha A, acione 3 (SOP-02). Na Trilha B não há limite do banco: 3 a 5 vale |
+| L16 | O01, §10.1 fala em "3 a 5" prestadores. Na Trilha A o banco aceita `proposal_limit` propostas por pedido (padrão 3, faixa 1 a 10 em `platform_settings`) | A quarta proposta no mesmo pedido recebe `proposal_limit`: a conta é de propostas `sent` ou `accepted`, não de prestadores acionados (faixa 1 a 10 em `platform_settings`) | Na Trilha A, acione 3 (SOP-02). Na Trilha B não há limite do banco: 3 a 5 vale |
+| L17 | Agendamento direto (`book_direct`, `/agendar/:slug`) não está nas trilhas A e B. O atendimento nasce `requested`, sem pedido nem proposta; o prestador recebe aviso (`agendamento_solicitado`, migration `20261109300006`) e aceita ou recusa em `/pro/agenda`. Sem resposta em 48 h, cancela sozinho (`expire_booking_requests`) | Você não vê esse atendimento no admin (L1) e não tem roteiro para ele | Não aceite nem recuse por ninguém. Se o cliente perguntar, diga que o prestador responde em `/pro/agenda` e que, sem resposta em 48 h, o pedido cai sozinho. Escale só se houver cobrança ou incidente |
 
 ---
 
@@ -82,16 +84,19 @@ Conferidos no código em 08/11/2026. Se o código mudar, esta tabela muda junto.
 | Plano grátis | 5 propostas **novas** por mês civil de São Paulo (`free_proposals_per_month`); retirar não devolve a vaga; Pro sem limite | ARQUITETURA; DECISÕES, D4 |
 | Aceite | `accept_proposal`: cliente escolhe dia, início e fim (São Paulo). O período deve ser futuro, ter no máximo 24 h de duração e começar no máximo 2 anos à frente. Cria atendimento `accepted`, proposta `accepted`, outras `declined`, pedido `matched` | `migrations/20261019000004_marketplace.sql` (linhas 203 a 287) |
 | Proposta vencida | `valid_until` passado impede o aceite (`invalid_transition`) | mesmo arquivo |
+| Aprovação no aceite | O prestador precisa estar aprovado para a ocupação; senão, `not_allowed` | `migrations/20261109000004_acceptance_gate.sql` |
 | Horário | Sem checagem da agenda do profissional no aceite. Choque de horário com outro atendimento dele: `slot_unavailable` | ARQUITETURA, "Pedidos e propostas" |
-| Matriz de atendimento | Profissional: `requested → accepted/canceled`, `accepted → in_progress/canceled`, `paid → in_progress`, `in_progress → completed`. Cliente: `requested/accepted → canceled`, `completed → released/disputed`. Webhook: `accepted → paid`, `paid → canceled` (reembolso). Admin: qualquer, com motivo | `private.booking_transition_allowed` e `transition_booking` (`migrations/20261019000005_bookings.sql`) |
+| Matriz de atendimento | Profissional: `requested → accepted/canceled`, `accepted → in_progress/canceled`, `paid → in_progress`, `in_progress → completed`. Cliente: `requested/accepted → canceled`, `completed → released/disputed`. Webhook: `accepted → paid`, `paid → canceled` (reembolso), `→ disputed` em `PAYMENT_CHARGEBACK_REQUESTED`, exceto de `canceled` ou `disputed`. Admin: qualquer, com motivo | `private.booking_transition_allowed` e `transition_booking` (`migrations/20261019000005_bookings.sql`) |
 | Contestação | Cliente, de `completed`, até 7 dias depois do fim do horário; motivo com pelo menos 5 caracteres na tela | `transition_booking`; `BookingActions.tsx` |
 | Cancelamento | Cliente e profissional cancelam `accepted` pelo app, com confirmação. Depois de `paid`, o app não cancela pelo botão | `services/bookings.ts`; `pages/cliente/labels.ts`; juridico/04, §2.1 e §4.2 |
 | Cobrança da Trilha A | Só o cliente do atendimento, só `accepted`, só atendimento de origem `platform`. Vence amanhã (hoje + 1 dia, São Paulo). Pix com QR e copia e cola, ou fatura do Asaas para cartão e boleto. CPF ou CNPJ só na primeira cobrança | `supabase/functions/payments-create/handler.ts` (função `handler`); `components/cliente/PaymentPanel.tsx` |
 | Pagamento confirmado | `PAYMENT_RECEIVED` ou `PAYMENT_CONFIRMED` leva o atendimento a `paid`. `PAYMENT_OVERDUE` não move o atendimento | `supabase/functions/_shared/asaas-events.ts` |
 | Cobrança cancelada | Ao cancelar pelo app, a cobrança aberta é removida no Asaas (`payments-void`). A chamada vem do app do cliente e do profissional, não do painel admin | `services/bookings.ts` (`voidOpenCharges`) |
-| Cobrança do profissional | `charges-create`: plano Pro, recebimento ativo, CPF ou CNPJ do cliente, orçamento `accepted`. Sem taxa do WorkEasy e sem split | `supabase/functions/charges-create/handler.ts`; `pages/pro/Cobrancas.tsx` |
-| Orçamento | Link público `/orcamento/:token`, sem login. Aceita ou recusa se `sent` e dentro da validade. Vence sozinho (`expired`) depois de `valid_until` | ARQUITETURA, "Orçamentos e avaliações"; `private.expire_stale` |
-| Lembrete automático | Criado no aceite só se o início for mais de 24 h depois. Cancelamento marca os lembretes pendentes como `skipped` | `private.notify_booking_status` (`migrations/20261019000008_notifications.sql`) |
+| Cobrança do profissional | `charges-create`: plano Pro, recebimento ativo, CPF ou CNPJ do cliente, orçamento `accepted` (ou atendimento próprio `accepted`, `in_progress` ou `completed`, por `booking_id`). Sem taxa do WorkEasy e sem split | `supabase/functions/charges-create/handler.ts`; `pages/pro/Cobrancas.tsx` |
+| Orçamento | Link público `/orcamento/:token`, sem login. Aceita ou recusa se `sent` e dentro da validade. Vence sozinho (`expired`) depois de `valid_until`. O aceite leva o total que o cliente viu: página com total antigo é recusada (`respond_quote`, migration `20261109300002`) | ARQUITETURA, "Orçamentos e avaliações"; `private.expire_stale` |
+| Lembrete automático | Ao aceitar, o gatilho cria o de 24 h só se o início for mais de 24 h depois. Cancelamento marca os pendentes como `skipped`. A varredura a cada 15 min cria o de 24 h e o de 2 h (L14) | `private.notify_booking_status` (`migrations/20261019000008_notifications.sql`); `private.enqueue_booking_reminders` (`migrations/20261023100000_booking_reminders.sql`) |
+| Suspensão do prestador | Propostas `sent` viram `withdrawn`; pedidos diretos `requested` são cancelados; orçamentos `sent` voltam a rascunho. Atendimentos já aceitos não são tocados e ficam para decisão sua | `private.withdraw_unapproved_offers` (`migrations/20261109000005_suspension_cascade.sql`) |
+| Plano Pro | Sem pagamento e sem período pago, o plano volta a `free` sozinho, de hora em hora (`private.expire_pro_plans`, carência `pro_grace_days` = 0). Teste de 30 dias (`pro_trial_days`) vale uma vez por conta | `migrations/20261109000007_pro_plan_expiry.sql`; DECISOES, D3 |
 | Envio automático | Sem credenciais do WhatsApp e do Resend, as linhas viram `skipped`. Hoje nada foi enviado em produção | ARQUITETURA, variáveis; O05, §1 e §11.1 |
 | Avaliação | Só para atendimento de origem `platform`, `completed` ou `released`, com pagamento `received`, `confirmed` ou `released` pelo app | ARQUITETURA, "Orçamentos e avaliações" |
 | Fila de prestadores | `admin_provider_queue`: cadastros em `pending_review` e aprovados com ocupação ainda a aprovar; ordem de chegada | `pages/admin/Prestadores.tsx`; `services/admin.ts` |
@@ -116,7 +121,7 @@ Conferidos no código em 08/11/2026. Se o código mudar, esta tabela muda junto.
 | Cobrança | Cliente, em `/atendimentos/:id`: Pix ou fatura do Asaas. Vai para a conta da plataforma com split `[CONDICIONAL: depende de parecer (Q1)]` | Profissional Pro, em `/pro/cobrancas`. Vai para a conta Asaas do profissional, sem split |
 | Conta do profissional | Recebimento ativo (`provider_payment_accounts`) | Plano Pro e recebimento ativo |
 | Avaliação | Sim, depois de concluído e pago pelo app | Não (não há atendimento) |
-| Status | `requested → accepted → paid → in_progress → completed → released` | Orçamento `sent → accepted`; pagamento `pending → received` |
+| Status | `accepted → paid → in_progress → completed → released` (ou `disputed`); `requested` só no agendamento direto (L17) | Orçamento `sent → accepted`; pagamento `pending → received` |
 
 **Regra de uso até a resposta da Q1 do advogado (O01, decisão 4).** O produto permite a cobrança da Trilha A já hoje. Até o parecer, cobre pela Trilha B. Se o cliente já aceitou pelo app e quer pagar pelo app, peça que ele cancele o atendimento em `/atendimentos/:id` (cancelamento pelo cliente remove a cobrança aberta) e refaça o combinado como orçamento da Trilha B. `[CONDICIONAL: depende de parecer]`
 
@@ -195,14 +200,14 @@ Copie esta lista para a planilha `pedidos` de cada pedido. Marque a data e a hor
   5. Prestador apto (aprovado, ocupação, bairro).
 - **Relógio para:** quando a primeira proposta qualificada chega ao cliente (O01, G3).
 - **Repasse:** roteiro S5 do O03 (no máximo 3 propostas). O preço é do profissional: você não tabela (O01, §10.4).
-- **Prazo de resposta do cliente:** você acompanha em 24 h `[proposta]`. Depois disso, roteiro S12 do O03, se ele ainda não respondeu.
-- **Mudança de preço pelo profissional:** a tela não edita proposta (L4). Na Trilha A, o contorno é o profissional emitir um orçamento da Trilha B com o preço novo e o cliente aceitar esse. A proposta antiga fica `sent` até o pedido fechar, e o aceite dela pode ser recusado pelo banco se vencer.
+- **Prazo de resposta do cliente:** você acompanha em 24 h `[proposta]`. Depois disso, mensagem curta de acompanhamento escrita por você. O O03 não tem roteiro para cliente que não respondeu (o S12 é para profissional que não respondeu) `[proposta]`.
+- **Mudança de preço pelo profissional:** a proposta enviada não muda de preço, mensagem nem validade (migration `20261109000001`), e a tela não edita (L4). Na Trilha A, o contorno é o profissional emitir um orçamento da Trilha B com o preço novo, e o cliente escolher. A proposta antiga continua `sent` com o preço original até o pedido fechar ou vencer. Diga ao cliente qual das duas vale, antes de ele aceitar.
 
 ### SOP-05. Aceite do cliente
 
 - **Quem:** o cliente. Você orienta. **Onde:** Trilha A, `/pedidos/:id`, "Aceitar proposta", com dia, início e fim; Trilha B, `/orcamento/:token`.
 - **Regras que o banco aplica (Trilha A):** o horário é futuro, dura no máximo 24 h e começa em até 2 anos. Se não couber, o banco responde `slot_unavailable`. Pedido vencido responde `request_not_open`.
-- **Oriente o cliente:** escolha, no aceite, o mesmo dia e horário que o profissional informou. O banco não confere a agenda do profissional (ARQUITETURA: "a disponibilidade do prestador não é exigida").
+- **Oriente o cliente:** escolha, no aceite, o mesmo dia e horário que o profissional informou. O banco não confere a agenda do profissional além de sobreposição com outro atendimento dele (`slot_unavailable`). Prestador que perdeu a aprovação da ocupação recebe `not_allowed`.
 - **Se der `slot_unavailable`:** volte ao profissional, confirme o horário livre dele e peça ao cliente outro horário.
 - **Prazo:** o cliente não tem prazo, mas você acompanha em 24 h `[proposta]`. O pedido fecha sozinho em 7 dias.
 - **Registro:** `aceito_em`, `atendimento_id` (o `booking_id`, quando o cliente informar) e `valor_reais`.
@@ -235,7 +240,7 @@ Copie esta lista para a planilha `pedidos` de cada pedido. Marque a data e a hor
 ### SOP-08. Lembrete e início
 
 - **Quem:** você (lembrete) e o profissional (início). **Onde:** WhatsApp Business (MS-07); `/pro/agenda` (botão "Iniciar").
-- **Lembrete:** se o atendimento começa mais de 24 h depois do aceite, o app cria um lembrete automático, que só sai com as credenciais (L14). Nos demais casos, e enquanto o automático não estiver ligado, envie MS-07 manualmente, uma vez, no dia anterior, até o fim da janela `[proposta]`.
+- **Lembrete:** o app agenda lembretes automáticos de 24 h e de 2 h (L14). Eles só saem com contato confirmado e credenciais de WhatsApp ou Resend. Confira o status em `notifications`. Se não saiu, envie MS-07 manualmente, uma vez, no dia anterior, até o fim da janela `[proposta]`.
 - **Início:** o profissional toca em "Iniciar" (`accepted` ou `paid` vira `in_progress`). Não há estado de "chegou".
 - **Prazo de cancelamento:** se alguém precisar cancelar, quem cancela é quem tem o botão no app (SOP-10).
 
@@ -264,17 +269,17 @@ A ordem é a da fila: a mais antiga primeiro (`Prestadores.tsx`). Meta de primei
 
 1. **Entrar na fila.** `/admin`, bloco "Pendências", card "Prestadores na fila". Abra `/admin/prestadores`. O filtro padrão é "Fila de análise" (cadastros "Em análise" e aprovados com ocupação ainda a aprovar).
 2. **Abrir o cadastro.** `/admin/prestadores/:id`. Confira nome, situação, ocupações, registro e documentos. A tela mostra o telefone da conta: use-o só para falar com a pessoa pelo WhatsApp, e não o copie para a planilha.
-3. **Documentos (um por um).** Em cada um, "Ver arquivo". O endereço vale 5 minutos. Confira com o critério do O02, §8.3. Depois:
+3. **Documentos (um por um).** Em cada um, "Ver arquivo". O endereço vale 5 minutos (`SIGNED_URL_SECONDS` = 300), e cada "Ver arquivo" grava `document.viewed` no audit_log antes de o link ser criado. Confira com o critério do O02, §8.3. Depois:
    - "Aceitar documento" (observação opcional). O banco recusa se o arquivo não estiver no armazenamento (`file missing`).
    - "Rejeitar documento" (motivo obrigatório; o prestador vê). Use MS-12.
    - Nunca baixe, copie ou tire print de documento (O01, §11.3, item 4).
-4. **Registro profissional (quando a ocupação exige).** Abra a consulta pública do conselho pelo link que a tela oferece (busca com o nome do conselho; o app não envia o número ao site). Digite o número você mesmo. Depois:
+4. **Registro profissional (quando a ocupação exige).** Abra a consulta pública do conselho pelo link que a tela oferece (busca com o nome do conselho; o app não envia o número ao site). Digite o número você mesmo. O app não envia o número ao site `[incerto: não conferido nesta revisão]`. Depois:
    - "Confirmar registro": o app exige que você escreva como conferiu (data da consulta, por exemplo).
    - "Rejeitar registro": divergência de nome, número ou situação. A ocupação sai da busca e deixa de receber pedidos.
 5. **Aprovar a ocupação.** "Aprovar ocupação" só aparece quando todos os passos da política têm documento aceito e o registro não está rejeitado. Sem política no catálogo, o banco recusa (`policy missing`). "Retirar aprovação" desfaz, com motivo.
 6. **Aprovar o prestador.** "Aprovar prestador" (motivo obrigatório). Use só quando a situação for "Em análise" (L5). Na primeira aprovação, o banco aprova sozinho as ocupações que já cumprem a regra, e grava quais no histórico. As demais você aprova uma a uma (L6: aprove só depois de ao menos uma).
 7. **Avisar.** MS-13 (aprovado) ou MS-12 (documento rejeitado). Registre no log.
-8. **Suspender ou reativar** (motivo obrigatório). Suspenso, o prestador não aparece na busca nem recebe pedido. Reativar não aprova ocupação nova. Só com decisão registrada: `[DECISÃO DO DONO]` sobre os motivos (seção 10).
+8. **Suspender ou reativar** (motivo obrigatório). Suspenso, o prestador não aparece na busca nem recebe pedido. Ao suspender, as propostas `sent` são retiradas, os pedidos diretos `requested` são cancelados e os orçamentos `sent` voltam a rascunho. Atendimentos já aceitos não mudam e ficam para sua decisão (migration `20261109000005`). Reativar não aprova ocupação nova. Só com decisão registrada: `[DECISÃO DO DONO]` sobre os motivos (seção 10).
 
 ### 5.2 O que a aprovação muda
 
@@ -291,7 +296,7 @@ Se você rejeita um documento que estava aceito, o banco tira a aprovação das 
 - Não aprove cadastro seu, de familiar ou de conhecido sem o mesmo processo, e sem outra pessoa conferindo `[proposta]`.
 - Não aprove sem ter visto o arquivo.
 - Cada decisão leva motivo. O motivo entra no histórico e fica na trilha de auditoria.
-- Cadastro sem o arquivo de um passo da política não chega a "Em análise" (o envio responde `documents_missing`). Não faça exceção por WhatsApp: o O02 (§8.1, etapa 3) veda receber documento pelo WhatsApp.
+- Cadastro sem o arquivo de um passo da política não chega a "Em análise" (o envio responde `documents_missing`). Não faça exceção por WhatsApp: o O02 (§1.3, regra 7) veda receber documento pelo WhatsApp.
 
 ---
 
@@ -309,7 +314,7 @@ Cada ramo tem: o sinal, o que conferir, o que fazer, o prazo, quem decide e o qu
 
 ### 6.2 Cliente some
 
-- **Antes do aceite:** uma mensagem de acompanhamento em 24 h (roteiro S12) `[proposta]`. Sem resposta em 48 h, marque o pedido como `perdido: sem resposta`. O pedido fecha sozinho em 7 dias (`closed`).
+- **Antes do aceite:** uma mensagem de acompanhamento em 24 h, escrita por você (o O03 não tem roteiro para isso; o S12 é para profissional que não respondeu) `[proposta]`. Sem resposta em 48 h, marque o pedido como `perdido: sem resposta`. O pedido fecha sozinho em 7 dias (`closed`).
 - **Depois do aceite, sem pagamento:** o atendimento fica `accepted` sem prazo, porque nenhum processo automático o fecha (L10). Sinal: sem cobrança em 24 h. Você pergunta ao cliente com MS-05. Sem resposta em 48 h, peça que o cliente cancele pelo app (SOP-10). Se o início já passou e não há cancelamento, escale (seção 10).
 - **Depois do pagamento e sem início:** o profissional marca "Iniciar" ou "Cancelar". Sem nenhum dos dois em 24 h do horário, envie MS-08 ao profissional.
 - **Registro:** o motivo na planilha, sem o nome do cliente.
@@ -336,7 +341,7 @@ Cada ramo tem: o sinal, o que conferir, o que fazer, o prazo, quem decide e o qu
 
 - **Sinal:** o cliente diz que pagou, mas o app mostra "Aceito" ou a cobrança aparece como pendente ou cancelada.
 - **Conferir, nesta ordem:**
-  1. `/admin/pagamentos`: pelo id da cobrança, ou pelo filtro de período. Veja a situação (`pending`, `confirmed`, `received`, `canceled`, `failed`).
+  1. `/admin/pagamentos`: pelo id da cobrança, ou pelo filtro de período. Veja a situação (`pending`, `confirmed`, `received`, `held`, `released`, `refunded`, `failed`, `canceled`; juridico/10, T3).
   2. `/admin/pagamentos`, "Exigem atenção": se houver entrada `payment.refund_failed` ou `payment.received_after_cancel`, siga 6.6.
   3. `/admin/auditoria`: procure a entrada do pagamento. Evite abrir `payments.raw` (a tela de admin usa `admin_get_payment_raw`, que grava auditoria e traz dados do pagador).
   4. Com o id da cobrança, confira no painel do Asaas, se você tiver acesso. Se não tiver, é o dono.
@@ -349,9 +354,9 @@ Cada ramo tem: o sinal, o que conferir, o que fazer, o prazo, quem decide e o qu
 ### 6.6 Pagamento recebido depois do cancelamento
 
 - **Sinal:** entrada `payment.received_after_cancel` em "Exigem atenção".
-- **O que o app já fez:** registrou o pagamento e pediu o estorno total ao Asaas, que só aceita Pix ou cartão (asaas-webhook, `refundAfterCancel`). Se o Asaas aceitou, vira `payment.refunded_after_cancel`. Se recusou (boleto, saldo, rede), vira `payment.refund_failed`.
+- **O que o app já fez:** registrou o pagamento e pediu o estorno total ao Asaas (asaas-webhook, `refundAfterCancel`). O código diz que o Asaas só aceita estorno de Pix e de cartão (comentário em `asaas-webhook/handler.ts`; O07, §6.2, cita `asaas-client.ts`). `[incerto: não conferido na documentação do Asaas; a página de referência consultada deu 404 nesta revisão]`. Se o Asaas aceitou, vira `payment.refunded_after_cancel`. Se recusou (boleto, saldo, rede), vira `payment.refund_failed`.
 - **Fazer:** para `refund_failed`, o estorno é manual, no painel do Asaas, e só depois de o dono decidir `[CONDICIONAL: depende de parecer]`. Depois, em "Exigem atenção", "Marcar como tratado" com o motivo (`admin_review_payment`). A entrada some quando existir `payment.refunded_after_cancel` ou `payment.reviewed`.
-- **Atenção:** atendimento `disputed` com estorno: veja L12. Não devolva sem o dono conferir o status.
+- **Atenção:** atendimento `disputed` com estorno: veja L12. Não devolva sem o dono conferir o status. Caso C do O07, §6.2 (pago, e a equipe cancelou o atendimento): não aparece em "Exigem atenção". Controle na planilha, com o ID da cobrança.
 - **Decide:** o dono. **Registra:** o motivo do "tratado", em uma linha.
 
 ### 6.7 Horário não cabe, ou a trava trabalhista impede
@@ -369,7 +374,7 @@ Cada ramo tem: o sinal, o que conferir, o que fazer, o prazo, quem decide e o qu
 
 ### 6.9 Contestação aberta
 
-- **Sinal:** atendimento em "Em contestação" e a tela `/admin/disputas` com o item.
+- **Sinal:** atendimento em "Em contestação" e a tela `/admin/disputas` com o item. Chargeback no cartão também leva o atendimento a "Em contestação" sozinho (`PAYMENT_CHARGEBACK_REQUESTED`).
 - **Prazo:** primeiro contato com as duas partes no mesmo dia útil `[proposta]`; decisão em até 5 dias corridos `[proposta; juridico/10, §4.1]`.
 - **Passos:**
   1. MS-10 para as duas partes, pedindo o relato em poucas linhas, sem dado sensível de terceiro.
@@ -391,7 +396,7 @@ Cada ramo tem: o sinal, o que conferir, o que fazer, o prazo, quem decide e o qu
 ### 6.11 Conteúdo de saúde ou risco à pessoa
 
 - **Sinal:** o pedido ou a conversa descreve sintoma, doença, tratamento ou risco.
-- **Fazer:** não faça triagem nem orientação (O03, S4). Se há risco agora, oriente a procurar o serviço de emergência, como no protocolo de emergência do O06 (seção 10). O número `192` aparece no O06 e no juridico/10, mas não o conferi em fonte oficial nesta sessão `[incerto]`.
+- **Fazer:** não faça triagem nem orientação (O03, S4). Se há risco agora, oriente a procurar o serviço de emergência, como no protocolo de emergência do O06 (seção 10). O número `192` foi conferido em fonte oficial nesta revisão (gov.br, SAMU 192): "O serviço é gratuito, acessado pelo número 192, funciona 24 horas por dia e 07 dias por semana".
 - **Registro:** `I-###` sem o conteúdo de saúde. Só a categoria e a ação.
 - **Decide:** o dono, na hora. Advogado no mesmo dia (juridico/10, §5.4).
 
@@ -435,7 +440,7 @@ Use o modelo do O01, §12, com estes blocos.
 | 40 a 50 | Escolha uma alavanca para a semana seguinte (O01, §12), com a evidência da semana | Planilha |
 | 50 a 60 | Registre a decisão no modelo do O01, §12, e o que mudou nos riscos (O01, §15) | Documento de revisão |
 
-Métricas e portões de decisão ficam no O08 (`08-metricas-e-portoes.md`), ainda não escrito nesta pasta. Até lá, valem as definições do O01, §5.1.
+Métricas e portões de decisão ficam no O08 (`08-metricas-e-portoes.md`), que existe nesta pasta. Onde o O08 corrige o O01 (§2.3 dele), vale o O08. Até a revisão, valem as definições do O01, §5.1.
 
 ---
 
@@ -502,9 +507,9 @@ Não há regra de descarte nem de cópia de segurança aprovada. O inventário (
 | Contestação que exige dinheiro | Dono | 5 dias corridos | Dono | juridico/04, cláusulas 5.6 e 8.4 |
 | Falta confirmada com pagamento feito | Dono | Mesmo dia | Dono | 6.3 |
 | Suspeita de fraude ou conta falsa | Dono | Mesmo dia | Dono `[DECISÃO DO DONO]` | 6.12 |
-| Pedido de titular de dados (exclusão, cópia) | Encarregado | 15 dias corridos | Encarregado `[DECISÃO DO DONO]: quem é` | juridico/10, §4.1 e §5.4 |
+| Pedido de titular de dados (exclusão, cópia) | Encarregado | 15 dias corridos `[incerto]` | Encarregado `[DECISÃO DO DONO]: quem é` | juridico/10, §4.1 e §7. A LGPD, art. 19, II, fixa 15 dias para a declaração de acesso; o prazo para exclusão e cópia não foi conferido no texto da lei (planalto bloqueado nesta revisão) |
 | Suspeita de incidente de segurança com dados | Plano de incidentes | Conforme o plano | Encarregado e advogado | juridico/08 |
-| Ordem judicial, notificação, pedido de imprensa ou de autoridade | Advogado | No dia do recebimento | Advogado | juridico/10, §4.1 |
+| Ordem judicial, notificação, pedido de imprensa ou de autoridade | Advogado | No dia do recebimento | Advogado | juridico/10, T12 |
 | Reclamação de conselho profissional | Advogado | No dia | Advogado | juridico/10, T11 |
 | Qualquer evento na linha Cuidado | O06 (não tratado aqui) | Conforme o O06 | Dono | O06 |
 
@@ -631,7 +636,7 @@ Antes do D1, estas perguntas precisam de resposta. Ligue o que depender delas s�
 |---|---|---|---|
 | P1 | Devolução de atendimento pago, pedida pelo cliente ou pelo profissional: procedimento, prazo e forma | Advogado | juridico/04, cláusula 5.5 |
 | P2 | Quem é o encarregado (LGPD) e qual o e-mail do SAC | Dono | juridico/10, §2.3 |
-| P3 | Acesso de leitura de pedidos e de dados pessoais pelo operador, no banco e no WhatsApp | Advogado e dono | L1; O01 Q32 |
+| P3 | Acesso de leitura de pedidos e de dados pessoais pelo operador, no banco e no WhatsApp | Advogado e dono | L1; juridico/07, Q32 |
 | P4 | Prazo de guarda das conversas do WhatsApp e cópia de segurança | Advogado e dono | juridico/07, OP-23 e Q32; seção 9.5 |
 | P5 | Endereço do serviço trocado por WhatsApp: é necessário e como se registra | Advogado | L15 |
 | P6 | Procedimento para atendimento pago que não compareceu (falta) | Advogado | 6.3; juridico/10, T1 |
@@ -644,10 +649,11 @@ Antes do D1, estas perguntas precisam de resposta. Ligue o que depender delas s�
 
 ## 13. O que não verifiquei
 
-- **Não rodei o app nem o banco.** As regras foram lidas no código e nas migrations, não testadas. Em especial: as transições de `disputed`, o estorno com atendimento não `paid` (L12), a expiração de atendimento e o comportamento do webhook em falha.
-- **Não abri a documentação do Asaas** nesta sessão. Qualquer afirmação sobre estorno, vencimento de Pix ou status de cobrança vem do código deste repositório, não do Asaas.
-- **Não confirmei as regras do WhatsApp Business (aplicativo) para mensagens manuais e para o mesmo número.** O O05, §8.3 marca isso como `[incerto]`. Este documento usa número dedicado.
-- **Não confirmei o número de emergência (192)** em fonte oficial. Ele aparece no O06 e no juridico/10 como regra interna.
+- **Não rodei o app nem fluxos de escrita.** Rodei consultas só de leitura no banco local (transação revertida): matriz de transições, limites, constraints, cron e colunas de `requests` e `bookings`. As demais regras foram lidas no código e nas migrations, não testadas. Em especial: o estorno com atendimento `disputed` (L12), a expiração de atendimento aceito (L10) e o comportamento do webhook em falha.
+- **Não consegui abrir a documentação do Asaas** nesta revisão: a página de referência consultada deu 404 e a busca estava esgotada. Qualquer afirmação sobre estorno, vencimento de Pix ou status de cobrança vem do código deste repositório, não do Asaas.
+- **Não confirmei as regras do WhatsApp Business (aplicativo) para mensagens manuais e para o mesmo número.** O O02, §12.3 marca isso como `[incerto]`, e o O05 (opção C) pede número separado. Este documento usa número dedicado.
+- **Número de emergência (192):** conferido na página do gov.br nesta revisão (ver 6.11).
+- **LGPD e Decreto 7.962/2013 não conferidos.** As páginas do planalto.gov.br devolveram aviso de acesso negado nesta revisão. Os prazos de titular (§10) e os de SAC continuam `[incerto]` até o advogado conferir o texto.
 - **Não confirmei o efeito do estorno do Asaas** sobre atendimento já em contestação, em produção.
 - **Os prazos de SLA** (2 h, 24 h, 2 dias úteis, 3 dias úteis) são propostas internas, não promessas aos clientes, e não foram medidos.
 - **As etiquetas do WhatsApp Business** (seção 7) são uma convenção proposta, não um recurso verificado do aplicativo.
@@ -656,7 +662,7 @@ Antes do D1, estas perguntas precisam de resposta. Ligue o que depender delas s�
 
 ## 14. Fontes consultadas nesta sessão
 
-Fontes primárias abertas: nenhuma fonte externa foi aberta nesta sessão. Este documento não cita lei nem regulamento.
+Fontes externas abertas na revisão de 08/11/2026: gov.br, página do SAMU 192 (lida; confirma 192, gratuito, 24 h). Não consegui abrir: planalto.gov.br (Lei 13.709, arts. 18 e 19; Decreto 7.962/2013), que devolveu aviso de acesso negado; docs.asaas.com (404). Este documento cita a LGPD só por referência aos prazos do juridico/10 (§10).
 
 Repositório (caminhos a partir de `/home/user/work-easy/apps/web/`):
 
@@ -696,7 +702,7 @@ Documentos do plano (leitura interna, não são fonte primária):
 | O03, aquisição e concierge | Roteiros de cliente S1 a S13. Este O04 não repete esses textos |
 | O05, modelos de WhatsApp | Avisos automáticos do app e regras de opt-in e de janela. Este O04 usa o número dedicado e modelos manuais |
 | O06, Cuidado | Emergência e linha Cuidado. Não tratados aqui |
-| O07, suporte, disputas e moderação | `[PLANEJADO]`, ainda não escrito. Por enquanto, valem a seção 6 deste O04 e o juridico/10 |
-| O08, métricas e portões | `[PLANEJADO]`, ainda não escrito. Por enquanto, valem o O01, §5 e §11 |
+| O07, suporte, disputas e moderação | Existe (`07-suporte-disputas-e-moderacao.md`). Para estorno por situação, vale o O07, §6; esta SOP cita o O07 e não o repete. O caso C (pago, cancelado pela equipe) não aparece em "Exigem atenção" |
+| O08, métricas e portões | Existe (`08-metricas-e-portoes.md`). Corrige o O01 no §2.3 e no §8.1 dele |
 | juridico/04, cancelamento e reembolso | Rascunho. Estados e cancelamento usados aqui |
 | juridico/10, SAC | Rascunho. Prazos de resposta e modelos T1 a T3 |

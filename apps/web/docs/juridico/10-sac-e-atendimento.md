@@ -8,7 +8,7 @@
 | Vigência | [DATA DE VIGÊNCIA] |
 | Redigido em | 2026-11-08 |
 | Lugar no pacote | Documento 10. Remete aos documentos 01 (Termos de Uso), 03 (Política de Privacidade), 04 (Cancelamento, Reembolso e Garantia), 05 (Avaliações e Moderação) e 08 (Plano de Resposta a Incidentes). |
-| Estado do produto nesta data | Protótipo. Não implantado, sem usuários reais. Não há rota `/sac`, o rodapé não traz CNPJ nem endereço, e o `/legal` ainda diz "Documentos em elaboração". Asaas, WhatsApp e e-mail nunca foram testados com os serviços reais. |
+| Estado do produto nesta data | Protótipo. Não implantado, sem usuários reais. A rota `/sac` existe, mas com texto provisório ("Documento em elaboração") e sem contato. O rodapé (`components/SiteFooter.tsx`) não mostra CNPJ nem endereço enquanto as variáveis `VITE_COMPANY_*` não estiverem preenchidas; no modo demonstração, mostra só o aviso de protótipo. O `/legal` ainda diz "Documentos em elaboração". Asaas, WhatsApp e e-mail nunca foram testados com os serviços reais. |
 
 ## Como ler este documento
 
@@ -20,7 +20,7 @@
    - `[PROPOSTA]`: prazo ou regra que o autor propõe, ainda sem decisão do dono.
    - `[incerto]`: não foi confirmado em fonte aberta nesta sessão. A lista completa está em "Pontos para o advogado".
    - Textos em maiúsculas entre colchetes, como `[E-MAIL DO SAC]`, são dados da empresa, que ainda não existe.
-4. **Fatos do produto.** Conferidos em 2026-11-08 no código e em `apps/web/docs/ARQUITETURA.md` e `apps/web/docs/DECISOES.md`. Arquivos citados: `AppShell.tsx` (rodapé e rotas), `pages/LegalDocs.tsx`, `pages/conta/Conta.tsx`, `services/account.ts`, `services/bookings.ts`, `components/cuidado/ReportForm.tsx`.
+4. **Fatos do produto.** Conferidos em 2026-11-08 no código e em `apps/web/docs/ARQUITETURA.md` e `apps/web/docs/DECISOES.md`. Arquivos citados: `components/SiteFooter.tsx` (rodapé), `AppShell.tsx` (rotas), `config/legal.ts`, `pages/legal/routes.tsx`, `pages/LegalDocs.tsx`, `pages/conta/Conta.tsx`, `pages/conta/Entrar.tsx`, `pages/admin/Lgpd.tsx`, `services/account.ts`, `services/bookings.ts`, `components/cuidado/ReportForm.tsx` (relatório diário do cuidador; não é canal de denúncia).
 5. **Lei.** Os textos citados foram lidos em cópias oficiais do portal da Câmara dos Deputados, em 2026-11-08. O Planalto bloqueou o acesso nesta sessão (página "Acesso Negado"). Antes de publicar, confirme cada artigo no Planalto ou no DOU. Veja "Fontes consultadas".
 
 ---
@@ -41,7 +41,7 @@
 
 ### 2.1 Rodapé (todas as telas públicas)
 
-Texto pronto. Substitui o rodapé atual de `AppShell.tsx`, que hoje diz só "© 2026 WorkEasy. Protótipo de demonstração." e tem links para `/legal`.
+Texto pronto. Substitui o rodapé de `components/SiteFooter.tsx`. Hoje, no modo demonstração, ele diz só "© 2026 WorkEasy. Protótipo de demonstração." e aponta para `/termos`, `/privacidade` e `/register-provider`. Com backend, aponta para os textos de `config/legal.ts` (Termos de Uso, Privacidade e SAC) e mostra os dados da empresa das variáveis `VITE_COMPANY_*`.
 
 ```text
 WorkEasy é operado por [RAZÃO SOCIAL], CNPJ [CNPJ], [ENDEREÇO].
@@ -53,6 +53,7 @@ Termos de Uso · Política de Privacidade · Cancelamento e reembolso · Atendim
 Notas:
 - O Decreto 7.962/2013, art. 2º, pede que os dados fiquem "em local de destaque e de fácil visualização" (texto lido, ver Fontes). Se o rodapé conta como local de destaque é `[incerto]`. Por isso os mesmos dados também ficam na página `/sac` e nas fichas das lojas.
 - Enquanto a empresa não existir, o bloco não vai ao ar com placeholders. Mantenha o aviso honesto de protótipo, como já está hoje.
+- Os links "Cancelamento e reembolso" e "Excluir minha conta" não têm página pública hoje `[PLANEJADO]`. Só entram no rodapé quando a página existir.
 
 ### 2.2 Página `/sac` (texto para publicar)
 
@@ -66,7 +67,7 @@ Título: **Atendimento ao consumidor (SAC)**
 6. **O que resolvemos por aqui.** Informações, dúvidas, reclamações, pedidos de cancelamento ou de suspensão de contrato, pedidos de reembolso, pedidos de desistência, cobrança errada, cópia dos seus dados, exclusão da conta, contestação de atendimento e de avaliação, e denúncias.
 7. **Cancelamento.** Se o atendimento ainda não foi pago, você pode cancelá-lo no próprio app enquanto ele estiver aguardando aceite ou aceito. Se já foi pago, peça pelo SAC. `[PLANEJADO: botão no app para atendimento pago. CONDICIONAL: depende de parecer; ver Pontos para o advogado, Q4.]`
 8. **Desistência (direito de arrependimento).** Quando a contratação acontece fora de um estabelecimento comercial, como pela internet, você pode desistir em até 7 dias contados da contratação ou do recebimento do serviço (CDC, art. 49). Peça pelo SAC, com o número do atendimento. Quando a cobrança foi no cartão, o pedido é comunicado à administradora do cartão, para que a transação não seja lançada na fatura ou seja estornada (Decreto 7.962/2013, art. 5º, §3º). `[CONDICIONAL: depende de parecer quanto a serviço já iniciado ou executado, e de quem faz a comunicação ao emissor do cartão.]`
-9. **Cobrança errada ou serviço que você não pediu.** Fale pelo SAC. `[CONDICIONAL: se o Decreto 13.135/2026 se aplicar, a cobrança ou o serviço são suspensos no prazo de 48 horas (art. 21).]`
+9. **Cobrança errada ou serviço que você não pediu.** Fale pelo SAC. `[CONDICIONAL: se o Decreto 13.135/2026 se aplicar, a empresa adota providências imediatas para suspender o serviço ou a cobrança, e assegura a conclusão em até 48 horas (art. 21, §3º).]`
 10. **Se não resolvermos.** Você pode procurar o Procon do seu estado ou município. Você também pode registrar a reclamação no Consumidor.gov.br, se a empresa participar da plataforma. `[PLANEJADO: adesão do WorkEasy ao Consumidor.gov.br. Até lá, não diga que a empresa participa.]`
 11. **Dados pessoais.** Pedidos sobre os seus dados (cópia, correção, eliminação, revogação de consentimento) também são aceitos aqui. A declaração completa é enviada em até 15 dias corridos do pedido (LGPD, art. 19, II). Encarregado: [E-MAIL DO ENCARREGADO] (LGPD, art. 41).
 12. **Excluir a conta.** Você exclui sua conta em "Minha conta", na opção "Excluir minha conta", digitando EXCLUIR para confirmar. Se preferir, peça pelo SAC, usando o e-mail cadastrado. A exclusão fica bloqueada enquanto houver atendimento aceito, pago, em andamento ou em contestação. Depois da exclusão, apagamos ou anonimizamos os seus dados pessoais. Pagamentos e atendimentos ficam sem identificar você, `[incerto: base legal e prazo de guarda a confirmar com o contador e o advogado]`.
@@ -86,6 +87,8 @@ Título: **Atendimento ao consumidor (SAC)**
 | [DIAS E HORÁRIO] | Dono e advogado | Ver item 3 da seção 2.2 e Q2. |
 | [DATA DE VIGÊNCIA] | Dono, na publicação | Data em que a versão passa a valer. |
 
+Os dados da empresa entram no rodapé e nas páginas legais pelas variáveis `VITE_COMPANY_NAME`, `VITE_COMPANY_CNPJ`, `VITE_COMPANY_ADDRESS`, `VITE_SAC_EMAIL` e `VITE_SAC_WHATSAPP` (`config/legal.ts`). Sem elas, nada é mostrado.
+
 ---
 
 ## 3. Checklist de visibilidade: site, app e lojas
@@ -94,16 +97,16 @@ Cada linha diz o que a norma pede, o que o produto faz hoje e a ação. "Conferi
 
 | # | O que deve estar visível | Exigência (fonte) | Hoje no produto | Ação |
 |---|---|---|---|---|
-| 1 | Nome empresarial e CNPJ | Decreto 7.962/2013, art. 2º, I (conferido) `[CONDICIONAL: se o decreto se aplica ao serviço contratado pelo app]` | Ausente. O rodapé diz "Protótipo de demonstração" (`AppShell.tsx`) | Rodapé e `/sac`, quando a empresa existir |
-| 2 | Endereço físico e eletrônico e demais dados de contato | Decreto 7.962/2013, art. 2º, II (conferido) | Ausente | Rodapé e `/sac` |
-| 3 | Rota de SAC (`/sac`) | Decreto 7.962/2013, art. 4º, V: serviço eletrônico "adequado e eficaz" para informação, dúvida, reclamação, suspensão ou cancelamento (conferido) | Não existe rota `/sac` | Criar com o texto da seção 2.2 |
-| 4 | Sumário do contrato antes da contratação | Decreto 7.962/2013, art. 4º, I (conferido) | Não conferido no código | `[incerto: verificar nas telas de pedido e agendamento]` |
-| 5 | Termos de Uso e Política de Privacidade acessíveis | Google Play: link de política de privacidade na Play Console e dentro do app (conferido) | O rodapé aponta para `/legal`, que diz "Documentos em elaboração" (`pages/LegalDocs.tsx`) | Publicar os textos dos documentos 01 e 03 |
-| 6 | Apple: Support URL | App Store Connect: campo obrigatório. A página precisa ter contato real (e-mail, telefone ou endereço), e a URL completa com protocolo (conferido) | Sem submissão. Não há página de contato | Usar a página `/sac` depois de publicada |
-| 7 | Apple: exclusão de conta dentro do app | Diretriz 5.1.1(v): apps com criação de conta devem permitir iniciar a exclusão no app. Se o usuário precisar ir ao site, o app deve ligar direto à página. Apps fora de setor altamente regulado não devem exigir só e-mail, telefone ou chat (conferido) | Existe: "Excluir minha conta" em `/conta` (`pages/conta/Conta.tsx`), com função de servidor `account-delete`. Só funciona com backend ligado (o próprio texto da página diz isso) | Manter. Testar no build iOS. Sem e-mail como único caminho |
-| 8 | Google Play: exclusão dentro do app e link web externo | Política da Google Play: opção no app e link para página web de exclusão, que cite o nome do app ou do desenvolvedor, funcione, e não exija voltar ao app. Desativar a conta não conta como exclusão (conferido) | Dentro do app: existe, com backend. Página web de exclusão: não existe | Criar página pública de pedido de exclusão, ligada ao `/sac`, com formulário ou instruções |
+| 1 | Nome empresarial e CNPJ | Decreto 7.962/2013, art. 2º, I (conferido) `[CONDICIONAL: se o decreto se aplica ao serviço contratado pelo app]` | Ausente no modo demonstração (`SiteFooter.tsx` diz "Protótipo de demonstração"). Com backend, aparece só se `VITE_COMPANY_NAME` e `VITE_COMPANY_CNPJ` estiverem preenchidos | Rodapé e `/sac`, quando a empresa existir |
+| 2 | Endereço físico e eletrônico e demais dados de contato | Decreto 7.962/2013, art. 2º, II (conferido) | Ausente no modo demonstração. Com backend, depende de `VITE_COMPANY_ADDRESS` | Rodapé e `/sac` |
+| 3 | Rota de SAC (`/sac`) | Decreto 7.962/2013, art. 4º, V: serviço eletrônico "adequado e eficaz" para informação, dúvida, reclamação, suspensão ou cancelamento (conferido) | Rota `/sac` existe (`config/legal.ts`), com texto provisório de `content/legal/sac.md` e sem canal de contato | Trocar o texto provisório pelo da seção 2.2, com contato real |
+| 4 | Sumário do contrato antes da contratação | Decreto 7.962/2013, art. 4º, I (conferido) | Nenhuma menção a sumário em `pages`, `services` e `components` (busca de 2026-11-08) | `[incerto: verificar nas telas de pedido e agendamento]` |
+| 5 | Termos de Uso e Política de Privacidade acessíveis | Google Play: link de política de privacidade na Play Console e dentro do app (conferido) | No modo demonstração, o rodapé aponta para `/termos` e `/privacidade`. `pages/conta/Entrar.tsx` e `components/TermsGate.tsx` apontam para `/legal`, que diz "Documentos em elaboração" (`pages/LegalDocs.tsx`) | Publicar os textos dos documentos 01 e 03 |
+| 6 | Apple: Support URL | App Store Connect: campo obrigatório. A página precisa ter contato real (e-mail, telefone ou endereço), e a URL completa com protocolo (conferido) | Sem submissão. A rota `/sac` existe, mas sem contato real | Publicar `/sac` com contato real e informar a URL completa, com protocolo |
+| 7 | Apple: exclusão de conta dentro do app | Diretriz 5.1.1(v): apps com criação de conta devem oferecer a exclusão no app. Se a exclusão exigir site, o app deve ligar direto à página. Apps fora de setor altamente regulado "não devem exigir" ligação, e-mail, chat ou outro fluxo de suporte (página de ajuda da Apple, conferida) | Existe: "Excluir minha conta" em `/conta` (`pages/conta/Conta.tsx`), com função de servidor `account-delete`. Só funciona com backend ligado (o próprio texto da página diz isso) | Manter. Testar no build iOS. Sem e-mail como único caminho |
+| 8 | Google Play: exclusão dentro do app e link web externo | Política da Google Play: opção no app, em lugar de destaque, e link para página web de exclusão, que cite o nome do app ou do desenvolvedor, funcione e permita pedir a exclusão sem voltar ao app (conferido). Se desativar a conta conta como exclusão: `[incerto: a página consultada não trata do assunto]` | Dentro do app: existe, com backend. Página web de exclusão: não existe | Criar página pública de pedido de exclusão, ligada ao `/sac`, com formulário ou instruções |
 | 9 | Google Play: política de privacidade com contato do desenvolvedor | Política da Google Play: conteúdo mínimo inclui informações do desenvolvedor e um contato de privacidade (conferido) | Placeholder | Publicar o documento 03 com o e-mail do encarregado |
-| 10 | Apple: Privacy Policy URL | Campo existe em "App privacy" (conferido). Obrigatoriedade `[incerto]` | Placeholder | Mesma página do item 9 |
+| 10 | Apple: Privacy Policy URL | Campo de privacidade no App Store Connect (não conferido na página da Apple consultada). Obrigatoriedade `[incerto]` | Placeholder | Mesma página do item 9 |
 | 11 | Desistência pela mesma ferramenta da contratação | Decreto 7.962/2013, art. 5º, §1º: pode ser feita pela mesma ferramenta, sem prejuízo de outros meios (conferido) | Cancelamento pelo app só antes do pagamento: o cliente cancela `requested` e `accepted` (`services/bookings.ts`, `transition_booking` em `ARQUITETURA.md`). Depois de pago, não há botão | Decisão do advogado (Q4). Enquanto isso, o texto manda ao SAC |
 | 12 | Comunicação do arrependimento à administradora do cartão | Decreto 7.962/2013, art. 5º, §3º (conferido) | Não há fluxo | Procedimento interno, seção 6, modelo T4 |
 | 13 | Canal telefônico obrigatório, atendimento humano das 8h às 20h, cancelamento no primeiro nível, até cinco níveis, envio de modelos de atendimento à Senacon | Decreto 13.135/2026, arts. 2º, 12, §1º, 13, §1º, 14, 20, §1º e 21 (lidos em cópia da Câmara). `[CONDICIONAL: depende de parecer quanto ao escopo do art. 1º, parágrafo único, e do art. 2º]` | Não há | Decisão do advogado antes de publicar o `/sac` |
@@ -118,11 +121,11 @@ Cada linha diz o que a norma pede, o que o produto faz hoje e a ação. "Conferi
 | Demanda | Confirmação de recebimento | Primeira resposta de mérito | Encerramento | Base |
 |---|---|---|---|---|
 | Informação, dúvida, reclamação, cancelamento ou suspensão de contrato | No mesmo dia útil `[PROPOSTA]` | **5 dias corridos** `[PROPOSTA; base: Decreto 7.962/2013, art. 4º, parágrafo único]` | Quando o caso fechar. Avisar o cliente | Decreto 7.962/2013 (conferido). Se o Decreto 13.135/2026 se aplicar, o prazo para demandas não urgentes é de 7 dias corridos (art. 21). Vale o mais curto, 5 dias |
-| Cobrança indevida ou serviço não solicitado | No mesmo dia útil `[PROPOSTA]` | Suspensão no prazo de 48 horas `[CONDICIONAL: Decreto 13.135/2026, art. 21]` | Quando a cobrança for cancelada no Asaas | Decreto 13.135/2026, art. 21 (lido em resumo) |
+| Cobrança indevida ou serviço não solicitado | No mesmo dia útil `[PROPOSTA]` | Suspensão imediata; conclusão em até 48 horas `[CONDICIONAL: Decreto 13.135/2026, art. 21, §3º]` | Quando a cobrança for cancelada no Asaas | Decreto 13.135/2026, art. 21, §3º (lido na cópia da Câmara, em 2026-11-08) |
 | Desistência (arrependimento) | No mesmo dia útil `[PROPOSTA]` | 5 dias corridos | Pagamento devolvido conforme a Política de Cancelamento (documento 04) | CDC, art. 49; Decreto 7.962/2013, art. 5º |
-| Pedido de dados (LGPD) | Resposta em formato simplificado, sem prazo fixado no texto (art. 19, I) | **Declaração completa em até 15 dias corridos** do pedido (art. 19, II) | Quando o pedido for atendido | LGPD, art. 19 (conferido). Dobro para agente de pequeno porte: `[incerto: Resolução CD/ANPD nº 2/2022, art. 14, só em fonte secundária]` |
+| Pedido de dados (LGPD) | Resposta em formato simplificado, imediatamente (art. 19, I) | **Declaração completa em até 15 dias corridos** do pedido (art. 19, II) | Quando o pedido for atendido | LGPD, art. 19 (conferido). Dobro para agente de pequeno porte: `[incerto: Resolução CD/ANPD nº 2/2022, art. 14, só em fonte secundária]` |
 | Ordem judicial, notificação extrajudicial, pedido de autoridade | No dia do recebimento `[PROPOSTA]` | O prazo fixado no próprio documento | Quando cumprido e registrado | Advogado decide. Ver Q10 |
-| Incidente com risco a alguém | Na hora, pela emergência (192 ou o número da região). Registro no mesmo dia `[PROPOSTA]` | Análise em até 5 dias corridos | Conforme o plano de incidentes (documento 08) | Plano de incidentes (documento 08) |
+| Incidente com risco a alguém | Na hora, pela emergência (192 ou o número da região). Registro no mesmo dia `[PROPOSTA]` | Análise em até 5 dias corridos `[PROPOSTA]` | Conforme o plano de incidentes (documento 08) | Plano de incidentes (documento 08) |
 
 ### 4.2 Prioridades
 
@@ -219,7 +222,7 @@ Regras comuns a todos:
 ### T3. Pagamento não reconhecido
 
 - **Quando usar:** o cliente diz que pagou, mas o app mostra cobrança em aberto ou cancelada.
-- **Conferir antes:** `payments` pelo `booking_id` (status `pending`, `confirmed`, `received`, `canceled`) e o `asaas_payment_id`. **Não use `select *`** nem abra `payments.raw`: o payload pode ter dados do pagador, e o acesso do admin a ele fica registrado (`admin_get_payment_raw`). Confira no painel do Asaas, com o ID da cobrança.
+- **Conferir antes:** `payments` pelo `booking_id` (status `pending`, `confirmed`, `received`, `held`, `released`, `refunded`, `failed` ou `canceled`) e o `asaas_payment_id`. **Não use `select *`** nem abra `payments.raw`: o payload pode ter dados do pagador, e o acesso do admin a ele fica registrado (`admin_get_payment_raw`). Confira no painel do Asaas, com o ID da cobrança.
 - **Texto:**
   > Olá, [NOME]. Estamos conferindo o pagamento do atendimento [NÚMERO]. Hoje, no app, o status é [STATUS]. Para localizar o pagamento, precisamos de [comprovante, identificador da transação Pix ou o e-mail usado no pagamento]. Não precisamos do número do seu cartão, da senha do banco nem de códigos de acesso, e você não deve enviá-los por e-mail ou WhatsApp.
 - **Não escrever:** "o pagamento está garantido"; "seu dinheiro já voltou" antes de conferir.
@@ -311,9 +314,9 @@ Os pedidos de dados entram pelo mesmo SAC, mas em categoria própria. O encarreg
 
 | Pedido | Como é atendido hoje | Prazo | Base |
 |---|---|---|---|
-| Confirmação de existência ou acesso aos dados | SAC (resposta) | Em formato simplificado (art. 19, I); declaração completa em até 15 dias corridos (art. 19, II) | LGPD, art. 18, II, e art. 19, I e II (conferido) |
+| Confirmação de existência ou acesso aos dados | SAC (resposta) | Imediatamente, em formato simplificado (art. 19, I); declaração completa em até 15 dias corridos (art. 19, II) | LGPD, art. 18, II, e art. 19, I e II (conferido) |
 | Cópia dos dados (portabilidade) | "Minha conta", cópia em JSON. Pedido por SAC só com confirmação de identidade | 15 dias corridos, se pedido pelo SAC | LGPD, art. 18, V (conferido) |
-| Correção | Em "Minha conta": nome, telefone e cidade. Outros dados pelo SAC | `[PROPOSTA]` | LGPD, art. 18, III: não conferido nesta sessão `[incerto]` |
+| Correção | Em "Minha conta": nome, telefone e cidade. Outros dados pelo SAC | `[PROPOSTA]` | LGPD, art. 18, III (conferido: "correção de dados incompletos, inexatos ou desatualizados") |
 | Eliminação | "Minha conta", "Excluir minha conta". Pedido por SAC com confirmação de identidade | 15 dias corridos para a resposta | LGPD, art. 18, VI, conferido: vale para dados tratados com consentimento, ressalvado o art. 16 |
 | Revogação de consentimento | Não há tela própria. O histórico de consentimentos é só de inclusão (`consents`), e uma nova decisão registra a revogação | `[PLANEJADO: tela de revogação]` | Política de Privacidade (documento 03) |
 
@@ -321,7 +324,7 @@ Procedimento:
 1. **Entrada.** O pedido chega ao SAC ou ao formulário de `/sac` e recebe a categoria "LGPD".
 2. **Identidade.** Pedido feito por quem está logado no app dispensa confirmação extra. Pedido por e-mail precisa de confirmação pelo endereço cadastrado. Ninguém altera dados pelo e-mail sem essa confirmação `[PLANEJADO: processo de confirmação de identidade]`.
 3. **Registro.** Anote na planilha. Quando o pedido passa pelo app, o registro também fica em `data_requests` (`kind` = `export` ou `delete`, `status` = `pending`, `processing`, `completed` ou `failed`). Hoje o pedido feito fora do app não tem registro no sistema `[PLANEJADO]`. A tela `/admin/lgpd` é só leitura.
-4. **Resposta.** Declaração completa em até 15 dias corridos. Se a agência ou o advogado confirmarem o prazo em dobro para pequeno porte, o prazo muda `[incerto]`.
+4. **Resposta.** Declaração completa em até 15 dias corridos. Se o advogado confirmar o prazo em dobro para agente de pequeno porte (Resolução CD/ANPD nº 2/2022, não reaberta), o prazo muda `[incerto]`.
 5. **Recusa.** Se a eliminação for recusada (por exemplo, pela guarda de registros fiscais), a resposta diz o motivo e a base legal, e o encarregado revisa antes de enviar.
 6. **Incidente.** Se o pedido revelar vazamento ou acesso indevido, aplique o plano do documento 08.
 
@@ -335,9 +338,9 @@ Esta seção lista o que o código não faz, para o dono decidir. Este documento
 
 | # | Lacuna | Onde | Efeito |
 |---|---|---|---|
-| L1 | Rodapé sem CNPJ, endereço nem SAC | `apps/web/AppShell.tsx` | Não atende o Decreto 7.962/2013, art. 2º (se aplicável) |
-| L2 | Não existe rota `/sac` | `AppShell.tsx` (rotas) | Não há página de atendimento |
-| L3 | Links de Termos e Privacidade vão para `/legal`, que diz "Documentos em elaboração" | `pages/LegalDocs.tsx`, rodapé e `pages/conta/Entrar.tsx` | Usuário não lê o texto |
+| L1 | Rodapé sem CNPJ, endereço nem SAC enquanto as variáveis `VITE_COMPANY_*` não estiverem preenchidas; no modo demonstração, nenhum dado | `apps/web/components/SiteFooter.tsx` | Não atende o Decreto 7.962/2013, art. 2º (se aplicável) |
+| L2 | Rota `/sac` existe, mas com texto provisório ("Documento em elaboração") e sem canal de contato | `config/legal.ts`, `content/legal/sac.md` | Não há página de atendimento de verdade |
+| L3 | `pages/conta/Entrar.tsx` e `components/TermsGate.tsx` apontam para `/legal`, que diz "Documentos em elaboração" | `pages/LegalDocs.tsx`, `pages/conta/Entrar.tsx`, `components/TermsGate.tsx` | Usuário não lê o texto |
 | L4 | Não há botão para denunciar perfil ou avaliação | busca em `pages/` e `components/` | A denúncia só funciona por e-mail, sem registro |
 | L5 | Não há cancelamento de atendimento pago pelo app | `transition_booking` (cliente só `requested` e `accepted`) | Depende do SAC |
 | L6 | Não há marcação de "profissional não compareceu" para atendimento | `booking_status` não tem esse estado | Não há prova no sistema |
@@ -345,7 +348,7 @@ Esta seção lista o que o código não faz, para o dono decidir. Este documento
 | L8 | Não há página pública de exclusão de conta, exigida pela Google Play | Google Play, política de exclusão | Bloqueia a publicação no Android |
 | L9 | Exclusão e exportação só funcionam com backend ligado | `pages/conta/Conta.tsx` (texto de demonstração) | Em demonstração, o botão não age |
 | L10 | Não há fluxo de comunicação à administradora do cartão quando há arrependimento (Decreto 7.962/2013, art. 5º, §3º) | `DECISOES.md` e documento 04 | Quem comunica o cartão fica indefinido |
-| L11 | Documentos 01 e 02 citam o Decreto 11.034/2022, revogado pelo Decreto 13.135/2026, art. 24 | `docs/juridico/01-termos-de-uso.md`, `02-termos-do-prestador.md` | Referência errada no texto para publicar. Não corrigido aqui (documentos de outra frente) |
+| L11 | Decreto 11.034/2022 (SAC), revogado pelo Decreto 13.135/2026, art. 24, aparece só nas listas internas de fontes dos documentos 01 e 02. Nenhum texto para publicar o cita | `docs/juridico/01-termos-de-uso.md` (lista de fontes não abertas), `02-termos-do-prestador.md` (nota de fontes); `04` (A4) diz o contrário | Divergência entre documentos: o documento 04, A4, deve ser corrigido. Não corrigido aqui (documentos de outra frente) |
 
 ---
 
@@ -357,13 +360,13 @@ Esta seção lista o que o código não faz, para o dono decidir. Este documento
 
 **Q2. Escopo do Decreto 13.135/2026.** O art. 1º, parágrafo único, alcança fornecedores de serviços regulados pelo Poder Executivo federal e serviços financeiros de pagamento ou crédito digitais sujeitos ao Banco Central. O art. 2º alcança os "fornecedores que operem plataformas digitais de intermediação da oferta ou comercialização de produtos ou serviços por terceiros", lido na cópia da Câmara. O WorkEasy se enquadra no art. 2º? Se sim:
 - Enviar à Senacon os modelos de atendimento, com número de reclamações, taxa de resolução, índice de reclamações em órgãos do SNDC e grau de satisfação `[incerto: os incisos foram lidos em resumo]`.
-- Atendimento humano em tempo real, 8h às 20h, todos os dias, nos canais eletrônicos (art. 12, §1º), e canal telefônico obrigatório (art. 14, caput e §1º).
+- Atendimento humano em tempo real, 8h às 20h, todos os dias, nos canais eletrônicos (art. 12, §1º), e canal telefônico obrigatório (art. 14, caput; o §1º não foi lido).
 - Se WhatsApp ou e-mail contam como canal eletrônico com atendimento em tempo real `[incerto]`.
 - Fontes secundárias divergem sobre o escopo: a ALMG fala em setores regulados federais, e o MJ não traz essa limitação. Confirmar no DOU de 13/10/2026, Seção 1, p. 5 `[incerto]`.
 
 **Q3. Prazo de resposta.** O Decreto 7.962/2013, art. 4º, parágrafo único, dá cinco dias. O Decreto 13.135/2026, art. 21, dá sete dias corridos para demandas não urgentes. A proposta de cinco dias atende aos dois. Confirmar.
 
-**Q4. Cancelamento de atendimento pago.** O Decreto 7.962/2013, art. 5º, §1º, fala em "mesma ferramenta utilizada para a contratação, sem prejuízo de outros meios". O Decreto 13.135/2026, art. 20, §1º, I, diz que o pedido deve ser recebido "pelo mesmo menu eletrônico ou pela mesma modalidade de atendimento", vedada a exigência de "acesso a outro menu, atendente ou canal". O art. 20, §1º, II, diz que os efeitos são imediatos, salvo processamento técnico justificado. O SAC por e-mail basta, ou o app precisa de botão? Isso vale para serviço já iniciado?
+**Q4. Cancelamento de atendimento pago.** O Decreto 7.962/2013, art. 5º, §1º, fala em "mesma ferramenta utilizada para a contratação, sem prejuízo de outros meios". O Decreto 13.135/2026, art. 20, §1º, I, diz que o pedido deve ser recebido e processado pelo SAC e por todos os meios e canais usados para a contratação, "pelo mesmo menu eletrônico ou pela mesma modalidade de atendimento", vedada a exigência de "acesso a outro menu, atendente ou canal". O art. 20, §1º, II, diz que os efeitos são imediatos, salvo processamento técnico justificado. O SAC por e-mail basta, ou o app precisa de botão? Isso vale para serviço já iniciado?
 
 **Q5. Arrependimento e comunicação ao cartão.** O CDC, art. 49, dá 7 dias da contratação ou do recebimento do serviço, quando a contratação é fora do estabelecimento. Vale para serviço já começado ou feito? O Decreto 7.962/2013, art. 5º, §3º, manda o fornecedor comunicar a desistência ao emissor do cartão. Quem comunica: o WorkEasy, o Asaas, ou o profissional, quando a cobrança é da conta dele?
 
@@ -389,23 +392,27 @@ Esta seção lista o que o código não faz, para o dono decidir. Este documento
 
 1. Resolução CD/ANPD nº 2/2022, art. 14 (prazo em dobro) e art. 11 (dispensa de encarregado): só fontes secundárias, não abri o texto oficial.
 2. Resolução CD/ANPD nº 18/2024 (encarregado): não aberta.
-3. Decreto 13.135/2026: texto lido em resumo da ferramenta, em cópia da Câmara. Conferir no DOU de 13/10/2026, Seção 1, p. 5. Vigência de 2/11/2026 é cálculo de 20 dias corridos, e uma notícia de MG dá a mesma data.
-4. Decreto 13.135/2026, art. 15, I (tempos de espera de 20 segundos e 300 segundos): lido em resumo.
-5. Decreto 13.135/2026, art. 18, §4º, I (histórico em cinco dias úteis, quando pedido): lido em resumo, e o prazo de 5 dias úteis conflita com o de 5 dias corridos da proposta. Conferir.
+3. Decreto 13.135/2026: reaberto na cópia da Câmara em 2026-11-08, mas lido em resumo da ferramenta, não no texto integral. Conferir no DOU de 13/10/2026, Seção 1, p. 5. Vigência de 2/11/2026 é cálculo de 20 dias corridos (art. 25), e uma notícia de MG dá a mesma data.
+4. Decreto 13.135/2026, art. 15, I (20 segundos para 80% das demandas e 300 segundos para as demais): lido em resumo na cópia da Câmara. Conferir no DOU.
+5. Decreto 13.135/2026, art. 18, §4º, I (histórico em cinco dias úteis, quando pedido): lido em resumo na cópia da Câmara. Não se confunde com a resposta do SAC em 5 dias corridos, mas o advogado deve confirmar a regra. Conferir.
 6. Decreto 13.135/2026, art. 1º, parágrafo único: divergência entre ALMG e MJ sobre o escopo.
 7. Decreto 7.962/2013, arts. 1º e 3º: não lidos (só a ementa).
 8. CDC, art. 49 para serviço já iniciado ou executado: não resolvido.
-9. LGPD, art. 18, III (correção): não conferido nesta sessão.
-10. LGPD, art. 16, I, e prazo de guarda fiscal de pagamentos: não abertos.
+9. LGPD, art. 18, III (correção): conferido na cópia da Câmara em 2026-11-08. Sem pendência.
+10. Prazo de guarda fiscal de pagamentos: não aberto. LGPD, art. 16, I, lido em 2026-11-08, só remete à obrigação legal, sem prazo.
 11. Marco Civil da Internet, art. 19: Planalto bloqueado e PDF da Câmara ilegível. Status do STF: não conferido.
 12. Número 190 (polícia): não conferido nesta sessão.
-13. Consumidor.gov.br: a regra de adesão voluntária veio de resultado de busca. O prazo de 20 dias para o consumidor avaliar a resposta não foi conferido.
+13. Consumidor.gov.br: a cláusula Quarta, itens 4 e 6 (10 dias; sem suspensão) foi conferida em 2026-11-08, mas o termo não diz que a adesão é voluntária (regra de resultado de busca). O prazo de 20 dias para o consumidor avaliar a resposta não foi conferido.
 14. Apple: se o campo Privacy Policy URL é obrigatório. Não conferido.
 15. Google Play: campo de URL de exclusão no formulário de segurança de dados (Data safety). Visto só em resultado de busca.
 16. Lojas: regras mudam. Conferir de novo na data da submissão.
 17. Procon municipal: base legal da estrutura municipal não conferida.
-18. Sumário do contrato antes da contratação (Decreto 7.962/2013, art. 4º, I): não conferido no código.
+18. Sumário do contrato antes da contratação (Decreto 7.962/2013, art. 4º, I): nenhuma menção a sumário nas buscas em `pages`, `services` e `components`; telas de pedido e agendamento não abertas.
 19. Custos e prazos de estorno (Pix, cartão, boleto): não conferidos com o Asaas.
+20. Decreto 11.034/2022 (SAC): não aberto. A revogação pelo art. 24 do Decreto 13.135/2026 foi lida na cópia da Câmara; se o advogado aplicar o 11.034, o texto precisa ser conferido.
+21. LGPD, art. 19, II: o texto diz "até 15 (quinze) dias", sem "corridos". Os prazos deste documento usam "dias corridos" por cautela; confirmar.
+22. Apple, 5.1.1: a página de ajuda diz que apps fora de setor altamente regulado "should not require" ligação, e-mail, chat ou outro fluxo de suporte. A página principal da diretriz não traz essas frases.
+23. Resolução CD/ANPD nº 2/2022 (arts. 11 e 14) e nº 18/2024: não reabertas nesta revisão (busca de fontes esgotada; sem URL primária aberta). Continuam só como pista.
 
 ---
 
@@ -417,20 +424,20 @@ Todas abertas em 2026-11-08. Quando o texto foi lido em resumo de ferramenta, a 
 |---|---|---|---|---|
 | 1 | https://www2.camara.leg.br/legin/fed/decret/2013/decreto-7962-15-marco-2013-775557-publicacaooriginal-139266-pe.html | Decreto nº 7.962, de 15/03/2013 (texto original, Câmara) | Art. 2º caput e I, II; art. 4º caput, I, V e parágrafo único; art. 5º caput, §1º, §3º | Texto lido |
 | 2 | https://www2.camara.leg.br/legin/fed/decret/2013/decreto-7962-15-marco-2013-775557-norma-pe.html | Decreto 7.962/2013, página de metadados (Câmara) | Ementa; publicação no DOU de 15/03/2013; "não consta revogação expressa" | Metadados |
-| 3 | https://www2.camara.leg.br/legin/fed/decret/2026/decreto-13135-9-outubro-2026-800053-publicacaooriginal-181591-pe.html | Decreto nº 13.135, de 9/10/2026 (texto original, Câmara) | Art. 1º (caput e parágrafo único); art. 2º; art. 12, §1º; art. 13, §1º, I e II; art. 14, caput e §1º; art. 18, §4º, I e II; art. 19; art. 20, §1º, I e II; art. 21; art. 24 (revoga o Decreto 11.034/2022); art. 25 (vigência de 20 dias) | Lido em resumo da ferramenta, em três consultas. Conferir no DOU |
+| 3 | https://www2.camara.leg.br/legin/fed/decret/2026/decreto-13135-9-outubro-2026-800053-publicacaooriginal-181591-pe.html | Decreto nº 13.135, de 9/10/2026 (texto original, Câmara) | Art. 1º (caput e parágrafo único); art. 2º; art. 12, §1º; art. 13, caput e §1º, I e II; art. 14, caput (§1º não lido); art. 15, I; art. 18, §4º, I e II; art. 19; art. 20, §1º, I e II; art. 21, caput e §3º; art. 24 (revoga o Decreto 11.034/2022); art. 25 (vigência de 20 dias) | Reaberto em 2026-11-08 (quatro consultas), em resumo da ferramenta sobre a cópia da Câmara. Conferir no DOU |
 | 4 | https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2026/decreto/d13135.htm | Decreto 13.135/2026 (Planalto) | Tentativa de acesso | Bloqueado ("Acesso Negado") |
 | 5 | https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2013/decreto/d7962.htm | Decreto 7.962/2013 (Planalto) | Tentativa de acesso | Bloqueado |
 | 6 | https://www.planalto.gov.br/ccivil_03/leis/l8078compilado.htm | Lei 8.078/1990 (Planalto) | Tentativa de acesso | Bloqueado |
 | 7 | https://www2.camara.leg.br/legin/fed/lei/1990/lei-8078-11-setembro-1990-365086-normaatualizada-pl.html | Lei 8.078/1990 (CDC), texto atualizado (Câmara) | Art. 49, caput e parágrafo único; art. 55, caput; art. 56, caput. A página é longa: li até o caractere 100.000 | Texto lido |
-| 8 | https://www2.camara.leg.br/legin/fed/lei/2018/lei-13709-14-agosto-2018-787077-normaatualizada-pl.html | Lei 13.709/2018 (LGPD), texto atualizado (Câmara) | Art. 18, II, V, VI; art. 19, I e II; art. 41, §2º, I a IV; art. 48, caput. Li até o caractere 100.000 | Texto lido |
+| 8 | https://www2.camara.leg.br/legin/fed/lei/2018/lei-13709-14-agosto-2018-787077-normaatualizada-pl.html | Lei 13.709/2018 (LGPD), texto atualizado (Câmara) | Art. 16, caput e I; art. 18, II, III, V e VI; art. 19, I e II; art. 41, §2º, I a IV (reabertos em 2026-11-08); art. 48, caput (não reaberto) | Texto lido |
 | 9 | https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm | LGPD (Planalto) | Tentativa de acesso | Bloqueado |
-| 10 | https://www2.camara.leg.br/legin/fed/lei/2014/lei-12965-23-abril-2014-778833-normaatualizada-pl.html | Marco Civil da Internet (Câmara) | Tentativa de acesso | Erro 404 |
+| 10 | https://www2.camara.leg.br/legin/fed/lei/2014/lei-12965-23-abril-2014-778833-normaatualizada-pl.html | Marco Civil da Internet (Câmara) | Tentativa de acesso | Erro 404 (Câmara). Planalto (Lei 12.965, 2026-11-08): "Acesso Negado" |
 | 11 | https://bd-rest.camara.leg.br/server/api/core/bitstreams/ea28a381-b25f-4b37-946d-993b1f9c9560/content | Marco Civil da Internet, publicação da Câmara (PDF) | Art. 19 | PDF ilegível; não usado |
 | 12 | https://www.consumidor.gov.br/pages/principal/termo-adesao-compromisso | Termo de adesão do fornecedor, Consumidor.gov.br | Cláusula Quarta, itens 4 e 6 | Texto lido |
-| 13 | https://developer.apple.com/help/app-review/guideline-reference/5-1-1-account-deletion/ | Apple App Review Guideline 5.1.1(v) | Exclusão no app; link direto ao site; proibição de exigir só e-mail, telefone ou chat para apps fora de setor altamente regulado | Texto lido |
+| 13 | https://developer.apple.com/help/app-review/guideline-reference/5-1-1-account-deletion/ | Apple App Review Guideline 5.1.1(v) | Exclusão no app (diretriz 5.1.1(v), texto em developer.apple.com/app-store/review/guidelines/); na página de ajuda: link direto ao site quando a exclusão exige site; apps fora de setor altamente regulado "should not require" ligação, e-mail, chat ou outro fluxo de suporte | Texto lido em 2026-11-08 |
 | 14 | https://developer.apple.com/help/app-store-connect/reference/app-information/platform-version-information/ | Apple App Store Connect, Support URL | Campo obrigatório; página com contato real; URL com protocolo | Texto lido |
 | 15 | https://developer.apple.com/help/app-store-connect/reference/app-information/required-localizable-and-editable-properties | Apple App Store Connect, propriedades obrigatórias | Não trouxe a descrição de Privacy Policy URL | Lido sem resultado |
-| 16 | https://support.google.com/googleplay/android-developer/answer/13327111?hl=en | Google Play, requisitos de exclusão de conta | Opção no app, link web externo, o que conta como exclusão, formulário aceito | Texto lido (limite de citação) |
+| 16 | https://support.google.com/googleplay/android-developer/answer/13327111?hl=en | Google Play, requisitos de exclusão de conta | Opção no app em lugar de destaque; link web funcional que cita o app ou o desenvolvedor e permite pedir a exclusão sem voltar ao app. Não trata de desativação | Texto lido em 2026-11-08 (limite de citação) |
 | 17 | https://support.google.com/googleplay/android-developer/answer/10144311?hl=en | Google Play, política de dados do usuário | Link de política de privacidade na Play Console e no app; conteúdo mínimo | Texto lido (limite de citação) |
 | 18 | https://www.gov.br/saude/pt-br/assuntos/saude-de-a-a-z/s/samu-192 | Ministério da Saúde, SAMU 192 | "gratuito, acessado pelo número 192, funciona 24 horas por dia e 07 dias por semana" | Texto lido |
 | 19 | https://www.lexml.gov.br/urn/urn:lex:br:federal:decreto:2013-03-15;7962 | Lexml, Decreto 7.962/2013 | Ementa e publicação. Sem texto dos artigos | Metadados |
