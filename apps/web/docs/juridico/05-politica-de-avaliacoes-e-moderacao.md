@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versão | 2026-10-rascunho |
+| Versão | 2026-10-rascunho (mesma edição de `config/legal.ts`; este documento não tem entrada própria nele) |
 | Data do rascunho | 2026-11-08 |
 | Vigência | [DATA DE VIGÊNCIA] |
 | Controladora | [RAZÃO SOCIAL], [CNPJ], [ENDEREÇO]. Empresa de tecnologia a ser criada pelo titular, separada da clínica dele. |
@@ -71,9 +71,9 @@
 
 2.2 **Ocupação sem nota** (`rating_ranking` falso): a avaliação é gravada com `published = false`. Aparece só para o cliente que avaliou, para o profissional e para a equipe administradora. Não aparece na página pública, não entra na média da busca e a busca não mostra nota.
 
-2.3 **Ninguém muda isso.** Nem o cliente, nem o administrador. A função `private.check_review()` roda em inserção e em alteração e força `published = false` quando a ocupação não permite nota. O teste `supabase/tests/database/07_quotes_reviews.test.sql` cobre a inserção e a tentativa de publicação pelo cliente. A regra para o administrador vem da leitura do código e ainda não tem teste.
+2.3 **Ninguém muda isso.** Nem o cliente, nem o administrador. A função `private.check_review()` roda em inserção e em alteração e força `published = false` quando a ocupação não permite nota. O teste `supabase/tests/database/07_quotes_reviews.test.sql` cobre a inserção e a tentativa de publicação pelo cliente. A moderação do administrador (ocultar e reexibir) tem teste no mesmo arquivo ("an admin hides a review", "an admin shows it again"). Não há teste de que o administrador não altere outras colunas (seção 5.1).
 
-2.4 Hoje são 272 ocupações sem nota, de 1.710 no catálogo. Todas estão marcadas como reguladas. Ver seção 10.
+2.4 Hoje são 462 ocupações sem nota, de 1.710 no catálogo (contagem de `catalog/policies.json` em 2026-11-08; a matriz da Frente A ainda pode mudar). Todas estão marcadas como reguladas. Ver seção 10.
 
 2.5 Quando a nota não é publicada, a tela do cliente diz: "só você e o profissional veem a sua." A equipe administradora também vê, porque a política `reviews_select` permite. **Texto a corrigir:** "só você, o profissional e a equipe do WorkEasy veem a sua." (seção 13.)
 
@@ -89,7 +89,7 @@
 
 3.4 **Média no cartão da busca:** a média aparece assim que há uma avaliação publicada. Um profissional com uma única avaliação de 5,0 aparece com "5,0 (1 avaliação)", mas fica depois dos que têm 3 ou mais. A tela não explica isso. [DECISÃO DO DONO] Escolher entre: (a) explicar na tela a regra das 3 avaliações; ou (b) mostrar a média só a partir de 3 avaliações.
 
-3.5 **Página do profissional:** mostra até 50 avaliações publicadas, as mais recentes. A média exibida é calculada sobre essas 50. A busca usa todas as avaliações publicadas. Quando há mais de 50, a média e o texto "em N avaliações" não batem com a busca. Isso é defeito (seção 13). A regra correta é usar o mesmo conjunto da busca.
+3.5 **Página do profissional:** mostra até 50 avaliações publicadas, as mais recentes. A média exibida é calculada sobre essas 50. A busca usa todas as avaliações publicadas. Quando há mais de 50, a média e o texto "em N avaliações" não batem com a busca. Além disso, a página mistura as avaliações de todas as ocupações do profissional, e a busca calcula por ocupação. Isso é defeito (seção 13). A regra correta é usar o mesmo conjunto da busca, por ocupação.
 
 ---
 
@@ -97,7 +97,7 @@
 
 4.1 **Pode:** falar do serviço recebido. Pode descrever o que foi feito, o cumprimento do combinado, a comunicação e o cuidado, e informar o preço que foi combinado.
 
-4.2 **Não pode** (a lista acompanha os Termos de Uso, cláusula 10.1, itens b, c, d e f, e precisa ficar igual a eles):
+4.2 **Não pode** (a maior parte acompanha a cláusula 10.1 dos Termos de Uso, itens b, c, d e f; os itens b (dado de saúde, cláusula 9.6), h (publicidade e convite para contratar por fora) e i (conteúdo que não fala do serviço) não estão nela, e a extorsão do item e só em parte. Ver ponto 22):
 
 - a) dado pessoal seu ou de outra pessoa: telefone, e-mail, endereço, CPF ou CNPJ, nome completo de terceiro, foto de pessoa identificável;
 - b) dado de saúde (Termos de Uso, cláusula 9.6);
@@ -123,7 +123,7 @@
 
 5.3 **Ninguém apaga avaliação pelo app.** O autor não tem permissão de exclusão no banco. O profissional não altera nem apaga avaliação (Termos do Prestador, cláusula 8.4).
 
-5.4 **Conta de cliente excluída** (anonimização, Política de Privacidade, seção 7): a nota continua contando na média do profissional. O comentário é apagado. O vínculo com o autor é removido. A função `anonymize_user` faz isso com `update public.reviews set comment = null where client_id = p_user`. [CONDICIONAL: depende de parecer] (ponto 15 da seção de pontos para o advogado).
+5.4 **Conta de cliente excluída** (anonimização, Política de Privacidade, seção 7): a nota continua contando na média do profissional. O comentário é apagado pela função `anonymize_user`, com `update public.reviews set comment = null where client_id = p_user`. O vínculo com o autor (`client_id`) fica nulo só quando a conta sai do Auth (chave estrangeira `on delete set null`; ARQUITETURA, seção de exclusão de conta). [CONDICIONAL: depende de parecer] (ponto 16 da seção de pontos para o advogado).
 
 5.5 **Profissional suspenso ou excluído:** a página pública some enquanto o cadastro estiver suspenso, porque a leitura exige status aprovado. As avaliações continuam gravadas.
 
@@ -148,7 +148,7 @@ Não se oculta avaliação por nota baixa, nem porque o profissional discorda.
 
 6.5 **Reativação:** o autor não consegue publicar de novo (trigger `reviews_05_guard`, função `private.guard_review_update`; teste "the client cannot change the publication"). Só o administrador reativa. Em ocupação sem nota, a reativação é impossível, porque a regra da seção 2.3 força `published = false`.
 
-6.6 **Registro:** hoje ocultar não grava motivo, nem quem ocultou, nem quando, e não entra em `audit_log` (não há trigger em `reviews`). [PLANEJADO] Antes de a política valer: campos de moderação em `reviews` (motivo, quem, quando) e registro em `audit_log` a cada ocultação e reativação.
+6.6 **Registro:** hoje ocultar não grava motivo, nem quem ocultou, nem quando, e não entra em `audit_log` (não há trigger de auditoria em `reviews`; há só o trigger de eventos de produto `product_events_reviews`, que registra `review_published` e não guarda motivo nem autor). [PLANEJADO] Antes de a política valer: campos de moderação em `reviews` (motivo, quem, quando) e registro em `audit_log` a cada ocultação e reativação.
 
 6.7 **Prazo interno:** [DECISÃO DO DONO] Proposta: a equipe analisa denúncia e contestação em até 2 dias úteis. Ordem judicial tem o prazo que o juiz fixar, e ele prevalece sobre o prazo interno.
 
@@ -179,13 +179,13 @@ Propostas, ainda não decididas:
 
 ## 8. Aviso e contestação
 
-8.1 **Aviso.** Quando a avaliação é ocultada por motivo de conteúdo (seção 6.1, itens a, b e d), o autor e o profissional recebem um aviso com: o motivo, em texto curto, a regra violada, a data e o modo de contestar. [PLANEJADO] Hoje não há notificação de avaliação: os modelos de notificação do sistema (`docs/ARQUITETURA.md`, seção Notificações) não incluem avaliação.
+8.1 **Aviso.** Quando a avaliação é ocultada por motivo de conteúdo (seção 6.1, itens a, b e d), o autor e o profissional recebem um aviso com: o motivo, em texto curto, a regra violada, a data e o modo de contestar. [PLANEJADO] Hoje não há notificação de avaliação: os modelos de notificação do sistema (lista de `template` em `supabase/migrations/20261019000008_notifications.sql`) não incluem avaliação.
 
 8.2 **Base do aviso ao autor.** O artigo 20 do Marco Civil da Internet manda comunicar os motivos da indisponibilização ao usuário responsável pelo conteúdo, quando houver contato dele, com informações que permitam contraditório e ampla defesa. A aplicação a avaliações de serviço é [CONDICIONAL: depende de parecer].
 
 8.3 **Contestação.** O autor ou o profissional contesta pelo [E-MAIL DO SAC], em [DECISÃO DO DONO: proposta de 7 dias corridos a partir do aviso]. A contestação deve explicar o motivo e pode trazer prova, por exemplo o atendimento e o pagamento.
 
-8.4 **Análise e resposta.** A análise é feita por administrador diferente de quem ocultou, quando houver mais de um administrador [DECISÃO DO DONO]. A resposta é escrita, em [DECISÃO DO DONO: proposta de 5 dias úteis]. Referência: o Decreto 7.962/2013, artigo 4º, V, e parágrafo único, exige manifestação em até cinco dias para demandas de consumidor no comércio eletrônico. A aplicação a contestações desta política é [CONDICIONAL: depende de parecer].
+8.4 **Análise e resposta.** A análise é feita por administrador diferente de quem ocultou, quando houver mais de um administrador [DECISÃO DO DONO]. A resposta é escrita, em [DECISÃO DO DONO: proposta de 5 dias corridos, como no SAC (documento 10)]. Referência: o Decreto 7.962/2013, artigo 4º, V, e parágrafo único, exige manifestação em até cinco dias para as demandas do inciso V (informação, dúvida, reclamação, suspensão ou cancelamento do contrato). A aplicação a contestações desta política é [CONDICIONAL: depende de parecer].
 
 8.5 **Resultado.** A equipe mantém a avaliação oculta ou a restaura. A restauração volta `published` para verdadeiro, e só é possível em ocupação com nota. Toda decisão é registrada e comunicada, com o motivo. [PLANEJADO]
 
@@ -201,9 +201,9 @@ Propostas, ainda não decididas:
 
 9.2 **O que mudou pelo STF (Tema 987, RE 1.037.396).** Em 26/06/2025, o STF decidiu que a regra do artigo 19 é "parcialmente inconstitucional". Pela notícia do próprio STF:
 
-- a) para crimes contra a honra, a plataforma pode remover publicação com base apenas em notificação extrajudicial. A responsabilização por indenização continua exigindo descumprimento de ordem judicial;
+- a) os provedores só respondem por indenização se descumprirem ordem judicial de remoção; a notícia diz que "nada impede" que as plataformas removam publicações com base apenas em notificação extrajudicial, mas não liga isso expressamente a crimes contra a honra (escopo em aberto, ponto 1);
 - b) cópias idênticas de conteúdo já reconhecido como ofensivo por decisão devem sair após notificação judicial ou extrajudicial;
-- c) para um rol fechado de crimes graves, a responsabilização pode ocorrer por falha sistêmica na retirada;
+- c) para crimes graves, a responsabilização pode ocorrer por falha sistêmica na retirada. A notícia de 26/06/2025 diz que a lista "inclui, entre outros" crimes; a de 17/06/2026 fala em "rol taxativo" (conflito, ponto 1);
 - d) as plataformas devem adotar autorregulação com sistema de notificações, devido processo e relatórios anuais de transparência sobre notificações extrajudiciais.
 
 Em 17/06/2026, o STF concluiu o julgamento dos embargos de declaração e fixou 60 dias para medidas estruturais, contados do fim do julgamento (notícia do STF de 17/06/2026). [incerto] Não abri a redação final publicada da tese. A data de início de efeitos citada em fonte secundária não foi conferida.
@@ -211,7 +211,7 @@ Em 17/06/2026, o STF concluiu o julgamento dos embargos de declaração e fixou 
 9.3 **Procedimento.**
 
 - a) **Ordem judicial.** Chega em [E-MAIL DO SAC] ou no canal jurídico que for definido. A equipe confere o órgão, o número do processo, a identificação clara do conteúdo (artigo 19, §1º) e o prazo. Cumpre no prazo e registra. [PLANEJADO] Pedido de identificação de autor é outro tema, tratado na Política de Privacidade (documento 03) e não aqui.
-- b) **Notificação extrajudicial** (por exemplo, alegação de crime contra a honra). A equipe pode ocultar só quando a notificação aponta a avaliação e o trecho e descreve a ofensa. O autor é avisado (seção 8.1). [CONDICIONAL: depende de parecer]
+- b) **Notificação extrajudicial** (por exemplo, alegação de crime contra a honra; escopo em aberto, ponto 1). A equipe pode ocultar só quando a notificação aponta a avaliação e o trecho e descreve a ofensa. O autor é avisado (seção 8.1). [CONDICIONAL: depende de parecer]
 - c) **Nudez ou ato sexual de caráter privado** divulgado sem autorização (Marco Civil, artigo 21). A notificação precisa conter elementos que identifiquem o material (artigo 21, parágrafo único). A equipe age de forma diligente. [CONDICIONAL: depende de parecer]
 - d) **Pedido de autoridade** (conselho profissional, Procon, Senacon ou outra). A equipe confere a competência e exige o pedido por escrito. Oculta se o pedido identifica a avaliação e a infração, e avisa o profissional com o motivo (Termos do Prestador, cláusula 13.6). [PLANEJADO]
 
@@ -227,22 +227,22 @@ Em 17/06/2026, o STF concluiu o julgamento dos embargos de declaração e fixou 
 
 | Grupo | Ocupações |
 |---|---|
-| Não regulada, com nota | 932 |
-| Regulada, com nota | 506 |
-| Regulada, sem nota | 272 |
+| Não regulada, com nota | 923 |
+| Regulada, com nota | 325 |
+| Regulada, sem nota | 462 |
 | Total | 1.710 |
 
-10.2 Das 272 sem nota, 149 têm a base marcada como conferida (`confidence = conferido`). As outras 123 têm a base marcada como a confirmar (`a_confirmar`).
+10.2 Das 462 sem nota, 179 têm a base marcada como conferida (`confidence = conferido`). As outras 283 têm a base marcada como a confirmar (`a_confirmar`).
 
-10.3 Conselhos das 272 ocupações (contagem pelo campo `regulatorBody`): CFM/CRM 140; CFO/CRO 37; OAB 36; CFP/CRP 25; outros grupos e combinações 34.
+10.3 Conselhos das 462 ocupações (contagem pelo campo `regulatorBody`): CFM/CRM 140; CFO/CRO 37; OAB 37; CFP/CRP 27; outros grupos e combinações 221.
 
 10.4 **O que os textos que abri dizem** (2026-11-08):
 
-- **CFM, Resolução 2.336/2023.** Não há proibição expressa de avaliação ou nota. O artigo 11, XIII, veda deixar o nome entrar em listas de premiações ou "melhor médico" "com a finalidade de escolher ou indicar profissional". O artigo 11, XVI, veda sensacionalismo, concorrência desleal e conteúdo inverídico. O artigo 14, II, g, admite depoimentos sobre a atuação do médico, desde que "sóbrios, sem adjetivos que denotem superioridade ou induzam a promessa de resultado".
+- **CFM, Resolução 2.336/2023.** Não há proibição expressa de avaliação ou nota. O artigo 11, XIII, veda permitir ou não impedir que o nome entre em listas de premiações, homenagens ou concursos "com a finalidade de escolher ou indicar profissional" para títulos como "melhor médico", com foco promocional ou de propaganda patrocinada. O artigo 11, XVI, veda sensacionalismo, concorrência desleal e conteúdo inverídico. O artigo 14, II, g, admite depoimentos sobre a atuação do médico, desde que "sóbrios, sem adjetivos que denotem superioridade ou induzam a promessa de resultado".
 - **OAB, Provimento 205/2021.** O artigo 3º, I, veda referir valores de honorários, forma de pagamento, gratuidade ou descontos como forma de captação de clientes. O artigo 5º, §1º, veda pagar ou patrocinar aparição em rankings ou prêmios que visem "destacar ou eleger profissionais". Não há menção a avaliações nem a depoimentos.
-- **CFP, Resolução 9/2024** (cópia na normasbrasil, não no DOU). Não encontrei regra sobre avaliação, depoimento ou ranking. O artigo 3º, §2º, diz que é responsabilidade da profissional "as manifestações públicas em relação aos serviços prestados", quanto à divulgação por meio de TDICs.
+- **CFP, Resolução 9/2024** (cópia na normasbrasil, não no DOU). Não encontrei regra sobre avaliação, depoimento ou ranking. O artigo 2º dessa cópia não tem alíneas o e p (ponto 8). O artigo 3º, §2º, diz que é responsabilidade da profissional "as manifestações públicas em relação aos serviços prestados", quanto à divulgação por meio de TDICs.
 
-10.5 **Consequência para o produto.** O catálogo registra "sem ranking, depoimentos ou preço (Prov. 205/2021)" para advogado, "sem avaliação pública" para psicólogo e "sem ranking ou depoimentos (CFM)" para médico. Os textos que abri não trazem essas proibições expressas. Por isso, a nota desligada é hoje uma decisão de cautela do produto, não uma regra de conselho comprovada. [CONDICIONAL: depende de parecer] A página de ocupação diz "Os profissionais não são ordenados por nota, por regra do conselho." Esse texto vale também para as 123 com base a confirmar. Até o parecer, deve dizer que a regra é de cautela do WorkEasy e que a base está em confirmação.
+10.5 **Consequência para o produto.** O catálogo registra "preço público nem ranking (Prov. 205); sem nota, por cautela" para advogado, "Sem avaliação pública" para psicólogo e "sem ranking ou depoimentos (CFM)" para médico. Os textos que abri não trazem essas proibições expressas. Por isso, a nota desligada é hoje uma decisão de cautela do produto, não uma regra de conselho comprovada. [CONDICIONAL: depende de parecer] A página de ocupação diz "Os profissionais não são ordenados por nota, por regra do conselho." Esse texto vale também para as 283 com base a confirmar. Até o parecer, deve dizer que a regra é de cautela do WorkEasy e que a base está em confirmação.
 
 ---
 
@@ -278,7 +278,7 @@ Em 17/06/2026, o STF concluiu o julgamento dos embargos de declaração e fixou 
 |---|---|---|---|
 | Tela de moderação | Não existe em `pages/admin/`. A ação é feita no banco. | Tela com motivo obrigatório | [PLANEJADO] |
 | Motivo, autor e data da ocultação | Não existem em `reviews` | Campos ou tabela de moderação | [PLANEJADO] |
-| Registro em auditoria | Nenhum trigger em `reviews`. `audit_log` existe e é imutável. | Registrar cada ocultação e reativação | [PLANEJADO] |
+| Registro em auditoria | Nenhum trigger de auditoria em `reviews`; só o evento de produto `review_published`. `audit_log` existe e é imutável. | Registrar cada ocultação e reativação | [PLANEJADO] |
 | Administrador altera nota e comentário | `reviews_admin_update` não restringe colunas | Restringir a `published` e aos campos de moderação | Correção recomendada |
 | Autor altera nota e comentário a qualquer tempo | `reviews_update_own` permite; a tela não oferece | Prazo ou trava | [DECISÃO DO DONO] |
 | Aviso ao autor e ao profissional | Sem modelo de notificação para avaliação | Aviso com motivo | [PLANEJADO] |
@@ -286,10 +286,10 @@ Em 17/06/2026, o STF concluiu o julgamento dos embargos de declaração e fixou 
 | Denúncia e bloqueio no app | Não existem | Botões e fluxo (seção 11) | [PLANEJADO] |
 | Filtro de conteúdo | Só o limite de 1.000 caracteres | Filtro e moderação contínua | [PLANEJADO] |
 | Sinais de fraude | Não calculados | Visão ou relatório (seção 7) | [PLANEJADO] |
-| Média da página x média da busca | A página usa as 50 mais recentes; a busca usa todas | Mesmo conjunto | Defeito |
+| Média da página x média da busca | A página usa as 50 mais recentes e mistura ocupações; a busca usa todas, por ocupação | Mesmo conjunto e mesma ocupação | Defeito |
 | Regra das 3 avaliações | Não explicada na tela | Explicar ou mudar a exibição (seção 3.4) | [DECISÃO DO DONO] |
 | Texto "só você e o profissional veem" | Omite a equipe | Incluir a equipe | Correção de texto |
-| Texto "por regra do conselho" | Na página de ocupação, inclusive nas 123 com base a confirmar | Texto de cautela até o parecer | [CONDICIONAL: depende de parecer] |
+| Texto "por regra do conselho" | Na página de ocupação, inclusive nas 283 com base a confirmar | Texto de cautela até o parecer | [CONDICIONAL: depende de parecer] |
 | Relatório de transparência | Não existe | Anual (seção 9.4) | [PLANEJADO] |
 | Resposta do profissional | Não existe | Decidir se entra | [DECISÃO DO DONO] |
 
@@ -299,7 +299,7 @@ Em 17/06/2026, o STF concluiu o julgamento dos embargos de declaração e fixou 
 
 ### A. Fundamentos
 
-1. **Tese do STF no Tema 987 após os embargos (17/06/2026).** Obter a redação final publicada. Confirmar quais crimes contra a honra entram e como a tese se aplica a avaliação de cliente em plataforma de serviços. [incerto]
+1. **Tese do STF no Tema 987 após os embargos (17/06/2026).** Obter a redação final publicada. Confirmar quais crimes contra a honra entram e como a tese se aplica a avaliação de cliente em plataforma de serviços. A notícia de 26/06/2025 diz que o rol de crimes graves "inclui, entre outros"; a de 17/06/2026 diz "rol taxativo". [incerto]
 2. **Data de início de efeitos da tese.** Fonte secundária cita 05/08/2025. Não conferi. [incerto]
 3. **Conteúdo mínimo da notificação extrajudicial.** A tese exige "sistema de notificações e devido processo". Quais elementos o WorkEasy deve exigir do notificante? [incerto]
 4. **Texto vigente do Marco Civil.** Li os artigos 19, 20 e 21 na versão de origem da compilação da Câmara. O índice do Senado mostra alterações em outros dispositivos. Confirmar se os artigos 19 a 21 mudaram depois. [incerto]
@@ -310,8 +310,8 @@ Em 17/06/2026, o STF concluiu o julgamento dos embargos de declaração e fixou 
 6. **CFM.** O artigo 11, XIII, e o artigo 14, II, g, se aplicam à nota de cliente no app? A avaliação de cliente é "depoimento" ou "lista para escolher ou indicar profissional"? Se não é, a regra de nota desligada para médicos é cautela ou exigência? [CONDICIONAL: depende de parecer]
 7. **OAB.** Ordenar por nota é "ranqueamento" no sentido do artigo 5º, §1º, ou só a paga é vedada? [CONDICIONAL: depende de parecer]
 8. **CFP.** A Resolução 9/2024 que li não trata de avaliação. O catálogo cita "art. 2º, o e p" para comissão e intermediação de pagamento, e o texto que li não tem esses itens. Confirmar no DOU e verificar se há outra norma do CFP sobre avaliação. [incerto]
-9. **As 123 ocupações com base a confirmar.** Qual norma sustenta cada uma? Depende da matriz por conselho (Frente A). [CONDICIONAL: depende de parecer]
-10. **Os outros conselhos das 272.** Não abri as fontes deles. [incerto]
+9. **As 283 ocupações com base a confirmar.** Qual norma sustenta cada uma? Depende da matriz por conselho (Frente A). [CONDICIONAL: depende de parecer]
+10. **Os outros conselhos (221 das 462 sem nota).** Não abri as fontes deles. [incerto]
 
 ### C. Consumidor
 
@@ -331,6 +331,12 @@ Em 17/06/2026, o STF concluiu o julgamento dos embargos de declaração e fixou 
 18. **Lojas.** Quais itens dos guidelines da Apple (1.2) e da política do Google Play são obrigatórios para as versões nativas com avaliações visíveis? [CONDICIONAL: depende de parecer]
 19. **Comissão e pagamento retido.** Se forem ligados, muda a condição "pago pelo app" da seção 1? O status `held` não conta hoje. [CONDICIONAL: depende de parecer]
 
+### F. Consistência com outros documentos
+
+20. **Números do catálogo.** Este documento usa a contagem do arquivo `catalog/policies.json` em 2026-11-08 (462 sem nota). Os documentos 01 (Termos de Uso, pontos de pendência e tabela de números) e 02 (Anexo II) ainda usam 272 sem nota e 1.057 / 653 para a base, e o PREAMBLE do projeto cita 1.057 "a confirmar". O arquivo hoje tem 1.102 "a_confirmar" e 608 "conferido". Sincronizar quando a matriz da Frente A fechar. [DECISÃO DO DONO]
+21. **Prazo de resposta à contestação.** A seção 8.4 propõe 5 dias corridos, a mesma base do SAC (documento 10, seção 4.1). O playbook de suporte (documento 07, prazo 14) ainda diz 5 dias úteis. Decidir um só prazo e alinhar os três. [DECISÃO DO DONO]
+22. **Lista de condutas.** A seção 4.2 não coincide com a cláusula 10.1 dos Termos de Uso. Os itens b (dado de saúde), h e i não estão nela, e o item e só em parte. Incluir nos Termos de Uso, ou nos Termos do Prestador (cláusula 16), antes de valer. [CONDICIONAL: depende de parecer]
+
 ### Lista de itens [incerto]
 
 Pontos 1, 2, 3, 4, 8, 10, 12 e 14. A data de abertura e a versão exata dos guidelines da Apple e da política do Google Play não ficaram visíveis na página.
@@ -343,21 +349,21 @@ Todas foram abertas em 2026-11-08, salvo indicação. Quando o site bloqueou o a
 
 | # | Fonte (URL) | Norma e trecho | Como foi aberta e observação |
 |---|---|---|---|
-| 1 | https://www2.camara.leg.br/legin/fed/lei/2014/lei-12965-23-abril-2014-778630-publicacaooriginal-143980-pl.html | Lei 12.965/2014 (Marco Civil), artigos 19 (caput e §1º), 20 (caput e parágrafo único), 21 (caput e parágrafo único) | Portal da Câmara, texto de publicação original. Trechos lidos por download direto. Versão de origem: confirmar alterações posteriores (ponto 4). |
-| 2 | https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2014/lei/l12965.htm | Mesma lei | Não aberta. O Planalto bloqueou o acesso ("Acesso Negado") por WebFetch e por download direto. Não usei o texto dali. |
+| 1 | https://www2.camara.leg.br/legin/fed/lei/2014/lei-12965-23-abril-2014-778630-publicacaooriginal-143980-pl.html | Lei 12.965/2014 (Marco Civil), artigos 19 (caput e §1º), 20 (caput e parágrafo único), 21 (caput e parágrafo único) | Portal da Câmara, texto de publicação original. Reaberta em 2026-11-08 por WebFetch: art. 19 (caput, §1º), art. 20 (caput, parágrafo único) e art. 21 (caput, parágrafo único) conferem com o texto citado. A página não traz notas de alteração (ponto 4). |
+| 2 | https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2014/lei/l12965.htm | Mesma lei | Não aberta. Reaberta em 2026-11-08: o Planalto bloqueou (página "Esta requisição foi bloqueada") por WebFetch e por download direto. Não usei o texto dali. |
 | 3 | https://legis.senado.leg.br/norma/584776 | Lei 12.965/2014: índice de dispositivos alterados | Só índice. Os artigos 19 e 21 não aparecem na lista de alterados. Não traz o texto. |
-| 4 | https://noticias.stf.jus.br/postsnoticias/stf-define-parametros-para-responsabilizacao-de-plataformas-por-conteudos-de-terceiros/ | STF, Tema 987, decisão de 26/06/2025 (página datada de 26/06/2025) | Trechos citados na seção 9.2. A redação final da tese não foi aberta. |
-| 5 | https://noticias.stf.jus.br/postsnoticias/plataformas-terao-60-dias-para-implementar-medidas-estruturais-decide-stf/ | STF, notícia de 17/06/2026 sobre os embargos | Prazo de 60 dias e rol fechado de crimes graves. A redação dos embargos não foi aberta. |
+| 4 | https://noticias.stf.jus.br/postsnoticias/stf-define-parametros-para-responsabilizacao-de-plataformas-por-conteudos-de-terceiros/ | STF, Tema 987, decisão de 26/06/2025 (página datada de 26/06/2025) | Reaberta em 2026-11-08 por WebFetch: data 26/06/2025 confere; "parcialmente inconstitucional" confere; "nada impede" (notificação extrajudicial) confere, mas o texto não liga isso expressamente a crimes contra a honra, e o rol "inclui, entre outros". A redação final da tese não foi aberta. |
+| 5 | https://noticias.stf.jus.br/postsnoticias/plataformas-terao-60-dias-para-implementar-medidas-estruturais-decide-stf/ | STF, notícia de 17/06/2026 sobre os embargos | Reaberta em 2026-11-08 por WebFetch: data 17/06/2026 confere; prazo de 60 dias "a partir do final deste julgamento" confere; "rol taxativo" confere. A redação dos embargos e a tese não foram abertas. |
 | 6 | https://noticias.stf.jus.br/postsnoticias/stf-avanca-em-analise-de-recursos-sobe-normas-do-marco-civil-da-internet/ | STF, notícia de 11/06/2025 | Não trouxe decisão. Só para contexto. |
 | 7 | https://teletime.com.br/17/06/2026/stf-conteudos-marco-civil-internet/ | Teletime, 17/06/2026 | Fonte secundária. Usada só como pista para o item 2 e a seção 9.2. Não é citação do acórdão. |
-| 8 | https://www2.camara.leg.br/legin/fed/lei/1990/lei-8078-11-setembro-1990-365086-publicacaooriginal-1-pl.html | Lei 8.078/1990 (CDC), artigos 6º (III e IV), 37 (caput e §§1º, 2º e 3º), 38, 67 | Portal da Câmara, publicação original. Trechos lidos por download direto (WebFetch deu 429). |
-| 9 | https://www2.camara.leg.br/legin/fed/decret/2013/decreto-7962-15-marco-2013-775557-publicacaooriginal-139266-pe.html | Decreto 7.962/2013, artigos 1º (I a III), 4º (V e VI e parágrafo único), 9º | Portal da Câmara. Não traz avaliação de consumidor. |
-| 10 | https://crmes.org.br/wp-content/uploads/2023/09/Resolucao-2336-2023-publicidade-e-propaganda-medica.pdf | CFM, Resolução 2.336/2023, artigos 11 (XIII, XVI, §§2º a 5º) e 14 (II, g) | PDF com cabeçalho do CFM, hospedado em crmes.org.br (cópia de terceiro, não o site do CFM). Texto extraído localmente. Vigência atual [incerto]. |
-| 11 | https://www.oab.org.br/leisnormas/legislacao/provimentos/205-2021 | OAB, Provimento 205/2021, artigos 3º (I) e 5º (§1º) | Lido por download direto. Não há menção a avaliação ou depoimento. |
-| 12 | https://www.normasbrasil.com.br/norma/resolucao-9-2024_462577.html | CFP, Resolução 9/2024, artigos 2º, 3º (§2º) | Cópia de terceiro, não o DOU. Ponto 8. |
-| 13 | https://developer.apple.com/app-store/review/guidelines/ | Apple App Store Review Guidelines, item 1.2 | Aberta por WebFetch. Não há data de atualização visível. Confirmar o texto na página. |
-| 14 | https://support.google.com/googleplay/android-developer/answer/9876937?hl=en | Google Play, política de conteúdo gerado por usuário | Aberta por WebFetch. Sem data de atualização visível. Confirmar o texto na página. |
+| 8 | https://www2.camara.leg.br/legin/fed/lei/1990/lei-8078-11-setembro-1990-365086-publicacaooriginal-1-pl.html | Lei 8.078/1990 (CDC), artigos 6º (III e IV), 37 (caput e §§1º, 2º e 3º), 38, 67 | Portal da Câmara, publicação original. Reaberta em 2026-11-08 por WebFetch: art. 37 (caput, §1º, §3º) e art. 38 conferem; nenhum deles trata de avaliação ou ranking. |
+| 9 | https://www2.camara.leg.br/legin/fed/decret/2013/decreto-7962-15-marco-2013-775557-publicacaooriginal-139266-pe.html | Decreto 7.962/2013, artigos 1º (I a III), 4º (V e VI e parágrafo único), 9º | Portal da Câmara. Reaberta em 2026-11-08 por WebFetch: art. 4º, V e parágrafo único conferem ("em até cinco dias", sem dizer se úteis ou corridos). Não traz avaliação de consumidor. |
+| 10 | https://crmes.org.br/wp-content/uploads/2023/09/Resolucao-2336-2023-publicidade-e-propaganda-medica.pdf | CFM, Resolução 2.336/2023, artigos 11 (XIII, XVI, §§2º a 5º) e 14 (II, g) | PDF com cabeçalho do CFM, hospedado em crmes.org.br (cópia de terceiro, não o site do CFM). Reaberta em 2026-11-08: o WebFetch não lê o PDF; texto extraído localmente com pdftotext. Art. 11, XIII e XVI e art. 14, alínea g conferem. O art. 17 prevê entrada em vigor em 180 dias. Vigência atual [incerto]. |
+| 11 | https://www.oab.org.br/leisnormas/legislacao/provimentos/205-2021 | OAB, Provimento 205/2021, artigos 3º (I) e 5º (§1º) | Reaberta em 2026-11-08 por WebFetch: art. 3º, I e art. 5º, §1º conferem. Não há menção a avaliação, depoimento ou nota. A página não diz se está em vigor. |
+| 12 | https://www.normasbrasil.com.br/norma/resolucao-9-2024_462577.html | CFP, Resolução 9/2024, artigos 2º, 3º (§2º) | Cópia de terceiro, não o DOU (página: "Resolução CFP n° 9 DE 18/07/2024", "Publicado no DO em 30 jul 2024"). Reaberta em 2026-11-08: art. 3º, §2º confere; o art. 2º não tem alíneas o e p (ponto 8). |
+| 13 | https://developer.apple.com/app-store/review/guidelines/ | Apple App Store Review Guidelines, item 1.2 | Reaberta em 2026-11-08 por WebFetch: item 1.2 confere (filtro, denúncia com resposta em tempo adequado, bloqueio de usuários abusivos, contato publicado). Sem data de atualização visível. |
+| 14 | https://support.google.com/googleplay/android-developer/answer/9876937?hl=en | Google Play, política de conteúdo gerado por usuário | Reaberta em 2026-11-08 por WebFetch: moderação, termos aceitos antes de publicar, denúncia e bloqueio no app e ação sobre denúncias conferem. Só há "©2026 Google" no rodapé, sem data de atualização. |
 
 **Buscas sem fonte primária encontrada:** avaliação falsa em norma brasileira; guia da Senacon sobre avaliações; projeto de lei específico sobre avaliações de consumidores. Ponto 12.
 
-**Código do produto lido** (`apps/web`): `supabase/migrations/20261019000007_quotes_reviews.sql`; `supabase/migrations/20261019000003_providers.sql` (`search_providers`, `get_provider_page`); `supabase/migrations/20261019000010_privacy_audit.sql` (`anonymize_user`); `supabase/migrations/20261019000008_notifications.sql`; `supabase/tests/database/07_quotes_reviews.test.sql`; `services/reviews.ts`; `components/cliente/ReviewPanel.tsx`; `components/cliente/ProvidersSection.tsx`; `pages/publico/PaginaPrestador.tsx`; `pages/OccupationPage.tsx`; `catalog/policies.json`; `docs/ARQUITETURA.md`; `docs/DECISOES.md` (D7, D8, D11); `docs/juridico/01-termos-de-uso.md`; `docs/juridico/02-termos-do-prestador.md`.
+**Código do produto lido** (`apps/web`): `supabase/migrations/20261019000007_quotes_reviews.sql`; `supabase/migrations/20261019000003_providers.sql` (`search_providers`, `get_provider_page`); `supabase/migrations/20261019000010_privacy_audit.sql` (`anonymize_user`); `supabase/migrations/20261019000008_notifications.sql`; `supabase/tests/database/07_quotes_reviews.test.sql`; `services/reviews.ts`; `components/cliente/ReviewPanel.tsx`; `components/cliente/ProvidersSection.tsx`; `pages/publico/PaginaPrestador.tsx`; `pages/OccupationPage.tsx`; `catalog/policies.json`; `docs/ARQUITETURA.md`; `docs/DECISOES.md` (D7, D8, D11); `docs/juridico/01-termos-de-uso.md`; `docs/juridico/02-termos-do-prestador.md`; `supabase/migrations/20261108100000_product_events.sql` (`track_review`).
