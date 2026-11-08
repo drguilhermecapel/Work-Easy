@@ -132,6 +132,10 @@ select is((select props ->> 'plan' from public.product_events
           'the subscription event carries the plan enum');
 
 -- ---------------------------------------------------------------- reviews
+-- A review needs a completed platform booking with a payment received (private.check_review),
+-- so b_req is completed and paid before the review is inserted.
+update public.bookings set status = 'completed' where id = (select id from ids where name = 'b_req');
+insert into ids values ('b_req_pay', tests.make_payment((select id from ids where name = 'b_req'), 'received'));
 insert into public.reviews (booking_id, client_id, provider_id, rating, published) values
   ((select id from ids where name = 'b_req'), tests.uid('client_b'), tests.uid('provider_a'), 5, false);
 select is((select count(*)::int from public.product_events
@@ -149,9 +153,11 @@ select ok(not exists (select 1 from public.product_events where props::text ~ '(
 select ok(not exists (select 1 from public.product_events where props::text like '%"name"%'),
           'no event carries a name in props');
 select throws_ok($$insert into public.product_events (event) values ('login')$$, '23514',
+                 'new row for relation "product_events" violates check constraint "product_events_event_check"',
                  'an event outside the enumerated list is refused');
 select throws_ok($$insert into public.product_events (event, props)
                    values ('provider_submitted', jsonb_build_object('x', repeat('a', 600)))$$, '23514',
+                 'new row for relation "product_events" violates check constraint "product_events_props_check"',
                  'props of 512 bytes or more are refused');
 
 -- The day is the São Paulo calendar day: 23:30 in São Paulo is already 02:30 UTC the next day.
@@ -163,20 +169,20 @@ select is((select day from public.product_events where subject_id = '00000000-00
 -- ---------------------------------------------------------------- roles
 select tests.authenticate_anon();
 select throws_ok('select count(*) from public.product_events', '42501',
-                 'anon cannot read product events');
+                 'permission denied for table product_events', 'anon cannot read product events');
 select throws_ok($$insert into public.product_events (event) values ('provider_submitted')$$, '42501',
-                 'anon cannot write product events');
+                 'permission denied for table product_events', 'anon cannot write product events');
 select tests.clear_authentication();
 
 select tests.authenticate_as('client_a');
 select is((select count(*)::int from public.product_events), 0,
           'a client reads no product events (only admins pass the policy)');
 select throws_ok($$insert into public.product_events (event) values ('provider_submitted')$$, '42501',
-                 'a client cannot insert product events');
+                 'permission denied for table product_events', 'a client cannot insert product events');
 select throws_ok($$update public.product_events set event = event$$, '42501',
-                 'a client cannot update product events');
+                 'permission denied for table product_events', 'a client cannot update product events');
 select throws_ok($$delete from public.product_events$$, '42501',
-                 'a client cannot delete product events');
+                 'permission denied for table product_events', 'a client cannot delete product events');
 select throws_ok($$select * from public.admin_funnel_daily(date '2030-06-01', date '2030-06-10')$$, 'P0001',
                  'not_allowed', 'a client cannot run the funnel report');
 select tests.clear_authentication();
@@ -196,9 +202,9 @@ select results_eq($$select day::text, event, events::int from public.admin_funne
                   $$values ('2030-06-10'::text, 'booking_accepted'::text, 1), ('2030-06-10'::text, 'review_published'::text, 2)$$,
                   'the funnel report counts the events of each day and event');
 select throws_ok($$select * from public.admin_funnel_daily(date '2030-06-10', date '2030-06-01')$$, '22023',
-                 'a report with the end before the start is refused');
+                 'invalid_input', 'a report with the end before the start is refused');
 select throws_ok($$select * from public.admin_funnel_daily(null, date '2030-06-01')$$, '22023',
-                 'a report without a start date is refused');
+                 'invalid_input', 'a report without a start date is refused');
 select tests.clear_authentication();
 
 select ok(not has_function_privilege('anon', 'public.admin_funnel_daily(date, date)', 'execute'),
