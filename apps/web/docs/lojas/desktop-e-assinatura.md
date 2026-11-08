@@ -1,6 +1,7 @@
 # Desktop (Windows, macOS, Linux): assinatura, atualização e distribuição
 
 > **Rascunho para revisão de advogado. Não é parecer jurídico.**
+> Versão: `2026-11-rascunho`. Revisão independente em 08/11/2026 (ver seção 13).
 > Documento S03 do plano. Data de referência: **08/11/2026**. Estado do produto: protótipo (MVP em `main`), **não implantado, sem usuários reais, nada testado contra Asaas, WhatsApp ou Resend reais**. Este guia não afirma que o app é seguro, que tem assinatura reconhecida pelo sistema ou que foi publicado em loja. Trechos de documentação de terceiros são citações literais em inglês; a leitura em português é nossa.
 
 ## Como ler
@@ -14,7 +15,7 @@
 | **[incerto]** | Não confirmei em fonte aberta. Conferir antes de agir. |
 | **[NÃO AVALIADO]** | Fora do que foi lido nesta rodada. |
 
-Fontes: **[T1]** a **[T10]** (Tauri), **[AZ1]** e **[AZ2]** (Azure), **[MS1]** a **[MS3]** (Microsoft), **[AP1]** a **[AP4]** (Apple), **[SSL]**, **[FH]**, **[G1]** a **[G4]** (GitHub), **[AI1]**, **[VI]**. A lista completa está na seção 14. Caminhos de arquivo são relativos a `apps/web/`, salvo quando indicado.
+Fontes: **[T1]** a **[T10]** (Tauri), **[AZ1]** e **[AZ2]** (Azure), **[MS1]** a **[MS3]** (Microsoft), **[AP1]** a **[AP4]** (Apple), **[SSL]**, **[FH]**, **[G1]** a **[G4]** (GitHub), **[AI1]**, **[VI]**. A lista completa está na seção 15. Caminhos de arquivo são relativos a `apps/web/`, salvo quando indicado.
 
 ---
 
@@ -61,9 +62,10 @@ Divergências na documentação. Não corrigi os arquivos; estão listadas na se
 
 | Onde | O que o texto diz | O que o arquivo faz |
 |---|---|---|
-| `docs/DECISOES.md`, linha 90 | Workflow `.github/workflows/release.yml`, "Release builds", roda em pull requests que mudam `src-tauri/` | O arquivo se chama `web-release.yml`, "Web release builds", e não tem gatilho de pull request |
+| `apps/web/README.md`, linha 90 | Workflow `.github/workflows/release.yml`, "Release builds", roda "em tags `v*` e em pull requests que mudam o empacotamento nativo" | O arquivo se chama `web-release.yml`, "Web release builds", e não tem gatilho de pull request. `docs/DECISOES.md` não cita workflow |
 | `web-release.yml`, comentário do topo (linhas 3 a 6) | "e em pull requests que mudam o empacotamento nativo" | O bloco `on:` não tem `pull_request`. O comentário do próprio bloco diz que nenhum pull request inicia a compilação |
-| `docs/DECISOES.md`, linha 91 | macOS pede para abrir "pelo menu de contexto" | A página da Apple lida descreve **Privacy & Security > Open Anyway**. Não cita menu de contexto ([AP2]) |
+| `apps/web/README.md`, linha 91 | macOS pede para abrir "pelo menu de contexto" | A página da Apple lida descreve **Privacy & Security > Open Anyway**. Não cita menu de contexto ([AP2]) |
+| `docs/arquitetura/nativo.md`, linhas 8 e 9 | "A geração dos binários acontece na CI, em pull request" | O workflow `web-release.yml` não tem gatilho de pull request. Texto desatualizado |
 
 ---
 
@@ -80,7 +82,7 @@ Verificado nos arquivos. Nada disto foi executado nesta rodada.
 - **CSP:** definida em `app.security.csp` e `app.security.devCsp` de `tauri.conf.json`. Detalhes na seção 8.
 - **Links externos:** `platform/external.ts` abre links com `window.open` (linha 48). `components/admin/DocumentCard.tsx` (linha 52) abre documento por URL temporária com `<a target="_blank">`. O comportamento no Tauri não foi confirmado (seção 13).
 - **Permissões do Info.plist:** `NSLocationWhenInUseUsageDescription` (plantão de cuidado) e `NSCameraUsageDescription` (prévia da câmera).
-- **Câmera:** `pages/Verification.tsx` chama `getUserMedia` (linha 35) e começa com o comentário "Demo-only flow: no image is captured, sent or stored, and nothing is verified." A rota `/verification` aparece duas vezes em `pages/prototype/routes.tsx` (linhas 29 e 49). O cadastro do prestador (`pages/pro/Cadastro.tsx`) usa `captureFile` de `platform/files`, que abre a câmera no celular e o seletor de arquivos no computador (comentário da linha 380). Não há `getUserMedia` no cadastro.
+- **Câmera:** `pages/Verification.tsx` chama `getUserMedia` (linha 35) e começa com o comentário "Demo-only flow: no image is captured, sent or stored, and nothing is verified." A rota `/verification` aparece duas vezes em `pages/prototype/routes.tsx` (linhas 29 e 49). O cadastro do prestador (`pages/pro/Cadastro.tsx`) usa `captureFile` de `platform/files`, que abre a câmera no celular e o seletor de arquivos no computador (comentário da linha 400). Não há `getUserMedia` no cadastro.
 - **Modo demonstração:** `lib/supabase.ts` deixa o cliente `null` sem `VITE_SUPABASE_URL`. Não há `.env` no repositório, só `.env.example`. `.env.native` define apenas `VITE_ROUTER` (hash nas rotas). O Vite carrega `.env.[mode]` com `--mode native` e expõe ao cliente só variáveis com prefixo `VITE_` [VI].
 - **Documentos no Storage:** `services/admin.ts` gera URL assinada de 300 segundos para o bucket privado `provider-documents`.
 
@@ -117,19 +119,19 @@ Verificado nos arquivos. Nada disto foi executado nesta rodada.
 ### 4.1 Como a reputação funciona no Windows
 
 - "If a URL, a file, an app, or a certificate has an established reputation, users don't see any warnings" [MS1].
-- Desde 2024, certificado EV não dá reputação imediata. OV e EV passaram a construir reputação do mesmo jeito [T2]. A página da SSL diz o mesmo: "EV and OV are treated equally since March 2024" [SSL].
-- Assinar todas as versões com o mesmo certificado faz a reputação passar de uma versão para outra. Uma versão nova ainda pode mostrar aviso [T2].
-- A própria Tauri diz que o envio manual do arquivo à Microsoft pode remover o aviso para aquele arquivo [T2].
-- Os certificados de hoje, segundo a SSL, têm de ficar em token FIPS 140-2 ou em HSM na nuvem [SSL]. O guia de Windows da Tauri para OV só se aplica a certificado comprado antes de 1º de junho de 2023 [T2]. Consequência: o modelo de segredo com PFX (`WINDOWS_CERTIFICATE`) do guia da Tauri **não serve** para uma compra nova [incerto: a relação entre essa data e o token não foi detalhada na página lida].
+- Desde 2024, a Microsoft retirou o tratamento especial do EV no Trusted Root Program. OV e EV passaram a construir reputação do mesmo jeito [T2]. A SSL diz: "EV and OV are treated equally since March 2024" [SSL].
+- Assinar todas as versões com o mesmo certificado faz a reputação passar de uma versão para outra. Uma versão nova ainda pode mostrar aviso [incerto: não consta da página da Tauri lida nesta revisão].
+- A própria Tauri diz que o envio do arquivo à Microsoft pode dar reputação extra e, sem garantia, remover o aviso para aquele arquivo, desde que não tenha código malicioso [T2].
+- Os certificados de hoje, segundo a SSL, têm de ficar em token FIPS 140-2 ou em HSM na nuvem [SSL]. O guia de Windows da Tauri para OV só se aplica a certificado comprado antes de 1º de junho de 2023 [T2]. Para compra nova, a página manda consultar a documentação do emissor [T2]. Consequência provável: o modelo de segredo com PFX do guia da Tauri **pode não servir** para uma compra nova [incerto: o nome `WINDOWS_CERTIFICATE` não foi conferido na página lida].
 
 ### 4.2 Windows: opções
 
 | # | Opção | Custo (dado aberto) | Elegibilidade (texto lido) | Esforço (fundador solo) | Veredito |
 |---|---|---|---|---|---|
-| W1 | **Microsoft Store**, conta de empresa | Cadastro sem taxa no fluxo novo, a partir de storedeveloper.microsoft.com [MS3] | Empresa: DUNS (recomendado) ou documentos oficiais, e-mail de trabalho com o domínio da empresa, revisão manual de 2 a 5 dias úteis [MS3]. Conta individual serve só para distribuição "not in relation to their business, trade, or profession" [MS3]. | Médio. A Tauri gera só EXE e MSI. O instalador deve ser silencioso (NSIS `/S`), assinado e offline [T5]. | **Candidata depois do lançamento.** Ver seção 10 |
+| W1 | **Microsoft Store**, conta de empresa | Cadastro sem taxa no fluxo novo, a partir de storedeveloper.microsoft.com [MS3] | Empresa: DUNS (recomendado) ou documentos oficiais, e-mail de trabalho com o domínio da empresa, revisão manual de 2 a 5 dias úteis [MS3]. Conta individual serve só para distribuição "not in relation to their business, trade, or profession" [MS3]. | Médio. A Tauri gera só EXE e MSI. A Store exige instalador offline, que trate atualizações automáticas, assinado e silencioso (NSIS `/S`; MSI `/quiet`) [T5]. Isso liga a Store à atualização (seção 7). | **Candidata depois do lançamento.** Ver seção 10 |
 | W2 | **Azure Artifact Signing** (antigo Trusted Signing) | Plano Basic inclui 5.000 assinaturas por mês; o preço mensal em USD não apareceu na extração da página [AZ2] [incerto] | Certificado Public Trust: organizações nos países listados, e indivíduos só nos EUA e Canadá. A lista não inclui o Brasil [AZ1]. | Baixo, se fosse elegível | **Bloqueado.** "Brazil South" é só a região onde o recurso é criado [AZ1] |
-| W3 | **Certificado OV** de autoridade certificadora | Não extraído [SSL] [incerto] | Exige entidade empresarial: "Business entity required: Yes" [SSL] | Médio: token físico ou serviço de HSM, e `signCommand` no build [T2] | Candidato se houver CNPJ. Confirmar com contador [CONDICIONAL: depende de parecer] |
-| W4 | **Certificado EV de pessoa física** ("EV Sole Proprietor") | Não extraído [SSL] [incerto] | "validated as an individual. No registered business entity required" [SSL]. Elegibilidade no Brasil não confirmada [incerto] | Médio | Só se o dono quiser o próprio nome como editor. [DECISÃO DO DONO] + [CONDICIONAL: depende de parecer] |
+| W3 | **Certificado OV** de autoridade certificadora | Não extraído [SSL] [incerto] | Na tabela da SSL, "Business entity required" é "Yes" para OV e EV [SSL] | Médio: token físico ou serviço de HSM, e `signCommand` no build [T2] | Candidato se houver CNPJ. Confirmar com contador [CONDICIONAL: depende de parecer] |
+| W4 | **Certificado EV de pessoa física** ("Sole Proprietor EV"; na SSL, "EV SP") | Não extraído [SSL] [incerto] | "validated as an individual. No registered business entity required" [SSL]. Elegibilidade no Brasil não confirmada [incerto] | Médio | Só se o dono quiser o próprio nome como editor. [DECISÃO DO DONO] + [CONDICIONAL: depende de parecer] |
 | W5 | Sem assinatura | Zero | — | Nenhum | Aceitável só para testadores avisados (seção 3) |
 
 Os certificados Private Trust do Azure não têm a restrição geográfica [AZ1]. Não avaliei se servem para distribuição pública no Windows. Não usar como solução sem confirmação [incerto].
@@ -140,18 +142,18 @@ Não encontrei preço aberto de OV ou EV. Não há valor em reais neste guia.
 
 | # | Opção | Custo (dado aberto) | Elegibilidade e requisitos | Esforço | Veredito |
 |---|---|---|---|---|---|
-| M1 | **Apple Developer Program** | US$ 99 por ano; a página lida não mostra valor em reais [AP1] | Inscrição como indivíduo ou organização [AP1]. O certificado Developer ID Application só pode ser criado pelo **Account Holder**, até cinco por tipo [AP3]. Notarização com `notarytool` e chave da App Store Connect ou Apple ID [T3] | Médio | **Contratar quando houver usuário macOS que precise do DMG** |
+| M1 | **Apple Developer Program** | US$ 99 por ano (a página mostra "$99 annual membership", sem código de moeda); sem valor em reais na página lida [AP1] | Inscrição como indivíduo ou organização [AP1]. O certificado Developer ID Application só pode ser criado pelo **Account Holder** (ou por admin com o papel de certificados gerenciados na nuvem), até cinco por tipo [AP3]. Notarização com `notarytool` e chave da App Store Connect ou Apple ID [T3] | Médio | **Contratar quando houver usuário macOS que precise do DMG** |
 | M2 | Sem assinatura e sem notarização | Zero | macOS bloqueia por padrão [AP2] | Baixo | Só para testadores (seção 3) |
 
 **Notarização.** Os textos conflitam, e o conflito precisa ficar explícito:
 
-- A Tauri diz que a notarização "is required when using a Developer ID Application certificate" [T3] e que distribuir fora da App Store "also requires notarization" [T1].
-- A página Developer ID da Apple diz que notarizar dá "even more confidence". Não diz que é obrigatória [AP3].
+- A Tauri diz que a notarização "is required when using a Developer ID Application certificate" [T3] e que distribuir fora da App Store "also requires notarization" [T1; não reaberta nesta revisão].
+- A página Developer ID da Apple diz que a assinatura com Developer ID e o ticket de notarização deixam o Gatekeeper verificar que o software não é malware conhecido e não foi alterado. Não diz se a notarização é obrigatória [AP3].
 - O suporte da Apple diz que, por padrão, o macOS exige notarização de software fora da loja [AP2].
 
 Conclusão de trabalho: tratar a notarização como obrigatória para o DMG. Confirmar em teste com um build de verdade antes de prometer abertura sem aviso.
 
-Mac App Store: fora desta fase. A decisão D2 está em `docs/lojas/app-store.md` (DMG só, fora da loja).
+Mac App Store: fora desta fase. A decisão D2 de `docs/lojas/app-store.md` (DMG só, fora da loja) é a que vale aqui. Não confundir com a D2 de `docs/DECISOES.md`, que é o preço do Pro.
 
 ### 4.4 Linux: opções
 
@@ -159,7 +161,7 @@ Mac App Store: fora desta fase. A decisão D2 está em `docs/lojas/app-store.md`
 |---|---|---|---|---|---|
 | L1 | `.deb` e `.AppImage` sem assinatura | Zero | "artifact signing is not required for your application to be deployed on Linux" [T6] | Nenhum | **Manter como está** |
 | L2 | `.AppImage` assinado com GPG | Zero, mas exige chave GPG | `SIGN=1` e `SIGN_KEY` opcional [T6]. O AppImage não valida a assinatura, e o usuário verifica à mão [T6] | Baixo | **Adiar.** Ganho pequeno para o usuário comum |
-| L3 | **Flathub** | Nenhuma taxa citada [FH] | "All content hosted on Flathub must allow legal redistribution" [FH]. A página não diz se software proprietário é aceito; cita "Exceptions may be granted to well-known vendors on a case-by-case basis" [FH]. App ID no formato `{tld}.{vendor}.{product}`, com controle do domínio verificável em HTTPS [FH] | Médio | **Adiar.** Não há caminho claro para software proprietário |
+| L3 | **Flathub** | Nenhuma taxa de envio citada [FH]. Há política de monetização para apps que cobram do usuário [FH] | "All content hosted on Flathub must allow legal redistribution" [FH]. A página não diz se software proprietário é aceito. A frase "Exceptions may be granted to well-known vendors on a case-by-case basis" está na seção de build a partir do código-fonte, ligada a ferramentas offline; não é caminho geral para software proprietário [FH]. App ID no formato `{tld}.{vendor}.{product}`, e o domínio precisa ser relacionado ao projeto e sob controle do autor [FH] | Médio | **Adiar.** Não há caminho claro para software proprietário. O WorkEasy cobra assinatura, o que aproxima a política de monetização [CONDICIONAL: depende de parecer] |
 | L4 | RPM, Snap, AUR | — | — | — | [NÃO AVALIADO] |
 
 ---
@@ -168,7 +170,7 @@ Mac App Store: fora desta fase. A decisão D2 está em `docs/lojas/app-store.md`
 
 ### 5.1 Pré-requisitos (dono)
 
-1. Conta Apple Developer ativa, com o dono como Account Holder [AP3].
+1. Conta Apple Developer **de organização** (pessoa jurídica, como pede `docs/lojas/app-store.md`, seção 2; a decisão de abrir a empresa está em `docs/DECISOES.md`, seção 8, item 3) [DECISÃO DO DONO] [CONDICIONAL: depende de parecer]. O Account Holder precisa ter poder para vincular a empresa [AP3]. A empresa ainda não foi aberta.
 2. Certificado Developer ID Application exportado como `.p12`, com senha.
 3. Chave da App Store Connect API: Issuer ID, Key ID e arquivo `.p8` [T3].
 4. Par de chaves do updater (seção 7) [PLANEJADO].
@@ -188,6 +190,7 @@ Criar um **Environment** chamado `release` no repositório. A documentação do 
 |---|---|---|
 | `APPLE_CERTIFICATE` | `.p12` em base64 (conteúdo do arquivo de texto gerado) | Tauri, macOS [T3] |
 | `APPLE_CERTIFICATE_PASSWORD` | Senha do `.p12` | Tauri, macOS [T3] |
+| `KEYCHAIN_PASSWORD` | Senha de um chaveiro temporário criado no runner (valor escolhido por você) | Tauri, exemplo de CI [T3] |
 | `APPLE_SIGNING_IDENTITY` | Ex.: `Developer ID Application: NOME DA EMPRESA (TEAMID)` | Tauri, macOS [T3] |
 | `APPLE_API_ISSUER` | Issuer ID da App Store Connect | Notarização por chave de API [T3] |
 | `APPLE_API_KEY` | Key ID | Notarização por chave de API [T3] |
@@ -199,18 +202,18 @@ Criar um **Environment** chamado `release` no repositório. A documentação do 
 
 ### 5.4 Ordem de execução
 
-1. **Gerar a chave do updater fora do repositório:** `npm run tauri signer generate -- -w ~/.tauri/workeasy.key` [T4]. Guardar o arquivo em dois lugares seguros, fora do computador de trabalho [recomendação]. A página diz: "if you lose this key you will NOT be able to publish new updates to the users that have the app already installed" [T4].
+1. **Gerar a chave do updater fora do repositório:** `npm run tauri signer generate -- -w ~/.tauri/workeasy.key` [T4; o comando exato não foi conferido na página]. Guardar o arquivo em dois lugares seguros, fora do computador de trabalho [recomendação]. A página diz: "if you lose this key you will NOT be able to publish new updates to the users that have the app already installed" [T4].
 2. **Copiar a chave pública** para `plugins.updater.pubkey` depois de adicionar o plugin. A página diz que tem de ser o conteúdo, não um caminho [T4] [PLANEJADO].
 3. **Gerar o base64 do `.p12`** com um comando de shell (`base64 -i DeveloperID.p12 -o certificate-base64.txt`, com o nome de arquivo usado pela Tauri [T3]). O comando não foi copiado de fonte aberta [incerto].
 4. **Cadastrar os segredos** no ambiente `release`, pela interface ou pela CLI `gh` [incerto: flags não conferidas]. Nunca colar segredo em chat, issue ou arquivo versionado.
-5. **Testar só o macOS** com `workflow_dispatch` antes de qualquer tag. O workflow todo gasta minutos de runner, e o repositório é privado [AGENTS.md]. Não criar pull request só para testar CI, conforme `AGENTS.md`.
+5. **Testar o macOS** com `workflow_dispatch` antes de qualquer tag. O `workflow_dispatch` roda o workflow inteiro (Linux, Windows, macOS e iOS), porque o arquivo não tem entrada para escolher um job; isso gasta minutos de runner [`web-release.yml`]. Não abrir pull request só para testar CI [recomendação].
 6. **Conferir a assinatura** do `.app` e do `.dmg` com as ferramentas da Apple [incerto: comandos não conferidos em fonte aberta].
 
 ---
 
 ## 6. Patch do workflow (proposto, não aplicado)
 
-Este bloco **não edita** `.github/workflows/web-release.yml`. Aplicar só por decisão do dono, em branch própria. Antes de editar, conferir se o arquivo consta na lista `LOCKED_WORKFLOW_MAPPING_SHA256` do validador de workflows: `AGENTS.md` e `CLAUDE.md` tratam de gates confiáveis, mas não citam este arquivo [incerto].
+Este bloco **não edita** `.github/workflows/web-release.yml`. Aplicar só por decisão do dono, em branch própria. Antes de editar, conferir se o arquivo consta em alguma lista de arquivos protegidos de CI, como `LOCKED_WORKFLOW_MAPPING_SHA256` de um validador de workflows. Não há `AGENTS.md` nem `CLAUDE.md` no repositório WorkEasy, e essa lista não foi procurada [incerto].
 
 **A. Assinatura e notarização do macOS e chave do updater**
 
@@ -238,6 +241,7 @@ Este bloco **não edita** `.github/workflows/web-release.yml`. Aplicar só por d
 +          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
 +          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
 +          APPLE_API_KEY_PATH: ${{ runner.temp }}/AuthKey.p8
++          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
 +          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
 +          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
          run: npx tauri build --bundles app,dmg
@@ -245,8 +249,8 @@ Este bloco **não edita** `.github/workflows/web-release.yml`. Aplicar só por d
 
 Notas da parte A:
 
-- As variáveis `APPLE_*` seguem a página da Tauri [T3]. O exemplo de CI da página também usa um passo de chaveiro com `KEYCHAIN_PASSWORD`. Esse passo não foi copiado aqui. Se o build não encontrar a identidade de assinatura, incluí-lo [incerto].
-- `environment: release` faz o job ler os segredos do ambiente. Como o mesmo job compila iOS, o iOS também passa a receber esses segredos. Separar em job próprio se isso incomodar [recomendação].
+- As variáveis `APPLE_*` seguem a página da Tauri [T3]. A página lista `KEYCHAIN_PASSWORD` como segredo obrigatório e, no exemplo de CI, cria um chaveiro temporário (`build.keychain`) para importar o `.p12`. O patch acima **ainda não tem** esse passo: incluí-lo antes do primeiro teste. Os comandos não foram copiados [incerto].
+- `environment: release` dá ao job acesso aos segredos do ambiente. Cada segredo entra só no passo que o referencia (o passo do DMG), então o build do iOS não recebe as variáveis `APPLE_*`. Separar a assinatura em job próprio reduz o risco de um passo futuro usar esses segredos [recomendação].
 
 **B. Windows: espaço reservado**
 
@@ -275,20 +279,21 @@ A assinatura do Windows entra por configuração, não pelo workflow (bloco abai
 +    steps:
 +      - uses: actions/download-artifact@v4
 +        with:
-+          pattern: workeasy-*     # [incerto: parâmetros não conferidos]
++          pattern: workeasy-*     # [incerto: também pega workeasy-web (pasta dist/) e o zip do iOS; restringir os nomes antes de usar]
 +          path: release/
 +          merge-multiple: true
 +      # PLANEJADO: gerar latest.json com a versão, as URLs e o conteúdo de cada .sig
 +      - name: Criar release em rascunho
 +        env:
 +          GH_TOKEN: ${{ github.token }}
-+        run: gh release create "$GITHUB_REF_NAME" --draft --title "WorkEasy $GITHUB_REF_NAME" release/*   # [incerto: flags]
++        run: gh release create "$GITHUB_REF_NAME" --draft --title "WorkEasy $GITHUB_REF_NAME" release/*   # [incerto: flags; `release/*` inclui pastas, que o `gh release` provavelmente recusa]
 ```
 
 Notas da parte C:
 
 - O bloco de topo `permissions: contents: read` continua valendo para os outros jobs. Só este job recebe escrita.
 - Rascunho não aparece para quem não tem acesso. A publicação é manual, depois de conferir os instaladores [recomendação].
+- Os blocos `path:` de upload dos três jobs só pegam instaladores. Se `createUpdaterArtifacts` gerar os `.sig` e o tarball do macOS, eles precisam entrar nos uploads e na release [incerto: não conferido em fonte aberta].
 
 **D. Configuração em `src-tauri/tauri.conf.json` (não é workflow)**
 
@@ -309,7 +314,7 @@ Notas da parte C:
 }
 ```
 
-- Os nomes das chaves vêm de [T2] (`signCommand`, `digestAlgorithm`, `timestampUrl`, em `bundle.windows`), de [T4] (`pubkey`, `endpoints`) e de [T4] (`createUpdaterArtifacts`). A página lida mostrou só a linha de `createUpdaterArtifacts`; o bloco pai está como [incerto].
+- Os nomes das chaves vêm de [T2] (`signCommand`, `digestAlgorithm`, `timestampUrl`, em `bundle.windows`) e de [T4] (`pubkey`, `endpoints`, `createUpdaterArtifacts`). Em [T4], `createUpdaterArtifacts` fica dentro de `bundle`, como no bloco acima. A página diz que essa configuração "will be removed in v3" [T4].
 - `%1` é o marcador do arquivo a assinar nos exemplos da Tauri [T2].
 - Só o `signCommand` depende do provedor escolhido. Não existe valor pronto.
 
@@ -324,7 +329,7 @@ Nenhum app instalado se atualiza hoje. Não há plugin nem chave. Adicionar o pl
 ### 7.2 Chaves
 
 - A assinatura dos pacotes de atualização "cannot be disabled" [T4].
-- A chave pública vai no config como **conteúdo**. A chave privada vai no ambiente. Arquivo `.env` não funciona para isso [T4].
+- A chave pública vai no config como **conteúdo**. A chave privada vai nos segredos do ambiente `release`, nunca em arquivo versionado [recomendação].
 - Chave perdida: sem novas atualizações para quem já instalou [T4]. Por isso o backup é pré-requisito, não opcional.
 
 ### 7.3 Endpoint
@@ -354,18 +359,18 @@ Exemplo com marcadores (os valores são de exemplo):
 
 Onde hospedar:
 
-- **Opção A, GitHub Releases:** `https://github.com/<dono>/<repo>/releases/latest/download/latest.json` [G2]. O padrão de URL foi confirmado. Sem marcação manual, o rótulo de "latest" segue a versão semântica [G4]. Pré-release existe como opção [G4]. **Risco:** `AGENTS.md` diz que o repositório é privado. Não verifiquei se ativos de release de repositório privado podem ser baixados sem login [incerto]. Testar antes de escolher.
+- **Opção A, GitHub Releases:** `https://github.com/<dono>/<repo>/releases/latest/download/latest.json` [G2]. O padrão de URL foi confirmado. Sem marcação manual, o rótulo de "latest" segue a versão semântica [G4, não reaberta nesta revisão]. Pré-release existe como opção [G4]. **Risco:** a visibilidade atual do repositório não foi conferida, e `docs/DECISOES.md` (seção 8, item 1) pede para torná-lo privado. A página do GitHub lida [G2] não trata de release de repositório privado, então não sei se os ativos podem ser baixados sem login [incerto]. Testar antes de escolher.
 - **Opção B, host público próprio:** [PLANEJADO]. O domínio de produção não está confirmado (`docs/lojas/app-store.md` cita o mesmo ponto) [incerto].
 
 Recomendação: testar a Opção A. Se exigir login, usar a Opção B.
 
 ### 7.4 Instalação no Windows
 
-O `installMode` padrão é `passive`, com uma barra de progresso. Existem `basicUi` e `quiet`. A página diz que `passive` é o recomendado [T4].
+O `installMode` padrão é `passive`, com uma barra de progresso. A página diz que é "generally recommended and the default mode" [T4]. Existe também `quiet`, "generally not recommended" [T4]; `basicUi` não foi conferido.
 
 ### 7.5 Reversão (rollback)
 
-- A página diz que, por padrão, o updater só instala versão maior que a atual. Diz também que é possível instalar a versão enviada pelo servidor, o que serviria para reverter. O mecanismo não está detalhado no trecho lido [incerto] [T4].
+- Por padrão, o updater só instala versão maior que a atual. Para permitir downgrade, a página manda usar a API `version_comparator` do builder do updater; com servidor dinâmico, a versão enviada pelo servidor é instalada, "useful if you need to roll back your app" [T4]. Não confirmei o equivalente para o JSON estático, que é o formato proposto aqui [incerto].
 - **Recomendação:** reversão para frente. Publicar uma versão maior, por exemplo `0.1.3`, com o código da `0.1.1`. Nunca apagar ativos antigos nem os `.sig`. Nunca reapontar `latest.json` para uma versão menor antes de testar o comparador em máquina real [recomendação].
 - **Rotação de chave:** trocar a chave pública exige uma versão que traga a chave nova, assinada pela chave antiga. Esse mecanismo não foi confirmado em fonte aberta [incerto] [recomendação].
 
@@ -402,13 +407,13 @@ O `installMode` padrão é `passive`, com uma barra de progresso. Existem `basic
 ### 8.2 Ações, por ordem de prioridade
 
 1. **Links externos.** Se o teste mostrar que `window.open` não abre o navegador do sistema, adicionar `tauri-plugin-opener` e conceder **somente** `opener:allow-open-url`. A página diz que "all potentially dangerous plugin commands and scopes are blocked" por padrão [T8]. Não conceder permissão mais ampla. A dependência é nova e pede aprovação [docs/arquitetura/nativo.md].
-2. **Restringir `connect-src`** ao host de produção (`https://<ref>.supabase.co` e `wss://<ref>.supabase.co`). O `tauri.conf.json` é estático. Exige um passo de build que escreva o host a partir de `VITE_SUPABASE_URL` [recomendação; mecanismo a definir].
+2. **Restringir `connect-src`** ao host de produção (`https://<ref>.supabase.co` e `wss://<ref>.supabase.co`). Manter `ipc:` e `http://ipc.localhost`, e não mudar `useHttpsScheme`: a origem `http://tauri.localhost` é a que as Edge Functions aceitam em CORS [`docs/arquitetura/nativo.md`, seção 4.2; `docs/ARQUITETURA.md`, seção CORS]. O `tauri.conf.json` é estático. Exige um passo de build que escreva o host a partir de `VITE_SUPABASE_URL` [recomendação; mecanismo a definir].
 3. **Tirar a câmera do desktop:** remover `/verification` do build nativo, remover `mediastream:` da CSP de release e remover `NSCameraUsageDescription`, até existir um fluxo real. O próprio arquivo diz que é "Demo-only" [repositório].
 4. **Tirar a localização do desktop** se o desktop não tiver check-in de plantão. Remover `NSLocationWhenInUseUsageDescription` do build de desktop [recomendação].
 5. **Manter** `script-src 'self'` sem CDN e `devtools: false`. Não ligar a feature `devtools` nos builds de release.
 6. **Conferir o artefato:** o build de release deve usar `csp`, não `devCsp`. Verificar no instalador gerado, não só no arquivo de configuração [recomendação; teste].
 
-Observação sobre o Info.plist: `docs/lojas/app-store.md` (seção 10.2) classifica o texto da câmera como "Falsa" porque o cadastro usaria a mesma tela. A leitura do código acima não confirma isso: o cadastro usa seletor de arquivos, não `getUserMedia`. As duas leituras precisam ser alinhadas antes do envio [DECISÃO DO DONO].
+Observação sobre o Info.plist: `docs/lojas/app-store.md` (seção 10.2) classifica o texto da câmera como "Falsa", porque o desktop também envia fotos de documento pelo cadastro. A leitura do código confirma só em parte: no desktop, o cadastro não usa `getUserMedia` (abre o seletor de arquivos), então a permissão de câmera não é necessária para ele. Mas a frase "Nenhuma imagem é enviada ou armazenada" continua falsa para o app, porque o cadastro envia fotos de documento. As duas leituras precisam ser alinhadas, e o texto precisa ser reescrito antes do envio [DECISÃO DO DONO].
 
 ---
 
@@ -418,7 +423,7 @@ Observação sobre o Info.plist: `docs/lojas/app-store.md` (seção 10.2) classi
 
 - O desktop é o mesmo bundle da web, gerado com `--mode native` e com rotas por hash (`VITE_ROUTER`). Não encontrei funcionalidade exclusiva do desktop no código lido.
 - As rotas do prestador (`/pro/*`) e do admin (`/admin/*`) já existem na web (`docs/ARQUITETURA.md`, "Rotas novas").
-- Notificação web push não está implementada: `PUSH_NOTIFICATIONS_IMPLEMENTED` é `false` (`docs/arquitetura/nativo.md`).
+- Notificação web push não está implementada: `PUSH_NOTIFICATIONS_IMPLEMENTED` é `false` (`platform/notifications.ts`, linha 9; `docs/arquitetura/nativo.md`).
 - O site já é PWA: `vite-plugin-pwa` está em `package.json` e existe `pwa.config.ts` [repositório]. Se o PWA é instalável no computador do prestador, não foi testado nesta rodada [incerto].
 
 ### 9.2 Balcão do prestador
@@ -442,7 +447,7 @@ O admin concentra disputas, pagamentos e pedidos de dados (`docs/ARQUITETURA.md`
 | Site (PWA) | **Lançar.** É o canal principal | Já existe; não depende de assinatura de sistema | — |
 | Download direto Windows (`.msi`/`.exe`) e Linux (`.deb`/`.AppImage`), só para testadores | **Lançar para testadores**, depois do backend no ar, com o aviso da seção 3 | Sem custo de assinatura; testadores aceitam o aviso | Primeiro prestador real ou primeiro pedido de instalação público |
 | Download direto macOS (`.dmg`) | **Adiar** | US$ 99 por ano e notarização; sem usuário macOS medido | Primeiro usuário macOS ou decisão de contratar a Apple |
-| Microsoft Store | **Adiar.** Preparar a conta quando houver empresa constituída | Exige DUNS ou documentos de empresa e instalador silencioso; não confirmei se a Store assina o pacote | Após o primeiro ciclo de testes e com empresa constituída [DECISÃO DO DONO] [CONDICIONAL: depende de parecer] |
+| Microsoft Store | **Adiar.** Preparar a conta quando houver empresa constituída | Exige DUNS ou documentos de empresa [MS3]; o instalador deve ser silencioso, offline, tratar atualizações automáticas e ser assinado [T5]; a página não diz se a Store assina o pacote | Após o primeiro ciclo de testes e com empresa constituída [DECISÃO DO DONO] [CONDICIONAL: depende de parecer] |
 | Azure Artifact Signing | **Não usar** | Brasil fora da lista do texto lido [AZ1] | Se a Microsoft ampliar a lista |
 | Flathub | **Adiar** | Software proprietário sem caminho claro [FH]; domínio precisa ser controlado | Se o dono decidir abrir parte do código |
 | RPM, Snap, AUR | [NÃO AVALIADO] | Não lidos nesta rodada | Quando houver usuário pedindo |
@@ -469,7 +474,7 @@ Checklist antes de qualquer distribuição desktop:
 | Apple Developer Program | US$ 99 por ano | [AP1] | Aberto |
 | Microsoft Store, cadastro | Sem taxa de registro no fluxo novo | [MS3] | Aberto |
 | Azure Artifact Signing | Plano Basic: 5.000 assinaturas por mês incluídas | [AZ2] | Preço mensal não extraído [incerto] |
-| Certificado OV ou EV | Não obtido | [SSL] | [incerto] |
+| Certificado OV ou EV | Não obtido; a página da SSL lida não mostra preço | [SSL] | [incerto] |
 | Flathub | Nenhuma taxa citada | [FH] | Aberto |
 | Assinatura de AppImage | Chave GPG própria | [T6] | Aberto |
 
@@ -477,11 +482,11 @@ Checklist antes de qualquer distribuição desktop:
 
 ## 12. Problemas encontrados (não corrigidos)
 
-1. **Documentação do workflow desatualizada.** `docs/DECISOES.md` (linhas 90 e 91) cita `release.yml`, "Release builds", com gatilho de pull request. O arquivo real é `web-release.yml`, sem gatilho de pull request.
+1. **Documentação do workflow desatualizada.** `apps/web/README.md` (linha 90) cita `release.yml`, "Release builds", com gatilho de pull request. O arquivo real é `web-release.yml`, sem gatilho de pull request. `docs/DECISOES.md` não cita workflow.
 2. **Comentário enganoso no workflow.** O topo de `web-release.yml` (linhas 3 a 6) diz que há disparo em pull request que muda o empacotamento. O bloco `on:` não tem isso.
 3. **Instaladores de CI em modo demonstração.** O workflow não passa `VITE_SUPABASE_URL`. Qualquer instalador baixado do CI mostra dados fictícios.
 4. **Nada é publicado.** Artefatos expiram em 7 dias e não há release. Não existe canal durável de distribuição.
-5. **Modo de macOS.** `docs/DECISOES.md` (linha 91) cita menu de contexto. A página da Apple lida descreve Privacy & Security > Open Anyway [AP2].
+5. **Modo de macOS.** `apps/web/README.md` (linha 91) cita menu de contexto. A página da Apple lida descreve Privacy & Security > Open Anyway [AP2].
 6. **Texto de câmera no Info.plist.** O texto diz que a câmera serve só à prévia de verificação. A rota `/verification` (linhas 29 e 49 de `pages/prototype/routes.tsx`) está declarada duas vezes; não investiguei qual vale no build nativo [incerto]. O cadastro usa seletor de arquivos. `docs/lojas/app-store.md` classifica o texto como falso por outro motivo. As leituras precisam ser alinhadas.
 7. **Permissão de localização sem uso no desktop.** `NSLocationWhenInUseUsageDescription` serve ao plantão de cuidado, que não é escopo do desktop.
 8. **CSP com host amplo.** `connect-src` aceita qualquer `*.supabase.co`, não só o projeto do produto.
@@ -490,27 +495,43 @@ Checklist antes de qualquer distribuição desktop:
 11. **Testes só no Linux.** Só o job `linux-web-android` roda `npm test`. Windows e macOS compilam sem testes.
 12. **Titular e editor.** `bundle.copyright` cita pessoa física; `bundle.publisher` é "WorkEasy". Lojas exigem alinhamento com o titular escolhido [DECISÃO DO DONO].
 13. **Repositório privado e updater.** O endpoint de atualização precisa ser público. Se o repositório for privado, a Opção A da seção 7.3 pode não funcionar. Testar antes de escolher.
+14. **Nativo com pull request.** `docs/arquitetura/nativo.md` (linhas 8 e 9) diz que a geração dos binários acontece "na CI, em pull request". O `web-release.yml` não tem gatilho de pull request.
+15. **Referências a arquivos inexistentes.** O guia tinha citado `AGENTS.md` como fonte (seções 5.4, 6 e 7.3) e o listava como lido. Esses arquivos não existem em `apps/web` nem na raiz do WorkEasy. As citações como fonte foram removidas; a seção 6 só registra a ausência.
 
 ---
 
 ## 13. O que não foi verificado nesta rodada
 
-- **Busca na web indisponível.** O limite de buscas do turno foi atingido. Nada foi pesquisado além das páginas listadas na seção 14.
+- **Busca na web indisponível.** O limite de buscas do turno foi atingido. Nada foi pesquisado além das páginas listadas na seção 15.
+- **Revisão independente de 08/11/2026.** Reabertas 19 fontes: AZ1, AZ2, AP1, AP2, AP3, T2, T3, T4, T5, T6, T8, SSL, MS1, MS2, MS3, FH, G1, G2 e AI1. Não reabertas: T1, T7, T9, T10, AP4, G3, G4 e VI. Correções feitas onde a fonte não sustentava o texto (ver seções 14 e 15).
 - **Nenhum build rodado.** Não executei `tauri build` nem abri os instaladores em sistema nenhum. Nada aqui é teste de funcionamento.
 - **Preços não obtidos:** Azure Artifact Signing (mensal), certificados OV e EV, e o valor da Apple em reais.
-- **Textos e comportamentos não confirmados:** texto exato do aviso do SmartScreen; nomes dos menus em português no macOS; Gatekeeper nas versões mais novas do macOS; atalho Control-clique; comportamento de `window.open` no Tauri; comparador de versão do updater; regras de revisores e de branches nos ambientes do GitHub; acesso a release de repositório privado; regra da Microsoft Store sobre atualização automática; assinatura de `.deb`.
+- **Textos e comportamentos não confirmados:** texto exato do aviso do SmartScreen; nomes dos menus em português no macOS; Gatekeeper nas versões mais novas do macOS; atalho Control-clique; comportamento de `window.open` no Tauri; comparador de versão do updater; regras de revisores e de branches nos ambientes do GitHub; acesso a release de repositório privado; sentido de "tratar atualizações automáticas" para a Microsoft Store [T5]; assinatura de `.deb`.
 - **Não avaliados:** RPM, Snap, AUR.
 - **Permissão de geolocalização e notificações no WebView** do desktop: não testado.
 
 ---
 
-## 14. Fontes (todas abertas em 08/11/2026)
+## 14. Pontos para o advogado
+
+Perguntas para o advogado e, onde indicado, para o contador. Nada abaixo é parecer.
+
+1. **Titular e editor.** `bundle.copyright` cita "© 2026 Guilherme Capel Pasqua" e `bundle.publisher` cita "WorkEasy". Qual titular e qual editor devem constar no aviso de direitos e nas lojas: a pessoa física ou a empresa a ser aberta? [DECISÃO DO DONO]
+2. **Conta Apple e representante.** A conta de organização exige pessoa jurídica, e o Account Holder precisa ter poder para vincular a empresa [AP3; `docs/lojas/app-store.md`, seção 2]. Quem assina pela empresa, e com que poderes?
+3. **Texto da câmera.** O `Info.plist` diz que nenhuma imagem é enviada, mas o cadastro envia fotos de documento (seção 8, observação sobre o Info.plist). Qual texto de permissão é exato e suficiente para o cadastro?
+4. **Avisos de instalação sem assinatura.** A seção 3 orienta o usuário a passar pelo aviso do SmartScreen e do Gatekeeper. Esses avisos bastam como informação sobre software sem assinatura, ou os termos precisam dizer algo?
+5. **Atualização e suporte.** Por quanto tempo a versão instalada deve continuar recebendo atualização, e o que os termos devem prever? A chave do updater perdida impede atualizar quem já instalou (seção 7.2).
+6. **Pagamento dentro do desktop.** Se o app desktop mostrar a assinatura Pro, as regras de pagamento dentro de app da Microsoft Store e da Apple se aplicam? Não verifiquei essas regras [incerto].
+7. **Termos da Store e do Flathub.** A Store exige instalador silencioso, offline, com atualização automática e assinado [T5]. O Flathub não garante exceção para software proprietário [FH]. Quais termos de contrato precisam de análise antes de qualquer envio?
+8. **Empresa e contas.** A decisão de abrir a pessoa jurídica (`docs/DECISOES.md`, seção 8, item 3) define quem será titular das contas e das assinaturas. Isso precisa estar resolvido antes do primeiro envio às lojas [DECISÃO DO DONO] [CONDICIONAL: depende de parecer].
+
+## 15. Fontes consultadas (abertas em 08/11/2026)
 
 **Tauri 2 (documentação oficial)**
 
 - **[T1]** https://v2.tauri.app/distribute/ — visão geral de distribuição. Lido: "Most platforms requires code signing"; "distributing outside the App Store also requires notarization".
 - **[T2]** https://v2.tauri.app/distribute/sign/windows/ — assinatura no Windows. Data exibida na página: 27/10/2026. Lido: chaves `signCommand`, `digestAlgorithm`, `timestampUrl` em `bundle.windows`; guia de OV só para certificados antes de 1º de junho de 2023; sobre reputação do SmartScreen.
-- **[T3]** https://v2.tauri.app/distribute/sign/macos/ — assinatura e notarização no macOS. Lido: variáveis `APPLE_*`; "Notarization is required when using a Developer ID Application certificate".
+- **[T3]** https://v2.tauri.app/distribute/sign/macos/ — assinatura e notarização no macOS. Lido: variáveis `APPLE_*` (`APPLE_API_KEY` é o Key ID; `APPLE_API_KEY_PATH`, o caminho do `.p8`); `APPLE_CERTIFICATE` é o `.p12` em base64; `KEYCHAIN_PASSWORD` listado como segredo; "Notarization is required when using a Developer ID Application certificate".
 - **[T4]** https://v2.tauri.app/plugin/updater/ — atualização. Lido: `tauri signer generate`; `pubkey` como conteúdo; `endpoints`; formato estático; `OS-ARCH`; "cannot be disabled"; perda da chave; `installMode` padrão `passive`; `createUpdaterArtifacts`.
 - **[T5]** https://v2.tauri.app/distribute/microsoft-store/ — Microsoft Store. Lido: "Currently Tauri only generates EXE and MSI installers"; instalador silencioso com `/S`; "offline, handle auto-updates and be code signed".
 - **[T6]** https://v2.tauri.app/distribute/sign/linux/ — assinatura no Linux. Lido: "artifact signing is not required"; `SIGN`, `SIGN_KEY`; "AppImage does not validate the signature".
@@ -529,20 +550,20 @@ Checklist antes de qualquer distribuição desktop:
 
 **Apple**
 
-- **[AP1]** https://developer.apple.com/programs/ — programa. Lido: "$99 annual membership" (USD); inscrição como indivíduo ou organização.
+- **[AP1]** https://developer.apple.com/programs/ — programa. Lido: "$99 annual membership" (a página não traz código de moeda); inscrição como indivíduo ou organização.
 - **[AP2]** https://support.apple.com/en-us/102445 — abrir app de desenvolvedor não identificado. Lido: "Open Anyway" após a primeira tentativa; "By default, macOS Catalina and later also requires software to be notarized". Não cita menu de contexto nem Sequoia.
-- **[AP3]** https://developer.apple.com/support/developer-id/ e https://developer.apple.com/developer-id/ — Developer ID. Lido: Account Holder; até cinco certificados Developer ID Application; notarização apresentada como opção que "gives people even more confidence".
+- **[AP3]** https://developer.apple.com/support/developer-id/ e https://developer.apple.com/developer-id/ — Developer ID. Lido: Account Holder; até cinco certificados Developer ID Application; notarização descrita como parte da assinatura que deixa o Gatekeeper verificar o software, sem dizer se é obrigatória. Só a primeira URL foi reaberta nesta revisão.
 - **[AP4]** https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution — **só o título foi obtido**. Não usada para afirmações.
 
 **Outros fornecedores e padrões**
 
-- **[SSL]** https://www.ssl.com/code-signing/ — tipos de certificado. Lido: IV, OV e EV; token FIPS 140-2 ou HSM; "Business entity required"; EV Sole Proprietor; "EV and OV are treated equally since March 2024". Preços não extraídos.
-- **[FH]** https://docs.flathub.org/docs/for-app-authors/requirements — requisitos do Flathub. Lido: redistribuição legal; exceções para fornecedores conhecidos; ID de app e controle de domínio. Sem taxa citada.
+- **[SSL]** https://www.ssl.com/code-signing/ — tipos de certificado. Lido: IV, OV e EV; token FIPS 140-2 ou HSM (a tabela cita token, HSM ou eSigner; o FAQ do EV cita YubiKey FIPS); "Business entity required" é "Yes" para OV e EV; EV SP ("Sole Proprietor EV"); "EV and OV are treated equally since March 2024". A página não mostra preço em USD.
+- **[FH]** https://docs.flathub.org/docs/for-app-authors/requirements — requisitos do Flathub. Lido: redistribuição legal; exceção para fornecedores conhecidos, na seção de build a partir do código-fonte; ID de app e controle de domínio pelo autor; política de monetização para apps que cobram do usuário. Sem taxa de envio citada.
 
 **GitHub**
 
 - **[G1]** https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions — segredos. Lido: não são passados a workflows de fork; limite de 48 KB. Não encontrei a recomendação de revisores.
-- **[G2]** https://docs.github.com/en/repositories/releasing-projects-on-github/linking-to-releases — links de release. Lido: `/releases/latest/download/<nome>`.
+- **[G2]** https://docs.github.com/en/repositories/releasing-projects-on-github/linking-to-releases — links de release. Lido: `/releases/latest/download/<nome>`. Nada sobre repositório privado.
 - **[G3]** https://docs.github.com/en/actions/security-for-github-actions/security-guides/automatic-token-authentication — token. Lido: "grant the GITHUB_TOKEN the least required access". Não encontrei o padrão de permissão de forks.
 - **[G4]** https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository — gerenciar releases. Lido: rascunho antes de publicar; pré-release; rótulo "latest" pela versão semântica se não marcado. Nada sobre acesso a release de repositório privado.
 
@@ -553,4 +574,4 @@ Checklist antes de qualquer distribuição desktop:
 
 **Repositório (lidos nesta rodada)**
 
-`docs/ARQUITETURA.md`; `docs/DECISOES.md`; `docs/arquitetura/nativo.md`; `docs/lojas/app-store.md` (só seções 10 e 12); `README.md`; `src-tauri/tauri.conf.json`; `src-tauri/Cargo.toml`; `src-tauri/Info.plist`; `src-tauri/src/lib.rs`; `src-tauri/capabilities/default.json`; `.github/workflows/web-release.yml`; `package.json`; `.env.native`; `.env.example`; `lib/supabase.ts`; `platform/external.ts`; `components/admin/DocumentCard.tsx`; `services/admin.ts`; `pages/Verification.tsx`; `pages/prototype/routes.tsx`; `pages/pro/Cadastro.tsx`; `vite.config.ts`; `AGENTS.md`.
+`docs/ARQUITETURA.md`; `docs/DECISOES.md`; `docs/arquitetura/nativo.md`; `docs/lojas/app-store.md` (só seções 10 e 12); `README.md`; `src-tauri/tauri.conf.json`; `src-tauri/Cargo.toml`; `src-tauri/Info.plist`; `src-tauri/src/lib.rs`; `src-tauri/capabilities/default.json`; `.github/workflows/web-release.yml`; `package.json`; `.env.native`; `.env.example`; `lib/supabase.ts`; `platform/external.ts`; `components/admin/DocumentCard.tsx`; `services/admin.ts`; `pages/Verification.tsx`; `pages/prototype/routes.tsx`; `pages/pro/Cadastro.tsx`; `vite.config.ts`.

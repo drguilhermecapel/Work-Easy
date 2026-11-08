@@ -1,7 +1,7 @@
 # App Store (iOS e macOS): kit de envio, privacidade e diretrizes
 
 > **Rascunho para revisão de advogado. Não é parecer jurídico.**
-> Documento S02 do plano. Data de referência: **08/11/2026**. Estado do produto: protótipo (MVP em `main`), **não implantado, sem usuários reais, nada testado contra Asaas, WhatsApp ou Resend reais**. Este kit diz o que enviar à Apple quando houver backend no ar e um build de loja. Nada aqui afirma que o app foi enviado, aprovado ou que cumpre qualquer norma. Trechos de diretriz em inglês são citações literais das páginas abertas em 08/11/2026; a leitura em português é nossa.
+> Documento S02 do plano. Versão `2026-11-08-rascunho-1`. Data de referência: **08/11/2026**. Estado do produto: protótipo (MVP em `main`), **não implantado, sem usuários reais, nada testado contra Asaas, WhatsApp ou Resend reais**. Este kit diz o que enviar à Apple quando houver backend no ar e um build de loja. Nada aqui afirma que o app foi enviado, aprovado ou que cumpre qualquer norma. Trechos de diretriz em inglês são citações literais das páginas abertas em 08/11/2026; a leitura em português é nossa.
 
 ## Como ler
 
@@ -29,7 +29,7 @@ Fontes são citadas como **[A1]** a **[A16]** (seção 16). Caminhos de arquivo 
 | B5 | A conta Apple precisa ser de **organização**: pessoa jurídica, D-U-N-S e site público no domínio da empresa. A pessoa jurídica ainda não existe. | Inscrição; 5.1.1(ix) | 2 |
 | B6 | A build com backend ainda contém rotas de funcionalidade futura (`/verification`, `/health`, `/doctor/:id`, `/teleconsultation/:sessionId`, `/medical-records`) e textos de protótipo. | 2.1(a), 2.5.19 | 3.9 |
 | B7 | A ficha de privacidade e o `PrivacyInfo.xcprivacy` não batem com os fluxos reais (faltam endereço, dados financeiros, dados de produto e, se o Sentry for ligado, diagnósticos). | 5.1.1(i); precisão da ficha | 5 |
-| B8 | Recursos de IA de terceiros enviam texto ao provedor (resumo do Cuidado e rascunho de orçamento). Sem aviso específico e aceite registrado. | 5.1.2(i) | 3.8 |
+| B8 | Recursos de IA de terceiros enviam texto ao provedor (resumo do Cuidado e rascunho de orçamento). Há aviso genérico na tela ("serviço de inteligência artificial de terceiros", sem nomear o provedor), sem aceite registrado. | 5.1.2(i) | 3.8 |
 
 **Riscos que podem reprovar mesmo com os bloqueios resolvidos:**
 
@@ -87,7 +87,7 @@ Cada fato abaixo foi conferido no código ou na documentação do repositório. 
 | F05 | Plano Pro: R$ 49/mês (`pro_price_cents = 4900`), cobrado via `subscriptions-manage` (Asaas). Teste de 30 dias no banco; o fallback do cliente é 0. | `services/proBilling.ts`; `config/features.ts`; `docs/DECISOES.md` |
 | F06 | Avaliação só após atendimento concluído e pago pelo app. Moderação só pelo administrador (`reviews_admin_update`, troca `published`). **Não há denúncia, bloqueio nem filtro de conteúdo.** | `supabase/migrations/20261019000007_quotes_reviews.sql`; `docs/juridico/05-politica-de-avaliacoes-e-moderacao.md` §11.3 |
 | F07 | Localização: `navigator.geolocation` via `locate()`. Usada só no check-in e check-out de plantão, com consentimento "location" e opção de não enviar. | `platform/geolocation.ts`; `components/cuidado/CheckinPanel.tsx` |
-| F08 | Câmera e fotos: `<input type="file" capture>` via `captureFile()`. No cadastro de profissional, só imagens (o botão "Fotografar"). PDF pelo seletor de arquivos. | `platform/files.ts`; `pages/pro/Cadastro.tsx` (linha 52 e linha 381) |
+| F08 | Câmera e fotos: `<input type="file" capture>` via `captureFile()`. No cadastro de profissional, só imagens (o botão "Fotografar"). PDF pelo seletor de arquivos. | `platform/files.ts`; `pages/pro/Cadastro.tsx` (linha 52, `CAPTURE_FILES`, e linha 502, botão "Fotografar") |
 | F09 | Prévia de câmera (`getUserMedia`) só existe em `pages/Verification.tsx`, que é o fluxo de demonstração. Com backend, `/verification` mostra `FutureFeaturePage`. | `pages/Verification.tsx`; `pages/prototype/routes.tsx` (linhas 29 e 49); `docs/arquitetura/producao-vs-demonstracao.md` §3 |
 | F10 | Sem push. As notificações saem por WhatsApp (Cloud API) e e-mail (Resend). `PUSH_NOTIFICATIONS_IMPLEMENTED = false`. | `platform/notifications.ts`; `docs/ARQUITETURA.md`, "Notificações" |
 | F11 | Exclusão de conta: "Excluir minha conta" em `/conta`, com a palavra `EXCLUIR`. Recusa com 409 `active_bookings` se houver atendimento `accepted`, `paid`, `in_progress` ou `disputed`. Remove o usuário do Auth e anonimiza. Exportação em JSON em `/conta`. | `pages/conta/Conta.tsx` (linhas 313 e 426); `supabase/functions/account-delete/handler.ts`; `supabase/functions/account-export` |
@@ -95,7 +95,7 @@ Cada fato abaixo foi conferido no código ou na documentação do repositório. 
 | F13 | Telemetria própria: tabela `product_events` (migração de 08/11/2026), gravada por gatilhos, com `user_id` (vira nulo na exclusão). Sem pixel e sem SDK de análise (conforme `docs/arquitetura/observabilidade.md`, seção 1). Sentry opcional, sem replay, sem dados de usuário. | `supabase/migrations/20261108100000_product_events.sql`; `docs/arquitetura/observabilidade.md`; `lib/observability.ts` |
 | F14 | Modo demonstração quando `VITE_SUPABASE_URL` está vazia. O `.env.native` só define `VITE_ROUTER=hash`, ou seja, **uma build nativa sem as variáveis do backend é uma build de demonstração.** | `lib/supabase.ts`; `.env.native`; `.env.example` |
 | F15 | Textos legais em `content/legal/` começam com "Documento em elaboração, ainda sem revisão jurídica." `VITE_LEGAL_STATUS` só vira `vigente` após aprovação. | `content/legal/*.md`; `.env.example` |
-| F16 | Rota `/sac` existe em `config/legal.ts`, mas o documento 10 (de 08/11/2026) diz que não há rota `/sac`. A divergência precisa ser resolvida antes de publicar o endereço de suporte. | `config/legal.ts` (linha 64); `docs/juridico/10-sac-e-atendimento.md` (cabeçalho) |
+| F16 | Rota `/sac` existe em `config/legal.ts` (linha 64), e o documento 10 (de 08/11/2026) confirma a rota, com texto provisório e sem contato. Falta o texto aprovado e o canal real antes de publicar o endereço de suporte. | `config/legal.ts` (linha 64); `docs/juridico/10-sac-e-atendimento.md` (cabeçalho) |
 | F17 | Idioma: `CFBundleDevelopmentRegion = pt-BR`. Só há textos em português. | `ios/App/App/Info.plist` |
 | F18 | Projeto Xcode: bundle `br.com.workeasy`; `IPHONEOS_DEPLOYMENT_TARGET = 15.0`; `TARGETED_DEVICE_FAMILY = "1,2"`; `MARKETING_VERSION = 1.0`; `CURRENT_PROJECT_VERSION = 1`; `CODE_SIGN_STYLE = Automatic`; **sem `DEVELOPMENT_TEAM`**. | `ios/App/App.xcodeproj/project.pbxproj` |
 | F19 | Não há arquivo `.xcscheme` compartilhado no repositório. O script `ios:build` usa `-scheme App`. Pode falhar no `xcodebuild` sem o esquema compartilhado. [incerto] | busca por `*.xcscheme` em `ios/` (nenhum resultado) |
@@ -112,7 +112,7 @@ A conta precisa ser de **organização** (ver também B5 e a decisão de abrir a
 
 - A Apple exige uma **pessoa jurídica** para a organização: "Your organization must be a legal entity that can enter into contracts with Apple. We do not accept DBAs, fictitious business names, trade names, or branches." [A10]
 - Para empresa, é preciso um **D-U-N-S**: "Companies and educational institutions must provide a D‑U‑N‑S Number registered to their legal entity." [A11]
-- O prazo do D-U-N-S é de até 5 dias úteis depois do pedido. [A11]
+- O prazo do D-U-N-S é de até 5 dias úteis para a D&B emitir o número; depois, até 2 dias úteis para a Apple receber a informação. Pedir prioridade não encurta a espera. [A11]
 - O site precisa estar público e funcionando, no domínio ligado à organização: "Your organization's website must be publicly available and functional, and its domain name must be associated with your organization." [A10]. **Hoje não há site implantado.**
 - A pessoa que inscreve a organização vira *Account Holder* e precisa ter autoridade legal para vincular a empresa: "you'll be the Account Holder and must have the legal authority to bind your organization to legal agreements." [A10]
 - A taxa anual do programa é de US$ 99 por ano de filiação. Preços podem variar por região. [A10]
@@ -123,9 +123,9 @@ A conta precisa ser de **organização** (ver também B5 e a decisão de abrir a
 
 | Passo | Quem | Pré-condição | Observação |
 |---|---|---|---|
-| 1. Abrir a pessoa jurídica de tecnologia | Dono | CNPJ | `docs/DECISOES.md`, seção 8, item 3. Separada de qualquer clínica. |
-| 2. Pedir o D-U-N-S | Dono | Pessoa jurídica | Até 5 dias úteis. [A11] |
-| 3. Publicar o site no domínio da empresa | Dono e time | Domínio registrado em nome da empresa | `VITE_SITE_URL` no repositório ainda é exemplo. [incerto: domínio] |
+| 1. Abrir a pessoa jurídica de tecnologia | Dono | CNPJ | `docs/DECISOES.md`, seção 8, item 3. Separada da Pulso Vital. |
+| 2. Pedir o D-U-N-S | Dono | Pessoa jurídica | Até 5 dias úteis, mais até 2 para a Apple receber. [A11] |
+| 3. Publicar o site no domínio da empresa | Dono e time | Domínio registrado em nome da empresa | `VITE_SITE_URL` está vazio em `.env.example`; o domínio definitivo ainda não existe. [incerto: domínio] |
 | 4. Inscrever a organização | Dono (Account Holder) | 1 a 3 | US$ 99/ano. [A10] |
 | 5. Criar o registro do app | Dono | 4 | Bundle `br.com.workeasy`; SKU com letras, números, hífens, pontos e sublinhados, sem começar com hífen, ponto ou sublinhado. [A4] |
 | 6. Criar certificados e perfis | Dono | 4 | Ver seção 11. |
@@ -155,20 +155,20 @@ A conta precisa ser de **organização** (ver também B5 e a decisão de abrir a
 | **5.1.2(i)** Compartilhamento com IA de terceiros | "You must clearly disclose where personal data will be shared with third parties, including with third-party AI, and obtain explicit permission before doing so." [A1] | Texto de relatórios e de descrição vai ao provedor de IA (F12). Sem aceite. | **B8.** Seção 3.8. |
 | **5.1.3** Dados de saúde | Regras para dados de saúde, fitness e pesquisa médica (HealthKit, Clinical Health Records) [A1] | O app não usa HealthKit. Texto livre do Cuidado pode trazer informação de saúde (F03). Bloqueio por termos de saúde: `findHealthTerm` em `services/care.ts`. | Decisão da Q2 (seção 17). |
 | **1.4.1** Apps médicos | "Medical apps that could provide inaccurate data or information, or that could be used for diagnosing or treating patients may be reviewed with greater scrutiny." [A1] | Não há conteúdo clínico. Teleconsulta e prontuário são futuros. | D5: área de Saúde fora da versão iOS. |
-| **2.3.8** Metadados de público infantil | Termos como "for kids" são reservados à categoria Kids [A1, 5.1.4] | O Cuidado trata de pessoas cuidadas, que podem ser crianças. | Não usar termos infantis na ficha. |
+| **2.3.8** Metadados de público infantil | Termos como "for kids" são reservados à categoria Kids [A1, 2.3.8] | O Cuidado trata de pessoas cuidadas, que podem ser crianças. | Não usar termos infantis na ficha. |
 
 ### 3.2 Pagamentos: 3.1.3(e) para serviços, 3.1.1 para o plano Pro
 
 **Serviços contratados pelo cliente (pintura, faxina, reparo, aula individual).** São bens ou serviços consumidos fora do app. A diretriz 3.1.3(e) pede compra fora da compra no app. Isso é o que o WorkEasy faz. Para aulas individuais em tempo real, a 3.1.3(d) também serve. Aulas em grupo precisam de compra no app.
 
-**Plano Pro (R$ 49/mês).** É assinatura de recursos do próprio app: cobrar clientes pelo app, propostas sem limite. A regra é compra no app. Por isso, na versão iOS, não pode haver venda, upsell nem link de pagamento do Pro. Isso vale também para o teste grátis de 30 dias, se for oferecido no iOS. [incerto: li só o resumo dos subitens de 3.1.1, que menciona períodos de teste; o texto integral não foi aberto.]
+**Plano Pro (R$ 49/mês).** É assinatura de recursos do próprio app: cobrar clientes pelo app, propostas sem limite. A regra é compra no app. Por isso, na versão iOS, não pode haver venda, upsell nem link de pagamento do Pro. Isso vale também para o teste grátis de 30 dias, se for oferecido no iOS. [incerto: a sub-regra de teste em 3.1.1 que li trata de apps sem assinatura (item de preço zero "XX-day Trial"); o trial de assinatura está em 3.1.2(a), que não abri.]
 
 **Caminho para o Pro no iOS [PLANEJADO].** Compra com StoreKit (exige plugin nativo, que hoje não está no `package.json`, e validação no servidor). Antes, D1 precisa ser decidida. Não é opção deixar o Pro no iOS "por fora" e torcer.
 
 **Resposta pronta para a pergunta da Apple sobre 3.1.3(e)** (use a versão em inglês quando for enviar; revisar antes):
 
 > Texto em português (base):
-> "O WorkEasy conecta clientes e profissionais de serviços executados fora do aplicativo, como pintura, faxina e reparos na casa do cliente. O pagamento desses serviços é feito pelo app, por Pix ou cartão, em página de pagamento de um processador de pagamentos. Essa forma de pagamento corresponde à diretriz 3.1.3(e). Nesta versão, o plano pago para profissionais não é vendido nem oferecido no iOS; não há compra de conteúdo digital nem de recursos digitais dentro do app."
+> "O WorkEasy conecta clientes e profissionais de serviços executados fora do aplicativo, como pintura, faxina e reparos na casa do cliente. O pagamento desses serviços é feito pelo app: por Pix (código gerado no próprio app) ou cartão (em página de pagamento de um processador de pagamentos). Essa forma de pagamento corresponde à diretriz 3.1.3(e). Nesta versão, o plano pago para profissionais não é vendido nem oferecido no iOS; não há compra de conteúdo digital nem de recursos digitais dentro do app."
 
 Se a Apple perguntar sobre aulas individuais em tempo real, acrescentar a referência à 3.1.3(d) e a exclusão de aulas em grupo na venda.
 
@@ -189,7 +189,7 @@ O login é próprio, por código enviado pelo WorkEasy por meio do Supabase Auth
 
 A Apple pede um link para a política no campo do App Store Connect e dentro do app, e que a política diga: "Identify what data, if any, the app/service collects, how it collects that data, and all uses of that data." Também: confirmar que terceiros que recebem dados dão a mesma proteção; explicar retenção e exclusão; e dizer como revogar consentimento e pedir exclusão [A1].
 
-**Estado:** a política em `content/legal/privacidade.md` diz "Documento em elaboração". O rascunho completo está em `docs/juridico/03-politica-de-privacidade.md`. Ele ainda não cita o `product_events` (F13), e diz que não encontrou ferramenta de análise (seção 11.4). Antes de publicar, alinhar as duas coisas.
+**Estado:** a política em `content/legal/privacidade.md` diz "Documento em elaboração". O rascunho completo está em `docs/juridico/03-politica-de-privacidade.md`. O texto principal fala em "medição interna de eventos" (seções 6 e 11.4), mas não nomeia o `product_events` (F13); o nome só aparece na Q17. Ele diz que não encontrou ferramenta de análise de terceiros (seção 11.4). Antes de publicar, alinhar as duas coisas.
 
 **Ação:** publicar a política aprovada em URL pública, sem login, e colocar o mesmo link na ficha e no app (`/privacidade`). Não publicar com `VITE_LEGAL_STATUS` diferente de `vigente`.
 
@@ -273,7 +273,7 @@ serviços,profissionais,propostas,orçamento,pintor,eletricista,diarista,reforma
 Primeira versão do WorkEasy.
 ```
 
-**Descrição (1.695 de 4.000 caracteres):**
+**Descrição (1.727 de 4.000 caracteres):**
 
 ```
 WorkEasy reúne pessoas que precisam de um serviço e profissionais liberais e prestadores de serviço, como pintores, eletricistas e diaristas, em um só lugar.
@@ -291,7 +291,7 @@ Para quem presta o serviço
 - Quando a ocupação exige registro em conselho, a situação do registro (informado ou conferido pela equipe) aparece no perfil.
 
 Pagamento
-- O pagamento do serviço é feito pelo app, por Pix ou cartão, na página de pagamento do Asaas, empresa que processa as cobranças.
+- O pagamento do serviço é feito pelo app: por Pix (código gerado no próprio app) ou cartão (na página de pagamento do Asaas, empresa que processa as cobranças).
 - O WorkEasy não recebe nem guarda número de cartão.
 
 Privacidade e conta
@@ -309,8 +309,9 @@ Limites
 
 - A linha "Os Termos de Uso e a Política de Privacidade estão no app" só vale depois da publicação aprovada (B1).
 - A descrição não cita o plano Pro, o preço do Pro nem a linha Cuidado (D1 e D4).
-- A linha sobre bairros só vale se o banco de bairros continuar só com São Paulo (`data/neighborhoods.json`, 96 bairros, todos da capital).
+- A linha sobre bairros só vale se o banco de bairros continuar só com São Paulo: `data/neighborhoods.json` tem 96 bairros em cinco zonas de São Paulo, mas o arquivo não traz campo de cidade [incerto]. As áreas de lançamento são Sul e Centro (`catalog/prose.mjs`, `LAUNCH_ZONES`).
 - Os textos precisam ser revistos quando a área de Saúde for liberada (D5). Até lá, a descrição nega consulta médica.
+- Nome: há apps com nome parecido na App Store e um site "WorkEasy Software, LLC" (`docs/pesquisa/fase0/02-marca-inpi.md`, `docs/pesquisa/fase0/03-dominio-e-identidade.md`). A marca não está resolvida [incerto].
 
 **Proibido em qualquer campo da ficha:** frases de garantia, de selo ou de prazo. Os termos bloqueados pelo teste `test/claims-guard.test.ts` (seção 18) valem para a ficha também. Não usar "garantido", "certificado", "aprovado por", "com seguro" ou "entrega imediata".
 
@@ -357,7 +358,7 @@ Proposta: **primária** Negócios (Business), **secundária** Estilo de vida (Li
 ### 5.1 Regras e definições (conferidas em [A2])
 
 - "Collect" é: "transmitting data off the device in a way that allows you and/or your third-party partners to access it for a period longer than what is necessary to service the transmitted request in real time." Dados que saem do aparelho para o backend do WorkEasy contam como coletados.
-- Dados coletados muitas vezes são vinculados ao usuário, a menos que haja proteção de anonimização antes da coleta. Dados pessoais, pela LGPD, contam como vinculados. [A2]
+- Dados coletados muitas vezes são vinculados ao usuário, a menos que haja proteção de anonimização antes da coleta. Dados pessoais, pela LGPD, contam como vinculados (leitura nossa, não do texto da Apple) [A2].
 - "Tracking" é ligar dados do app a dados de terceiros para publicidade ou medição de publicidade, ou vender dados a intermediário. **O WorkEasy não faz rastreamento.** Por isso `NSPrivacyTracking` é falso e nenhum tipo é marcado como rastreamento.
 - A ficha tem as categorias: Contact Info, Health & Fitness, Financial Info, Location, Sensitive Info, Contacts, User Content, Browsing History, Search History, Identifiers, Purchases, Usage Data, Diagnostics, Surroundings, Body e Other Data. [A2]
 
@@ -420,7 +421,7 @@ A política precisa estar em URL pública e aparecer no app (5.1.1(i)). Hoje ela
 
 ## 6. Classificação etária
 
-A Apple pergunta categoria por categoria e gera a classificação. A lista exata de perguntas não abriu nas fontes lidas (ver seção 16). As categorias e as faixas abaixo vêm da página de valores e definições [A6]. Os nomes das respostas precisam ser conferidos na tela da App Store Connect.
+A Apple pergunta categoria por categoria e gera a classificação. A lista exata de perguntas não abriu nas fontes lidas (ver seção 16). As categorias e as faixas abaixo vêm da página de valores e definições [A6]; "Made for Kids" vem da página de definição da classificação [A6b]. Os nomes das respostas precisam ser conferidos na tela da App Store Connect.
 
 | Categoria | Resposta sugerida | Motivo |
 |---|---|---|
@@ -449,7 +450,7 @@ A Apple pergunta categoria por categoria e gera a classificação. A lista exata
 
 - Conta de demonstração "and turn on your back-end service!" se o app tem login (2.1(a) [A1]).
 - Recurso que não é de demonstração não pode ficar oculto: "All new features, functionality, and product changes must be described with specificity in the Notes for Review section of App Store Connect (generic descriptions will be rejected) and accessible for review." [A1, 2.3.1]
-- Modo de demonstração só substitui conta se houver aprovação prévia da Apple e se exibir todos os recursos (2.1(a) [A1]). O modo demonstração atual não tem login e usa dados fictícios. **Não serve.**
+- Modo de demonstração só substitui conta se houver aprovação prévia da Apple e se exibir todos os recursos (2.1(a) [A1]; a parte sobre aprovação prévia não foi conferida no texto lido [incerto]). O modo demonstração atual não tem login e usa dados fictícios. **Não serve.**
 
 ### 7.2 Estratégia da conta de demonstração
 
@@ -505,7 +506,7 @@ NÃO FAZ PARTE DESTA VERSÃO
 - Assistente de texto com IA e resumos com IA.
 - Teleconsulta, prontuário e verificação de identidade: são funções futuras e não existem nesta versão.
 
-PAGAMENTOS: os serviços são executados fora do app (pintura, faxina, reparo). O pagamento é feito pelo app, por Pix ou cartão, em página do processador de pagamentos. Essa forma corresponde à diretriz 3.1.3(e). Não é necessário pagar para testar a revisão.
+PAGAMENTOS: os serviços são executados fora do app (pintura, faxina, reparo). O pagamento é feito pelo app: por Pix (código no próprio app) ou cartão (em página do processador de pagamentos). Essa forma corresponde à diretriz 3.1.3(e). Não é necessário pagar para testar a revisão.
 
 RECURSOS NATIVOS: câmera (fotos de documentos no cadastro de profissional), seletor de fotos e localização opcional (usada só no registro de plantão, que não existe nesta versão).
 
@@ -534,7 +535,7 @@ CONTATO: [E-MAIL DE SUPORTE] | Política de privacidade: [URL]
 **Pontos de atenção:**
 
 - A Apple quer que a exclusão apague "the entire account record, along with associated personal data" e aceita confirmação, mas não aceita dificuldade desnecessária [A9]. A recusa por atendimento ativo é uma dificuldade. A mensagem precisa dizer quais atendimentos bloqueiam e oferecer o atalho para cancelar. [PLANEJADO]
-- A retenção de registros fiscais anonimizados precisa de parecer (`docs/juridico/03`, Q6 e a seção 7.5 de `docs/juridico/03`). Nas notas, explicar: "A conta é apagada do sistema de login e os dados pessoais são apagados; registros fiscais de pagamentos são mantidos sem identificação, por obrigação legal." [CONDICIONAL: depende de parecer]
+- A retenção de registros fiscais anonimizados precisa de parecer (`docs/juridico/03`, Q11 e a seção 7.5). Nas notas, explicar: "A conta é apagada do sistema de login e os dados pessoais são apagados; registros fiscais de pagamentos são mantidos sem identificação, por obrigação legal." [CONDICIONAL: depende de parecer]
 - O caminho principal é dentro do app. Pedido só por e-mail ou telefone não basta em apps fora de setor regulado [A9]. O WorkEasy trata informação sensível (seção 2): a exceção de 5.1.1(ix) permite fluxo extra de atendimento, sem substituir o caminho no app.
 
 **Texto para o revisor:** "Excluir a conta: Conta > Excluir minha conta > digite EXCLUIR. Se houver atendimento em andamento, a exclusão é recusada e o app lista o que precisa ser concluído ou cancelado."
@@ -548,9 +549,9 @@ CONTATO: [E-MAIL DE SUPORTE] | Política de privacidade: [URL]
 | Filtro de material ofensivo | Só o bloqueio de termos de saúde no Cuidado (`findHealthTerm`). Sem filtro de palavras nas avaliações ou nos pedidos. [docs/juridico/05, 4.4 e 11.3] | Filtro de palavras ou revisão manual antes de publicar. [PLANEJADO] |
 | Mecanismo para denunciar conteúdo, com resposta em tempo adequado | **Não existe.** Não há botão de denúncia. | Botão "Denunciar" em avaliação, pedido, proposta e perfil, com motivo e registro. Fila de moderação para o administrador. [PLANEJADO] |
 | Bloquear usuário abusivo | **Não existe.** | Bloqueio que impede pedidos, propostas e avaliações entre as duas partes. [PLANEJADO] |
-| Contato publicado | Configurado por `VITE_SAC_EMAIL` e `VITE_SAC_WHATSAPP`, vazios por padrão. Rota `/sac` em `config/legal.ts` (F16). | Preencher as variáveis, publicar `/sac` com canal real e conferir a divergência do documento 10. |
-| Prazo de resposta | Proposta de 2 dias úteis para denúncia e 5 dias úteis para contestação, ainda como [DECISÃO DO DONO] (`docs/juridico/05`, 6.7 e 8.4). | Escolher o prazo e escrever na política. |
-| Termos aceitos antes de publicar | `components/TermsGate.tsx` é usado em `CuidadoPage` e `ProPage`. [incerto: as demais áreas, inclusive o cliente, não foram conferidas] | Aceite dos termos antes do primeiro pedido, com registro em `consents`. |
+| Contato publicado | Configurado por `VITE_SAC_EMAIL` e `VITE_SAC_WHATSAPP`, vazios por padrão. Rota `/sac` em `config/legal.ts` (F16). | Preencher as variáveis, publicar `/sac` com texto aprovado e canal real (o documento 10 confirma a rota, com texto provisório). |
+| Prazo de resposta | Proposta de 2 dias úteis para análise de denúncia e 5 dias corridos para contestação, ainda como [DECISÃO DO DONO] (`docs/juridico/05`, 6.7 e 8.4; o playbook 07 ainda diz 5 dias úteis). | Escolher o prazo e escrever na política. |
+| Termos aceitos antes de publicar | `components/TermsGate.tsx` é usado em `CuidadoPage`, `ProPage`, `pages/cliente/Pedido.tsx`, `pages/publico/Agendar.tsx`, `pages/conta/Conta.tsx` e `pages/conta/Entrar.tsx`. [incerto: não confirmei se o aceite é gravado em `consents` antes do primeiro pedido] | Confirmar o registro em `consents` e o bloqueio antes do primeiro pedido. |
 
 **Estado do produto para as lojas:** `docs/juridico/05`, seção 11.3, diz que não há botão de denúncia, bloqueio nem filtro, e que a decisão de enviar avaliações visíveis depende disso. **Conclusão:** para a versão iOS, ou se implementa o mínimo, ou as avaliações saem da versão de loja. [DECISÃO DO DONO]
 
@@ -582,11 +583,11 @@ O WorkEasy usa a câmera para fotografar os documentos exigidos no seu cadastro 
 
 | Chave | Estado | Ação |
 |---|---|---|
-| `NSCameraUsageDescription` | "A câmera é usada apenas para mostrar a prévia na tela de verificação de identidade. **Nenhuma imagem é enviada ou armazenada.**" | **Falsa.** O desktop também envia fotos de documento (o cadastro usa a mesma tela). Trocar. |
+| `NSCameraUsageDescription` | "A câmera é usada apenas para mostrar a prévia na tela de verificação de identidade. **Nenhuma imagem é enviada ou armazenada.**" | **Falsa na build com backend**: a prévia de verificação não existe nela (F09). No desktop, o cadastro usa o seletor de arquivos e não há `getUserMedia` (`docs/lojas/desktop-e-assinatura.md`). Uso de câmera no Mac [incerto]: remover a chave, ou trocar só se o teste no Mac mostrar a câmera. |
 | `NSLocationWhenInUseUsageDescription` | Mesmo texto do iOS | Mesma decisão de D4. |
 | `NSPhotoLibraryUsageDescription` | Ausente | Não é necessária se não houver acesso à biblioteca. [incerto] |
 
-**Texto proposto para o macOS:**
+**Texto proposto para o macOS (só se a câmera for usada no Mac):**
 
 ```
 O WorkEasy usa a câmera para fotografar os documentos do seu cadastro de profissional. As fotos são enviadas para análise da equipe.
@@ -705,7 +706,7 @@ plutil -lint ios/App/App/PrivacyInfo.xcprivacy
 | `DEVELOPMENT_TEAM` (F18) | Ausente | Escolher o time no Xcode (passo 3). |
 | `CODE_SIGN_IDENTITY = "iPhone Developer"` (duas configurações) | Pode conflitar com distribuição | Conferir na configuração Release. |
 | Build number `1` | Repetido em cada envio é recusado | Aumentar a cada envio. |
-| Xcode 26 | Necessário [A13, A8] | Conferir com `xcodebuild -version`. |
+| Xcode 26 | Necessário [A13, A7] | Conferir com `xcodebuild -version`. |
 | `npm run ios:build` | Compila só para o simulador, sem assinatura (`CODE_SIGNING_ALLOWED=NO`) | Serve como teste de compilação, não gera o arquivo para a loja. |
 
 ### 11.4 fastlane (opcional)
@@ -735,7 +736,7 @@ Decisão padrão: **D2**. Distribuir só como DMG, fora da Mac App Store.
 | Certificado **Developer ID Application** para assinar o app. Pode haver até cinco. | [A12] |
 | Certificado **Developer ID Installer** só se for usar `.pkg`. Não é o caso do DMG. | [A12] |
 | Criação do certificado pelo **Account Holder**. | [A12] |
-| Notarização: a página diz que o desenvolvedor "can ... submit their software for notarization" e que o ticket de notarização deixa o Gatekeeper verificar o software. A página não diz que é obrigatória. [incerto: se o app abre sem notarização] | [A12] |
+| Notarização: a página diz que o desenvolvedor "can ... submit their software for notarization" e que o ticket de notarização deixa o Gatekeeper verificar o software. A página não diz que é obrigatória. A página do Tauri diz que "Notarization is required when using a Developer ID Application certificate" [A14]; tratar como obrigatória para o DMG, como em `docs/lojas/desktop-e-assinatura.md` (seção 4.3). [incerto: se o app abre sem notarização] | [A12, A14] |
 | Conta de notarização: chave da API do App Store Connect **ou** Apple ID com senha específica do app e Team ID. | [A14] |
 
 ### 12.2 Passo a passo
@@ -840,7 +841,7 @@ Não recomendado na primeira versão. Não abri a página do Tauri sobre Mac App
 - [ ] Venda, upsell e link de pagamento do Pro fora da build iOS (D1). (seção 3.2)
 - [ ] Cuidado, IA e área de Saúde fora da versão (D4, D5, D6). (seções 3.8 e 14)
 - [ ] Termos, Privacidade e SAC aprovados e publicados (`VITE_LEGAL_STATUS=vigente`). (B1)
-- [ ] Rota `/sac` com canal real; divergência com o documento 10 resolvida. (F16)
+- [ ] Rota `/sac` com texto aprovado e canal real (o documento 10 confirma a rota, com texto provisório). (F16)
 
 **UGC e conta**
 
@@ -872,13 +873,13 @@ Não recomendado na primeira versão. Não abri a página do Tauri sobre Mac App
 
 ---
 
-## 16. Fontes e limites desta pesquisa
+## 16. Fontes consultadas e limites desta pesquisa
 
 ### 16.1 Fontes abertas em 08/11/2026
 
 | ID | Página | Data indicada | O que foi usado |
 |---|---|---|---|
-| A1 | https://developer.apple.com/app-store/review/guidelines/ | Sem data na página (© 2026) | Textos de 1.2, 1.5, 2.1(a), 2.3.1, 2.5.19, 3.1.1, 3.1.3(d) e (e), 4.2, 4.8, 5.1.1(i), (v) e (ix), 5.1.2(i), 5.1.3 e 1.4.1 (trechos citados). Texto de 5.1.4 e 2.3.8 apareceu no trecho de 5.1.3. |
+| A1 | https://developer.apple.com/app-store/review/guidelines/ | Sem data na página (© 2026) | Textos de 1.2, 1.5, 2.1(a), 2.3.1, 2.5.19, 3.1.1, 3.1.3(d) e (e), 4.2, 4.8, 5.1.1(i), (v) e (ix), 5.1.2(i), 5.1.3 e 1.4.1 (trechos citados). 5.1.1(i), 5.1.2(i), 5.1.3, 5.1.4 e 2.3.8 conferidos na reabertura de 08/11/2026. |
 | A2 | https://developer.apple.com/app-store/app-privacy-details/ | Sem data (© 2026) | Categorias, definições de "collect" e "tracking", regra de dados vinculados. |
 | A3 | https://developer.apple.com/help/app-store-connect/reference/app-information/platform-version-information | Sem data (© 2026) | Limites de texto promocional (170), descrição (4.000), palavras-chave (100 bytes), novidades (4.000). |
 | A4 | https://developer.apple.com/help/app-store-connect/reference/app-information/app-information | Sem data (© 2026) | Nome (2 a 30), subtítulo (30), URL de política obrigatória, categorias, SKU. |
@@ -888,10 +889,10 @@ Não recomendado na primeira versão. Não abri a página do Tauri sobre Mac App
 | A7 | https://developer.apple.com/news/upcoming-requirements/ | "Since ..." por item; sem data de publicação | SDK obrigatório (Xcode 26 / iOS 26 desde 28/04/2026); requisito de iOS 13 desde 09/09/2026; motivos aprovados de APIs desde 01/05/2024; respostas ao questionário etário até 31/01/2026. |
 | A9 | https://developer.apple.com/support/offering-account-deletion-in-your-app/ | Sem data (© 2026) | Requisitos de exclusão de conta: caminho no app, deleção completa, sem dificuldade desnecessária, confirmação aceita. |
 | A10 | https://developer.apple.com/programs/enroll/ | Sem data (© 2026) | Taxa anual (US$ 99), requisitos de organização (pessoa jurídica, D-U-N-S, site público, Account Holder). |
-| A11 | https://developer.apple.com/help/account/membership/D-U-N-S/ | Sem data (© 2026) | D-U-N-S obrigatório para empresa; pessoa jurídica; até 5 dias úteis. |
+| A11 | https://developer.apple.com/help/account/membership/D-U-N-S/ | Sem data (© 2026) | D-U-N-S obrigatório para empresa; pessoa jurídica; até 5 dias úteis (D&B) e até 2 dias úteis para a Apple receber. |
 | A12 | https://developer.apple.com/support/developer-id/ | Sem data (© 2026) | Developer ID para distribuição fora da loja; notarização; tipos de certificado; Account Holder. |
 | A13 | https://capacitorjs.com/docs/updating/8-0 | "Version: v8" (sem data) | Xcode 26.0+; iOS 15.0; Node 22+; SPM por padrão. |
-| A14 | https://v2.tauri.app/distribute/sign/macos/ | "Last updated: May 17, 2026" | Variáveis `APPLE_*` de assinatura e notarização. |
+| A14 | https://v2.tauri.app/distribute/sign/macos/ | "Last updated: May 17, 2026" | Variáveis `APPLE_*` de assinatura e notarização; "Notarization is required when using a Developer ID Application certificate"; rebuild após definir as variáveis. |
 | A15 | https://v2.tauri.app/distribute/dmg/ | "Last updated: Jul 21, 2025" | Comando `tauri build --bundles dmg`. |
 | A16 | https://capacitorjs.com/docs/ios/deploying-to-app-store | "Version: v8" (sem data) | Só aponta para a documentação da Apple. Nenhum comando. |
 
@@ -930,7 +931,7 @@ Todas foram abertas com a ferramenta de leitura de páginas em 08/11/2026. Trech
 - Não testei nenhum caminho de pagamento contra o Asaas real.
 - Não abri a tela do app em aparelho nem em simulador.
 - Não conferi a lista de perguntas do questionário etário.
-- Não li o texto integral da diretriz 3.1.1 (só os subitens resumidos pela ferramenta).
+- Não li o texto integral da diretriz 3.1.1 (li os subitens de trial e de login na reabertura de 08/11/2026). A A16 (Capacitor, deploy) não foi reaberta.
 - Não conferi se o Capacitor 8 traz plugin de compra (StoreKit) disponível.
 
 ---
@@ -979,7 +980,7 @@ for name, (text, lo, hi, unit) in TEXTS.items():
     print(name, n, unit, "OK" if lo <= n <= hi else "FORA", "proibidos:", hits or "nenhum")
 ```
 
-Resultado em 08/11/2026: nome 8/30; subtítulo 24/30; texto promocional 99/170; palavras-chave 97/100 bytes; novidades 28/4.000; descrição 1.695/4.000. Nenhum padrão proibido em nenhum texto.
+Resultado em 08/11/2026: nome 8/30; subtítulo 24/30; texto promocional 99/170; palavras-chave 97/100 bytes; novidades 28/4.000; descrição 1.727/4.000. Nenhum padrão proibido em nenhum texto.
 
 Observação: a palavra-chave "orçamento" tem acento e ocupa 2 bytes. A conta é feita em bytes UTF-8, como a Apple descreve o limite.
 
@@ -992,15 +993,15 @@ Esta seção lista o que encontrei e não mexi, porque este kit é só de docume
 1. `src-tauri/Info.plist`: texto de câmera falso para o desktop (seção 10.2).
 2. `ios/App/App/Info.plist`: frase sobre prévia de verificação falsa na build com backend (seção 10.1).
 3. `ios/App/App/PrivacyInfo.xcprivacy`: faltam endereço, dados financeiros, dados de produto e, se o Sentry entrar, diagnósticos (seção 5.5).
-4. `docs/juridico/03-politica-de-privacidade.md`: não cita `product_events` e diz que não encontrou ferramenta de análise (seção 5.2 e F13).
+4. `docs/juridico/03-politica-de-privacidade.md`: o texto principal não nomeia `product_events` (só a Q17 nomeia) e diz que não encontrou ferramenta de análise de terceiros (seção 5.2 e F13).
 5. `supabase/migrations/20261108100000_product_events.sql`: novo, não aparece em `docs/ARQUITETURA.md` (que lista as tabelas por domínio).
 6. `.env.native`: sem variáveis do backend. A build nativa padrão é de demonstração (F14).
 7. `ios/App/App.xcodeproj`: sem esquema compartilhado (F19) e sem `DEVELOPMENT_TEAM` (F18).
 8. `ios/App/App/Info.plist`: `UIRequiredDeviceCapabilities` com `armv7` (seção 10.1).
-9. `config/legal.ts` tem `/sac`, mas `docs/juridico/10-sac-e-atendimento.md` diz que não há rota `/sac` (F16).
+9. `config/legal.ts` tem `/sac`, e `docs/juridico/10-sac-e-atendimento.md` diz que a rota existe, com texto provisório (F16).
 10. `docs/ARQUITETURA.md` diz que o login é por e-mail ou WhatsApp/SMS. O código usa e-mail e SMS, e o doc 03 diz que o SMS depende de provedor (F01).
 11. Rotas de funcionalidade futura (`/verification`, `/health`, `/doctor/:id`, `/teleconsultation/:sessionId`, `/medical-records`) continuam na build com backend (seção 3.9).
-12. `components/TermsGate.tsx` é usado em Cuidado e Pro. Demais áreas, inclusive o cliente, não conferidas (seção 9).
+12. `components/TermsGate.tsx` é usado também em Pedido (cliente), Agendar, Conta e Entrar. Falta conferir se o aceite é gravado em `consents` antes do primeiro pedido (seção 9).
 13. `pages/conta/Entrar.tsx` aponta "Termos de Uso" e "Política de Privacidade" para `/legal`, não para `/termos` e `/privacidade` (`docs/arquitetura/producao-vs-demonstracao.md`, seção 8).
 14. `tauri.conf.json`: `copyright` cita pessoa física (seção 2).
 15. `docs/lojas/app-store.md` anterior (de 23/10/2026) foi substituído por este documento. Afirmações antigas, como "nenhum SDK de análise ou de falhas", não valem mais: existe `product_events` e o Sentry pode ser ligado.
