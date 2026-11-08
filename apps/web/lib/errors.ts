@@ -13,6 +13,7 @@ export const DATABASE_ERROR_CODES = [
   'documents_missing',
   'review_not_allowed',
   'quote_expired',
+  'quote_total_changed',
   'unit_not_allowed',
   'quote_items_invalid',
   'slug_taken',
@@ -88,6 +89,8 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   documents_missing: 'Faltam documentos obrigatórios para enviar o cadastro para análise.',
   review_not_allowed: 'A avaliação só pode ser feita depois de um atendimento concluído e pago pelo app.',
   quote_expired: 'Este orçamento passou da validade ou já foi respondido.',
+  quote_total_changed:
+    'O valor deste orçamento mudou depois que você abriu a página. Atualize a página e confira o novo valor antes de aceitar.',
   unit_not_allowed: 'Esta unidade de preço não é permitida para esta ocupação.',
   quote_items_invalid:
     'Confira os itens do orçamento: cada item precisa de descrição, quantidade maior que zero e preço unitário.',
