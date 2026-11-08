@@ -1,0 +1,124 @@
+name: Publicar site (Cloudflare Pages)
+
+# Builds apps/web and publishes it to a Cloudflare Pages project.
+# Runs only on demand: there is no push or pull_request trigger, so a branch or
+# a pull request never publishes anything. Production is published only from
+# main, after the typed confirmation, and after an approval from the reviewers
+# of the "production" environment. See apps/web/docs/arquitetura/infra.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Digite DEPLOY para publicar em produção'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+# One production publish at a time. A publish already running is never cancelled.
+concurrency:
+  group: deploy-web-production
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Build e publicação
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment:
+      name: production
+      url: ${{ vars.VITE_SITE_URL }}
+    # Every VITE_ value is embedded in the public bundle, so they are variables
+    # (not secrets) and none of them may hold a secret.
+    env:
+      VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+      VITE_SITE_URL: ${{ vars.VITE_SITE_URL }}
+      VITE_CONCIERGE_WHATSAPP: ${{ vars.VITE_CONCIERGE_WHATSAPP }}
+      VITE_COMPANY_NAME: ${{ vars.VITE_COMPANY_NAME }}
+      VITE_COMPANY_CNPJ: ${{ vars.VITE_COMPANY_CNPJ }}
+      VITE_COMPANY_ADDRESS: ${{ vars.VITE_COMPANY_ADDRESS }}
+      VITE_SAC_EMAIL: ${{ vars.VITE_SAC_EMAIL }}
+      VITE_SAC_WHATSAPP: ${{ vars.VITE_SAC_WHATSAPP }}
+      VITE_LEGAL_STATUS: ${{ vars.VITE_LEGAL_STATUS }}
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      # Checkout first: the steps below run in apps/web, which exists only after it.
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Confirmar a publicação de produção
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::A produção só é publicada a partir da branch main."
+            exit 1
+          fi
+          if [ "$CONFIRM" != "DEPLOY" ]; then
+            echo "::error::Digite DEPLOY para confirmar a publicação."
+            exit 1
+          fi
+
+      - name: Conferir variáveis obrigatórias
+        run: |
+          for name in VITE_SUPABASE_URL VITE_SUPABASE_PUBLISHABLE_KEY VITE_SITE_URL CLOUDFLARE_PAGES_PROJECT CLOUDFLARE_ACCOUNT_ID; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Variável ausente no ambiente production: $name"
+              exit 1
+            fi
+          done
+          # Only the publishable key may reach the client (lib/supabaseKey.ts).
+          if [ "${VITE_SUPABASE_PUBLISHABLE_KEY#sb_secret_}" != "$VITE_SUPABASE_PUBLISHABLE_KEY" ]; then
+            echo "::error::VITE_SUPABASE_PUBLISHABLE_KEY recebeu uma chave secreta. Use somente a chave publicável."
+            exit 1
+          fi
+        env:
+          CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Lint e testes
+        run: |
+          npm run lint
+          npm test
+
+      - name: Build do site (inclui a pré-renderização)
+        run: npm run build
+
+      - name: Conferir cabeçalhos e HTML gerado
+        run: node scripts/check-headers.mjs --dist dist
+
+      - name: Conferir que o bundle público não tem segredos
+        run: |
+          if grep -rIlE "sb_secret_|SUPABASE_SERVICE_ROLE" dist/; then
+            echo "::error::Padrão de segredo encontrado no bundle público."
+            exit 1
+          fi
+
+      - name: Publicar no Cloudflare Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
+          WRANGLER_SEND_METRICS: 'false'
+        # Wrangler is pinned to an exact version. --branch main makes this a
+        # production deployment of the Pages project.
+        run: npx --yes wrangler@4.152.0 pages deploy dist --project-name "$CLOUDFLARE_PAGES_PROJECT" --branch main --commit-hash "$GITHUB_SHA"
+
+      - name: Registrar a publicação
+        run: |
+          echo "Commit publicado: $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
