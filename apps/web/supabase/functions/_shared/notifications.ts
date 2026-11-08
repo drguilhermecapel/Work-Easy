@@ -57,9 +57,10 @@ export const TEMPLATES: Record<TemplateName, TemplateSpec> = {
     body: 'O pagamento de {amount_cents} de {client_name} foi recebido pelo Asaas. Os detalhes estão no WorkEasy.',
   },
   orcamento_respondido: {
-    params: ['quote_title', 'response'],
+    // The quote title is free text typed by the client, so it stays out of the message.
+    params: ['response'],
     subject: 'Orçamento respondido',
-    body: 'O orçamento "{quote_title}" foi {response} pelo cliente.',
+    body: 'Um orçamento seu foi {response} pelo cliente. Abra o WorkEasy para ver os detalhes.',
   },
   plantao_oferecido: {
     params: ['starts_at', 'neighborhood_name'],
@@ -102,7 +103,7 @@ export function formatParam(key: string, value: unknown): string {
  * triggers write them (orcamento_respondido: title, status).
  */
 const PARAM_ALIASES: Partial<Record<TemplateName, Record<string, string>>> = {
-  orcamento_respondido: { quote_title: 'title', response: 'status' },
+  orcamento_respondido: { response: 'status' },
 };
 
 const present = (value: unknown) => value !== null && value !== undefined && value !== '';

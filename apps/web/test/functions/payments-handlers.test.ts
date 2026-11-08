@@ -365,6 +365,8 @@ describe('charges-create', () => {
     expect(calls[0].body).toMatchObject({
       name: 'Dona Maria', cpfCnpj: VALID_CNPJ, mobilePhone: '11987654321', email: 'maria@example.com',
       externalReference: `provider_client:${CLIENT_ID}`,
+      // The provider's CRM client gets no Asaas notice: the platform sends its own.
+      notificationDisabled: true,
     });
     expect(calls[1].body).toMatchObject({ value: 2500.5, billingType: 'BOLETO', externalReference: `quote:${QUOTE_ID}` });
     expect((calls[1].body as Record<string, unknown>).split).toBeUndefined();

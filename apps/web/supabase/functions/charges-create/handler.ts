@@ -173,6 +173,7 @@ export function handler(req: Request, deps: ChargesCreateDeps): Promise<Response
         email: client.email ?? undefined,
         mobilePhone: client.phone ?? undefined,
         externalReference: `provider_client:${clientId}`,
+        notificationDisabled: true,
       }),
     );
     const reference = input.booking_id ? `booking:${input.booking_id}` : `quote:${input.quote_id}`;

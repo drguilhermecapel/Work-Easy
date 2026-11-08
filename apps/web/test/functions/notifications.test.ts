@@ -85,9 +85,11 @@ describe('Resend email', () => {
     });
     expect(email.to).toEqual(['prestador@example.com']);
     expect(email.subject).toBe('Orçamento respondido');
-    expect(email.text).toContain('O orçamento "Pintura <sala>" foi aceito pelo cliente.');
+    // The client's free text (the quote title) never reaches the message.
+    expect(email.text).toContain('Um orçamento seu foi aceito pelo cliente.');
+    expect(email.text).not.toContain('Pintura');
     expect(email.text).toContain('https://workeasy.com.br');
-    expect(email.html).toContain('Pintura &lt;sala&gt;');
+    expect(email.html).not.toContain('Pintura');
     expect(email.html).not.toContain('<sala>');
     expect(email.tags).toEqual([{ name: 'template', value: 'orcamento_respondido' }]);
   });
