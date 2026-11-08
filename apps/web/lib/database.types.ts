@@ -607,14 +607,14 @@ isOneToOne: false
                   ]
                 },"provider_clients": {
                   Row: {
-                    "client_id": string | null,"created_at": string,"email": string | null,"id": string,"name": string,"notes": string | null,"origin": Database["public"]['Enums']["booking_origin"],"phone": string | null,"provider_id": string
+                    "client_id": string | null,"cpf_cnpj": string | null,"created_at": string,"email": string | null,"id": string,"name": string,"notes": string | null,"origin": Database["public"]['Enums']["booking_origin"],"phone": string | null,"provider_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "client_id"?: string | null,"created_at"?: string,"email"?: string | null,"id"?: string,"name": string,"notes"?: string | null,"origin"?: Database["public"]['Enums']["booking_origin"],"phone"?: string | null,"provider_id": string
+                    "client_id"?: string | null,"cpf_cnpj"?: string | null,"created_at"?: string,"email"?: string | null,"id"?: string,"name": string,"notes"?: string | null,"origin"?: Database["public"]['Enums']["booking_origin"],"phone"?: string | null,"provider_id": string
                   }
                   Update: {
-                    "client_id"?: string | null,"created_at"?: string,"email"?: string | null,"id"?: string,"name"?: string,"notes"?: string | null,"origin"?: Database["public"]['Enums']["booking_origin"],"phone"?: string | null,"provider_id"?: string
+                    "client_id"?: string | null,"cpf_cnpj"?: string | null,"created_at"?: string,"email"?: string | null,"id"?: string,"name"?: string,"notes"?: string | null,"origin"?: Database["public"]['Enums']["booking_origin"],"phone"?: string | null,"provider_id"?: string
                   }
                   Relationships: [
                     {
@@ -639,14 +639,14 @@ isOneToOne: false
                   ]
                 },"provider_documents": {
                   Row: {
-                    "created_at": string,"expires_at": string | null,"id": string,"provider_id": string,"rejection_reason": string | null,"reviewed_at": string | null,"reviewed_by": string | null,"status": Database["public"]['Enums']["document_status"],"step": Database["public"]['Enums']["verification_step"],"storage_path": string
+                    "created_at": string,"deletion_requested_at": string | null,"expires_at": string | null,"id": string,"provider_id": string,"rejection_reason": string | null,"reviewed_at": string | null,"reviewed_by": string | null,"status": Database["public"]['Enums']["document_status"],"step": Database["public"]['Enums']["verification_step"],"storage_path": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"expires_at"?: string | null,"id"?: string,"provider_id": string,"rejection_reason"?: string | null,"reviewed_at"?: string | null,"reviewed_by"?: string | null,"status"?: Database["public"]['Enums']["document_status"],"step": Database["public"]['Enums']["verification_step"],"storage_path": string
+                    "created_at"?: string,"deletion_requested_at"?: string | null,"expires_at"?: string | null,"id"?: string,"provider_id": string,"rejection_reason"?: string | null,"reviewed_at"?: string | null,"reviewed_by"?: string | null,"status"?: Database["public"]['Enums']["document_status"],"step": Database["public"]['Enums']["verification_step"],"storage_path": string
                   }
                   Update: {
-                    "created_at"?: string,"expires_at"?: string | null,"id"?: string,"provider_id"?: string,"rejection_reason"?: string | null,"reviewed_at"?: string | null,"reviewed_by"?: string | null,"status"?: Database["public"]['Enums']["document_status"],"step"?: Database["public"]['Enums']["verification_step"],"storage_path"?: string
+                    "created_at"?: string,"deletion_requested_at"?: string | null,"expires_at"?: string | null,"id"?: string,"provider_id"?: string,"rejection_reason"?: string | null,"reviewed_at"?: string | null,"reviewed_by"?: string | null,"status"?: Database["public"]['Enums']["document_status"],"step"?: Database["public"]['Enums']["verification_step"],"storage_path"?: string
                   }
                   Relationships: [
                     {
@@ -1141,6 +1141,9 @@ isOneToOne: true
 "admin_get_payment_raw":
 { Args: { "p_payment": string }; Returns: Json
                            },
+"admin_log_document_view":
+{ Args: { "p_storage_path": string }; Returns: undefined
+                           },
 "admin_resolve_dispute":
 { Args: { "p_booking": string,"p_reason": string,"p_to": Database["public"]['Enums']["booking_status"] }; Returns: Database["public"]['Enums']["booking_status"]
                            },
@@ -1241,7 +1244,7 @@ isOneToOne: true
             }[]
                            },
 "respond_quote":
-{ Args: { "p_accept": boolean,"p_token": string }; Returns: Database["public"]['Enums']["quote_status"]
+{ Args: { "p_accept": boolean,"p_expected_total_cents"?: number,"p_token": string }; Returns: Database["public"]['Enums']["quote_status"]
                            },
 "search_providers":
 { Args: { "p_limit"?: number,"p_neighborhood"?: string,"p_occupation": string,"p_offset"?: number }; Returns: {
@@ -1265,6 +1268,9 @@ isOneToOne: true
                            },
 "transition_booking":
 { Args: { "p_booking": string,"p_reason"?: string,"p_to": Database["public"]['Enums']["booking_status"] }; Returns: Database["public"]['Enums']["booking_status"]
+                           },
+"withdraw_background_check":
+{ Args: { "p_version": string }; Returns: number
                            }
           }
           Enums: {

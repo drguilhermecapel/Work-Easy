@@ -375,7 +375,7 @@ describe('/pro/plantoes (caregiver)', () => {
     it('sends meals, activities, mood and notes as plain text, with a notice that it is not clinical', async () => {
       renderCare('/pro/plantoes');
       const form = await screen.findByRole('form', { name: 'Relatório do dia' });
-      expect(within(form).getByText(/O WorkEasy não guarda dados de saúde/)).toBeInTheDocument();
+      expect(within(form).getByText(/O WorkEasy não pede dados de saúde/)).toBeInTheDocument();
       expect(within(form).getByText(/Não registre remédios, doses, sintomas nem diagnósticos/)).toBeInTheDocument();
       await userEvent.type(within(form).getByLabelText('Refeições'), 'Almoço e lanche');
       await userEvent.type(within(form).getByLabelText('Atividades'), 'Caminhada no jardim');

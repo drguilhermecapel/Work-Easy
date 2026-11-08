@@ -41,7 +41,7 @@ const QuoteView: React.FC<{ quote: PublicQuote; token: string; onChanged: () => 
     setBusy(true);
     setError(null);
     try {
-      await respondQuote(token, accept);
+      await respondQuote(token, accept, quote.total_cents);
       setConfirming(null);
     } catch (err) {
       setError(responseError(err));

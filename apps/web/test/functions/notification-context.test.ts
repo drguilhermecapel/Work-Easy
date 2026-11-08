@@ -63,7 +63,7 @@ describe('notification context', () => {
 describe('resolveParams', () => {
   it('maps the quote trigger names to the template names and prefers params over context', () => {
     expect(resolveParams('orcamento_respondido', { title: 'Pintura', status: 'accepted', client_name: 'x' }))
-      .toEqual({ quote_title: 'Pintura', response: 'accepted' });
+      .toEqual({ response: 'accepted' });
     expect(resolveParams('pagamento_recebido', { amount_cents: 100, client_name: 'Da trigger' }, { client_name: 'Do banco' }))
       .toEqual({ amount_cents: 100, client_name: 'Da trigger' });
     expect(resolveParams('pagamento_recebido', [100, 'Ana'])).toEqual([100, 'Ana']);
@@ -115,7 +115,7 @@ describe('notify-dispatch with the parameters the database triggers write', () =
     expect(texts(calls[1])).toEqual(['Eletricista', '20/10/2026 às 10:00', 'Ana Souza']);
     expect(texts(calls[2])).toEqual(['Eletricista', '20/10/2026 às 10:00', 'Beto Elétrica']);
     expect(texts(calls[3])).toEqual(['R$ 150,00', 'Ana Souza']);
-    expect(texts(calls[4])).toEqual(['Pintura', 'recusado']);
+    expect(texts(calls[4])).toEqual(['recusado']);
     expect(texts(calls[5])).toEqual(['21/10/2026 às 08:00', 'Pinheiros']);
   });
 

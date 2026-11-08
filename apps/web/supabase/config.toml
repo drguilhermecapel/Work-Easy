@@ -233,8 +233,9 @@ enable_signup = true
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
-# If enabled, users need to confirm their email address before signing in.
-enable_confirmations = false
+# If enabled, users need to confirm their email address before signing in. Keep it on: with it off,
+# a sign-up with an address nobody owns counts as confirmed (private.notify).
+enable_confirmations = true
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
 secure_password_change = false
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
@@ -271,8 +272,9 @@ otp_expiry = 3600
 # Sign-in by code over SMS/WhatsApp. No SMS provider is configured locally: only the test phone
 # below receives a code (fixed, nothing is sent).
 enable_signup = true
-# If enabled, users need to confirm their phone number before signing in.
-enable_confirmations = false
+# If enabled, users need to confirm their phone number before signing in. Keep it on: with it off,
+# changing the phone of an account to a number nobody owns counts as confirmed (private.notify).
+enable_confirmations = true
 # Template for sending OTP to users
 template = "Seu código WorkEasy: {{ .Code }}"
 # Controls the minimum amount of time that must pass before sending another sms otp.
@@ -389,6 +391,14 @@ enabled = false
 authorization_url_path = "/oauth/consent"
 # Allow dynamic client registration
 allow_dynamic_registration = false
+
+# Called by Asaas and by the scheduler, without a user JWT. Each one checks its own secret in code:
+# asaas-access-token (asaas-webhook) and x-cron-secret (notify-dispatch).
+[functions.asaas-webhook]
+verify_jwt = false
+
+[functions.notify-dispatch]
+verify_jwt = false
 
 [edge_runtime]
 enabled = true

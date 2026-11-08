@@ -130,7 +130,7 @@ const BookingActions: React.FC<Props> = ({ booking, now, onDone }) => {
             <textarea
               id="acao-motivo"
               rows={3}
-              maxLength={1000}
+              maxLength={500}
               className={inputClass}
               value={reason}
               onChange={e => setReason(e.target.value)}

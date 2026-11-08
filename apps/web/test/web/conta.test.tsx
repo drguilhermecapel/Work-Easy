@@ -161,6 +161,14 @@ describe('/conta with a backend (simulated Supabase client)', () => {
     expect(fake.tableCalls.some(c => c.table === 'consents' && c.op === 'update')).toBe(false);
   });
 
+  it('says what withdrawing the background-check consent does and does not do', async () => {
+    fake.session = { access_token: 't', user: { id: USER_ID, email: 'maria@example.com' } };
+    renderAt('/conta');
+    const row = (await screen.findByText('Consulta de antecedentes')).closest('li') as HTMLElement;
+    expect(row).toHaveTextContent('A retirada fica registrada, mas não apaga a certidão já enviada nem muda quem pode vê-la.');
+    expect(row).toHaveTextContent('Enquanto a certidão não for analisada, você a remove no cadastro');
+  });
+
   it('shows a clear message when the account export fails', async () => {
     fake.session = { access_token: 't', user: { id: USER_ID, email: 'maria@example.com' } };
     fake.functionsHandlers['account-export'] = () => ({
@@ -177,6 +185,19 @@ describe('/conta with a backend (simulated Supabase client)', () => {
     renderAt('/conta');
     await user.click(await screen.findByRole('button', { name: /Baixar meus dados/ }));
     expect(await screen.findByText('Você não tem permissão para fazer isso.')).toBeInTheDocument();
+  });
+
+  it('says when part of the account export could not be read', async () => {
+    fake.session = { access_token: 't', user: { id: USER_ID, email: 'maria@example.com' } };
+    fake.functionsHandlers['account-export'] = () => ({
+      data: { ok: true, data: { format: 'workeasy-lgpd-export', version: 1, data: {}, unavailable: ['payments'] } },
+      error: null,
+    });
+    Object.assign(URL, { createObjectURL: () => 'blob:test', revokeObjectURL: () => {} });
+    const user = userEvent.setup();
+    renderAt('/conta');
+    await user.click(await screen.findByRole('button', { name: /Baixar meus dados/ }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Parte dos seus dados não pôde ser incluída no arquivo/);
   });
 
   it('explains when account-delete says the confirmation is missing', async () => {

@@ -155,7 +155,7 @@ export const findHealthTerm = (...texts: Array<string | null | undefined>): stri
 };
 
 export const HEALTH_DATA_NOTICE =
-  'O WorkEasy não guarda dados de saúde. Não escreva doenças, diagnósticos, remédios, doses, exames ou sintomas: combine esses cuidados direto com o cuidador, fora do app.';
+  'O WorkEasy não pede dados de saúde. Não escreva doenças, diagnósticos, remédios, doses, exames ou sintomas: combine esses cuidados direto com o cuidador, fora do app.';
 
 const assertNoHealthData = (...texts: Array<string | null | undefined>): void => {
   const term = findHealthTerm(...texts);

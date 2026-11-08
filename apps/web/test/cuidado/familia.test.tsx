@@ -58,10 +58,10 @@ describe('family screens of the care line', () => {
       expect(await screen.findByTestId('where')).toHaveTextContent('/entrar?next=%2Fcuidado');
     });
 
-    it('says in so many words that no health data is kept, and asks for none', async () => {
+    it('says in so many words that the app does not ask for health data, and asks for none', async () => {
       renderCare('/cuidado');
       expect(await screen.findByText(/Você ainda não cadastrou uma casa/)).toBeInTheDocument();
-      expect(screen.getAllByText(/O WorkEasy não guarda dados de saúde/).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/O WorkEasy não pede dados de saúde/).length).toBeGreaterThan(0);
       world.households = [household()];
       renderCare('/cuidado');
       await userEvent.click((await screen.findAllByRole('button', { name: /Cadastrar pessoa cuidada/ }))[0]);
@@ -192,7 +192,8 @@ describe('family screens of the care line', () => {
       await userEvent.type(within(form).getByLabelText(/Preferências/), 'Toma remédio para a pressão às 8h');
       await userEvent.click(within(form).getByRole('button', { name: 'Cadastrar pessoa' }));
       await waitFor(() => expect(within(form).getByRole('alert')).toHaveTextContent(/informação de saúde.*remédio/));
-      expect(within(form).getByRole('alert')).toHaveTextContent(/O WorkEasy não guarda dados de saúde/);
+      expect(within(form).getByRole('alert')).toHaveTextContent(/O WorkEasy não pede dados de saúde/);
+      expect(within(form).getByRole('alert')).not.toHaveTextContent(/não guarda/);
       expect(callsOn('care_recipients', 'insert')).toHaveLength(0);
     });
 

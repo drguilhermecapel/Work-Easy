@@ -17,6 +17,7 @@ import {
   listConsents,
   recordConsent,
   updateProfile,
+  withdrawBackgroundCheck,
 } from '../../services/account';
 import type { ConsentPurpose, ConsentRow, ProfileRow } from '../../services/types';
 import BackendNotice from '../../components/BackendNotice';
@@ -135,7 +136,8 @@ const CONSENTS: Array<{ purpose: ConsentPurpose; title: string; description: str
   {
     purpose: 'background_check',
     title: 'Consulta de antecedentes',
-    description: 'Para profissionais cuja ocupação exige certidão de antecedentes criminais no cadastro.',
+    description:
+      'Para profissionais cuja ocupação exige certidão de antecedentes criminais no cadastro. A retirada fica registrada, mas não apaga a certidão já enviada nem muda quem pode vê-la. Enquanto a certidão não for analisada, você a remove no cadastro; depois da análise, só pode apagá-la excluindo a sua conta.',
     revocable: true,
   },
   {
@@ -157,7 +159,9 @@ const ConsentsSection: React.FC<{ userId: string }> = ({ userId }) => {
     setBusyPurpose(purpose);
     setError(null);
     try {
-      await recordConsent(userId, purpose, granted);
+      // Withdrawing the background check also marks its files for deletion, in the same call.
+      if (purpose === 'background_check' && !granted) await withdrawBackgroundCheck();
+      else await recordConsent(userId, purpose, granted);
       history.reload();
     } catch (err) {
       setError(err);
@@ -235,14 +239,17 @@ const ExportSection: React.FC = () => {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [done, setDone] = useState(false);
+  const [incomplete, setIncomplete] = useState(false);
 
   const run = async () => {
     setBusy(true);
     setError(null);
     setDone(false);
+    setIncomplete(false);
     try {
-      const data = await exportMyData();
+      const data = (await exportMyData()) as { unavailable?: unknown[] } | null;
       downloadJson(data, `workeasy-meus-dados-${todayInSaoPaulo()}.json`);
+      setIncomplete((data?.unavailable?.length ?? 0) > 0);
       setDone(true);
     } catch (err) {
       setError(err);
@@ -258,6 +265,11 @@ const ExportSection: React.FC = () => {
       </p>
       <ErrorAlert error={error} />
       {done && <p role="status" className="text-sm text-green-700">Arquivo gerado. Confira seus downloads.</p>}
+      {incomplete && (
+        <p role="alert" className="text-sm text-amber-700">
+          Parte dos seus dados não pôde ser incluída no arquivo. Tente gerar de novo mais tarde.
+        </p>
+      )}
       <button type="button" className={`${secondaryButton} inline-flex items-center gap-2`} onClick={run} disabled={busy}>
         <Download size={16} aria-hidden="true" /> {busy ? 'Gerando arquivo…' : 'Baixar meus dados'}
       </button>

@@ -51,29 +51,31 @@ select throws_ok($$insert into public.consents (purpose, version, granted) value
 
 -- ================================================================ audit log
 select tests.authenticate_as('client_a');
-select ok(public.log_event('client.account_viewed', 'profile', auth.uid()::text, '{"screen": "conta"}') > 0,
-          'log_event writes an entry in the client namespace');
+select throws_ok($$select public.log_event('client.account_viewed', 'profile', auth.uid()::text, '{"screen": "conta"}')$$, '42501', null,
+                 'an app user cannot write audit entries (no execute grant on log_event)');
 select is((select count(*)::int from public.audit_log), 0, 'non-admins cannot read the audit log');
 select throws_ok($$insert into public.audit_log (action, entity) values ('fake', 'x')$$, '42501', null,
                  'users cannot insert into audit_log directly');
 select throws_ok($$update public.audit_log set action = 'x'$$, '42501', null, 'authenticated cannot update audit_log');
 select throws_ok($$delete from public.audit_log$$, '42501', null, 'authenticated cannot delete audit_log');
 -- an app user cannot write entries that look like the system's
-select throws_ok($$select public.log_event('booking.transition', 'booking', gen_random_uuid()::text)$$, 'P0001', 'not_allowed',
+-- The grant is gone (migration 20261109100003): no app user writes any entry, whatever its namespace,
+-- size or rate. The service role keeps the checks of its own paths (Edge Functions).
+select throws_ok($$select public.log_event('booking.transition', 'booking', gen_random_uuid()::text)$$, '42501', null,
                  'a user cannot write a booking.transition entry');
 select throws_ok($$select public.log_event('user.anonymized', 'profile', gen_random_uuid()::text, '{"via": "service"}')$$,
-                 'P0001', 'not_allowed', 'nor a user.anonymized entry');
-select throws_ok($$select public.log_event('payment.received', 'payment')$$, 'P0001', 'not_allowed', 'nor a payment entry');
+                 '42501', null, 'nor a user.anonymized entry');
+select throws_ok($$select public.log_event('payment.received', 'payment')$$, '42501', null, 'nor a payment entry');
 select throws_ok($$select public.log_event('client.big', 'profile', null, jsonb_build_object('x', repeat('a', 5000)))$$,
-                 'P0001', 'not_allowed', 'the payload of a user entry is small');
-select throws_ok($$select public.log_event('client.list', 'profile', null, '[1, 2]')$$, 'P0001', 'not_allowed',
-                 'the payload of a user entry is an object');
-select throws_ok($$select public.log_event('client.x', 'profile', repeat('a', 201))$$, 'P0001', 'not_allowed',
-                 'the entity id has a size limit');
-select lives_ok($$select public.log_event('client.n' || g, 'profile') from generate_series(1, 59) g$$,
-                'a user writes up to 60 entries a minute');
-select throws_ok($$select public.log_event('client.one_too_many', 'profile')$$, 'P0001', 'not_allowed',
-                 'the 61st entry in a minute is refused');
+                 '42501', null, 'nor a large client entry');
+select throws_ok($$select public.log_event('client.list', 'profile', null, '[1, 2]')$$, '42501', null,
+                 'nor a client entry whose payload is not an object');
+select throws_ok($$select public.log_event('client.x', 'profile', repeat('a', 201))$$, '42501', null,
+                 'nor an entry with a long entity id');
+select throws_ok($$select public.log_event('client.n1', 'profile')$$, '42501', null,
+                 'nor an entry in the rate of 60 a minute');
+select throws_ok($$select public.log_event('client.one_too_many', 'profile')$$, '42501', null,
+                 'nor the 61st entry in a minute');
 select tests.authenticate_anon();
 select throws_ok($$select public.log_event('client.x', 'y')$$, '42501', null, 'anon cannot call log_event');
 select tests.authenticate_service();
@@ -85,10 +87,10 @@ select tests.clear_authentication();
 select throws_ok($$update public.audit_log set action = 'x'$$, 'P0001', 'not_allowed', 'even the owner cannot update audit_log');
 select throws_ok($$delete from public.audit_log$$, 'P0001', 'not_allowed', 'even the owner cannot delete audit_log');
 select throws_ok($$truncate public.audit_log$$, 'P0001', 'not_allowed', 'even the owner cannot truncate audit_log');
-select is((select actor_id from public.audit_log where action = 'client.account_viewed'), tests.uid('client_a'),
-          'the actor is the caller');
-select is((select data ->> 'via' from public.audit_log where action = 'client.account_viewed'), 'user',
-          'a user entry is marked via user');
+select is((select count(*)::int from public.audit_log where action like 'client.%'), 0,
+          'no app user entry is in the audit log (the client namespace is closed)');
+select is((select data ->> 'via' from public.audit_log where action = 'payment.created'), 'service',
+          'an entry written with the service role is marked via service');
 select is((select data ->> 'via' || '/' || coalesce(actor_id::text, 'none') from public.audit_log where action = 'payment.created'),
           'service/none', 'a service entry is marked via service and has no user actor');
 select tests.authenticate_as('admin');

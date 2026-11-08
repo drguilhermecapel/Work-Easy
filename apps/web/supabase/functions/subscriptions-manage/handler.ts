@@ -12,6 +12,7 @@ import {
 } from '../_shared/handler-kit.ts';
 import { errors, readJson, route } from '../_shared/http.ts';
 import { centsToReais } from '../_shared/money.ts';
+import { type ProviderApproval, requireApprovedProvider } from '../_shared/provider-approval.ts';
 import { firstDueDate, planAfterCancel } from '../_shared/subscriptions.ts';
 import { BILLING_TYPE, PAYMENT_METHODS, type PlanCode, type SubscriptionStatus } from '../_shared/types.ts';
 import { cpfCnpj, object, oneOf, optional } from '../_shared/validate.ts';
@@ -28,7 +29,10 @@ export interface SubscriptionRow {
 
 export interface SubscriptionsDeps extends BaseDeps {
   asaas: AsaasClient | null;
-  session(req: Request): Promise<{ user: AuthUser; getProvider(): Promise<{ id: string; plan: PlanCode } | null> } | null>;
+  session(req: Request): Promise<{
+    user: AuthUser;
+    getProvider(): Promise<(ProviderApproval & { id: string; plan: string }) | null>;
+  } | null>;
   admin: {
     getSubscription(providerId: string): Promise<SubscriptionRow | null>;
     saveSubscription(row: SubscriptionRow): Promise<void>;
@@ -71,6 +75,9 @@ export function handler(req: Request, deps: SubscriptionsDeps): Promise<Response
     const now = deps.now();
 
     if (input.action === 'subscribe') {
+      // Starting a subscription or the free trial needs an approved account; cancelling does not,
+      // so a suspended provider can still stop a subscription that is billing
+      requireApprovedProvider(provider);
       if (current && current.status !== 'canceled' && current.asaas_subscription_id) {
         throw errors.conflict('already_subscribed', 'Já existe uma assinatura Pro para esta conta.');
       }
