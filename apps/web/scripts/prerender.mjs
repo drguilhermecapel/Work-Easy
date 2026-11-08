@@ -410,18 +410,25 @@ const renderBlocks = (lines, state) => {
   return html.join('');
 };
 
+/** LF line breaks, no byte order mark, and no HTML comments: drafting notes in a comment must not reach a public page. */
+const normalizeMarkdown = markdown =>
+  markdown
+    .replace(/^\uFEFF/, '')
+    .replace(/\r\n?/g, '\n')
+    .replace(/<!--[\s\S]*?-->/g, '');
+
 /**
  * Markdown to HTML without a dependency, for the legal pages. Supports
  * headings, paragraphs, lists (nested), quotes, tables, code, rules, links,
- * bold, italic and strike-through. Raw HTML in the source is escaped, and a
+ * bold, italic and strike-through. HTML comments are dropped, other raw HTML is escaped, and a
  * link whose scheme is not http(s), mailto, tel, a path or an anchor is
  * written as plain text. The first "# " heading becomes the only h1.
  */
-export const markdownToHtml = markdown => renderBlocks(markdown.replace(/\r\n?/g, '\n').split('\n'), { h1: false });
+export const markdownToHtml = markdown => renderBlocks(normalizeMarkdown(markdown).split('\n'), { h1: false });
 
 /** { meta: { title, description }, body } from a markdown document with optional "key: value" front matter. */
 export const parseMarkdownDocument = markdown => {
-  let text = markdown.replace(/\r\n?/g, '\n');
+  let text = normalizeMarkdown(markdown);
   const meta = {};
   const front = /^---\n([\s\S]*?)\n---\n?/.exec(text);
   if (front) {
@@ -1031,7 +1038,7 @@ const ldScript = block => `<script type="application/ld+json">${jsonForScript(bl
 // <head> in a fixed order: a page never ends up with two og:title, and the result does not depend on whether the
 // template was already touched (a second run over the same dist/ reads the home that the first one wrote).
 const tagRe = (tag, attr, key) => new RegExp(`[ \\t]*<${tag}\\b[^>]*\\b${attr}="${key}"[^>]*>[ \\t]*\\n?`, 'gi');
-const addToHead = (html, fragment) => html.replace(/[ \t]*<\/head>/, () => `    ${fragment}\n  </head>`);
+const addToHead = (html, fragment) => html.replace(/(\n?)[ \t]*<\/head>/, (_, newline) => `${newline || '\n'}    ${fragment}\n  </head>`);
 const putTag = (html, re, tag) => addToHead(html.replace(re, ''), tag);
 const upsertMeta = (html, attr, key, content) => putTag(html, tagRe('meta', attr, key), `<meta ${attr}="${key}" content="${escapeHtml(content)}" />`);
 const ensureMeta = (html, attr, key, content) => (tagRe('meta', attr, key).test(html) ? html : upsertMeta(html, attr, key, content));
@@ -1331,6 +1338,9 @@ export const requestEnabled = env => {
   return backend || (digits.length >= 12 && digits.length <= 15);
 };
 
+/** VITE_LEGAL_STATUS: the legal pages are indexable only when it is exactly "vigente" (the documents were reviewed and are in force). */
+export const legalStatusOf = env => (env.VITE_LEGAL_STATUS ?? '').trim();
+
 const runCli = async () => {
   const args = process.argv.slice(2);
   const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -1352,7 +1362,7 @@ const runCli = async () => {
     distDir,
     siteUrl: normalizeSiteUrl(env.VITE_SITE_URL, console.warn),
     canRequest: requestEnabled(env),
-    legalStatus: (env.VITE_LEGAL_STATUS ?? '').trim(),
+    legalStatus: legalStatusOf(env),
   });
 };
 

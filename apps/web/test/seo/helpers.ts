@@ -120,6 +120,7 @@ export interface PrerenderModule {
   buildRobots: (base: string, siteUrl: string) => string;
   normalizeSiteUrl: (value: string | undefined, warn?: (message: string) => void) => string;
   requestEnabled: (env: Record<string, string>) => boolean;
+  legalStatusOf: (env: Record<string, string>) => string;
   requestHref: (occupation: string, neighborhood?: string) => string;
   mapLimit: <T>(items: T[], limit: number, fn: (item: T, index: number) => Promise<void>) => Promise<void>;
   prerender: (options: {

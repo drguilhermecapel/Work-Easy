@@ -165,6 +165,23 @@ describe('markdown to HTML', () => {
     expect(out).toContain('&lt;img src=x onerror=alert(1)&gt;');
   });
 
+  it('drops HTML comments, so that drafting notes never reach a public page', () => {
+    const out = html('Texto antes.\n\n<!-- [incerto] conferir com o advogado -->\n\nTexto <!-- no meio --> depois.\n\n<!--\nvárias\nlinhas\n# Não é título\n-->\n\n## Real');
+    expect(out).not.toContain('incerto');
+    expect(out).not.toContain('no meio');
+    expect(out).not.toContain('Não é título');
+    expect(out).not.toContain('&lt;!--');
+    expect(out).toContain('Texto  depois.');
+    expect(out).toMatch(/<h2 class="[^"]*">Real<\/h2>/);
+    expect(mod.parseMarkdownDocument('<!-- nota -->\n# Título\n').body).not.toContain('nota');
+  });
+
+  it('reads a document that starts with a byte order mark', () => {
+    const doc = mod.parseMarkdownDocument('\uFEFF---\ntitle: Termos\n---\n# Texto\n');
+    expect(doc.meta).toEqual({ title: 'Termos' });
+    expect(html('\uFEFF# Título')).toMatch(/<h1 class="[^"]*">Título<\/h1>/);
+  });
+
   it('links only to http(s), mailto, tel, paths and anchors', () => {
     const safe = html('[a](https://example.com/x?y=1&z=2) [b](mailto:a@b.com) [c](tel:+5511999999999) [d](/legal/x) [e](#secao) [f](../x)');
     expect([...safe.matchAll(/<a href="([^"]+)"/g)].map(m => m[1])).toEqual(['https://example.com/x?y=1&amp;z=2', 'mailto:a@b.com', 'tel:+5511999999999', '/legal/x', '#secao', '../x']);
@@ -259,6 +276,12 @@ describe('legal pages (content/legal/*.md)', () => {
     expect(read(dist, 'legal', 'termos-de-uso')).toContain('<meta name="robots" content="noindex,follow" />');
     expect(result.sitemapPaths).not.toContain('/legal/termos-de-uso');
     expect(readFileSync(join(dist, 'sitemap.xml'), 'utf8')).not.toContain('/legal/');
+  });
+
+  it('read their status from VITE_LEGAL_STATUS, as written, without the spaces around it', () => {
+    expect(mod.legalStatusOf({})).toBe('');
+    expect(mod.legalStatusOf({ VITE_LEGAL_STATUS: ' vigente ' })).toBe('vigente');
+    expect(mod.legalStatusOf({ VITE_LEGAL_STATUS: 'minuta' })).toBe('minuta');
   });
 
   it('are indexable, and in the sitemap, once the status is "vigente"', async () => {
