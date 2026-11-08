@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -63,6 +63,16 @@ const sourceFiles = (dir: string, skip: Set<string> = SKIP_DIRS): string[] =>
     return EXTENSIONS.some(ext => name.endsWith(ext)) && !SKIP_FILES.has(name) ? [path] : [];
   });
 
+// The legal texts (content/legal/*.md) are shown to people like any page, but sourceFiles reads code and data only
+const markdownFiles = (dir: string): string[] =>
+  existsSync(dir)
+    ? readdirSync(dir).flatMap(name => {
+        const path = join(dir, name);
+        if (statSync(path).isDirectory()) return markdownFiles(path);
+        return name.endsWith('.md') ? [path] : [];
+      })
+    : [];
+
 const clientFiles = (): string[] => sourceFiles(ROOT).filter(file => !isServerPath(relative(ROOT, file)));
 
 // Vite puts every VITE_* variable of these files in the public bundle. .env.example
@@ -113,6 +123,12 @@ describe('claims guard', () => {
 
   it('has no unbacked security, verification or payment claims', () => {
     expect(findings(FORBIDDEN_CLAIMS, normalize)).toEqual([]);
+  });
+
+  it('has no unbacked claims in the texts shown to people (content/)', () => {
+    const texts = markdownFiles(join(ROOT, 'content'));
+    expect(texts.length).toBeGreaterThan(0);
+    expect(findings(FORBIDDEN_CLAIMS, normalize, texts)).toEqual([]);
   });
 
   it('scans server function messages for claims, but not for their own secrets', () => {

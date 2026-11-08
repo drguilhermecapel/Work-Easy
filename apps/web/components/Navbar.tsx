@@ -19,7 +19,7 @@ const Navbar: React.FC = () => {
   const isActive = (path: string) => (isNavActive(location.pathname, path) ? 'text-primary font-bold' : 'text-gray-600');
 
   return (
-    <nav className="bg-white shadow-xs sticky top-[env(safe-area-inset-top)] z-50">
+    <nav aria-label="Principal" className="bg-white shadow-xs sticky top-[env(safe-area-inset-top)] z-50 print:hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
