@@ -74,10 +74,12 @@ describe('prerender: pages of the real catalog', () => {
       const html = mod.renderPage(TEMPLATE, page, SITE);
       // The first block describes the page; area, occupation and neighborhood pages add a BreadcrumbList after it
       const blocks = ldBlocks(html);
-      expect(blocks.length, page.path).toBe(page.kind === 'categorias' ? 1 : 2);
+      // Static pages (data/static-pages.json) and legal drafts describe themselves as a WebPage, with no breadcrumb
+      const selfDescribed = page.kind === 'estatica' || page.kind === 'legal';
+      expect(blocks.length, page.path).toBe(page.kind === 'categorias' || selfDescribed ? 1 : 2);
       const data = blocks[0];
       expect(data['@context']).toBe('https://schema.org');
-      expect(data['@type']).toBe('Service');
+      expect(data['@type']).toBe(selfDescribed ? 'WebPage' : 'Service');
       expect(data.url).toBe(`${SITE}${page.path}`);
       for (const block of blocks) {
         expect(JSON.stringify(block)).not.toMatch(/aggregateRating|ratingValue|reviewCount|"review"|"offers"|"price|priceRange|priceCurrency/);

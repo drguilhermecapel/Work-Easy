@@ -78,8 +78,9 @@ describe('layout shift', () => {
     expect(css).toMatch(/main:has\(> \[role='status'\]:only-child\) \+ footer\s*\{\s*visibility: hidden;\s*\}/);
     // The selector follows AppShell.tsx: the fallback is the only child of <main>, and the footer comes right after it
     const shell = readFileSync(join(ROOT, 'AppShell.tsx'), 'utf8');
-    // <main> may carry attributes (the skip link target of the accessibility layer: id, tabIndex)
-    expect(shell).toMatch(/<main[^>]*>[\s\S]*<Suspense fallback=\{<PageFallback \/>\}>[\s\S]*<\/main>\s*<footer/);
+    // <main> may carry attributes (the skip link target of the accessibility layer: id, tabIndex), and the footer
+    // is the SiteFooter component since the footer moved out of AppShell.tsx (its root is a <footer>)
+    expect(shell).toMatch(/<main[^>]*>[\s\S]*<Suspense fallback=\{<PageFallback \/>\}>[\s\S]*<\/main>\s*<(?:footer|SiteFooter)/);
     expect(shell).toMatch(/const PageFallback[\s\S]*role="status"/);
   });
 });

@@ -1,3 +1,7 @@
+---
+description: Política de privacidade do WorkEasy. Documento em elaboração, ainda sem revisão jurídica.
+---
+
 # Política de Privacidade
 
 Documento em elaboração; será publicado após revisão jurídica.

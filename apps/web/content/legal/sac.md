@@ -1,3 +1,7 @@
+---
+description: Atendimento ao consumidor (SAC) do WorkEasy. Documento em elaboração, ainda sem revisão jurídica.
+---
+
 # Atendimento ao Consumidor (SAC)
 
 Documento em elaboração; será publicado após revisão jurídica.

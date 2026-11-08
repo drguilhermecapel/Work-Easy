@@ -46,7 +46,8 @@ describe('web manifest', () => {
     expect(shortcuts.length).toBeGreaterThanOrEqual(3);
     expect(shortcuts.length).toBeLessThanOrEqual(4);
     expect(new Set(shortcuts.map(s => s.url)).size).toBe(shortcuts.length);
-    const routes = ['AppShell.tsx', 'pages/cliente/routes.tsx', 'pages/conta/routes.tsx'].map(file => read(file)).join('\n');
+    // The prototype screens (/search, /dashboard...) moved from AppShell.tsx to pages/prototype/routes.tsx (demo and backend tables)
+    const routes = ['AppShell.tsx', 'pages/prototype/routes.tsx', 'pages/cliente/routes.tsx', 'pages/conta/routes.tsx'].map(file => read(file)).join('\n');
     for (const shortcut of shortcuts) {
       expect(shortcut.name.length, shortcut.name).toBeGreaterThan(3);
       expect(shortcut.short_name?.length ?? 0, shortcut.name).toBeLessThanOrEqual(12);
