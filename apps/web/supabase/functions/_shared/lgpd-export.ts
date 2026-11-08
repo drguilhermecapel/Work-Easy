@@ -7,9 +7,24 @@ export interface ExportQuery {
   table: string;
   /** Rows match if ANY of these columns equals the user's id. */
   ownerColumns: string[];
+  /**
+   * Columns to read. Required for tables whose API role has column grants only (no table-level
+   * SELECT): `select *` is refused there. Undefined reads every column.
+   */
+  columns?: string[];
   /** Columns never included in the export (secrets, internal pointers). */
   omit?: string[];
 }
+
+/** Granted to the API role (migrations/20261019000006_payments.sql). `raw` (gateway payload) is never granted. */
+const PAYMENT_COLUMNS = [
+  'id', 'booking_id', 'quote_id', 'provider_id', 'payer_id', 'asaas_payment_id', 'method', 'amount_cents',
+  'platform_fee_cents', 'status', 'escrow', 'invoice_url', 'pix_qr_code', 'pix_payload', 'due_date',
+  'created_at', 'updated_at',
+];
+
+/** Granted to the API role: no `api_key_secret_id` (the Vault reference). */
+const PROVIDER_PAYMENT_ACCOUNT_COLUMNS = ['provider_id', 'asaas_account_id', 'asaas_wallet_id', 'status', 'created_at'];
 
 export const EXPORT_PLAN: ExportQuery[] = [
   { table: 'profiles', ownerColumns: ['id'] },
@@ -24,9 +39,9 @@ export const EXPORT_PLAN: ExportQuery[] = [
   { table: 'requests', ownerColumns: ['client_id'] },
   { table: 'proposals', ownerColumns: ['provider_id'] },
   { table: 'bookings', ownerColumns: ['client_id', 'provider_id'] },
-  { table: 'provider_payment_accounts', ownerColumns: ['provider_id'], omit: ['api_key_secret_id'] },
+  { table: 'provider_payment_accounts', ownerColumns: ['provider_id'], columns: PROVIDER_PAYMENT_ACCOUNT_COLUMNS, omit: ['api_key_secret_id'] },
   { table: 'customer_payment_profiles', ownerColumns: ['user_id'] },
-  { table: 'payments', ownerColumns: ['payer_id', 'provider_id'], omit: ['raw'] },
+  { table: 'payments', ownerColumns: ['payer_id', 'provider_id'], columns: PAYMENT_COLUMNS, omit: ['raw'] },
   { table: 'subscriptions', ownerColumns: ['provider_id'] },
   { table: 'quotes', ownerColumns: ['provider_id'] },
   { table: 'reviews', ownerColumns: ['client_id', 'provider_id'] },

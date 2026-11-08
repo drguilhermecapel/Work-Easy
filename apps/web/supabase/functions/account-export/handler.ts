@@ -13,8 +13,8 @@ type Row = Record<string, unknown>;
 export interface ExportDeps extends BaseDeps {
   session(req: Request): Promise<{
     user: AuthUser;
-    /** select * from table where <PostgREST or-filter> */
-    selectOwned(table: string, orFilter: string): Promise<Row[]>;
+    /** select <columns | *> from table where <PostgREST or-filter> */
+    selectOwned(table: string, orFilter: string, columns?: string[]): Promise<Row[]>;
     selectIn(table: string, column: string, values: string[]): Promise<Row[]>;
   } | null>;
   admin: {
@@ -32,7 +32,7 @@ export function handler(req: Request, deps: ExportDeps): Promise<Response> {
     const unavailable: string[] = [];
     for (const query of EXPORT_PLAN) {
       try {
-        const rows = await session.selectOwned(query.table, ownerFilter(query, user.id));
+        const rows = await session.selectOwned(query.table, ownerFilter(query, user.id), query.columns);
         tables[query.table] = mergeRows(tables[query.table], stripColumns(rows, query.omit));
       } catch (error) {
         deps.logError(error);
