@@ -6,16 +6,16 @@
 |---|---|
 | Data | 2026-11-08 |
 | Estado do produto | MVP informado como mesclado no `main` (não conferido nesta sessão), não publicado, sem usuários reais. Asaas, WhatsApp e Resend não foram testados contra serviços reais (`apps/web/docs/ARQUITETURA.md`). |
-| Árvore conferida | `/home/user/work-easy`, branch `claude/plano-restante`, commit `ed8aa38` |
+| Árvore conferida | `/home/user/work-easy`, branch `claude/plano-restante`, HEAD `5805947` (revisado; a primeira versão citava `ed8aa38`, 38 commits antes) |
 | Banco usado na validação | Postgres 17.11 local em `127.0.0.1:54322`, sem dados nas tabelas de operação |
 | Escopo | Procedimentos. Não altera código, migração, configuração nem dado. |
 
 ## Como este documento foi validado
 
-- **Todo bloco SQL foi executado no banco local dentro de `begin; ... rollback;`** em 2026-11-08. Os `<...>` foram trocados por UUID zerado ou texto de teste. Como o banco local está vazio, as consultas retornam zero linhas. O que foi confirmado: sintaxe, nomes de colunas e tipos, e execução sem erro.
+- **Todo bloco SQL foi executado no banco local dentro de `begin; ... rollback;`** em 2026-11-08. Os `<...>` foram trocados por UUID zerado ou texto de teste. Como o banco local está vazio, as consultas retornam zero linhas. O que foi confirmado: sintaxe, nomes de colunas e tipos, e execução sem erro, exceto S09 e S44, que terminam em `not_allowed` (esperado sem atendimento real). Na revisão de 2026-11-08 os 51 blocos foram reexecutados nesse modo, e S43 foi trocada por consulta sobre `audit_log` (item 2).
 - **Não confirmado:** o caminho de sucesso das funções de reparo (`transition_booking`, `private.expire_pro_plans`, `vault.update_secret`). Sem atendimento, pagamento ou perfil reais, a validação parou na exceção `not_allowed` (atendimento inexistente), que é o comportamento esperado.
 - **Comandos da CLI** (`supabase secrets`, `functions`, `migration repair`, `db dump`, `db push`) conferidos na ajuda da CLI 2.121.0, a mesma versão do workflow `.github/workflows/deploy-supabase.yml`.
-- **Atenção:** a base local tem as migrações `20261109000001` a `20261109000007`, aplicadas a partir do worktree `SEG-S1` (branch `plan/seg-S1-nucleo-banco`). Elas **não estão** na árvore conferida. Procedimentos que dependem delas estão marcados **[SEG-S1]**.
+- **Atenção:** a base local tem as 36 migrações de HEAD `5805947`. Em `ed8aa38` faltam 21 (`20261108100000` e `20261109000001` a `20261109300006`). As migrações `20261109000001` a `20261109000007` foram aplicadas a partir do worktree `SEG-S1` (branch `plan/seg-S1-nucleo-banco`). Procedimentos que dependem delas estão marcados **[SEG-S1]**: a tag indica a origem, não a ausência no HEAD.
 
 ## Fontes abertas nesta revisão
 
@@ -25,12 +25,14 @@
 | Supabase, API keys | https://supabase.com/docs/guides/api/api-keys | 2026-11-08 | Chaves publicável e secreta, chaves legadas `anon` e `service_role` |
 | Asaas, Sobre os webhooks | https://docs.asaas.com/docs/sobre-os-webhooks | 2026-11-08 | Reenvio, fila interrompida após 15 falhas, retenção de 14 dias, cabeçalho `asaas-access-token` |
 | Asaas, Webhooks (página complementar) | https://docs.asaas.com/docs/webhooks-1 | 2026-11-08 | Mesmos pontos: penalidade de fila e retenção de 14 dias |
+| Asaas, Penalidade de fila | https://docs.asaas.com/docs/queue-penalty | 2026-11-08 | Até 15 tentativas com espera crescente (0 s na 1ª, 3 h na 15ª); alertas nas tentativas 5, 10 e 15 |
+| Asaas, Fila pausada | https://docs.asaas.com/docs/fila-pausada e https://docs.asaas.com/docs/webhooks-queue-paused | 2026-11-08 | Após 15 falhas a fila é interrompida; passos antes de reativar; eventos com mais de 14 dias são excluídos |
+| Resend, Idempotency keys | https://resend.com/docs/dashboard/emails/idempotency-keys | 2026-11-08 | Cabeçalho `Idempotency-Key`; janela de 24 h; 409 com payload diferente; até 256 caracteres |
+| Supabase, Rotate a leaked API key | https://supabase.com/docs/guides/security/rotate-leaked-api-keys | 2026-11-08 | Ordem de troca de chave secreta e service_role; desativação das chaves legadas |
 | Supabase CLI 2.121.0 | ajuda local (`supabase <comando> --help`) | 2026-11-08 | Sintaxe de `secrets`, `functions delete`, `migration repair`, `db dump`, `db push` |
 
 Não abertos ou não localizados (ficam como **[incerto]** no texto):
 
-- Guia de rotação de chave vazada do Supabase: duas URLs testadas, ambas retornaram 404.
-- Página "Fila pausada" do Asaas: citada pela página de webhooks, não aberta.
 - Pesquisa na web: o limite de buscas da sessão (compartilhado entre agentes) estava esgotado. Nenhuma busca foi feita além das fontes listadas acima.
 
 ## Índice por sintoma
@@ -75,12 +77,12 @@ Não abertos ou não localizados (ficam como **[incerto]** no texto):
 | Evento já concluído | 200, `duplicate: true` | Nada muda. |
 | Evento sem efeito (`unknown_payment`, `unknown_event`, `account_mismatch`) | 200 | Linha em `payment_events` com `processed_at` preenchido e `payment_id` nulo. Não se reaplica. |
 | Cobrança não verificada no Asaas (`unverifiable`) | 200 | Linha concluída e `payment_event.unverified` no `audit_log`. |
-| Erro que se repetiria (SQLSTATE 22, 23, 42, P0; Asaas 400 ou 422) | 200 | `payment_event.failed` no `audit_log`. |
+| Erro que se repetiria (SQLSTATE 22, 23, 42, P0, PGRST1 e PGRST2; Asaas 400 ou 422) | 200 | `payment_event.failed` no `audit_log`. |
 | Falha transitória (rede, timeout, Asaas 5xx, banco) | 500 | Linha sem `processed_at`. Asaas reenvia. |
 
 Regras do Asaas (página "Sobre os webhooks"):
 
-- Quando uma entrega falha, o Asaas faz novas tentativas. A página não informa quantas nem com que intervalo: **[incerto]**.
+- Quando uma entrega falha, o Asaas faz novas tentativas: até 15, com espera crescente (0 s na 1ª, 30 s na 2ª, até 3 h na 15ª), segundo a página "Penalidade de fila". Alertas por e-mail nas tentativas 5, 10 e 15. A entrega é "at least once": o mesmo evento pode chegar mais de uma vez (página "Sobre os webhooks").
 - "Após 15 falhas consecutivas, a fila do Webhook pode ser interrompida". Os eventos continuam sendo gerados, mas não são enviados até a fila ser reativada.
 - Eventos ficam guardados por 14 dias. Passado esse prazo, são excluídos.
 - A página não descreve reenvio manual. O reprocessamento abaixo usa o corpo guardado em `payment_events.payload`.
@@ -137,7 +139,7 @@ Entrega repetida do **mesmo** evento não cria linha nova, porque `asaas_event_i
 **Correção.**
 
 - **Falha transitória (S01 com linhas).** Corrija a causa (secret ausente, banco, Asaas indisponível). Confirme nos Logs de Webhooks que a entrega voltou a 200. Se a fila do Asaas ainda estiver tentando, espere.
-- **Fila pausada no Asaas.** Reative pelo painel, seguindo a página "Fila pausada" **[incerto: não aberta]**. Resolva em até 14 dias, senão os eventos são excluídos.
+- **Fila pausada no Asaas.** Antes de reativar, a página "Fila pausada" pede: conferir os Logs de Webhooks, identificar a causa, corrigir o endpoint, validar que ele recebe e grava o evento, e só então reativar a fila. Reative pelo painel ou pela API, seguindo o guia "Como reativar uma fila interrompida", que não foi aberto **[incerto]**. Eventos com mais de 14 dias são excluídos e não se recuperam; resolva dentro desse prazo.
 - **Evento sem efeito que precisa ser reaplicado** (por exemplo, `unknown_payment` porque a cobrança foi gravada depois do evento):
   1. Confirme no Asaas que a cobrança está no status que sustenta o evento.
   2. Reabra a linha, trocando `evt_exemplo` pelo id do evento:
@@ -151,7 +153,7 @@ update public.payment_events
 commit;
 ```
 
-  3. Reenvie o corpo guardado. O handler lê a cobrança de novo no Asaas antes de aplicar qualquer efeito, então o reenvio é seguro. Para evento da conta raiz, use `ASAAS_WEBHOOK_TOKEN`. Para evento de subconta, use `?acct=<provider_id>` com o token derivado do item 6.
+  3. Reenvie o corpo guardado. O handler relê a cobrança no Asaas antes de aplicar qualquer efeito, então um reenvio não muda o pagamento sem confirmação do Asaas. O corpo guardado é o redigido (sem campos de cartão); o handler lê do corpo só `id`, `event`, `payment.id` e `subscription.id`; o resto vem da leitura no Asaas. Para evento da conta raiz, use `ASAAS_WEBHOOK_TOKEN`. Para evento de subconta, use `?acct=<provider_id>` com o token derivado do item 6.
 
 ```bash
 # evento.json = conteúdo da coluna payload de payment_events para o asaas_event_id
@@ -235,12 +237,20 @@ Como ler o resultado:
 | Evento concluído, pagamento `received`, atendimento `accepted` | Transição recusada por regra do banco (`booking_transition_refused`). **Esse caso não grava nada no `audit_log`.** Só aparece na resposta ao Asaas e nos logs da função. | Logs da função `asaas-webhook` no painel do Supabase; depois o reparo manual abaixo |
 | Atendimento `canceled` e pagamento `received` | Pagamento depois do cancelamento. A função pede reembolso total. | S43 e a fila "Exigem atenção" em `/admin/pagamentos` |
 
-4. Pagamentos que pedem ação manual do admin (reembolso recusado ou pagamento depois do cancelamento):
+4. Pagamentos que pedem ação manual do admin (reembolso recusado ou pagamento depois do cancelamento). A view `admin_payments_attention` filtra por `public.is_admin()`, então na sessão `postgres` ela retorna zero linhas mesmo com pendências. Por isso a consulta lê `audit_log` com a mesma regra da view:
 
 ```sql
-select payment_id, action, at, method, amount_cents, status, booking_id
-  from public.admin_payments_attention
- order by at desc;
+select pay.id as payment_id, e.action, e.at, pay.method, pay.amount_cents, pay.status, pay.booking_id
+  from public.audit_log e
+  join public.payments pay on pay.id::text = e.entity_id
+ where e.entity = 'payments'
+   and e.action in ('payment.refund_failed', 'payment.received_after_cancel')
+   and not exists (
+     select 1 from public.audit_log h
+      where h.entity = 'payments' and h.entity_id = e.entity_id
+        and h.action in ('payment.refunded_after_cancel', 'payment.reviewed')
+        and h.id > e.id)
+ order by e.at desc;
 ```
 
 **Correção.**
@@ -250,7 +260,7 @@ select payment_id, action, at, method, amount_cents, status, booking_id
   - Pagamento ainda `pending`: use S09. Ele marca o pagamento como `received`, avança o atendimento para `paid` e grava `payment.manual_repair`.
   - Pagamento já `received` ou `confirmed`: use S44, que só avança o atendimento.
   - Ambas chamam `transition_booking` como `postgres`. Se a transição for recusada, a transação inteira é desfeita.
-- **Atendimento `canceled` com pagamento recebido:** não reative o atendimento. Veja se o reembolso foi pedido (`payment.refunded_after_cancel`) ou recusado (`payment.refund_failed`) com S03. Depois trate no painel do admin, em "Exigem atenção": reembolso manual ou `admin_review_payment`, que pede motivo. S43 lista o que ainda falta tratar.
+- **Atendimento `canceled` com pagamento recebido:** não reative o atendimento. Veja se o reembolso foi pedido (`payment.refunded_after_cancel`) ou recusado (`payment.refund_failed`) na segunda consulta de S08 (`audit_log` do pagamento). Depois trate no painel do admin, em "Exigem atenção": reembolso manual ou `admin_review_payment`, que pede motivo. A consulta de S43 lista o que ainda falta tratar.
 
 Blocos de reparo manual (confirme no Asaas antes de rodar; o `commit` só deve ser dado depois da conferência):
 
@@ -380,11 +390,11 @@ commit;
 | `pending` sem período pago | `free` até o primeiro pagamento | `subscriptions-manage` |
 | `pending` com período pago (reassinatura) | `pro` até o fim do período | `subscriptions-manage` |
 | `past_due` | `pro` até `current_period_end` mais `PRO_GRACE_DAYS`; depois `free` | `asaas-webhook` em `PAYMENT_OVERDUE`. Rebaixamento por job **[SEG-S1]** |
-| `canceled` | `pro` até `current_period_end`; depois `free` | `subscriptions-manage` ao cancelar. Rebaixamento por job **[SEG-S1]** |
+| `canceled` | `pro` até `current_period_end`, sem carência; depois `free` | `subscriptions-manage` ao cancelar; `asaas-webhook` em `SUBSCRIPTION_INACTIVATED` e `SUBSCRIPTION_DELETED`. Rebaixamento por job **[SEG-S1]** |
 
 **Diagnóstico.**
 
-1. Divergências entre `providers.plan` e a regra acima. Antes de rodar, troque `0` em `make_interval` pelo valor de `PRO_GRACE_DAYS` da função:
+1. Divergências entre `providers.plan` e a regra acima. Antes de rodar, troque `0` em `make_interval` pelo valor de `PRO_GRACE_DAYS` da função. A consulta aplica a carência também a `canceled` (a regra não tem carência) e não checa o fim do teste em `trialing`: trate cada divergência como sinal a conferir no Asaas, não como prova:
 
 ```sql
 with expected as (
@@ -413,13 +423,13 @@ select jobid, jobname, schedule, active
 **Correção.**
 
 - Se um evento de assinatura falhou, veja S03 e o item 1.
-- **Rebaixamento que não aconteceu** (plano `pro`, período acabou, nenhum evento chegou). Na árvore conferida não há job que faça isso. O job `workeasy-expire-pro-plans` existe apenas na base local, vindo da branch **[SEG-S1]**. Se ele existir, rode a função agora:
+- **Rebaixamento que não aconteceu** (plano `pro`, período acabou, nenhum evento chegou). O job `workeasy-expire-pro-plans` (`17 * * * *`, migração `20261109000007_pro_plan_expiry.sql`) está no HEAD `5805947` e na base local, mas não em `ed8aa38`; não verifiquei se está aplicado em produção **[SEG-S1]**. Se ele existir, rode a função agora:
 
 ```sql
 select private.expire_pro_plans();
 ```
 
-- **Reparo manual**, só com a assinatura confirmada no Asaas. O webhook compara com `ACTIVE` (`remote.status`). Ajuste `subscriptions` e `providers.plan` pela tabela acima. O exemplo abaixo mostra a assinatura ativa com fim de período em 2026-12-08. Troque o id, a data e o status conforme o Asaas:
+- **Reparo manual**, só com a assinatura confirmada no Asaas. O webhook confirma o evento pela cobrança lida no Asaas (`remote.status` em `RECEIVED` ou `CONFIRMED` para `active`, `OVERDUE` para `past_due`), não pelo status da assinatura. Ajuste `subscriptions` e `providers.plan` pela tabela acima. O exemplo abaixo mostra a assinatura ativa com fim de período em 2026-12-08. Troque o id, a data e o status conforme o Asaas:
 
 ```sql
 begin;
@@ -568,7 +578,7 @@ commit;
 - Alerta com S18 (fila vencida há mais de 5 minutos) e S17.
 - Configure os canais antes de publicar a primeira notificação. Sem credencial, a mensagem vira `skipped` e não volta sozinha.
 - Antes de rotacionar WhatsApp ou Resend, leia o item 6: 401 durante a troca gera `failed` definitivo.
-- **Risco conhecido (ver Apêndice A, item 8):** se a linha não consegue gravar o resultado depois do envio, ela fica em `sending` e é enviada de novo depois de 10 minutos. WhatsApp não tem chave de idempotência; o Resend recebe `Idempotency-Key` com o id da notificação (`notify-dispatch`). A janela de deduplicação do Resend **[incerto]**.
+- **Risco conhecido (ver Apêndice A, item 8):** se a linha não consegue gravar o resultado depois do envio, ela fica em `sending` e é enviada de novo depois de 10 minutos. WhatsApp: não confirmei se a Cloud API aceita chave de idempotência **[incerto]**. O Resend recebe `Idempotency-Key: notification-<id>` (`notify-dispatch`), com janela de deduplicação de 24 horas (página "Idempotency keys" do Resend, aberta em 2026-11-08).
 
 ---
 
@@ -591,14 +601,14 @@ O código lê as variáveis na inicialização do módulo (`config` em `supabase
 | `ASAAS_API_KEY` (conta raiz) | Funções que cobram pela plataforma, `payments-void`, `account-delete`, `asaas-onboard`, `subscriptions-manage`, e o webhook (releitura de cobranças da raiz) | Chamadas à raiz respondem 401. No webhook, a releitura da raiz falha com 401, que não é erro determinístico: a função responde 500 e o Asaas reenvia. Após 15 falhas seguidas, a fila pode parar. | 1) gerar nova chave no painel do Asaas **[incerto: caminho exato não aberto]**; 2) `supabase secrets set ASAAS_API_KEY`; 3) testar uma cobrança em sandbox; 4) revogar a antiga. Subcontas não mudam: a chave delas fica no Vault. | Chamada de teste; S03 sem `payment_event.failed` novo |
 | `ASAAS_WEBHOOK_TOKEN` | `asaas-webhook` valida o cabeçalho. Deriva o token de cada subconta (HMAC). | **Tudo** que usa o token antigo responde 401: webhook da raiz e de **todas** as subcontas, porque o token delas é derivado deste. A fila do Asaas pode parar. | Janela de baixo movimento: 1) gerar token novo de 32 a 255 caracteres (`apps/web/supabase/functions/README.md`); 2) `supabase secrets set ASAAS_WEBHOOK_TOKEN`; 3) atualizar o webhook da conta raiz no Asaas; 4) em cada subconta, atualizar o token com o derivado (comando abaixo). `asaas-onboard` registra o webhook só na criação; não há rotina que reregistre subcontas existentes **[lacuna]**. | Com token correto, `ASAAS_API_KEY` configurada e corpo `{}`, o webhook responde 200 (`invalid_payload`). Com token antigo, 401. |
 | Token derivado de subconta | Só o webhook daquela subconta | Ao trocar `ASAAS_WEBHOOK_TOKEN`, todos mudam (linha anterior) | Recalcule com o comando abaixo e atualize no painel de cada subconta | Como na linha anterior |
-| `SUPABASE_SERVICE_ROLE_KEY` ou `SUPABASE_SECRET_KEYS` | Todas as funções que usam service role | A plataforma injeta a chave (`apps/web/docs/arquitetura/infra.md`). **Procedimento de troca não localizado [incerto].** A documentação aberta diz que chaves legadas continuam válidas até serem desativadas em Settings > API Keys, e que criar uma chave nova não revoga a legada. O Supabase está descontinuando `anon` e `service_role` até o fim de 2026. O código lê `SUPABASE_SERVICE_ROLE_KEY` antes de `SUPABASE_SECRET_KEYS` (`_shared/config.ts`). | 1) criar a chave secreta nova; 2) confirmar qual variável a plataforma injeta nas funções; 3) testar; 4) só então desativar a legada. Use uma chave secreta por componente. | Chamada de teste com service role; sem 401 ou 403 nos logs |
+| `SUPABASE_SERVICE_ROLE_KEY` ou `SUPABASE_SECRET_KEYS` | Todas as funções que usam service role | A plataforma injeta a chave (`apps/web/docs/arquitetura/infra.md`). Procedimento (guia "Rotate a leaked or compromised API key", aberto em 2026-11-08): trocar por uma chave secreta nova em todos os componentes, confirmar que nenhum usa a antiga, e só então desativar a legada. Ao desativar a `service_role` legada, o guia também manda revogar o JWT secret legado. Chaves legadas continuam válidas até serem desativadas em Settings > API Keys, e criar uma chave nova não revoga a legada. O Supabase está descontinuando `anon` e `service_role` até o fim de 2026 (página "API keys"). O código lê `SUPABASE_SERVICE_ROLE_KEY` antes de `SUPABASE_SECRET_KEYS` (`_shared/config.ts`). | 1) criar a chave secreta nova; 2) confirmar qual variável a plataforma injeta nas funções; 3) testar; 4) só então desativar a legada. Use uma chave secreta por componente. | Chamada de teste com service role; sem 401 ou 403 nos logs |
 | `ANTHROPIC_API_KEY` | `request-assist`, `quote-assist`, `care-summary` | Chamadas com a chave antiga falham. A cota da hora já foi consumida antes da chamada (`takeQuota`), então o usuário perde uma unidade. | Nova chave no console da Anthropic **[incerto: caminho não aberto]**; `supabase secrets set`; revogar a antiga depois do teste. | Uma chamada ao assistente sem 503 |
 | `WHATSAPP_TOKEN` (e `WHATSAPP_PHONE_NUMBER_ID`) | `notify-dispatch` | 401 e 403 não são retriáveis: a linha vai direto para `failed` (`nextNotificationState`). Isso fica definitivo até reenfileirar. | Gerar o token novo antes de revogar o antigo; `supabase secrets set`; depois, S22. | S16 e S19 depois do teste |
 | `RESEND_API_KEY` (e `EMAIL_FROM`) | `notify-dispatch` (e-mail) | Mesmo efeito: 401 e 403 viram `failed`. | Igual ao WhatsApp. | Igual |
 | `CRON_SECRET` (função) e `cron_secret` (Vault) | `notify-dispatch` confere antes de reivindicar lotes; `private.dispatch_notifications` envia | Valores diferentes: o despachante recusa a chamada antes de reivindicar nada (`notify-dispatch/handler.ts`), então **as linhas ficam em `queued`** e não se perdem. S20 mostra o código HTTP em `net._http_response`. | 1) atualizar o Vault com S50 (usar o id de S47); 2) `supabase secrets set CRON_SECRET` com o mesmo valor. Faça as duas em sequência curta. | S20 com 200 depois da troca |
 | Segredos de CI (`SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, ambiente `production`) | `deploy-supabase.yml` | O workflow de publicação falha até o segredo do GitHub ser atualizado. | Atualizar no GitHub antes de rodar o workflow de novo. | Dry run do workflow |
 
-**Derivar o token de uma subconta** (mesma regra de `deriveSubaccountToken`, `_shared/secrets.ts`: HMAC-SHA256 com o token da plataforma como chave, sobre a string `asaas-subaccount:` seguida do id do prestador em minúsculas, saída em hexadecimal). Conferido contra um cálculo de referência com valores de teste:
+**Derivar o token de uma subconta** (mesma regra de `deriveSubaccountToken`, `_shared/secrets.ts`: HMAC-SHA256 com o token da plataforma como chave, sobre a string `asaas-subaccount:` seguida do id do prestador em minúsculas, saída em hexadecimal). Conferido pelo revisor em 2026-11-08: o resultado bate com `deriveSubaccountToken` (Deno) para um token e um id de teste:
 
 ```bash
 PID="$(echo '<provider_id>' | tr 'A-Z' 'a-z')"
@@ -633,9 +643,9 @@ A validação mostrou que `vault.update_secret` não acusa erro com um id inexis
 **O que o Supabase informa** (página "Backups", aberta em 2026-11-08):
 
 - Backup diário: projetos Pro guardam os últimos 7 dias; Team, 14; Enterprise, até 30. O plano free não aparece entre os projetos com backup diário automático, e a página recomenda exportar com `db dump`.
-- PITR é complemento pago em Pro, Team e Enterprise, com retenção de 7, 14 ou 28 dias. RPO de dois minutos. Ativar PITR desliga o backup diário.
-- Restaurar para um ponto anterior **substitui o estado atual**. Para preservar os dados atuais, restaure antes para um **projeto novo**. O projeto fica inacessível durante a restauração.
-- Não entram no backup: objetos do Storage (o banco só guarda metadados), objetos apagados depois do backup (não voltam), e senhas de papéis customizados (é preciso redefinir). Assinaturas e slots de replicação precisam ser removidos antes e recriados depois.
+- PITR é complemento pago em Pro, Team e Enterprise, com retenção de 7, 14 ou 28 dias (a página lista essas opções sem associá-las a cada plano). RPO de dois minutos. Ativar PITR desliga o backup diário.
+- Restaurar para um ponto anterior **substitui o estado atual**. Para preservar os dados atuais, restaure antes para um **projeto novo**. O projeto fica inacessível durante a restauração **[incerto: não conferido na página]**.
+- Não entram no backup: objetos do Storage (o banco só guarda metadados), objetos apagados depois do backup (não voltam), e senhas de papéis customizados (é preciso redefinir). Assinaturas e slots de replicação precisam ser removidos antes e recriados depois **[incerto: não conferido na página]**.
 - **Não consta na página:** se Vault e Auth entram no backup **[incerto]**. Trate como não garantido até checar.
 
 **Procedimento.**
@@ -713,7 +723,7 @@ supabase db push --linked --skip-vault --dry-run
 **Correção.**
 
 1. **Não rode o workflow de novo** antes de entender o estado.
-2. **Não altere migração já aplicada.** A regra do plano de trabalho é criar uma migração nova ("Never edit an existing migration: add a new one", `plan/PREAMBLE.md`, regra 4). Atenção: `ARQUITETURA.md`, na seção "Testes e CI", manda editar a migração quando muda assinatura do banco. Essa contradição está no Apêndice A. Até ser resolvida, prefira migração nova. Se o arquivo que falhou tem erro, o correto é uma migração nova com o timestamp seguinte, que trate o estado parcial.
+2. **Não altere migração já aplicada.** A regra é criar uma migração nova, não editar uma já aplicada. Atenção: `ARQUITETURA.md`, na seção "Testes e CI", manda editar a migração quando muda assinatura do banco. Essa contradição está no Apêndice A. Até ser resolvida, prefira migração nova. Se o arquivo que falhou tem erro, o correto é uma migração nova com o timestamp seguinte, que trate o estado parcial.
 3. **Estado parcial.** Não verifiquei se a CLI aplica cada arquivo numa transação só **[incerto]**. Presuma estado parcial até conferir os objetos com S41.
 4. **Histórico do banco.** Só use `supabase migration repair --status applied|reverted <versão> --linked` depois de decidir o estado real. `reverted` apenas marca o histórico; não desfaz o SQL.
 
@@ -721,7 +731,7 @@ supabase db push --linked --skip-vault --dry-run
 supabase migration repair --status applied <versão> --linked
 ```
 
-5. **Publicação de funções incompleta.** Rode de novo. Não esqueça a flag `--no-verify-jwt` para `asaas-webhook` e `notify-dispatch`: sem ela, a função não recebe a chamada (o README das funções exige a flag para as duas).
+5. **Publicação de funções incompleta.** Rode de novo. Mantenha a flag `--no-verify-jwt` para `asaas-webhook` e `notify-dispatch`, como o workflow faz. Ela também está em `supabase/config.toml` (`[functions.asaas-webhook]` e `[functions.notify-dispatch]`, `verify_jwt = false`), e o README das funções diz isso.
 6. **Reteste.** Rode o workflow com dry run ligado, depois com a publicação de funções, conforme o caso. Os dois passos pedem a aprovação do ambiente `production` (`infra.md`).
 
 **Verificação.** S40 mostra a migração nova na lista. S41 confirma o objeto. Os testes pgTAP rodam em banco local (`supabase test db`), nunca no de produção.
@@ -847,7 +857,7 @@ select (select count(*) from auth.users u where u.id = '<uuid>') as auth_users_l
 
 **Contenção (imediata).**
 
-1. Retire o admin e as sessões. Troque `<uuid>` pelo id da conta comprometida. Access tokens já emitidos continuam válidos até expirar **[incerto: duração não conferida]**:
+1. Retire o admin e as sessões. Troque `<uuid>` pelo id da conta comprometida. Access tokens já emitidos continuam válidos até expirar (`jwt_expiry = 3600` em `supabase/config.toml`, ou seja, 1 hora) **[incerto: efeito sobre a sessão revogada não confirmado]**:
 
 ```sql
 begin;
@@ -927,8 +937,8 @@ select d.id, d.provider_id, d.step, d.status, d.storage_path, o.id as object_id
 
 **Correção.**
 
-1. **Contenha.** Remova o arquivo pela API de Storage, como `account-delete` faz (`bucket.remove`), ou pelo painel do Storage **[incerto: caminho no painel não aberto]**. Não apague só a linha de `storage.objects`: o comentário de `anonymize_user` (`10_privacy_audit.sql`) diz que o SQL não consegue apagar objetos do Storage, então a linha sozinha deixa o conteúdo para trás.
-2. **Trate o documento no banco pela tela do admin**, não por SQL. Em `/admin/prestadores/:id`, use "revisar documentos" e recuse com motivo ("arquivo removido por incidente"). Isso muda o status para `rejected`, e o trigger `provider_documents_revoke_approvals` retira a aprovação das ocupações que dependiam do documento (`occupation.approval_revoked`, causa `document_rejected`). Se o registro deve sumir, a exclusão também revoga (causa `document_removed`).
+1. **Contenha.** Remova o arquivo pela API de Storage, como `account-delete` faz (`bucket.remove`), ou pelo painel do Storage **[incerto: caminho no painel não aberto]**. Não apague só a linha de `storage.objects`: o comentário de `anonymize_user` (`20261019000010_privacy_audit.sql`) diz que o SQL não consegue apagar objetos do Storage, então a linha sozinha deixa o conteúdo para trás.
+2. **Trate o documento no banco pela tela do admin**, não por SQL. Em `/admin/prestadores/:id`, use a revisão de documentos (ARQUITETURA lista "revisar documentos"; o texto exato do botão não foi conferido no código) e recuse com motivo ("arquivo removido por incidente"). Isso muda o status para `rejected`, e o trigger `provider_documents_revoke_approvals` retira a aprovação das ocupações que dependiam do documento (`occupation.approval_revoked`, causa `document_rejected`). Se o registro deve sumir, a exclusão também revoga (causa `document_removed`).
 3. **Peça novo envio** ao prestador. O registro novo passa pela análise normal.
 4. **Avaliação de incidente.** Se o documento é de identidade de pessoa, trate como incidente de dados pessoais: `docs/juridico/08-plano-de-resposta-a-incidentes.md` (consultado só em trecho). Comunicações a titular e à autoridade **[CONDICIONAL: depende de parecer]**.
 
@@ -946,7 +956,7 @@ Alavancas que existem hoje. Confira o efeito de cada uma antes de acionar.
 |---|---|---|---|---|
 | Assistente de IA (`request-assist`, `quote-assist`, `care-summary`) | 429 `assist_rate_limited` antes de qualquer consulta (`takeQuota`, `hourlyLimit < 1`) | `supabase secrets set --project-ref "$SUPABASE_PROJECT_ID" ASSIST_HOURLY_LIMIT=0` | `ASSIST_HOURLY_LIMIT=10` (padrão) | Chamada de teste responde 429 |
 | Comissão | `compute_platform_fee` devolve 0 quando `commission_enabled` é falso. Já é o padrão. | Tela `/admin/configuracoes`, ou `admin_set_setting('commission_enabled', 'false'::jsonb)` | Só com parecer jurídico e conta Asaas configurada (ARQUITETURA) | S36 |
-| Teste grátis do Pro | Quem nunca assinou deixa de receber teste quando `pro_trial_days` é 0 | `admin_set_setting('pro_trial_days', '0'::jsonb)` logado como admin. Não há campo na tela. Sem sessão de admin, use S35. | `admin_set_setting('pro_trial_days', '30'::jsonb)` | S36 |
+| Teste grátis do Pro | Quem nunca assinou deixa de receber teste quando `pro_trial_days` é 0 | `admin_set_setting('pro_trial_days', '0'::jsonb)` logado como admin. Há o campo "Dias de teste" em `/admin/configuracoes` (`components/admin/settingDefs.ts`). Sem sessão de admin, use S35. | `admin_set_setting('pro_trial_days', '30'::jsonb)` | S36 |
 | Disparo de mensagens | Para de chamar `notify-dispatch`. Linhas ficam `queued`, vencidas. | S37 | S38 | S39 e S18 |
 | Cobrança de um tipo (ex.: `payments-create`) | Sem nova cobrança enquanto a função não existir | `supabase functions delete payments-create --project-ref "$SUPABASE_PROJECT_ID"`. A CLI não remove o arquivo local. | `supabase functions deploy payments-create --project-ref "$SUPABASE_PROJECT_ID"` | Chamada responde 404 |
 | Prestador | Sai da busca e da página pública | Tela `/admin/prestadores/:id`: suspender com motivo | Reativar pela mesma tela. Reativar não aprova ocupação. | Busca não lista o prestador |
@@ -956,7 +966,7 @@ Alavancas que existem hoje. Confira o efeito de cada uma antes de acionar.
 Regras que valem para todas as linhas:
 
 - **Não desligue a verificação de JWT de uma função** para contornar um problema. A flag só existe na publicação (`--no-verify-jwt`). A regra está no plano de incidente interno (`docs/juridico/08-plano-de-resposta-a-incidentes.md`, trecho lido nesta revisão).
-- **Não existe chave em `platform_settings` para pagamentos.** A única alavanca de pagamento é o webhook e as credenciais descritas acima.
+- **Não há chave em `platform_settings` que desligue cobranças ou o webhook.** `commission_enabled` e `escrow_enabled` só mudam comissão e retenção, e estão `false` (S36). A alavanca de cobrança é o webhook e as credenciais descritas acima.
 - **Conta de titular não tem alavanca.** A exclusão é pedido do próprio titular (item 9).
 
 Consultas de apoio:
@@ -1038,18 +1048,33 @@ Estes pontos foram encontrados ao ler o código e conferir o banco. Não foram c
 3. **Transição recusada some.** Em `asaas-webhook`, quando a regra do banco recusa a transição do atendimento, a função só registra no log e na resposta. Não grava `payment_event` nem `audit_log`. O pagamento fica `received` e o atendimento fica para trás sem trilha no banco.
 4. **Exclusão de conta pode parar em `processing`.** Se `deleteAuthUser` falha depois da anonimização, a função responde 500 e não marca `failed`. A linha de `data_requests` fica em `processing`. A anonimização já aconteceu.
 5. **Ativação de conta pode criar subconta duplicada.** Se a função cai depois de `createAccount` e antes de `savePaymentAccount`, a chave se perde e a reserva é retomada depois de 5 minutos, chamando `createAccount` de novo. Comportamento do Asaas para CPF ou CNPJ repetido **[incerto]**.
-6. **Pro não rebaixa sem job.** Na árvore conferida, `providers.plan` não volta a `free` quando o período pago acaba e nenhum evento chega. O job que faz isso (`workeasy-expire-pro-plans`) existe só na branch [SEG-S1], aplicado à base local.
+6. **Pro não rebaixa sem job.** Em `ed8aa38`, `providers.plan` não volta a `free` quando o período pago acaba e nenhum evento chega. O job que faz isso (`workeasy-expire-pro-plans`) está no HEAD `5805947` e na base local, mas não em `ed8aa38`; não verifiquei a aplicação em produção.
 7. **Duas fontes para a carência do Pro.** `PRO_GRACE_DAYS` (função) e `platform_settings.pro_grace_days` (job [SEG-S1]) precisam ser iguais, e nada as sincroniza.
-8. **Duplicata de notificação.** Se a gravação do resultado falha depois do envio, a linha fica em `sending` e é reenviada depois de 10 minutos. WhatsApp não tem idempotência no envio.
+8. **Duplicata de notificação.** Se a gravação do resultado falha depois do envio, a linha fica em `sending` e é reenviada depois de 10 minutos. Não confirmei se a Cloud API do WhatsApp aceita chave de idempotência **[incerto]**.
 9. **Agendador silencioso.** O job de disparo aparece como `succeeded` mesmo com o Vault vazio (conferido localmente: execuções `succeeded` sem chaves). Só `net._http_response` mostra a chamada real.
-10. **Aprovação sobrevive a arquivo perdido.** Restauro ou sumiço de arquivo não revoga a aprovação; só a rejeição ou a exclusão do documento revogam (trigger de `provider_documents`).
+10. **Aprovação sobrevive a arquivo perdido.** Restauro ou sumiço de arquivo não revoga a aprovação. O trigger `provider_documents_revoke_approvals` (disparado por mudança de `status`, `step` ou `provider_id`, e por exclusão) revoga só quando o passo deixa de estar coberto por documento aceito.
 11. **Reregistro de webhook de subconta não existe.** Trocar `ASAAS_WEBHOOK_TOKEN` exige atualizar cada subconta, e nada no código faz isso.
-12. **Documentação desatualizada.** `supabase/functions/README.md` diz que `verify_jwt = false` fica em `config.toml`; o arquivo não tem essa seção (`grep` sem resultado) e o workflow compensa com a flag. `ARQUITETURA.md` lista dois agendamentos; o banco local tem seis: dois (`workeasy-booking-reminders` e `product-events-retention`) vêm de migrações já na árvore e não estão listados, e os outros dois são de [SEG-S1].
-13. **Entrega do Asaas.** `ARQUITETURA.md` afirma que o Asaas "entrega ao menos uma vez e fora de ordem". A página aberta não confirma nem nega isso: não diz se a fila é sequencial nem a ordem de entrega **[incerto]**.
-14. **Deriva da base local.** O banco local tem sete migrações que não estão na árvore conferida. Testes e consultas feitos nele refletem a branch `SEG-S1`, não o `main`.
+12. **Documentação desatualizada.** `supabase/functions/README.md` está correto: `verify_jwt = false` para `asaas-webhook` e `notify-dispatch` está em `supabase/config.toml` (linhas 408 a 411). Errado é o comentário do workflow `deploy-supabase.yml` ("config.toml has no [functions] entries"); a flag `--no-verify-jwt` é redundante, mas não quebra. `ARQUITETURA.md` (linhas 417 a 418) lista dois agendamentos; o banco local tem sete: `notification-counts-retention`, `product-events-retention`, `workeasy-booking-reminders`, `workeasy-dispatch-notifications`, `workeasy-expire-booking-requests`, `workeasy-expire-pro-plans` e `workeasy-expire-stale`. Cinco não estão listados no `ARQUITETURA.md`, todos com migração no HEAD.
+13. **Entrega do Asaas.** `ARQUITETURA.md` afirma que o Asaas "entrega ao menos uma vez e fora de ordem". A página "Sobre os webhooks" confirma entrega "at least once" (o mesmo evento pode chegar mais de uma vez). Sobre ordem, ela só remete à página de tipos de envio (sequencial ou não sequencial), não aberta **[incerto]**.
+14. **Deriva da base local.** O banco local tem as 36 migrações de HEAD `5805947`; em `ed8aa38` faltam 21 (`20261108100000` e `20261109000001` a `20261109300006`). Testes e consultas feitos nele refletem o HEAD, não necessariamente o `main` nem a produção.
 15. **Verificação de MFA para admin não conferida.** A configuração local desliga MFA TOTP. Não verifiquei a exigência em produção.
 16. **Regra de migração contraditória.** O plano de trabalho diz para nunca editar migração aplicada. `ARQUITETURA.md`, na seção "Testes e CI", diz para editar a migração, rodar `supabase db reset` e gerar os tipos quando a assinatura do banco muda. Vale definir uma regra única.
 
 ## Apêndice B. Lista de consultas
 
-Os blocos SQL deste documento são os mesmos executados na validação: 50 consultas distintas. A consulta de S39 aparece duas vezes, nas seções 4 e 12. Dois deles (S09 e S44) terminam com a exceção `not_allowed` quando o atendimento não existe, o que confirma a checagem. Nenhum bloco foi executado com dado real.
+Os 51 blocos SQL deste documento correspondem a 50 consultas distintas, numeradas S01 a S50 (mapa abaixo). A consulta de S39 aparece duas vezes, nas seções 4 e 12. S43 foi trocada pela consulta sobre `audit_log` descrita no item 2. Dois blocos (S09 e S44) terminam com a exceção `not_allowed` quando o atendimento não existe, o que confirma a checagem. Nenhum bloco foi executado com dado real.
+
+| Seção | Consultas |
+|---|---|
+| 1. Webhook | S01 a S05 |
+| 2. Cobrança paga | S06 a S09, S43, S44 |
+| 3. Conta de recebimento | S10 a S13, S45 |
+| 4. Assinatura Pro | S14, S15, S39, S46 |
+| 5. Notificações | S16 a S23 |
+| 6. Segredos | S47, S50 |
+| 7. Restauração | S34 |
+| 8. Migração | S40, S41 |
+| 9. Titular | S24 a S28, S42, S48, S49 |
+| 10. Admin | S29 a S31 |
+| 11. Storage | S32, S33 |
+| 12. Alavancas | S35 a S39 |

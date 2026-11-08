@@ -21,21 +21,22 @@
 - O limite de buscas web do turno foi atingido: uma busca concluiu e a seguinte foi recusada. Por isso as páginas foram localizadas pelos índices `llms.txt` de docs.asaas.com (`/docs/llms.txt` e `/reference/llms.txt`).
 - As páginas de tarifas em asaas.com redirecionam para login. Não há tabela de tarifas aberta (seção 9).
 - Os `updatedAt` são os do front matter da página, como o leitor os retornou. Quando não havia data absoluta, está indicado.
+- Revisão de 2026-11-08: 22 páginas foram reabertas por WebFetch (lista na seção 2). Onde a frase citada não apareceu na releitura, o texto foi corrigido ou marcado como paráfrase.
 
 ---
 
 ## 1. Resumo para decisão
 
 1. **Bloqueante: conta-raiz PJ e modelo BaaS.** Criar subcontas pela API exige conta-pai de pessoa jurídica (CNPJ) e o modelo BaaS habilitado pelo gerente de contas. Sem isso, a documentação diz que as subcontas são criadas "fora dessa estrutura". [CONFERIDO]. O `DECISOES.md` (seção 8, item 3) ainda lista a abertura da pessoa jurídica como tarefa do dono. [CÓDIGO: `asaas-onboard` não verifica nenhuma das duas condições].
-2. **Bloqueante para o lançamento: período de avaliação regulatória.** Para serviços via API, a documentação fala em até 10 subcontas, até R$ 2.000,00 em cobranças por subconta e até 60 dias. Depois disso, a criação de subcontas, cobranças, assinaturas e links fica bloqueada até o fim do processo. A página não diz se o bloqueio atinge também as cobranças e assinaturas emitidas pela conta-raiz, que é onde fica a assinatura Pro. [CONFERIDO; pergunta ao Asaas].
+2. **Bloqueante para o lançamento: período de avaliação regulatória.** Para serviços via API, a documentação fala em até 10 subcontas, até R$ 2.000,00 em cobranças por subconta e até 60 dias. Depois disso, a criação de subcontas, cobranças, assinaturas e links fica bloqueada até o fim do processo. O período começa quando a conta-pai cria a primeira subconta; a homologação pode ser pedida (criacao-de-subcontas-baas, reaberta em 2026-11-08). A página não diz se o bloqueio atinge também as cobranças e assinaturas emitidas pela conta-raiz, que é onde fica a assinatura Pro. [CONFERIDO; pergunta ao Asaas].
 3. **Aprovação da subconta não é tratada.** `asaas-onboard` grava `status = 'active'` logo depois de criar a conta. A documentação diz que a conta só está "integralmente aprovada" quando `general` retorna `APPROVED`. [CONFERIDO; CÓDIGO].
 4. **Split: a fórmula confere; quem paga a tarifa não está escrito.** O `percentualValue` é aplicado sobre o `netValue` (valor da cobrança após a tarifa do Asaas). Isso confirma a premissa de `split.ts`. Com comissão desligada, que é o padrão, o código envia 100%. Pela fórmula, o prestador fica com todo o líquido e a tarifa sai dele. [CONFERIDO; derivação; decisão do dono].
 5. **Divergência de split sem tratamento.** Em `asaas-events.ts`, `PAYMENT_SPLIT_DIVERGENCE_BLOCK`, `PAYMENT_SPLIT_DIVERGENCE_BLOCK_FINISHED` e `PAYMENT_SPLIT_CANCELLED` não têm efeito. A documentação diz que a correção tem prazo de 2 dias úteis e que, sem correção, o split é cancelado. [CONFERIDO; CÓDIGO].
 6. **Estorno gravado como final cedo demais.** O código grava `refunded` assim que o Asaas aceita o pedido. A documentação descreve o estado "estorno em andamento" (`PAYMENT_REFUND_IN_PROGRESS`), e `refunded` é terminal em `nextPaymentStatus`. [CONFERIDO; CÓDIGO].
-7. **Cancelar o teste grátis apaga a cobrança pendente.** A documentação diz que `DELETE /v3/subscriptions/{id}` exclui as cobranças pendentes ou vencidas e mantém as pagas. Isso bate com o código. Mas a documentação não diz quando a primeira cobrança é gerada, e o código lê `invoiceUrl` logo após criar a assinatura. [CONFERIDO; CÓDIGO; incerto].
+7. **Cancelar o teste grátis apaga a cobrança pendente.** A documentação diz que `DELETE /v3/subscriptions/{id}` exclui as cobranças pendentes ou vencidas e mantém as pagas. Isso bate com o código. Mas a documentação não diz quando a primeira cobrança é gerada, e o código lê `invoiceUrl` logo após criar a assinatura e o devolve na resposta, sem gravá-lo na linha de `subscriptions` (confirmado no banco). [CONFERIDO; CÓDIGO; incerto].
 8. **A Conta Escrow do Asaas é outro produto.** Existe uma "Conta Escrow" configurável por subconta pela API, que retém valores recebidos "até o encerramento da garantia". O código não chama essa API. O campo `escrow` e o status `held` são internos ao WorkEasy. A documentação não diz quem detém os valores nem o enquadramento regulatório. [CONFERIDO; CONDICIONAL: depende de parecer].
-9. **Pix Automático existe, mas não está no código.** Há autorização do pagador e débito recorrente via Pix. A documentação aberta não diz se funciona com subcontas nem com split. Assinatura com `billingType = PIX` não é Pix Automático. [CONFERIDO; PLANEJADO].
-10. **Tarifas não obtidas.** Nenhuma tarifa oficial foi conferida. Os R$ 2 por cobrança citados no `DECISOES.md` (seção 3) continuam sem fonte. [incerto].
+9. **Pix Automático existe, mas não está no código.** Há autorização do pagador e débito recorrente via Pix. A documentação aberta não diz se funciona com subcontas nem com split. Assinatura com `billingType = PIX` não é Pix Automático. Os eventos `PIX_AUTOMATIC_RECURRING_*` não aparecem nas listas de eventos lidas nesta revisão [incerto]. [CONFERIDO; PLANEJADO].
+10. **Tarifas não obtidas.** Nenhuma tarifa oficial foi conferida. Os R$ 2 por cobrança citados no `DECISOES.md` (seção 3, marcados lá como [fonte]) não têm fonte no repositório nem foram conferidos aqui. [incerto].
 
 ---
 
@@ -53,13 +54,13 @@ Data de acesso de todas: 2026-11-08.
 | https://docs.asaas.com/reference/criar-nova-cobranca | n.d. | campos de `POST /v3/payments` (esquema de split não apareceu nesta render) |
 | https://docs.asaas.com/reference/criar-nova-cobranca.md | n.d. | esquema de split (`PaymentSplitRequestDTO`) e campos de resposta |
 | https://docs.asaas.com/reference/remover-assinatura | n.d. | `DELETE /v3/subscriptions/{id}` |
-| https://docs.asaas.com/reference/excluir-cobranca | n.d. | `DELETE /v3/payments/{id}` |
+| https://docs.asaas.com/reference/excluir-cobranca | n.d. (reaberta) | `DELETE /v3/payments/{id}`; 200, 400, 401 e 404 documentados; 409 ausente |
 | https://docs.asaas.com/reference/estornar-cobranca | n.d. | `POST /v3/payments/{id}/refund` |
 | https://docs.asaas.com/docs/payment-split | 2026-10-09T19:45:54Z | índice da seção de split (sem regras) |
 | https://docs.asaas.com/docs/split-faq | 2026-10-09T19:54:10Z | `netValue`, estorno de split, bloqueio por divergência |
 | https://docs.asaas.com/docs/split-in-single-payments | 2026-10-13T13:41:13Z | regras de split em cobrança única; `PAYMENT_SPLIT_DONE` |
 | https://docs.asaas.com/docs/split-for-accounts-with-escrow-account | 2026-10-09T19:54:46Z | split e Conta Escrow |
-| https://docs.asaas.com/docs/webhook-para-cobrancas | "Updated 12 days ago" (sem data absoluta) | lista de eventos de cobrança |
+| https://docs.asaas.com/docs/webhook-para-cobrancas | 2026-10-27T18:49:26Z (reaberta nesta revisão) | lista de eventos de cobrança |
 | https://docs.asaas.com/docs/eventos-para-assinaturas | sem front matter | eventos de assinatura |
 | https://docs.asaas.com/docs/autenticacao | HTTP 404 | não aberta |
 | https://docs.asaas.com/docs/autenticação-1 | 2026-10-13T13:37:54Z | header `access_token` |
@@ -89,6 +90,8 @@ Data de acesso de todas: 2026-11-08.
 
 Foram abertas 38 páginas (incluindo os dois índices). Não foram abertas: a página `/docs/autenticacao` (404) e as duas páginas de tarifas (redirecionamento para login).
 
+**Revisão de 2026-11-08 (WebFetch):** 22 páginas foram reabertas e comparadas com o texto acima: criacao-de-subcontas-baas, subcontas, split-faq, split-in-single-payments, penalizacao-de-filas, como-reativar-fila-interrompida, chaves-de-api, introducao-conta-escrow, webhook-para-cobrancas, eventos-para-assinaturas, requisicoes-bloqueadas, testando-pagamento-com-cartao, sandbox, sobre-os-webhooks, diferenca-entre-pix-automatico-e-assinaturas-1, pix-automatico-implementacao, como-gerar-novas-cobrancas-de-uma-assinatura, criar-novo-webhook, criar-nova-assinatura, detalhamento-do-fluxo, remover-assinatura e a referência de excluir-cobranca. Datas de front matter: remover-assinatura 2026-10-27T18:53:31Z; como-reativar-fila-interrompida 2026-08-28T11:53:23Z; eventos-para-assinaturas 2026-08-27T20:06:33Z. Três páginas (criar-novo-webhook, criar-nova-assinatura e excluir-cobranca) voltaram com a mesma data, 2026-09-08T20:05:50Z: conferir antes de citar.
+
 ---
 
 ## 3. Matriz: o que o produto usa x o que a documentação garante
@@ -97,27 +100,27 @@ Foram abertas 38 páginas (incluindo os dois índices). Não foram abertas: a p�
 |---|---|---|---|---|---|
 | C1 | Autenticação | `_shared/asaas-client.ts`, `request` | Header `access_token`. Sem ele, ou com chave inválida ou de outro ambiente, responde 401 [autenticacao-1] | Mesmo header; URL precisa ser `https` | OK |
 | C2 | Ambiente | `ASAAS_BASE_URL` (ARQUITETURA) | Sandbox em `https://api-sandbox.asaas.com/v3`. Contas, dados, configurações e chaves não são compartilhados com a produção [sandbox; chaves-de-api] | Padrão é a sandbox | OK |
-| C3 | Chave da subconta | `asaas-onboard`, Vault | Chave mostrada uma só vez; se perdida, cria-se outra [chaves-de-api]. Desabilitada após 3 meses sem uso e expirada após 6 (*paráfrase do leitor*) [chaves-de-api] | Guarda no Vault. Não há rotação nem checagem de inatividade | Lacuna (R9) |
+| C3 | Chave da subconta | `asaas-onboard`, Vault | Chave mostrada uma só vez; se perdida, cria-se outra [chaves-de-api]. Desabilitada após 3 meses sem uso e expirada após 6 [chaves-de-api, reaberta]. Subcontas BaaS: "Em subcontas de operações BaaS, a chave não é desabilitada após 3 meses"; a regra de 6 meses para BaaS não consta no trecho lido | Guarda no Vault. Não há rotação nem checagem de inatividade | Lacuna (R9) |
 | C4 | Criar subconta | `asaas-onboard`, `createAccount` | `POST /v3/accounts`. Campos obrigatórios conferem. Conta-pai PJ (CNPJ). Resposta traz `apiKey` e `walletId` [criar-subconta; subcontas] | Envia os campos. Aceita `apiKey` ou `accessToken.apiKey` | Campos OK. PJ e BaaS não verificados (R1, R2). `accessToken` não aparece na página |
-| C5 | Status da subconta | `asaas-onboard` | `GET /v3/myAccount/status`, campo `general`. `APPROVED` = integralmente aprovada. Documentos pendentes em `GET /v3/myAccount/documents`. Webhook `ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED`. Esperar 15 s após criar a conta antes de consultar documentos [detalhamento] | Nada disso. Grava `status: 'active'` e `own_charges_enabled` true | Divergência (R4) |
+| C5 | Status da subconta | `asaas-onboard` | `GET /v3/myAccount/status`, campo `general`. `APPROVED` = integralmente aprovada. Documentos pendentes em `GET /v3/myAccount/documents`. Webhook `ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED`. Esperar 15 s após criar a conta antes de consultar documentos [detalhamento] | Nada disso. Grava `status: 'active'` (ou `key_not_stored`/`key_not_returned`) e `own_charges_enabled: true` só quando a chave foi guardada | Divergência (R4) |
 | C6 | Webhook da subconta | `asaas-onboard`, `subaccountWebhook` | `POST /v3/webhooks` aceita `name`, `url`, `email`, `enabled`, `interrupted`, `sendType`, `events`, `authToken` (32 a 255 caracteres), `apiVersion` (inteiro; exemplo 3). Até 10 webhooks por conta [criar-novo-webhook] | Envia `webhooks[]` dentro de `POST /v3/accounts`. Token derivado com 64 caracteres hex. `webhook_registered` indica só que o campo foi enviado | Não confirmado (R5). A referência de criação não mostra os sub-campos |
-| C7 | Cobrança com split | `payments-create`, `_shared/split.ts` | `split[]` com `walletId` e `percentualValue` (ou `fixedValue`). `percentualValue` é calculado sobre `netValue`. `fixedValue` não pode passar do valor líquido [split-faq; criar-nova-cobranca.md] | `percentualValue` truncado em 4 casas. Não usa `fixedValue` | Fórmula OK. Limite de 4 casas e soma até 100% vieram só de resumo de busca (T6, T7). Quem paga a tarifa não está escrito (R8) |
+| C7 | Cobrança com split | `payments-create`, `_shared/split.ts` | `split[]` com `walletId` e `percentualValue` (ou `fixedValue`). `percentualValue` é calculado sobre `netValue`. `fixedValue` não pode passar do valor líquido [split-faq; criar-nova-cobranca.md] | `percentualValue` truncado em 4 casas. Não usa `fixedValue` | Fórmula OK. Soma dos splits até o líquido: confirmada na split-faq (reaberta). Limite de 4 casas: só no código e na ARQUITETURA, não na documentação lida (T6, T7). Quem paga a tarifa não está escrito (R8) |
 | C8 | Cobrança Pix, cartão e boleto | `BILLING_TYPE`, `payments-create` | `billingType`: `PIX`, `CREDIT_CARD`, `BOLETO`, `UNDEFINED`. Resposta traz `invoiceUrl`, `bankSlipUrl`, `netValue`. Criar cobrança não confirma pagamento [criar-nova-cobranca.md] | Mesmos valores. Grava `invoice_url`. Pix usa `GET /payments/{id}/pixQrCode` | OK. A página do QR code não foi aberta |
-| C9 | Cancelar cobrança | `_shared/void-payments.ts`, `payments-void` | `DELETE /v3/payments/{id}` remove a cobrança. Não é estorno para valor já pago. Resposta `{deleted, id}`. Documentados: 200, 400, 401, 404. 409 não está documentado. Cobrança removida pode ser restaurada com o mesmo ID [excluir-cobranca] | 404 conta como feito. 400 e 409 significam "já removida ou já paga" | 409 não confere (R11, T18) |
+| C9 | Cancelar cobrança | `_shared/void-payments.ts`, `payments-void` | `DELETE /v3/payments/{id}` remove a cobrança. Não é estorno para valor já pago. Resposta `{deleted, id}`. Documentados: 200, 400, 401, 404. 409 não está documentado. Cobrança removida pode ser restaurada com o mesmo ID [excluir-cobranca] | 404 conta como feito. 400 e 409 consultam `GET /payments/{id}`: removida conta como feita; paga vai para `paid` e espera o webhook; outro caso repete o erro | 409 não documentado (R12, T18) |
 | C10 | Estorno | `asaas-webhook`, `refundAfterCancel`; `client.refundPayment` | `POST /v3/payments/{id}/refund`: total ou parcial, para cartão de crédito e Pix. Boleto tem endpoint próprio. Sem campos, o estorno é integral. Em cobrança com split, os repasses são estornados [estornar-cobranca; split-faq] | Grava `refunded` ao receber 2xx | Divergência (R10, R11) |
 | C11 | Assinatura | `subscriptions-manage`, ação subscribe | `POST /v3/subscriptions`. `nextDueDate` é o "vencimento da primeira cobrança". Ciclo `MONTHLY`. Cobranças são geradas gradualmente. Criar a assinatura não confirma pagamento [criar-nova-assinatura; como-gerar] | `nextDueDate` futura no teste. Lê `invoiceUrl` logo depois | Campos OK. Geração da primeira cobrança incerta (R13, T11) |
 | C12 | Cancelar assinatura | `subscriptions-manage`, ação cancel | `DELETE /v3/subscriptions/{id}` encerra a recorrência. Exclui cobranças pendentes ou vencidas. Mantém as pagas. Campo `deleted`. Evento `SUBSCRIPTION_DELETED` [remover-assinatura] | Chama DELETE. Grava `canceled`. Pro vale até o fim do período | OK |
 | C13 | Cobranças da assinatura | `subscriptions-manage` | `GET /v3/subscriptions/{id}/payments` (referência citada no código; página não aberta) | Lê `data[0].invoiceUrl` | Formato não conferido (T11) |
 | C14 | Webhook: origem | `asaas-webhook` | Header `asaas-access-token`, enviado em todas as notificações. Validar antes de processar [sobre-os-webhooks] | Compara com o token da conta-raiz ou com o token derivado da subconta. Sem match, 401 | OK |
-| C15 | Webhook: entrega | `asaas-webhook`, `payment_events` | Entrega "ao menos uma vez". O mesmo `id` pode chegar mais de uma vez. SEQUENTIALLY preserva a ordem, mas não impede reenvio. Responder 200 após persistir [sobre-os-webhooks; tipos-de-envio] | Idempotência pelo `asaas_event_id`. Avanço de status só para frente. Relê a cobrança no Asaas antes de agir | OK |
+| C15 | Webhook: entrega | `asaas-webhook`, `payment_events` | Entrega "ao menos uma vez". O mesmo `id` pode chegar mais de uma vez. SEQUENTIALLY preserva a ordem, mas não impede reenvio. Responder 200 após persistir [sobre-os-webhooks; tipos-de-envio] | Idempotência pelo `asaas_event_id`. Avanço de status só para frente na escada `pending → confirmed → received → released`; `failed` e `canceled` voltam a `pending` por restauração ou `revert`. Relê a cobrança no Asaas antes de agir | OK |
 | C16 | Webhook: fila | ARQUITETURA; `asaas-webhook` | Qualquer resposta fora de 2xx é falha. Após 15 falhas seguidas, a fila é interrompida. Eventos ficam retidos por até 14 dias [penalizacao-de-filas] | 500 só para falha transitória. 200 para erro que se repetiria | Desenho OK. Não há runbook de reativação (R16) |
 | C17 | Eventos de cobrança | `_shared/asaas-events.ts`, `PAYMENT_EFFECTS` | 30 nomes na página de eventos de cobrança [webhook-para-cobrancas] | Os 30 nomes estão mapeados. Split e reembolso em `NONE`, exceto estorno e recebimento | Nomes OK. Efeito de split não tratado (R7) |
 | C18 | Eventos de assinatura | `asaas-events.ts`, `SUBSCRIPTION_EFFECTS` | 7 nomes [eventos-para-assinaturas] | Os 7 estão mapeados | OK |
 | C19 | Eventos da subconta | `SUBACCOUNT_WEBHOOK_EVENTS` (`asaas-onboard`) | Os 11 nomes existem na página de eventos de cobrança | Lista de 11 eventos, sem `PAYMENT_SPLIT_*` e sem `PAYMENT_REFUND_IN_PROGRESS` | OK para cobrança própria (R20) |
 | C20 | Webhook da conta-raiz | fora do código | Configurado no painel ou por `POST /v3/webhooks` [criar-novo-webhook] | Assume uma configuração que não está no repositório: URL, `ASAAS_WEBHOOK_TOKEN` e lista de eventos | Não verificável no repositório (R20) |
-| C21 | Limites de chamada | `callAsaas` (`_shared/handler-kit.ts`) | Cota de 25 mil requisições em 12 horas por conta. 50 GET simultâneos. Resposta 429 com cabeçalhos `RateLimit-*` [requisicoes-bloqueadas] | Só converte o erro. Não repete nem espera | Lacuna (R18) |
-| C22 | Idempotência de criação | `payments-create`; ARQUITETURA | Não há chave de idempotência. Recomenda-se consultar antes de repetir, usar `externalReference` estável e não criar outra entidade para a mesma intenção [retries-e-idempotencia] | `externalReference` = `booking:<id>`. Índice único parcial no banco. Não consulta o Asaas antes de criar | Parcial (R17) |
-| C23 | Conta Escrow (Asaas) | não usado | Configurada por subconta pela API. Retém "até o encerramento da garantia". Taxa mensal por subconta; quem paga é definido por `isFeePayer`. Sem webhook de mudança de status do escrow [intro-escrow; split-escrow; taxa-escrow] | Não chama API de escrow. `escrow` e `held` são internos | Não usado. Nome parecido (R19) |
+| C21 | Limites de chamada | `callAsaas` (`_shared/handler-kit.ts`) | Cota de 25 mil requisições em 12 horas (a página não diz se é por conta). 50 GET concorrentes (idem). Resposta 429 com cabeçalhos `RateLimit-*` [requisicoes-bloqueadas] | Só converte o erro. Não repete nem espera | Lacuna (R18) |
+| C22 | Idempotência de criação | `payments-create`; ARQUITETURA | Não há chave de idempotência. Recomenda-se consultar antes de repetir, usar `externalReference` estável e não criar outra entidade para a mesma intenção [retries-e-idempotencia] | `externalReference` = `booking:<id>` (ou `quote:<id>` em `charges-create`). Índice único parcial no banco (`payments_one_pending_per_booking_uidx`). Não consulta o Asaas antes de criar | Parcial (R17) |
+| C23 | Conta Escrow (Asaas) | não usado | Configurada por subconta pela API. Retém "até o encerramento da garantia". Taxa mensal por subconta; quem paga é definido por `isFeePayer`. A página de intro-escrow não menciona webhook de mudança de status (ausência não confirmada) [intro-escrow, reaberta; split-escrow; taxa-escrow] | Não chama API de escrow. `escrow` e `held` são internos | Não usado. Nome parecido (R19) |
 | C24 | Pix Automático | não existe | `POST /v3/pix/automatic/authorizations`. `paymentCreationMode`: `MANUAL` (padrão) ou `SUBSCRIPTION`. QR da primeira cobrança registra o consentimento. Ativa após confirmação da instituição do pagador. A conta precisa ser elegível [pix-automatico-implementacao; pix-automatico] | Nada | [PLANEJADO] |
 
 Itens conferidos na matriz: 24.
@@ -133,27 +136,27 @@ Severidade: **B** = bloqueia ativação em produção; **A** = alta, corrigir an
 | R1 | B | Conta-pai precisa ser PJ para criar subcontas via API. O código não checa o tipo da conta-raiz. O DECISOES lista a abertura da PJ como tarefa do dono | subcontas (2026-09-24): "A criação de subcontas via API é permitida para contas-pai de pessoa jurídica (CNPJ)." | Confirmar a natureza da conta-raiz antes de qualquer teste de onboarding com dados reais | T2 |
 | R2 | B | Modelo BaaS precisa estar habilitado pelo gerente de contas. Criar pela API sem isso "resultará na criação de subcontas fora dessa estrutura". O código não verifica | criacao-de-subcontas-baas (2026-10-27) | Pedir por escrito ao gerente de contas a estrutura habilitada para a conta do WorkEasy | T2 |
 | R3 | B | Período de avaliação regulatória. Limites: 10 subcontas; R$ 2.000,00 em cobranças por subconta; até 60 dias. Ao atingir qualquer limite, bloqueia criação de subcontas e emissão de cobranças, assinaturas e links até o fim do processo. Homologação pode ser pedida. Não está escrito se a conta-raiz entra. Não há tratamento específico no código | criacao-de-subcontas-baas (2026-10-27) | Perguntar ao Asaas se o limite vale para a conta-raiz (assinatura Pro). Ter um plano para o caso de bloqueio | T29 |
-| R4 | A | Status de aprovação ignorado. `asaas-onboard` grava `active` e responde `own_charges_enabled: true` sem consultar `general`. O fluxo de cobrança checa só a existência do `walletId` (a leitura de `getProviderWallet` não foi aberta). A documentação não diz se subconta sem aprovação pode receber split | detalhamento-do-fluxo (2026-08-28) | Consultar `GET /v3/myAccount/status` antes de liberar cobrança própria e de marcar `active`. Assinar `ACCOUNT_STATUS_*` | T4 |
+| R4 | A | Status de aprovação ignorado. `asaas-onboard` grava `active` e responde `own_charges_enabled: true` quando a chave é guardada, sem consultar `general`. A única aprovação exigida pelo código é a do admin da plataforma (`requireApprovedProvider`), não a do Asaas. O fluxo de cobrança checa só a existência do `walletId` (a leitura de `getProviderWallet` não foi aberta). A documentação não diz se subconta sem aprovação pode receber split | detalhamento-do-fluxo (2026-08-28) | Consultar `GET /v3/myAccount/status` antes de liberar cobrança própria e de marcar `active`. Assinar `ACCOUNT_STATUS_*` | T4 |
 | R5 | A | Webhook da subconta enviado dentro de `POST /v3/accounts`. A referência de criação não mostra os sub-campos. `webhook_registered: true` só diz que o campo foi enviado. Se o Asaas ignorar, eventos de cobrança própria nunca chegam | criar-subconta (sem data); criar-novo-webhook (2026-09-08) | Listar os webhooks da subconta logo após o onboarding e guardar o resultado. Se vazio, registrar via `POST /v3/webhooks` | T3 |
-| R6 | M | Comentário em `asaas-onboard` atribui a `accessToken.apiKey` à página de criação de subconta. A página aberta só fala em `apiKey` na resposta. O fallback é inofensivo, mas a fonte citada não confirma | criar-subconta | Corrigir o comentário ou confirmar com a resposta real | T2 |
+| R6 | M | Comentário em `_shared/asaas-client.ts` (linha 230, não em `asaas-onboard`) atribui a `accessToken.apiKey` à página de criação de subconta. A página aberta só fala em `apiKey` na resposta. O fallback é inofensivo, mas a fonte citada não confirma | criar-subconta | Corrigir o comentário ou confirmar com a resposta real | T2 |
 | R7 | A | Divergência de split e cancelamento de repasse sem efeito no código. A documentação diz que a cobrança pode ficar bloqueada por divergência; a correção tem 2 dias úteis; sem correção, o split é cancelado e chega `..._DIVERGENCE_BLOCK_FINISHED`. Não diz qual é o status da cobrança durante o bloqueio. Se o status ficar `RECEIVED`, o atendimento vai a `paid` e o prestador não recebe o repasse, sem alerta | webhook-para-cobrancas; split-faq (2026-10-09) | Tratar os três eventos: registrar em `audit_log` e entrar em "Exigem atenção" no admin. Assinar `PAYMENT_SPLIT_*` no webhook da conta-raiz | T9 |
-| R8 | A | Quem paga a tarifa com split. A documentação aberta não diz. Derivação: com `percentualValue` sobre o líquido, a tarifa se divide na proporção do split. O prestador arca com P × tarifa e a plataforma com (1 − P) × tarifa. Com P = 100% (comissão desligada), o prestador arca com toda a tarifa. O comentário de `split.ts` diz que a plataforma "absorve a parte proporcional da tarifa", o que vale só com comissão | split-faq; split-in-single-payments; comentário de `split.ts` | Decisão do dono sobre quem paga a tarifa no lançamento. Escrever isso nos termos do prestador | T5, T6 |
-| R9 | M | Chave da subconta sem rotação. Desabilitada após inatividade (3 meses) e expirada (6 meses), em paráfrase do leitor. `subaccount_key_rejected` vira evento "não verificável". Void e estorno de cobrança própria provavelmente falham | chaves-de-api (2026-10-13) | Job mensal que faz uma chamada `GET` com cada chave. Procedimento de criação de nova chave | T32 |
+| R8 | A | Quem paga a tarifa com split. A documentação aberta não diz. Derivação: com `percentualValue` sobre o líquido, a tarifa se divide na proporção do split. O prestador arca com P × tarifa e a plataforma com (1 − P) × tarifa. Com P = 100% (comissão desligada), o prestador arca com toda a tarifa. O comentário de `split.ts` diz, em inglês, "The platform absorbs its proportional share of the Asaas fee" (tradução nossa), o que só faz sentido com comissão | split-faq; split-in-single-payments; comentário de `split.ts` | Decisão do dono sobre quem paga a tarifa no lançamento. Escrever isso nos termos do prestador | T5, T6 |
+| R9 | M | Chave da subconta sem rotação. Desabilitada após 3 meses sem uso e expirada após 6 (chaves-de-api, reaberta). Para subcontas BaaS, a página diz que a chave "não é desabilitada após 3 meses"; a regra de 6 meses para BaaS não consta no trecho lido [incerto]. `subaccount_key_rejected` vira evento "não verificável". Void e estorno de cobrança própria provavelmente falham | chaves-de-api (2026-10-13) | Job mensal que faz uma chamada `GET` com cada chave. Procedimento de criação de nova chave | T32 |
 | R10 | A | Estorno gravado como `refunded` ao receber 2xx. A documentação descreve `PAYMENT_REFUND_IN_PROGRESS` ("será aplicado depois que o seu agendamento de liquidação"). `refunded` é terminal no código | estornar-cobranca; webhook-para-cobrancas (paráfrase do leitor) | Gravar `refund_requested` e só marcar `refunded` em `PAYMENT_REFUNDED`. Ou manter e tratar a reversão | T20 |
-| R11 | A | Estorno com split reverte os repasses (documentação). Se a subconta já sacou, o estorno pode falhar. A documentação diz que o estorno falha com 400 quando falta saldo, mas o exemplo é Pix logo após o recebimento. Para subconta não há regra publicada. O código trata falha como `payment.refund_failed` | split-faq (2026-10-09): "The transfers related to the charge are also refunded." | Definir regra de saldo e de cobrança do prestador. Monitorar `refund_failed` | T21, T22 |
-| R12 | M | Cancelar cobrança já paga. A documentação diz que `DELETE` "não representa estorno" e não lista 409. O código trata 400 e 409 como "já paga", e depende do webhook para reembolsar | excluir-cobranca (sem data) | Confirmar o código de resposta. Se for 409, nada muda; se for outro, ajustar `payments-void` | T18 |
-| R13 | M | Primeira cobrança da assinatura. A documentação não diz quando é gerada. O código lê `listSubscriptionPayments(...)[0].invoiceUrl` logo após criar. O formato `data` não foi conferido. Em trial, pode não existir cobrança e `invoice_url` vem `null`. Em assinatura sem trial, com vencimento hoje, pode acontecer o mesmo, e a tela não teria link | criar-nova-assinatura; como-gerar (2026-08-03) | Testar na sandbox. Se não houver cobrança, buscar por `externalReference` na hora de mostrar o link | T11, T12 |
-| R14 | M | Assinatura com cartão. O código manda `billingType = CREDIT_CARD` sem dados de cartão nem token. A página de assinatura com cartão não foi aberta. A documentação diz que, no cartão, "o pagamento pode ser processado automaticamente nos vencimentos", o que exige um cartão cadastrado | diferenca-entre-pix-automatico-e-assinaturas-1 (2026-10-27) | Ler a página de assinatura com cartão e testar. Se exigir cartão, o fluxo de Pro com cartão não existe hoje | T16 |
-| R15 | M | Lista de status do Asaas não conferida. `ASAAS_PAID` e `ASAAS_UNPAID` incluem `RECEIVED_IN_CASH`, `DUNNING_RECEIVED`, `AWAITING_RISK_ANALYSIS`, `REFUNDED`, `CHARGEBACK_*`. Na página de criação de cobrança, só `PENDING`, `RECEIVED`, `CONFIRMED` e `OVERDUE` foram conferidos | criar-nova-cobranca.md (lista parcial) | Conferir o enum completo de `status` na referência de cobrança | T14, T15 |
-| R16 | A | Fila de webhook. Após 15 falhas seguidas, a fila é interrompida. Intervalos crescem de 30 s até 3 h. Eventos ficam 14 dias. Com `SEQUENTIALLY`, "um evento lento ou com falha pode atrasar os eventos seguintes". O código devolve 500 para falha transitória, então uma queda do banco com 15 tentativas pausa a fila da subconta ou da conta-raiz. Não há runbook | penalizacao-de-filas (2026-10-27); tipos-de-envio (2026-08-28) | Escrever o runbook a partir de "Como reativar fila interrompida" (página não aberta). Monitorar `penalizedRequestsCount` (`GET /v3/webhooks/{id}`) | T27 |
+| R11 | A | Estorno com split reverte os repasses (documentação). Se a subconta já sacou, o estorno pode falhar. A documentação diz que o estorno falha com 400 quando falta saldo, mas o exemplo é Pix logo após o recebimento (não reconferido nesta revisão). Para subconta não há regra publicada. O código trata falha como `payment.refund_failed` | split-faq (2026-10-09): "The transfers related to the charge are also refunded." | Definir regra de saldo e de cobrança do prestador. Monitorar `refund_failed` | T21, T22 |
+| R12 | M | Cancelar cobrança já paga. A documentação diz que `DELETE` "não representa estorno" e não lista 409. O código trata 400 e 409 consultando a cobrança: paga fica `pending` e espera o webhook; removida conta como feita (`void-payments.ts`). Depende do webhook para reembolsar | excluir-cobranca (reaberta: 200, 400, 401, 404) | Confirmar o código de resposta. Se for 409, nada muda; se for outro, ajustar `payments-void` | T18 |
+| R13 | M | Primeira cobrança da assinatura. A documentação não diz quando é gerada. O código lê `listSubscriptionPayments(...)[0].invoiceUrl` logo após criar. O formato `data` não foi conferido. Em trial, pode não existir cobrança e `invoice_url` vem `null`. Em assinatura sem trial, com vencimento hoje, pode acontecer o mesmo, e a tela não teria link | criar-nova-assinatura; como-gerar (2026-08-03, reaberta: cobranças "criadas gradualmente"; a página não diz quando nasce a primeira) | Testar na sandbox. Se não houver cobrança, buscar por `externalReference` na hora de mostrar o link | T11, T12 |
+| R14 | M | Assinatura com cartão. Se o prestador escolhe cartão, o código manda `billingType = CREDIT_CARD` sem dados de cartão nem token. A página de assinatura com cartão não foi aberta. A documentação diz que, no cartão, "o pagamento pode ser processado automaticamente nos vencimentos", a página não diz se isso exige cartão cadastrado (inferência nossa). ARQUITETURA (linhas 583 a 585) e DECISOES (D3) assumem cobrança pela página do Asaas (`invoiceUrl`), o que a página lida não descreve | diferenca-entre-pix-automatico-e-assinaturas-1 (2026-10-27) | Ler a página de assinatura com cartão e testar. Se exigir cartão, o fluxo de Pro com cartão não existe hoje | T16 |
+| R15 | M | Lista de status do Asaas não conferida. `ASAAS_PAID` inclui `RECEIVED`, `CONFIRMED`, `RECEIVED_IN_CASH` e `DUNNING_RECEIVED`; `ASAAS_UNPAID` inclui `PENDING` e `OVERDUE`. `AWAITING_RISK_ANALYSIS`, `REFUNDED` e `CHARGEBACK_*` são tratados à parte (`remoteConfirms`, `ASAAS_CHARGEBACK`). Na página de criação de cobrança, só `PENDING`, `RECEIVED`, `CONFIRMED` e `OVERDUE` foram conferidos | criar-nova-cobranca.md (lista parcial) | Conferir o enum completo de `status` na referência de cobrança | T14, T15 |
+| R16 | A | Fila de webhook. Após 15 falhas seguidas, a fila é interrompida. Intervalos crescem de 0 (1ª) e 30 s (2ª) até 3 h (15ª). Eventos ficam 14 dias. Com `SEQUENTIALLY`, "um evento lento ou com falha pode atrasar os eventos seguintes". O código devolve 500 para falha transitória, então uma queda do banco com 15 tentativas pausa a fila da subconta ou da conta-raiz. Não há runbook | penalizacao-de-filas (2026-10-27); tipos-de-envio (2026-08-28) | Runbook a partir de "Como reativar fila interrompida" (reaberta: `PUT /v3/webhooks/{id}` com `interrupted: false`, após corrigir a causa). Monitorar `penalizedRequestsCount` (`GET /v3/webhooks/{id}`; campo não consta na página de penalização [incerto]) | T27 |
 | R17 | M | Criação sem consulta prévia. A documentação recomenda consultar antes de repetir. O código usa só o banco, e a janela entre o `POST` e o `insert` existe (ARQUITETURA reconhece) | retries-e-idempotencia (2026-10-13) | Antes de criar em uma repetição, buscar no Asaas por `externalReference` (endpoint de listagem a confirmar) | T30 |
-| R18 | M | Limite de chamadas. Cota de 25 mil requisições em 12 horas por conta, 50 GET simultâneos, 429 com `RateLimit-*`. `callAsaas` não trata 429 | requisicoes-bloqueadas (2026-09-01) | Tratar 429 com espera progressiva e teto de tentativas. Contar chamadas por assinatura por ciclo | T31 |
-| R19 | A | Conta Escrow do Asaas e campo `escrow` do WorkEasy têm nomes parecidos e significados diferentes. Se o dono ativar a Conta Escrow no painel de uma subconta, o WorkEasy não sabe, e não há webhook de mudança de status. O status `paid` pode coexistir com saldo indisponível | intro-escrow (2026-09-02); split-escrow (2026-10-09) | Não ativar no painel sem parecer. Incluir no parecer a pergunta da seção 13 (L1) | T35 |
-| R20 | M | Webhook da conta-raiz fora do repositório. A lista de eventos precisa incluir `PAYMENT_SPLIT_*`, `PAYMENT_REFUND_IN_PROGRESS`, `PAYMENT_PARTIALLY_REFUNDED`, `SUBSCRIPTION_*` e, se usado, `PIX_AUTOMATIC_RECURRING_*`. A subconta recebe só 11 eventos | criar-novo-webhook; eventos-para-assinaturas | Checklist de configuração do webhook da conta-raiz, no repositório (docs) e no painel | T24 |
+| R18 | M | Limite de chamadas. Cota de 25 mil requisições em 12 horas (não diz se é por conta), 50 GET concorrentes, 429 com `RateLimit-*`. `callAsaas` não trata 429 | requisicoes-bloqueadas (2026-09-01) | Tratar 429 com espera progressiva e teto de tentativas. Contar chamadas por assinatura por ciclo | T31 |
+| R19 | A | Conta Escrow do Asaas e campo `escrow` do WorkEasy têm nomes parecidos e significados diferentes. Se o dono ativar a Conta Escrow no painel de uma subconta, o WorkEasy não sabe, e a página de introdução não menciona webhook de mudança de status [incerto]. O status `paid` pode coexistir com saldo indisponível | intro-escrow (2026-09-02); split-escrow (2026-10-09) | Não ativar no painel sem parecer. Incluir no parecer a pergunta da seção 13 (L1) | T35 |
+| R20 | M | Webhook da conta-raiz fora do repositório. A lista de eventos precisa incluir `PAYMENT_SPLIT_*`, `PAYMENT_REFUND_IN_PROGRESS`, `PAYMENT_PARTIALLY_REFUNDED`, `SUBSCRIPTION_*` e, se usado, `PIX_AUTOMATIC_RECURRING_*` (esses nomes não aparecem nas listas lidas nesta revisão [incerto]). Trocar `ASAAS_WEBHOOK_TOKEN` exige reconfigurar o webhook de cada subconta (ARQUITETURA, seção Webhook). A subconta recebe só 11 eventos | criar-novo-webhook; eventos-para-assinaturas | Checklist de configuração do webhook da conta-raiz, no repositório (docs) e no painel | T24 |
 | R21 | b | `apiVersion` usa 3 (exemplo da documentação). Não há lista de valores permitidos | criar-novo-webhook | Manter e registrar a versão testada | T3 |
 | R22 | M | Assinatura com `billingType = PIX` é cobrança manual por ciclo, não Pix Automático. A interface não deve chamar isso de "débito automático" | diferenca-entre-pix-automatico-e-assinaturas-1 | Texto de produto alinhado com a documentação | seção 11 |
 | R23 | M | Sandbox não tem a mesma cobertura da produção. Resultados de sandbox são parciais. Pix Automático, escrow e divergência de split podem não ser simulados | sandbox (2026-10-27): "Nem todas as funcionalidades possuem a mesma cobertura ou o mesmo comportamento de Produção." | Marcar no relatório de testes o que foi simulado e o que não foi | todos |
-| R24 | b | Pro é liberado em `PAYMENT_CONFIRMED` e em `PAYMENT_RECEIVED`. A documentação descreve `CONFIRMED` como pagamento feito, com valor ainda sem disponibilidade no saldo (*paráfrase*). Liberar em `CONFIRMED` é decisão de negócio | webhook-para-cobrancas | Decidir se a assinatura Pro espera `RECEIVED` | T14 |
+| R24 | b | Pro é liberado em `PAYMENT_CONFIRMED` e em `PAYMENT_RECEIVED`. A documentação descreve `CONFIRMED` como "Pagamento efetuado, mas com saldo ainda não disponibilizado" e `RECEIVED` como cobrança com valor disponível (tradução do leitor, reaberta). No cartão, o diagrama mostra 32 dias entre `CONFIRMED` e `RECEIVED`. Liberar em `CONFIRMED` é decisão de negócio | webhook-para-cobrancas | Decidir se a assinatura Pro espera `RECEIVED` | T14 |
 
 ---
 
@@ -162,12 +165,12 @@ Severidade: **B** = bloqueia ativação em produção; **A** = alta, corrigir an
 | Etapa | O que o código faz | O que o Asaas documenta | Situação |
 |---|---|---|---|
 | 1. Assinar com teste | `nextDueDate` = hoje + `pro_trial_days` (padrão 30). `cycle` MONTHLY. `billingType` do método. Assinatura gravada como `trialing`. `providers.plan = 'pro'`. `current_period_end` = último dia do teste às 23:59:59 (-03:00) | `nextDueDate` é "vencimento da primeira cobrança". Não há regra de data mínima citada. Criar não confirma pagamento | Campos conferem. Aceitar data futura: T11 |
-| 2. Ler o link logo depois | `listSubscriptionPayments(...)[0].invoiceUrl`, gravado em `invoice_url` (vira `null` se não houver cobrança) | Não diz quando a cobrança é gerada. A geração é gradual. Na sandbox há geração de carnê para antecipar cobranças | incerto (R13). T11, T12 |
+| 2. Ler o link logo depois | `listSubscriptionPayments(...)[0].invoiceUrl`, devolvido na resposta como `invoice_url` (vira `null` se não houver cobrança); não é gravado, a linha de `subscriptions` não tem esse campo | Não diz quando a cobrança é gerada. A geração é gradual. Na sandbox há geração de carnê para antecipar cobranças | incerto (R13). T11, T12 |
 | 3. Cobrança antes do fim do teste | Nenhum tratamento | Não documentado. `PAYMENT_CREATED` traz o campo `subscription`, o que permite identificar a origem | incerto. T12 |
-| 4. Cancelar durante o teste | `DELETE` na assinatura. Grava `canceled`. `planAfterCancel` mantém Pro até `current_period_end` | `DELETE` exclui cobranças pendentes ou vencidas e mantém as pagas. Gera `SUBSCRIPTION_DELETED` | Confere. Falta confirmar se cada cobrança removida gera `PAYMENT_DELETED` (não documentado). T13 |
-| 5. Fim do teste sem pagamento | `PAYMENT_OVERDUE` com `subscription` leva a `past_due` (não cai no ramo `first_payment_overdue`, que só vale para `pending`). Plano volta a `free` após o período e `PRO_GRACE_DAYS` | Cobrança vencida tem status `OVERDUE`. Evento `PAYMENT_OVERDUE` | Confere no desenho. Precisa de data simulada na sandbox: T15 |
+| 4. Cancelar durante o teste | `DELETE` na assinatura. Grava `canceled`. `planAfterCancel` mantém Pro até `current_period_end` | `DELETE` exclui cobranças pendentes ou vencidas e mantém as pagas. Gera `SUBSCRIPTION_DELETED` | Confere (remover-assinatura reaberta: exclui pendentes e vencidas, mantém pagas, gera `SUBSCRIPTION_DELETED`). Falta confirmar se cada cobrança removida gera `PAYMENT_DELETED` (não documentado). T13 |
+| 5. Fim do teste sem pagamento | `PAYMENT_OVERDUE` com `subscription` leva a `past_due` (não cai no ramo `first_payment_overdue`, que só vale para `pending` sem `current_period_end`). Plano volta a `free` após o período e `PRO_GRACE_DAYS` | Cobrança vencida tem status `OVERDUE`. Evento `PAYMENT_OVERDUE` | Confere no desenho. Precisa de data simulada na sandbox: T15 |
 | 6. Pagamento no fim do teste | `PAYMENT_RECEIVED` ou `PAYMENT_CONFIRMED` com `subscription`: `active`, `current_period_end` = mês a partir do vencimento | Eventos de cobrança trazem `subscription` | Confere. Ver R24 sobre `CONFIRMED` |
-| 7. Pagar com cartão | `billingType = CREDIT_CARD` sem cartão | Página de assinatura com cartão não aberta | incerto (R14). T16 |
+| 7. Pagar com cartão | `billingType = CREDIT_CARD` quando o prestador escolhe cartão, sem dados de cartão | Página de assinatura com cartão não aberta | incerto (R14). T16 |
 | 8. Assinar de novo dentro de período pago | `firstDueDate` = fim do período. Status `pending` | Não citado | Conferir na sandbox |
 
 Resposta do `POST` ao cliente. Com teste: `trial_ends_at` preenchido e `awaiting_payment` `false`. Sem teste: `awaiting_payment` `true`, e `invoice_url` depende de R13.
@@ -190,7 +193,7 @@ Resposta do `POST` ao cliente. Com teste: `trial_ends_at` preenchido e `awaiting
 1. Evento `PAYMENT_SPLIT_DIVERGENCE_BLOCK` (paráfrase: "valor da cobrança bloqueado por divergência de split"). Valor e splits podem ser bloqueados para ajuste.
 2. Prazo: 2 dias úteis.
 3. Sem correção: split cancelado e evento `PAYMENT_SPLIT_DIVERGENCE_BLOCK_FINISHED`.
-4. `PAYMENT_SPLIT_CANCELLED` não é enviado quando o cancelamento vem da validação de saque. Nesse caso, a página manda consultar `cancellationReason` pela API.
+4. [incerto] A regra de que `PAYMENT_SPLIT_CANCELLED` não é enviado na validação de saque, com consulta de `cancellationReason`, não aparece em `split-faq` nem em `split-in-single-payments` (reabertas em 2026-11-08). O evento consta na lista de `webhook-para-cobrancas`, sem descrição lida.
 5. Não documentado: status da cobrança durante o bloqueio (R7).
 
 **Código**: `asaas-events.ts` trata os três eventos como `NONE`. Não há alerta, não há `audit_log` e não há fila no admin. No fluxo atual o split de cobrança é percentual sobre o líquido, então a divergência não deveria surgir sozinha. Pode surgir com antecipação de recebíveis, com estorno parcial ou com mudança de tarifa (derivação a partir do texto da FAQ).
@@ -204,7 +207,7 @@ Resposta do `POST` ao cliente. Com teste: `trial_ends_at` preenchido e `awaiting
 | Caso | O que o Asaas documenta | O que o WorkEasy faz | Teste |
 |---|---|---|---|
 | Cobrança pendente, cancelada pelo cliente ou prestador | `DELETE /v3/payments/{id}` remove. Resposta `{deleted, id}`. Evento `PAYMENT_DELETED` | `payments-void`: `DELETE`. 404 conta como feito. Grava `canceled` | T17 |
-| Cobrança já paga, `DELETE` | Não é estorno. Resposta não listada (409 ausente da página) | Aceita 400 ou 409 como "já paga". O webhook reembolsa (`payment.void_paid`) | T18 (R12) |
+| Cobrança já paga, `DELETE` | Não é estorno ("A remoção não representa estorno"). Documentados: 200, 400, 401 e 404; 409 não | Consulta a cobrança com 400 ou 409: se paga, fica `pending` para o webhook (`payment.void_paid` é gravado por `payments-void`); o reembolso sai quando o `PAYMENT_RECEIVED` chega (`refundAfterCancel`) | T18 (R12) |
 | Estorno de cartão ou Pix | `POST /v3/payments/{id}/refund`. Total ou parcial. Sem campos, integral. 400 quando falta saldo (exemplo Pix logo após o recebimento) | `refundPayment()` com descrição. Grava `refunded` ao receber 2xx | T20 (R10) |
 | Estorno com split | Repasses da subconta são estornados. Campo `splitRefunds` permite especificar | Não envia `splitRefunds` | T21, T22 (R11) |
 | Estorno em andamento | `PAYMENT_REFUND_IN_PROGRESS`. Aplicado depois da liquidação agendada. `PAYMENT_REFUND_DENIED` aparece só para boleto (*paráfrase*) | Trata como final (`refunded`) | T20 |
@@ -217,13 +220,13 @@ Ponto de atenção jurídico: a reversão de repasse de subconta é um efeito qu
 
 ## 8. Webhook: segurança, ordem, retentativa e fila
 
-**Segurança.** Header `asaas-access-token`, enviado em todas as notificações [CONFERIDO]. O código compara o header com o token da conta-raiz (`ASAAS_WEBHOOK_TOKEN`) ou com o token derivado da subconta (`asaas-onboard`, `subaccountWebhook`). Também relê a cobrança no Asaas antes de aplicar efeito (`verifyPayment`). Isso está alinhado com a documentação, que trata o corpo como aviso e manda validar o header.
+**Segurança.** Header `asaas-access-token`, enviado em todas as notificações [CONFERIDO]. O código compara o header com o token da conta-raiz (`ASAAS_WEBHOOK_TOKEN`) ou com o token derivado da subconta (`asaas-onboard`, `subaccountWebhook`). Também relê a cobrança no Asaas antes de aplicar efeito (`verifyPayment`). Isso está alinhado com a documentação, que manda validar o header antes de processar o evento.
 
 **Entrega.** "Ao menos uma vez". O mesmo `id` pode chegar de novo. A idempotência é obrigatória nos dois modos [CONFERIDO]. O código guarda `payment_events` com `asaas_event_id` único.
 
 **Ordem.** `SEQUENTIALLY` preserva a ordem de ocorrência e um evento respeita a sequência dos anteriores. `NON_SEQUENTIALLY` não garante ordem [CONFERIDO]. O código usa `SEQUENTIALLY` na subconta. Não há tipo de envio configurado na conta-raiz no repositório (R20). A escada de status só avança (`RANK`), o que é coerente com entrega fora de ordem.
 
-**Fila.** Uma entrega é bem-sucedida com 2xx. Qualquer outro resultado é falha (400, 403, 404, 408, 500, timeouts) [CONFERIDO]. Os intervalos crescem de 30 s até 3 h. Alertas por e-mail nas tentativas 5, 10 e 15. Após 15 falhas seguidas a fila é interrompida e novos eventos ficam retidos até 14 dias, depois são excluídos. Remover penalidade é outra ação, feita por `POST /v3/webhooks/{id}/removeBackoff` (204). Não confundir com reativação da fila [CONFERIDO].
+**Fila.** Uma entrega é bem-sucedida com 2xx. Qualquer outro resultado é falha (400, 403, 404, 408, 500, timeouts) [CONFERIDO]. Os intervalos crescem de 0 (1ª tentativa) e 30 s (2ª) até 3 h (15ª). Alertas por e-mail nas tentativas 5, 10 e 15. Após 15 falhas seguidas a fila é interrompida e novos eventos ficam retidos até 14 dias, depois são excluídos. Remover penalidade é outra ação, feita por `POST /v3/webhooks/{id}/removeBackoff` (204). Reativar a fila é outra ação: pelo painel (Menu do usuário → Integrações → Webhooks) ou por `PUT /v3/webhooks/{id}` com `{"interrupted": false}` (HTTP 200), e só depois de corrigir a causa [como-reativar-fila-interrompida, reaberta].
 
 **Eventos de cobrança.** Os 30 nomes da página de eventos de cobrança aparecem em `PAYMENT_EFFECTS`. Os 7 de assinatura aparecem em `SUBSCRIPTION_EFFECTS`. A lista da subconta tem 11 nomes válidos.
 
@@ -251,7 +254,7 @@ Não foi possível conferir nenhuma tarifa oficial nesta pesquisa.
 | Conta Escrow, mensalidade por subconta | valor não publicado na página aberta; quem paga é `isFeePayer` | cobranca-da-taxa-por-subconta-configurada (2026-08-28) | incerto |
 | Pix Automático | não obtido | não há página de tarifa aberta | incerto |
 
-**Efeito nos números do produto.** O `DECISOES.md` (seções 3 e 6) usa "custo de cobrança de cerca de R$ 2 por mensalidade" para a margem de 95%. Essa premissa não tem fonte conferida. A margem por cobrança e a comissão líquida dependem da tarifa de Pix ou cartão, que também não foi conferida.
+**Efeito nos números do produto.** O `DECISOES.md` (seções 3 e 6) usa "custo de cobrança de cerca de R$ 2 por mensalidade" para a margem de 95%. Essa premissa não tem fonte conferida: o `DECISOES.md` a marca como [fonte] na seção 3, mas não há link nem documento no repositório que a sustente. A margem por cobrança e a comissão líquida dependem da tarifa de Pix ou cartão, que também não foi conferida.
 
 **Próximo passo para o dono:** copiar a tabela de tarifas do painel do Asaas, na conta dele, com a data, e substituir esta tabela. Esta pesquisa não acessou o painel.
 
@@ -262,14 +265,14 @@ Não foi possível conferir nenhuma tarifa oficial nesta pesquisa.
 **Confirmado** [CONFERIDO: sandbox (2026-10-27); testando-pagamento-com-cartao (2026-11-05); testar-pagamento-de-qrcodes-pix (2026-08-03)]:
 
 - Base: `https://api-sandbox.asaas.com/v3`. Conta, dados, configurações e chaves são separados da produção. Não movimenta dinheiro real.
-- "Não informe uma chave de Produção" nas chamadas feitas a partir da documentação.
+- "Utilize sempre uma chave de Sandbox na URL de Sandbox e uma chave de Produção na URL de Produção." (a página não proíbe em termos explícitos a chave de produção na sandbox).
 - Cartões de aprovação (simulam processamento bem-sucedido): Visa `4539 6560 4839 2220`; Mastercard `5263 8372 5327 8275`; American Express `3471 756966 23141`; Discover `6011 6650 7493 0565`.
 - Cartões de recusa: Mastercard `5184019740373151`; Visa `4916561358240741`. A página não lista códigos de erro de recusa.
 - Validade: qualquer data futura. CVV fictício. Nenhuma adquirente é acionada. "A utilização de outros números ainda não é tecnicamente restringida pelo Sandbox."
 - Pix: criar um QR estático na conta de destino (`Criar QR Code estático`), guardar `payload` e pagar com `POST /v3/pix/qrCodes/pay` (`qrCode.payload`, `value`) a partir de outra conta sandbox. A conta de destino precisa de chave Pix cadastrada. Sem chave: erro 404 (página `tentar-pagar-qr-code-pix-no-sandbox-sem-chave-cadastrada-erro-404`, listada).
-- Geração de carnê de assinatura antecipa a criação de cobranças futuras (carnê). "A geração de um período extenso pode criar muitas cobranças na conta Sandbox." Carnê não confirma pagamento.
-- Webhooks: a página implica que são enviados, mas não diz com todas as letras.
-- Aprovação automática de contas quando os dados obrigatórios são válidos (paráfrase). A página de aprovação na sandbox existe (`aprovar-conta`, listada, não aberta).
+- Geração de carnê de assinatura antecipa a criação de cobranças futuras (carnê). "A geração de um período extenso pode criar muitas cobranças na conta Sandbox." "Nenhum pagamento é realizado" e o carnê "não antecipa seus pagamentos" (como-gerar-novas-cobranças, reaberta).
+- Webhooks: a página lista "testar o recebimento e processamento de Webhooks" como uso da sandbox.
+- Aprovação automática de contas quando os dados obrigatórios são válidos (sandbox, reaberta). A página de aprovação na sandbox existe (`aprovar-conta`, listada, não aberta).
 
 **Não encontrado na documentação aberta:**
 
@@ -284,15 +287,15 @@ Não foi possível conferir nenhuma tarifa oficial nesta pesquisa.
 
 **O que a documentação diz** [CONFERIDO: pix-automatico (2026-09-25); pix-automatico-implementacao (2026-09-25); diferenca (2026-10-27)]:
 
-- "O Pix Automático permite realizar cobranças recorrentes via Pix após uma autorização prévia do pagador."
+- "No Pix Automático, uma autorização ativa permite o débito recorrente via Pix sem uma nova confirmação a cada ciclo." (diferença, reaberta; a frase de abertura desta seção não foi reconferida).
 - Autorização: `POST /v3/pix/automatic/authorizations`. Campo `paymentCreationMode`: `MANUAL` (padrão; o app cria cada cobrança com `POST /v3/payments` e `pixAutomaticAuthorizationId`, entre 2 e 10 dias úteis antes do vencimento) ou `SUBSCRIPTION` (o Asaas gera as cobranças; exige `value` na autorização).
 - O QR Code inicial (`immediateQrCode`) reúne o primeiro pagamento e o consentimento para os ciclos seguintes.
-- A autorização vira `ACTIVE` só depois que a instituição do pagador confirma. Sem confirmação, a autorização é recusada mesmo com o pagamento inicial recebido.
-- Eventos citados: `PAYMENT_RECEIVED` e `PIX_AUTOMATIC_RECURRING_AUTHORIZATION_REFUSED` (*paráfrase*), além de eventos de instrução, cancelamento e recusa.
+- A autorização vira `ACTIVE` só depois que a instituição do pagador confirma. Sem confirmação, a autorização é recusada mesmo com o pagamento inicial recebido (*não reconferido nesta revisão*).
+- Eventos citados: `PAYMENT_RECEIVED` (confirmado na lista de cobranças). Os nomes `PIX_AUTOMATIC_RECURRING_*` não aparecem nas listas de 30 eventos de cobrança nem de 7 de assinatura, ambas reabertas: origem e nomes [incerto].
 - Assinatura com `billingType = PIX` não equivale a Pix Automático. Na assinatura, o pagador paga cada fatura. No Pix Automático, a autorização ativa permite débito sem nova confirmação a cada ciclo.
 - A página não trata: o que acontece se o pagador não autorizar ou cancelar, se ele pode cancelar, nova tentativa após falha, dependência do banco do pagador, suporte a split e a subconta.
 - Elegibilidade: "confirme que a conta está elegível para utilizar Pix Automático".
-- A referência de subscription tem `pixAutomaticAuthorizationMode` com um único valor permitido, `DISABLED` ("Pix Automático não oferecido") [criar-nova-assinatura]. O campo de criação da autorização é outro (`paymentCreationMode`). A relação entre os dois não está explicada (incerto).
+- A referência de subscription tem `pixAutomaticAuthorizationMode` com um único valor permitido no enum da requisição, `DISABLED` ("Pix Automático não oferecido"); a descrição também cita `OPTIONAL` e `REQUIRED`, fora do enum [criar-nova-assinatura, reaberta]. O campo de criação da autorização é outro (`paymentCreationMode`). A relação entre os dois não está explicada (incerto).
 
 **Resposta curta.** Pode substituir o Pix avulso mensal da assinatura Pro, para quem tem o banco habilitado e autoriza no app do banco, desde que a conta seja elegível. Não substitui boleto nem cartão para quem não usa Pix Automático. Pela documentação aberta, não há prova de que funcione com subconta e com split. Como o Pro é cobrado da conta-raiz e sem split, o caso de uso natural seria a assinatura Pro.
 
@@ -314,7 +317,7 @@ Pré-requisitos: duas contas de sandbox (uma PJ para conta-pai, uma subconta de 
 **Autenticação e conta**
 
 - **T1.** `GET /v3/myAccount/status` sem header `access_token` → esperado 401 (autenticacao-1). Repetir com chave de produção no host da sandbox → esperado 401.
-- **T2.** `POST /v3/accounts` com conta-pai PF → esperado recusa (subcontas: "somente CNPJ"). Repetir com conta-pai PJ → esperado 200 com `id`, `walletId` e `apiKey`. Anotar se a chave vem no topo, em `accessToken` ou nos dois (R1, R2, R6).
+- **T2.** `POST /v3/accounts` com conta-pai PF → esperado recusa (subcontas: "permitida para contas-pai de pessoa jurídica (CNPJ)"; a página não trata o caso PF). Repetir com conta-pai PJ → esperado 200 com `id`, `walletId` e `apiKey`. Anotar se a chave vem no topo, em `accessToken` ou nos dois (R1, R2, R6).
 - **T3.** Com a chave da subconta, listar webhooks (`GET /v3/webhooks`; caminho a confirmar na referência de listagem). Esperado, se `webhooks[]` foi aceito: um webhook com `apiVersion` 3, `sendType` `SEQUENTIALLY`, `hasAuthToken` true e a lista de eventos enviada. Lista vazia confirma R5.
 - **T4.** `GET /v3/myAccount/status` com a chave da subconta, antes e depois da aprovação na sandbox (`aprovar-conta`, caminho a confirmar). Esperado: `general` diferente de `APPROVED` antes, `APPROVED` depois, e evento `ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED` (R4).
 
@@ -322,7 +325,7 @@ Pré-requisitos: duas contas de sandbox (uma PJ para conta-pai, uma subconta de 
 
 - **T5.** Cobrança de R$ 100,00 com `split: [{walletId: <subconta>, percentualValue: 88}]`, paga com cartão de aprovação. Depois `GET /v3/payments/{id}` (`netValue`) e a consulta de splits recebidos (caminho a confirmar). Esperado: a subconta recebe 88% do `netValue` (split-faq).
 - **T6.** Cobrança de R$ 100,00 com `percentualValue: 100`. Esperado (derivação): aceita, subconta recebe o `netValue`, saldo da conta-raiz do split fica zerado. Registrar a diferença entre bruto e líquido, que mostra quem arcou com a tarifa (R8). Se recusar, registrar a mensagem.
-- **T7.** Dois casos de recusa. (a) `percentualValue` 60 + 50 na mesma cobrança: esperado recusa, por soma acima de 100% (regra vinda de resumo de busca, não de página aberta). (b) `fixedValue` igual ao valor da cobrança: esperado recusa ou bloqueio por divergência (split-faq: fixo não pode passar do líquido).
+- **T7.** Dois casos de recusa. (a) `percentualValue` 60 + 50 na mesma cobrança: esperado recusa, por soma acima de 100% (regra confirmada na split-faq: "The total calculated for the Splits cannot exceed the available net amount."). (b) `fixedValue` igual ao valor da cobrança: esperado recusa ou bloqueio por divergência (split-faq: fixo não pode passar do líquido).
 - **T8.** Cobranças de R$ 1,00 e R$ 5,00 com `percentualValue` 88. Registrar se aceita e qual é o `netValue`. Se `netValue` for zero ou negativo, registrar a mensagem. Os números do comentário de `split.ts` (R$ 10,00 com líquido perto de R$ 8,01) são premissa do código, não conferidos.
 - **T9.** Divergência de split em cobrança: tentar antecipar uma cobrança com split (se a sandbox permitir). Esperado: `PAYMENT_SPLIT_DIVERGENCE_BLOCK`, valor bloqueado, depois correção ou `PAYMENT_SPLIT_DIVERGENCE_BLOCK_FINISHED`. Se não for possível, marcar "não testável" e manter R7.
 - **T10.** Divergência em assinatura: assinatura com split fixo acima do líquido. Esperado ao gerar a cobrança: `SUBSCRIPTION_SPLIT_DIVERGENCE_BLOCK`, sem novas cobranças. `PUT /v3/subscriptions/{id}` com `split` corrigido: desbloqueio automático. Sem correção em 2 dias úteis: `SUBSCRIPTION_SPLIT_DIVERGENCE_BLOCK_FINISHED` e cobranças seguintes sem split.
@@ -348,11 +351,11 @@ Pré-requisitos: duas contas de sandbox (uma PJ para conta-pai, uma subconta de 
 
 **Webhook**
 
-- **T24.** `POST` em `…/functions/v1/asaas-webhook` (sandbox): sem `asaas-access-token` → 401; com token de subconta usado com `acct` de outro prestador → 401; com token da conta-raiz → 200. Esperado do código.
+- **T24.** `POST` em `…/functions/v1/asaas-webhook` (sandbox): sem `asaas-access-token` → 401; com token de subconta usado com `acct` de outro prestador → 401; sem `acct` e com token da conta-raiz → 200; com `acct` e token da conta-raiz → 401 (o token de subconta é derivado por `acct`). Esperado do código.
 - **T25.** Reenviar o mesmo evento (mesmo `id`) duas vezes. Esperado: a segunda não gera efeito; uma linha em `payment_events`.
 - **T26.** Entregar `PAYMENT_CONFIRMED` depois de `PAYMENT_RECEIVED` para a mesma cobrança. Esperado: status continua `received`.
-- **T27.** Apontar webhook de teste para endpoint que responde 500. Após 15 entregas seguidas, esperado: fila interrompida; e-mails nas tentativas 5, 10 e 15; eventos retidos por 14 dias. Depois de corrigir o endpoint, reativar pela página "Como reativar fila interrompida" (não aberta). `POST /v3/webhooks/{id}/removeBackoff` → 204. Registrar `penalizedRequestsCount` (R16).
-- **T28.** `POST /v3/webhooks` com `authToken` de 31 caracteres → esperado 400 (mínimo 32). Com 64 caracteres → aceito (limite 255).
+- **T27.** Apontar webhook de teste para endpoint que responde 500. Após 15 entregas seguidas, esperado: fila interrompida; e-mails nas tentativas 5, 10 e 15; eventos retidos por 14 dias. Depois de corrigir o endpoint, reativar pelo painel (Menu do usuário → Integrações → Webhooks) ou com `PUT /v3/webhooks/{id}` e `{"interrupted": false}` (HTTP 200). `POST /v3/webhooks/{id}/removeBackoff` só remove a penalização (204), não reativa. Registrar `penalizedRequestsCount` (campo não consta na página de penalização; R16).
+- **T28.** `POST /v3/webhooks` com `authToken` de 31 caracteres → registrar a resposta (a referência não documenta o código para authToken fora do limite; 400 é hipótese; mínimo 32). Com 64 caracteres → aceito (limite 255).
 
 **Limites e concorrência**
 
@@ -374,38 +377,38 @@ Pré-requisitos: duas contas de sandbox (uma PJ para conta-pai, uma subconta de 
 
 ## 13. Itens para o advogado
 
-Todos os itens abaixo são fatos de documentação ou perguntas. Nenhum é parecer. Citações: leitor de páginas, ver nota na seção "Limites desta pesquisa".
+Todos os itens abaixo são fatos de documentação ou perguntas. Nenhum é parecer. Citações: leitor de páginas, ver nota na seção "Limites desta pesquisa". Na revisão de 2026-11-08, as citações de L1, L2, L3, L7 e L8 foram reconferidas nas páginas reabertas; as de L4 (evento), L5 e L6 não.
 
 **L1. Custódia e Conta Escrow** [CONDICIONAL: depende de parecer]
 - Asaas, Conta Escrow (intro-escrow, 2026-09-02): "A Conta Escrow permite reter temporariamente valores recebidos por uma subconta até o encerramento da garantia." (citação do leitor)
 - Mesma página: "Enquanto a garantia estiver ativa, o recebimento existe, mas o valor não fica disponível no saldo da subconta." (citação do leitor)
-- Mesma página: "Um recebimento sob garantia deve ser considerado recebido, mas ainda indisponível no saldo da subconta." (paráfrase)
+- Mesma página: a garantia termina após o prazo configurado, manualmente pela plataforma ou quando a funcionalidade é desligada; a página não diz se há evento em cada caso. A frase "Um recebimento sob garantia deve ser considerado recebido..." não foi encontrada na releitura e foi removida.
 - Não consta na página: quem detém os valores, se a atividade é regulada, qual instituição faz a custódia, ou os termos do contrato.
 - Pergunta: a retenção feita pelo Asaas altera a análise do item 1 do `DECISOES.md` (seção 4, "Comissão")? E a análise do "Pagamento retido"?
 
 **L2. Fluxo de valores com split** [CONDICIONAL: depende de parecer]
 - Split FAQ (2026-10-09), paráfrase: o `percentualValue` é calculado sobre o `netValue`, valor da cobrança após as tarifas aplicáveis.
-- Split FAQ e split-in-single-payments (2026-10-13), paráfrase: "O saldo líquido não alocado aos recebedores permanece na conta que criou a cobrança."
+- Split FAQ e split-in-single-payments (2026-10-13), em inglês (reaberta): "the net balance not allocated to recipients remains in the account that created the charge" (tradução nossa).
 - Pergunta: com split, o saldo que sobra na conta-raiz é do WorkEasy? Isso muda a análise do item 1 do `DECISOES.md`?
 
 **L3. Estorno que reverte repasse** [CONDICIONAL: depende de parecer]
-- Split FAQ, paráfrase: "As transferências relacionadas à cobrança também são estornadas." E "Contas que receberam valores pelo Split terão as respectivas transferências revertidas."
+- Split FAQ, em inglês (reaberta): "The transfers related to the charge are also refunded." A frase sobre "Contas que receberam valores pelo Split terão as respectivas transferências revertidas" não foi encontrada na releitura e foi removida.
 - Pergunta: os termos do prestador devem prever reversão do repasse? O que vale se o prestador já sacou? Isso se aplica ao estorno feito por cancelamento (`payments-void`, `refundAfterCancel`)?
 
 **L4. Divergência e bloqueio de valores** [CONDICIONAL: depende de parecer]
 - Split FAQ, paráfrase: a divergência pode bloquear "valor e splits" para ajuste; prazo de 2 dias úteis.
-- Evento `PAYMENT_SPLIT_DIVERGENCE_BLOCK` (página de eventos, citação do leitor): "Valor da cobrança bloqueado por divergência de Split."
+- Evento `PAYMENT_SPLIT_DIVERGENCE_BLOCK` (página de eventos; citação do leitor, não reconferida): "Valor da cobrança bloqueado por divergência de Split."
 - Pergunta: durante o bloqueio, de quem é o valor? Quem responde perante o cliente e o prestador?
 
 **L5. Modelo BaaS e "instituição prestadora"** [CONDICIONAL: depende de parecer]
-- criacao-de-subcontas-baas (2026-10-27), citação do leitor: o modelo BaaS "antigo White Label" serve para "fornecimento de serviços bancários para terceiros".
-- Mesma página: "O modelo também passa a exigir a identificação do Asaas como instituição prestadora".
-- Mesma página: "é obrigatório evidenciar a marca, os links e os textos de responsabilidade do Asaas" nos pontos de contato com o cliente final.
+- criacao-de-subcontas-baas (2026-10-27), citação do leitor, não reconferida: o modelo BaaS "antigo White Label" serve para "fornecimento de serviços bancários para terceiros".
+- Mesma página: "agora está sujeito à obrigatoriedade de exposição e identificação do Asaas como Instituição Prestadora" (reaberta)..
+- Mesma página: "é obrigatório evidenciar a marca, os links e os textos de responsabilidade do Asaas" nos pontos de contato com o cliente final (*não reconferido nesta revisão*).
 - Pergunta: o que muda para os termos de uso e para a interface do WorkEasy? O WorkEasy se apresenta como intermediário, e isso é compatível com a identificação do Asaas como prestadora? Ligar à pergunta 1 do `DECISOES.md`.
 
 **L6. Titular da subconta e dados do prestador** [incerto: sem fonte aberta sobre LGPD nesta pesquisa]
 - detalhamento-do-fluxo (2026-08-28), paráfrase: a análise cadastral normalmente inclui documento de identificação e selfie do titular ou responsável.
-- O WorkEasy coleta CPF/CNPJ, data de nascimento (PF), endereço, renda mensal e telefone para criar a subconta (`asaas-onboard`).
+- O WorkEasy coleta nome, e-mail, CPF/CNPJ, data de nascimento (PF), tipo de empresa (PJ), telefone, renda mensal, endereço, número, complemento, bairro e CEP para criar a subconta (`asaas-onboard`, schema `Body`).
 - Pergunta: base legal, aviso ao prestador e compartilhamento com o Asaas. Ligar à pergunta 5 do `DECISOES.md`.
 
 **L7. Período de avaliação regulatória** [CONDICIONAL: depende de parecer]
@@ -413,7 +416,7 @@ Todos os itens abaixo são fatos de documentação ou perguntas. Nenhum é parec
 - Pergunta: o WorkEasy pode operar com esses limites? Como comunicar ao prestador um bloqueio? Os limites valem para a conta-raiz (assinatura Pro)?
 
 **L8. Pix Automático e consentimento** [incerto: sem fonte aberta sobre CDC nesta pesquisa]
-- diferenca-entre-pix-automatico-e-assinaturas-1 (2026-10-27), paráfrase: "Pix Automático realiza débitos recorrentes via Pix após autorização do pagador."
+- diferenca-entre-pix-automatico-e-assinaturas-1 (2026-10-27), frase verificada na releitura: "No Pix Automático, uma autorização ativa permite o débito recorrente via Pix sem uma nova confirmação a cada ciclo."
 - Pergunta: texto de consentimento e de cancelamento para cobrança recorrente. Ligar à pergunta 7 do `DECISOES.md` (teste grátis e cobrança automática).
 
 **L9. Taxa recorrente do escrow** [incerto]
@@ -431,8 +434,8 @@ Todos os itens abaixo são fatos de documentação ou perguntas. Nenhum é parec
 5. Se `accessToken.apiKey` existe na resposta (R6).
 6. Código de erro e tratamento de cobrança já paga em `DELETE /v3/payments/{id}` (409 não documentado).
 7. Enum completo de `status` de cobrança (R15).
-8. Limite de 4 casas em `percentualValue` e soma máxima de 100%: vieram de resumo de busca, não de página aberta.
-9. Página "Como reativar fila interrompida" e página de restauração de cobrança: não abertas.
+8. Limite de 4 casas em `percentualValue`: só no código e na ARQUITETURA, não na documentação lida. A soma máxima (até o líquido) consta na split-faq, reaberta nesta revisão.
+9. Página de restauração de cobrança: não aberta. A página "Como reativar fila interrompida" foi reaberta (`PUT /v3/webhooks/{id}`, `interrupted: false`).
 10. Página de estorno de boleto, página de confirmação de recebimento em dinheiro, página de Conta Escrow com endpoints de configuração: não abertas.
 11. Página de assinatura com cartão: não aberta (R14).
 12. Pix Automático: lista de status da autorização e de eventos além dos citados; relação entre `pixAutomaticAuthorizationMode` (assinatura) e `paymentCreationMode` (autorização).
@@ -440,7 +443,7 @@ Todos os itens abaixo são fatos de documentação ou perguntas. Nenhum é parec
 14. Limite por segundo ou por minuto: a página só dá cota de 12 horas e 50 GET simultâneos.
 15. Cabeçalho `Authorization: Bearer`: não documentado. Não é usado.
 16. Se a sandbox aceita avançar datas (vencimento, OVERDUE, fim do trial).
-17. Chave de subconta: redação exata das regras de inatividade (3 e 6 meses, paráfrase do leitor).
+17. Chave de subconta BaaS: regra de expiração em 6 meses (a página lida traz só a exceção de 3 meses para BaaS).
 
 ---
 
@@ -451,13 +454,13 @@ Todos abaixo são de produto ou de código, registrados sem alteração. Corrigi
 1. `asaas-onboard` grava `active` sem consultar `GET /v3/myAccount/status` (R4).
 2. `asaas-onboard` não verifica CNPJ da conta-raiz nem habilitação BaaS (R1, R2).
 3. `asaas-onboard` diz `webhook_registered: true` com base no envio, não na confirmação (R5).
-4. Comentário de `asaas-onboard` cita `accessToken.apiKey` como fonte, sem confirmação (R6).
+4. Comentário em `_shared/asaas-client.ts` (linha 230) cita `accessToken.apiKey` como fonte, sem confirmação (R6).
 5. `asaas-events.ts` mapeia `PAYMENT_SPLIT_DIVERGENCE_BLOCK`, `..._FINISHED` e `PAYMENT_SPLIT_CANCELLED` como sem efeito (R7).
 6. `asaas-webhook` grava `refunded` ao receber 2xx do estorno (R10).
 7. `refundAfterCancel` não usa `splitRefunds` e não trata saldo insuficiente de subconta de forma específica (R11).
 8. `payments-void` trata 409 como "já paga" sem confirmação na documentação (R12).
 9. `subscriptions-manage` lê `invoiceUrl` logo após criar a assinatura, sem confirmar geração da cobrança (R13).
-10. `subscriptions-manage` manda `CREDIT_CARD` sem dados de cartão (R14).
+10. `subscriptions-manage` manda `CREDIT_CARD`, sem dados de cartão nem token, quando o prestador escolhe cartão (R14).
 11. `ASAAS_PAID` e `ASAAS_UNPAID` incluem status não conferidos (R15).
 12. Fila de webhook sem runbook de reativação (R16).
 13. `callAsaas` não trata 429 nem repete (R18).
@@ -477,3 +480,18 @@ Todos abaixo são de produto ou de código, registrados sem alteração. Corrigi
 6. Elegibilidade de Pix Automático e suporte a subconta e a split (seção 11).
 7. Confirmação de que `webhooks[]` em `POST /v3/accounts` é aceito e como conferir (R5).
 8. Código de resposta de `DELETE /v3/payments/{id}` em cobrança paga (R12).
+
+---
+
+## 17. Consistência com documentos irmãos (revisão de 2026-11-08)
+
+Itens encontrados na revisão e **não corrigidos aqui**, porque estão em outros documentos. Cada um precisa de decisão ou de edição pelo dono do documento:
+
+1. **Tarifa de R$ 2 com tag de fonte.** `DECISOES.md` usa "cerca de R$ 2" por cobrança na seção 3 (D2, marcado [fonte]), na seção 6 (marcado [estimativa]) e em D8 (sem tag). Não há fonte no repositório, e esta pesquisa não leu tabela de tarifas (seção 9). Ação: trocar a tag por [incerto] ou anexar fonte conferida.
+2. **Cartão cobrado pela página do Asaas.** `DECISOES.md` (D3), `ARQUITETURA.md` (linhas 583 a 585), `juridico/02-termos-do-prestador.md` (linha 477) e `operacao/04-operacao-concierge-do-dia-a-dia.md` (linha 228) assumem que o cartão de assinatura é cobrado pelo `invoiceUrl`. A página de assinatura com cartão não foi lida (R14). Ação: rodar T16 antes de manter essas frases.
+3. **Tarifa do Asaas no repasse.** `juridico/02`, cláusula 11.4, diz ao prestador que o valor líquido, depois das tarifas do Asaas, vai para a conta dele. Isso já atribui a tarifa ao prestador, enquanto R8 deixa a decisão em aberto. Ação: decidir antes de publicar os termos.
+4. **Reativação de fila.** `juridico/08-plano-de-resposta-a-incidentes.md`, seção 9.3, item 4, diz "O guia de reativação não foi lido [incerto]". Agora foi lido: reativação pelo painel (Integrações → Webhooks) ou `PUT /v3/webhooks/{id}` com `interrupted: false`, depois de corrigir a causa (seção 8 e T27 desta pesquisa). Ação: atualizar esse passo. O mesmo documento cita `https://docs.asaas.com/docs/fila-pausada`, URL que não foi reaberta aqui.
+5. **Prazo de 10 dias úteis no estorno de cartão.** `operacao/07-suporte-disputas-e-moderacao.md`, linha 120, atribui a uma página do Asaas "lida em 2026-11-08" a frase "pode levar até 10 dias úteis para aparecer na fatura do pagador". Essa página não está nesta pesquisa e não foi reaberta. Ação: citar a página aqui ou remover a frase.
+6. **Eventos `PIX_AUTOMATIC_RECURRING_*`.** A seção 11 e R20 citavam esses nomes. Não aparecem na lista de 30 eventos de cobrança nem na de 7 eventos de assinatura, lidas nesta revisão. Nenhum documento irmão os cita. Ação: confirmar na página própria de eventos de Pix Automático antes de qualquer código.
+
+**Consistente com o banco e com o código (conferido nesta revisão):** Pro R$ 49,00 (`pro_price_cents` = 4900); teste de 30 dias (`pro_trial_days` = 30, teto 90); comissão desligada (`commission_enabled` = false), com 12% e teto de R$ 150,00 (`commission_bps` = 1200, `commission_cap_cents` = 15000); pagamento retido desligado (`escrow_enabled` = false); 5 propostas no grátis. Conferem com `DECISOES.md` (D2 a D5), `juridico/02` (linhas 435 e 436) e `ARQUITETURA.md` (linhas 145 a 151). Carência do Pro (`PRO_GRACE_DAYS`) padrão 0, em `_shared/config.ts`, conforme `DECISOES.md` e `operacao/04`.
