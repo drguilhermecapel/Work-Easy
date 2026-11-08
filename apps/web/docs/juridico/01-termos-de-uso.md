@@ -9,6 +9,7 @@
 | Redigido em | 2026-10-23 |
 | Lugar no pacote | Documento 01. Remete aos documentos 02 (Termos do Prestador), 03 (Política de Privacidade), 04 (Política de Cancelamento, Reembolso e Garantia), 05 (Política de Avaliações e Moderação) e 10 (SAC e Atendimento). |
 | Estado do produto nesta data | Protótipo mesclado em `main`. Sem implantação e sem usuários reais. Pagamento (Asaas), WhatsApp e e-mail nunca foram testados contra os serviços reais. |
+| Revisão | 2026-11-08: produto reconferido no código; leis não reabertas nesta data (ver "Fontes consultadas"). |
 
 ## Como ler este rascunho
 
@@ -19,7 +20,7 @@
    - `[PLANEJADO]`: ainda não existe no produto. Se continuar sem existir na data da publicação, apague a frase.
    - `[incerto]`: não foi confirmado em fonte aberta nesta sessão.
    - `[RAZÃO SOCIAL]`, `[CNPJ]`, `[ENDEREÇO]`, `[E-MAIL DO SAC]`, `[E-MAIL DO ENCARREGADO]`, `[DATA DE VIGÊNCIA]`: dados da empresa, que ainda não existe.
-4. **De onde vêm os fatos.** O que o produto faz foi conferido em `apps/web/docs/ARQUITETURA.md` e no código (migrations, Edge Functions e telas) em 2026-10-23. O que a lei diz foi lido nas fontes da última seção, na mesma data. Nada aqui foi testado com usuários reais.
+4. **De onde vêm os fatos.** O que o produto faz foi conferido em `apps/web/docs/ARQUITETURA.md` e no código (migrations, Edge Functions e telas) em 2026-10-23. O que a lei diz foi lido nas fontes da última seção, na mesma data. Em 2026-11-08 o produto foi conferido de novo no código; as leis não puderam ser reabertas nessa data (planalto.gov.br bloqueou o acesso), e as citações afetadas estão marcadas [incerto]. Nada aqui foi testado com usuários reais.
 5. **Números que podem mudar.** "3 propostas por pedido" e "2 dias por semana" são configurações da plataforma (`platform_settings`). O texto diz o valor inicial. Se o administrador mudar a configuração, o texto precisa mudar (ou a tela deve ler a configuração).
 6. **Quem é "nós".** [RAZÃO SOCIAL], empresa de tecnologia a ser criada, separada de qualquer clínica ou atividade médica do dono.
 7. **Duas palavras parecidas, dois sentidos.** No catálogo, "conferido" e "a confirmar" dizem se a base legal da regra de uma ocupação foi checada em fonte. No perfil do profissional, "informado pelo profissional" e "confirmado pelo WorkEasy" dizem se o número do registro foi conferido por uma pessoa da equipe. O texto usa cada par no seu sentido.
@@ -106,7 +107,7 @@ Estas frases descrevem o papel de cada um. Elas não retiram direitos que a lei 
 
 "Aprovado" ou "confirmado pelo WorkEasy" não é recomendação nem garantia de resultado. No catálogo, "conferido" quer dizer que a base legal da regra foi checada em fonte. "A confirmar" quer dizer que ainda não foi, e a regra pode mudar depois de revisão por advogado.
 
-**2.5 Pedidos pelo WhatsApp (modo concierge).** [PLANEJADO] Em alguns períodos, o pedido pode ser feito pelo WhatsApp da operação do WorkEasy. O app abre o WhatsApp com a mensagem pronta, e nada é enviado até você tocar em enviar. A operação responde pelo WhatsApp, que tem termos próprios.
+**2.5 Pedidos pelo WhatsApp (modo concierge).** [CONDICIONAL: o botão só aparece quando a operação configura o número do WhatsApp. Se não houver número na publicação, apague este item.] Em alguns períodos, o pedido pode ser feito pelo WhatsApp da operação do WorkEasy. O app abre o WhatsApp com a mensagem pronta, e nada é enviado até você tocar em enviar. A operação responde pelo WhatsApp, que tem termos próprios.
 
 **2.6 Telas de demonstração.** [PLANEJADO: apagar este item quando essas telas saírem do app.] Telas marcadas como "Demonstração" ou "Protótipo" (por exemplo, perfis fictícios de médicos, sala de teleconsulta e prontuários) usam dados fictícios. Segundo o aviso de cada tela, nelas não há serviço real e nada do que você digita é enviado ou guardado.
 
@@ -116,7 +117,7 @@ Estas frases descrevem o papel de cada um. Elas não retiram direitos que a lei 
 
 **3.2 Cuide do seu código.** Quem tem o código entra na sua conta. Não o compartilhe. Mantenha seu e-mail e seu celular sob seu controle. Se achar que alguém entrou na sua conta, fale com o SAC.
 
-**3.3 Idade mínima.** **Para ter conta, você precisa ter 18 anos completos.** Em regra, a lei civil considera a pessoa capaz de todos os atos da vida civil a partir dos 18 anos (Código Civil, art. 5º). O WorkEasy não é feito para crianças e adolescentes. Serviços para crianças (como babá ou reforço escolar) são contratados por um adulto responsável. Hoje o app não confere a idade: vale a sua declaração ao aceitar estes Termos. [PLANEJADO: conferir a idade nas ocupações cuja oferta é proibida a menores de 18 anos, como a entrega de bebida alcoólica.] **Se soubermos que uma conta é de menor de 18 anos, podemos suspendê-la e excluí-la.**
+**3.3 Idade mínima.** **Para ter conta, você precisa ter 18 anos completos.** Em regra, a lei civil considera a pessoa capaz de todos os atos da vida civil a partir dos 18 anos (Código Civil, art. 5º) [incerto: lei não reaberta]. O WorkEasy não é feito para crianças e adolescentes. Serviços para crianças (como babá ou reforço escolar) são contratados por um adulto responsável. Hoje o app não confere a idade: vale a sua declaração ao aceitar estes Termos. [PLANEJADO: conferir a idade nas ocupações cuja oferta é proibida a menores de 18 anos, como a entrega de bebida alcoólica.] **Se soubermos que uma conta é de menor de 18 anos, podemos suspendê-la e excluí-la.**
 
 **3.4 Uma conta por pessoa; dados verdadeiros.** Cada pessoa tem uma conta. Informe nome e contatos verdadeiros. Não use a conta de outra pessoa e não crie contas para fugir de um bloqueio ou do limite do item 5.6. O telefone do perfil é informativo: as mensagens do WorkEasy vão só para o e-mail ou celular que você confirmou no login.
 
@@ -132,13 +133,13 @@ Estas frases descrevem o papel de cada um. Elas não retiram direitos que a lei 
 
 **4.2 Número de propostas.** Cada pedido recebe um número máximo de propostas, definido na configuração da plataforma (o valor inicial é 3). O valor pode mudar. Atingido o limite, outros profissionais não conseguem propor.
 
-**4.3 Sem promessa de resposta.** **Não garantimos que seu pedido receba propostas, nem em quanto tempo.** O pedido fica aberto por 7 dias e depois é encerrado automaticamente. Quando o envio estiver ativo, avisamos por e-mail ou WhatsApp que chegou uma proposta.
+**4.3 Sem promessa de resposta.** **Não garantimos que seu pedido receba propostas, nem em quanto tempo.** O pedido fica aberto por 7 dias. Nenhum pedido fica aberto por mais de 30 dias. Depois do prazo, ele é encerrado automaticamente. Quando o envio estiver ativo, avisamos por e-mail ou WhatsApp que chegou uma proposta.
 
 **4.4 Proposta.** A proposta é uma oferta do profissional, com preço, mensagem e validade. Não é uma oferta do WorkEasy. Para aceitar, você informa o dia e os horários (horário de Brasília). Ao aceitar, as outras propostas são recusadas, o pedido deixa de receber propostas e o atendimento é criado com esse profissional. A partir daí, o profissional passa a ver o nome, o telefone e a cidade do seu perfil, e você passa a ver os dados de contato do perfil dele. Antes de aceitar, leia a página do profissional, inclusive o selo do registro (item 2.4).
 
 **4.5 O que não escrever no pedido.** Não escreva telefone, endereço completo nem dados de saúde, seus ou de outra pessoa. A descrição pode ser vista pelos profissionais que atendem o bairro.
 
-**4.6 Assistente de IA para pedidos.** [PLANEJADO] O WorkEasy pode vir a oferecer um assistente que transforma o seu texto livre em um pedido organizado. Hoje o app não tem essa tela. Se vier a ter, o texto será enviado a um serviço de inteligência artificial de terceiros, o resultado pode ter erros e você deverá conferi-lo antes de enviar o pedido.
+**4.6 Inteligência artificial.** [PLANEJADO] O WorkEasy pode vir a oferecer um assistente que transforma o seu texto livre em um pedido organizado. Hoje o app não tem essa tela para o cliente. Hoje há dois recursos de IA, que só funcionam quando a plataforma tem o serviço de IA configurado: a sugestão de orçamento, para o profissional, e o resumo semanal da linha Cuidado, para a família. Quando estão ligados, o texto usado nesses recursos é enviado a um serviço de inteligência artificial de terceiros. O resultado pode ter erros: confira antes de enviar um orçamento ou de usar um resumo. [CONDICIONAL: depende da configuração do serviço e de parecer sobre o tratamento desses dados.]
 
 ### 5. Agendamentos, agenda e limite semanal do trabalho doméstico
 
@@ -166,7 +167,7 @@ Estas frases descrevem o papel de cada um. Elas não retiram direitos que a lei 
 **5.6 Trabalho doméstico: limite de dias por semana.**
 
 - a) Algumas ocupações do catálogo são de trabalho doméstico (por exemplo: diarista, babá, cuidador de idosos, cozinheira, motorista particular e caseiro). Para elas, o app limita quantos dias diferentes por semana (segunda a domingo, horário de Brasília) o mesmo profissional pode atender a mesma pessoa ou a mesma casa. **Hoje o limite é de 2 dias por semana** (é uma configuração da plataforma). Se um atendimento passar do limite, o app não o cria e mostra um aviso. Atendimentos cancelados não contam. Os concluídos continuam contando na semana.
-- b) **Por que existe.** A Lei Complementar 150/2015 define quem é empregado doméstico (art. 1º). É quem presta serviços de forma contínua, subordinada, onerosa e pessoal, sem finalidade lucrativa, à pessoa ou à família, no âmbito residencial, por mais de 2 dias por semana. A lei pode tratar o trabalho doméstico acima desse limite como relação de emprego. O WorkEasy aplica o limite por causa dessa regra.
+- b) **Por que existe.** A Lei Complementar 150/2015 define quem é empregado doméstico (art. 1º) [incerto: lei não reaberta]. É quem presta serviços de forma contínua, subordinada, onerosa e pessoal, sem finalidade lucrativa, à pessoa ou à família, no âmbito residencial, por mais de 2 dias por semana. A lei pode tratar o trabalho doméstico acima desse limite como relação de emprego. O WorkEasy aplica o limite por causa dessa regra.
 - c) **O que o limite não é.** Não é orientação trabalhista. Ficar dentro do limite não garante, por si só, que não exista relação de emprego.
 - d) **Acordo direto, fora do app.** Se você e o profissional quiserem mais dias, o acerto é feito fora do WorkEasy, entre vocês, e é de responsabilidade de vocês, inclusive as obrigações trabalhistas, previdenciárias e fiscais. **O WorkEasy não participa desse acordo, não registra o vínculo e não calcula encargos.** Procure um contador ou um advogado trabalhista.
 - e) É proibido usar mais de uma conta, outro nome ou outro artifício para contornar o limite (cláusula 10).
@@ -174,7 +175,7 @@ Estas frases descrevem o papel de cada um. Elas não retiram direitos que a lei 
 **5.7 Linha Cuidado.** [CONDICIONAL: depende de parecer. Publicar este item só quando a linha for aberta ao público.]
 
 - a) A linha Cuidado ajuda uma família a organizar plantões de cuidadores independentes. A família cadastra uma casa e a pessoa cuidada (primeiro nome, ano de nascimento, preferências e um contato de emergência), cria plantões e os oferece a cuidadores aprovados. O primeiro que aceita fica com o plantão.
-- b) No começo e no fim do plantão, o cuidador registra a entrada e a saída. Se quiser, envia a localização do aparelho, e a família vê onde o registro foi feito. O cuidador pode enviar um relatório do dia sobre refeições, atividades e humor. O relatório não é clínico.
+- b) No começo e no fim do plantão, o cuidador registra a entrada e a saída. Se quiser, envia a localização do aparelho, e a família vê onde o registro foi feito. O cuidador pode enviar um relatório do dia sobre refeições, atividades e humor. O relatório não é clínico. Se o resumo semanal com IA estiver ligado (item 4.6), ele é feito a partir da rotina registrada na casa [incerto: conferir quais campos são enviados].
 - c) O cuidador é independente. **O WorkEasy não presta cuidado de saúde, não orienta tratamento e não foi feito para guardar dados de saúde.** Não escreva doenças, diagnósticos, remédios, doses, exames ou sintomas no app. Combine esses cuidados direto com o cuidador, fora do app.
 - d) **O WorkEasy não recebe nem repassa o pagamento do plantão.** O valor é combinado e pago diretamente entre a família e o cuidador. O cuidador vê o valor combinado no app.
 - e) Vale sempre o limite de dias por semana do item 5.6 para o mesmo cuidador na mesma casa.
@@ -187,9 +188,9 @@ Estas frases descrevem o papel de cada um. Elas não retiram direitos que a lei 
 
 **6.2 Sem taxa para o cliente.** Hoje o WorkEasy não soma nenhuma taxa ao valor que você paga. Se isso mudar, avisaremos antes, e a mudança constará nestes Termos.
 
-**6.3 Pagamento pelo app.** [CONDICIONAL: depende de parecer] Quando estiver disponível, a cobrança é gerada por meio do Asaas (ASAAS Gestão Financeira Instituição de Pagamento S.A. [incerto: conferir razão social e autorização no Banco Central]). Você escolhe Pix, cartão de crédito ou boleto. Os dados do cartão são digitados na página do Asaas: o WorkEasy não recebe o número do cartão. Na primeira cobrança, pedimos seu CPF ou CNPJ. Para emitir a cobrança, enviamos ao Asaas seu nome, CPF ou CNPJ, e-mail e celular (Política de Privacidade, documento 03). A cobrança vence no dia seguinte. Se vencer, gere outra. Cobranças de atendimento cancelado são canceladas (cláusula 7).
+**6.3 Pagamento pelo app.** [CONDICIONAL: depende de parecer] Quando estiver disponível, a cobrança é gerada por meio do Asaas (ASAAS Gestão Financeira Instituição de Pagamento S.A. [incerto: conferir razão social e autorização no Banco Central]). Você escolhe Pix, cartão de crédito ou boleto. Os dados do cartão são digitados na página do Asaas: o WorkEasy não recebe o número do cartão. Na primeira cobrança, o CPF ou CNPJ é obrigatório: sem ele, a cobrança não é criada. Para emitir a cobrança, enviamos ao Asaas seu nome, CPF ou CNPJ, e-mail e celular (Política de Privacidade, documento 03). A cobrança vence no dia seguinte. Se vencer, gere outra. Cobranças de atendimento cancelado são canceladas (cláusula 7).
 
-**6.4 Quem cobra e quem recebe.** [CONDICIONAL: depende de parecer] A cobrança é emitida na conta do WorkEasy no Asaas, com a descrição "WorkEasy: atendimento" seguida do nome da ocupação. O Asaas divide o valor: a parte do profissional vai para a conta de recebimento dele no Asaas. [Nota ao advogado: se o parecer permitir, acrescentar aqui "O WorkEasy não é instituição de pagamento." Ver ponto P3.]
+**6.4 Quem cobra e quem recebe.** [CONDICIONAL: depende de parecer] A cobrança é emitida na conta do WorkEasy no Asaas, com a descrição "WorkEasy: atendimento" seguida do código da ocupação no catálogo (por exemplo, "diarista"). O Asaas divide o valor: a parte do profissional vai para a conta de recebimento dele no Asaas. [Nota ao advogado: se o parecer permitir, acrescentar aqui "O WorkEasy não é instituição de pagamento." Ver ponto P3.]
 
 **6.5 Pagamento fora do app.** Você pode combinar o pagamento direto com o profissional. **Nesse caso, o WorkEasy não recebe, não confere e não registra o pagamento, e os recursos de pagamento, reembolso e avaliação do app não se aplicam a ele.** Atendimentos de "cliente próprio" do profissional são cobrados por ele.
 
@@ -214,13 +215,13 @@ Resumo. As regras completas estão na Política de Cancelamento, Reembolso e Gar
 
 **7.1 Cancelar.** O cliente pode cancelar enquanto o atendimento está "Aguardando o profissional" ou "Aceito", com um motivo opcional. A ação não pode ser desfeita. O profissional também pode cancelar nesses dois estados (ou recusar o pedido de horário).
 
-**7.2 A cobrança em aberto.** Quando um atendimento é cancelado, a cobrança em aberto é cancelada no Asaas. Não pague uma cobrança de atendimento cancelado. Se você pagar mesmo assim, o WorkEasy pede o reembolso total ao Asaas. O Asaas só aceita esse pedido, pela integração do WorkEasy com ele (API), para cobranças de cartão e de Pix. Para boleto, o reembolso depende de tratamento manual pelo SAC.
+**7.2 A cobrança em aberto.** Quando um atendimento é cancelado, a cobrança em aberto é cancelada no Asaas. Não pague uma cobrança de atendimento cancelado. Se você pagar mesmo assim, o WorkEasy pede o reembolso total ao Asaas. Pela integração atual, o WorkEasy pede esse estorno automaticamente só para cobranças de cartão e de Pix. Para boleto, o caso é tratado pelo SAC. Se o Asaas recusar o estorno, a equipe trata o caso pelo SAC. [incerto: a regra do Asaas para estorno de cobrança com divisão (split), quando a subconta já sacou, não está publicada.]
 
 **7.3 Depois do pagamento.** **Hoje o app não tem botão para cancelar um atendimento já pago, nem para o cliente nem para o profissional. Para cancelar, desistir ou pedir reembolso depois de pagar, fale com o SAC.** [PLANEJADO: botão de arrependimento no app, pela mesma ferramenta usada na contratação.]
 
-**7.4 Direito de arrependimento.** [CONDICIONAL: depende de parecer quanto ao serviço já iniciado ou executado] Quando a contratação acontece fora de um estabelecimento comercial, como pela internet, o CDC permite desistir em até 7 dias. O prazo conta da contratação ou do recebimento do serviço. Os valores pagos são devolvidos, atualizados (art. 49). O Decreto 7.962/2013 (art. 5º) manda informar de forma clara os meios para exercer esse direito. Ele pode ser exercido pela mesma ferramenta da contratação ou por outro meio. Por enquanto, o meio é o SAC. Como o direito se aplica a serviço já iniciado, e como pedir, está no documento 04.
+**7.4 Direito de arrependimento.** [CONDICIONAL: depende de parecer quanto ao serviço já iniciado ou executado] Quando a contratação acontece fora de um estabelecimento comercial, como pela internet, o CDC permite desistir em até 7 dias. O prazo conta da contratação ou do recebimento do serviço. Os valores pagos são devolvidos, atualizados (art. 49) [incerto: lei não reaberta]. O Decreto 7.962/2013 (art. 5º) manda informar de forma clara os meios para exercer esse direito. Ele pode ser exercido pela mesma ferramenta da contratação ou por outro meio. Por enquanto, o meio é o SAC. Como o direito se aplica a serviço já iniciado, e como pedir, está no documento 04.
 
-**7.5 Garantia.** **O WorkEasy não oferece garantia própria de refazer o serviço ou de devolver o valor.** [CONDICIONAL: depende de parecer e de ligar o pagamento retido] Isso não afeta os direitos que a lei dá a você contra quem presta o serviço. Por exemplo, em caso de vício de qualidade, o CDC permite pedir a reexecução do serviço, a restituição da quantia paga ou o abatimento proporcional do preço (art. 20). O WorkEasy ajuda como mediador, pelo SAC.
+**7.5 Garantia.** **O WorkEasy não oferece garantia própria de refazer o serviço ou de devolver o valor.** [CONDICIONAL: depende de parecer e de ligar o pagamento retido] Isso não afeta os direitos que a lei dá a você contra quem presta o serviço. Por exemplo, em caso de vício de qualidade, o CDC permite pedir a reexecução do serviço, a restituição da quantia paga ou o abatimento proporcional do preço (art. 20) [incerto: lei não reaberta]. O WorkEasy ajuda como mediador, pelo SAC.
 
 ### 8. Avaliações
 
@@ -228,7 +229,7 @@ Resumo. As regras completas estão na Política de Avaliações e Moderação (d
 
 **8.1 Quem pode avaliar.** Só o cliente do atendimento, depois que ele estiver "Concluído" ou "Liberado" e tiver sido pago pelo app. Cada atendimento pode ter uma avaliação, com nota de 1 a 5 e um comentário opcional de até 1.000 caracteres. O profissional não avalia o cliente.
 
-**8.2 Onde aparecem.** Na página pública do profissional, se a política da ocupação permitir. Em algumas profissões, a política não permite ranking por nota (por regra do conselho profissional). Nelas, a avaliação não é exibida ao público e só você, o profissional e a equipe a veem. A tela avisa quando é assim.
+**8.2 Onde aparecem.** Na página pública do profissional, se a política da ocupação permitir. Em algumas profissões, a política não permite ranking por nota (por regra do conselho profissional) [incerto: depende da matriz por conselho]. Nelas, a avaliação não é exibida ao público e só você, o profissional e a equipe a veem. A tela avisa quando é assim.
 
 **8.3 Regras do conteúdo.** Escreva só sobre o serviço que você recebeu. Diga a verdade. Não coloque dados pessoais (seus ou de outras pessoas), ofensas, ameaças, discriminação, nem pedido ou oferta de vantagem em troca de nota.
 
@@ -264,9 +265,9 @@ Resumo. As regras completas estão na Política de Avaliações e Moderação (d
 - h) tentar acessar dados de outras pessoas, testar falhas de segurança sem autorização ou introduzir código malicioso; e
 - i) usar o WorkEasy para fraude, lavagem de dinheiro ou qualquer crime.
 
-**10.2 Como denunciar.** Para denunciar conteúdo, perfil ou conduta que viole estes Termos ou a lei, escreva ao SAC com o link ou a descrição. Analisamos e, havendo ilicitude ou violação, removemos o conteúdo. Quando removermos conteúdo seu, informamos o motivo, salvo se a lei ou uma ordem judicial disser o contrário (Marco Civil da Internet, art. 20).
+**10.2 Como denunciar.** Para denunciar conteúdo, perfil ou conduta que viole estes Termos ou a lei, escreva ao SAC com o link ou a descrição. Analisamos e, havendo ilicitude ou violação, removemos o conteúdo. Quando removermos conteúdo seu, informamos o motivo, salvo se a lei ou uma ordem judicial disser o contrário (Marco Civil da Internet, art. 20) [incerto: lei não reaberta].
 
-**10.3 Ordens judiciais e proteção de crianças e adolescentes.** Cumprimos ordens judiciais de remoção, no âmbito e nos limites técnicos do serviço. Se detectarmos conteúdo de aparente exploração ou abuso sexual de criança ou adolescente, sequestro ou aliciamento, vamos removê-lo e comunicá-lo às autoridades competentes, como a lei exige (Lei 15.211/2025, art. 27).
+**10.3 Ordens judiciais e proteção de crianças e adolescentes.** Cumprimos ordens judiciais de remoção, no âmbito e nos limites técnicos do serviço. Se detectarmos conteúdo de aparente exploração ou abuso sexual de criança ou adolescente, sequestro ou aliciamento, vamos removê-lo e comunicá-lo às autoridades competentes, como a lei exige (Lei 15.211/2025, art. 27) [incerto: lei não reaberta].
 
 **10.4 Consequências.** Podem ser: remoção do conteúdo, suspensão ou bloqueio da conta (item 3.6) e, quando a lei exigir, comunicação às autoridades.
 
@@ -274,7 +275,7 @@ Resumo. As regras completas estão na Política de Avaliações e Moderação (d
 
 **11.1 Cada um responde pelo que faz.** O profissional responde pelo serviço que presta: execução, qualidade, prazo, segurança no local e preço combinado. O WorkEasy responde pelo que ele próprio faz. Isso inclui o funcionamento da plataforma, as informações que ele mesmo publica, a análise de cadastro descrita no item 2.4, as cobranças que emite e a proteção dos dados que trata, nos termos da lei. Você responde pelas informações que dá e pelo uso que faz da sua conta.
 
-**11.2 Seus direitos de consumidor continuam valendo.** **Nada nestes Termos exclui ou reduz direito que a lei do consumidor dá a você.** O CDC prevê, por exemplo, duas regras. A primeira: o fornecedor de serviços responde, independentemente de culpa, pelos danos causados por defeitos na prestação do serviço (art. 14). A segunda: havendo mais de um responsável pelo dano, todos respondem solidariamente (art. 25, §1º). Quando a lei atribuir responsabilidade ao WorkEasy, ela será observada. [CONDICIONAL: depende de parecer quanto à posição do WorkEasy na cadeia de fornecimento]
+**11.2 Seus direitos de consumidor continuam valendo.** **Nada nestes Termos exclui ou reduz direito que a lei do consumidor dá a você.** O CDC prevê, por exemplo, duas regras. A primeira: o fornecedor de serviços responde, independentemente de culpa, pelos danos causados por defeitos na prestação do serviço (art. 14). A segunda: havendo mais de um responsável pelo dano, todos respondem solidariamente (art. 25, §1º) [incerto: lei não reaberta]. Quando a lei atribuir responsabilidade ao WorkEasy, ela será observada. [CONDICIONAL: depende de parecer quanto à posição do WorkEasy na cadeia de fornecimento]
 
 **11.3 O que não controlamos.** **O WorkEasy pode ficar indisponível por manutenção, por falha de internet ou de serviços de terceiros, e por caso fortuito ou força maior.** Os serviços de terceiros incluem hospedagem, Asaas, e-mail, SMS e WhatsApp. Avisamos quando possível. Isso não afasta responsabilidade que a lei imponha.
 
@@ -296,9 +297,9 @@ Resumo. As regras completas estão na Política de Avaliações e Moderação (d
 
 **13.2 Mensagens.** Mensagens sobre pedidos, propostas, atendimentos e pagamentos vão para o e-mail ou celular confirmado no seu login, por e-mail ou WhatsApp, quando o envio estiver ativo. Mensagens de novidades e ofertas só com o seu consentimento, que você pode revogar em "Minha conta".
 
-**13.3 Registros de acesso.** A lei manda guardar os registros de acesso à aplicação, sob sigilo, por 6 meses. A regra vale para o provedor de aplicações constituído como empresa, que atua de forma organizada, profissional e com fins econômicos (Marco Civil da Internet, art. 15). Os registros só são entregues a quem pede com autorização judicial (art. 15, §3º). [PLANEJADO: definir onde esses registros ficam e quem os acessa. Ver documento 03.]
+**13.3 Registros de acesso.** A lei manda guardar os registros de acesso à aplicação, sob sigilo, por 6 meses. A regra vale para o provedor de aplicações constituído como empresa, que atua de forma organizada, profissional e com fins econômicos (Marco Civil da Internet, art. 15) [incerto: lei não reaberta]. Os registros só são entregues a quem pede com autorização judicial (art. 15, §3º). [PLANEJADO: definir onde esses registros ficam e quem os acessa. Ver documento 03.]
 
-**13.4 SAC.** Fale com o atendimento pelo e-mail [E-MAIL DO SAC]. [PLANEJADO: página própria do SAC, telefone ou WhatsApp e horário de atendimento (documento 10).] Logo que recebermos seu contato, confirmamos o recebimento pelo mesmo meio que você usou. Respondemos em até 5 dias (Decreto 7.962/2013, art. 4º, parágrafo único). Pelo SAC você pode pedir informação, esclarecer dúvida, reclamar e pedir a suspensão ou o cancelamento do contrato.
+**13.4 SAC.** Fale com o atendimento pelo e-mail [E-MAIL DO SAC]. [PLANEJADO: página própria do SAC, telefone ou WhatsApp e horário de atendimento (documento 10).] Logo que recebermos seu contato, confirmamos o recebimento pelo mesmo meio que você usou. Respondemos em até 5 dias (Decreto 7.962/2013, art. 4º, parágrafo único) [incerto: decreto não reaberto]. Pelo SAC você pode pedir informação, esclarecer dúvida, reclamar e pedir a suspensão ou o cancelamento do contrato.
 
 **13.5 Se não resolvermos.** Você pode procurar o Procon e registrar a reclamação no Consumidor.gov.br, serviço público e gratuito de solução alternativa de conflitos de consumo pela internet. Sobre dados pessoais, ver também o documento 03.
 
@@ -306,13 +307,13 @@ Resumo. As regras completas estão na Política de Avaliações e Moderação (d
 
 **14.1 Lei.** Estes Termos seguem a lei brasileira.
 
-**14.2 Foro.** Se você é consumidor, qualquer ação entre você e o WorkEasy pode ser proposta no foro do seu domicílio (CDC, art. 101, I). Para quem usa o WorkEasy sem ser consumidor (por exemplo, uma empresa que contrata o serviço para a própria atividade), o foro é o da comarca da sede de [RAZÃO SOCIAL], [ENDEREÇO] [CONDICIONAL: depende de parecer].
+**14.2 Foro.** Se você é consumidor, qualquer ação entre você e o WorkEasy pode ser proposta no foro do seu domicílio (CDC, art. 101, I) [incerto: lei não reaberta]. Para quem usa o WorkEasy sem ser consumidor (por exemplo, uma empresa que contrata o serviço para a própria atividade), o foro é o da comarca da sede de [RAZÃO SOCIAL], [ENDEREÇO] [CONDICIONAL: depende de parecer].
 
 **14.3 Sem arbitragem obrigatória.** Estes Termos não obrigam você a usar arbitragem e não limitam o seu acesso à Justiça.
 
 **14.4 Solução amigável.** Antes de ir à Justiça, você pode procurar o SAC, o Procon e o Consumidor.gov.br. É uma opção sua, não uma condição.
 
-**14.5 Cláusula inválida.** Se uma cláusula destes Termos for considerada inválida, as outras continuam valendo, salvo se a falta dela causar ônus excessivo a uma das partes (CDC, art. 51, §2º).
+**14.5 Cláusula inválida.** Se uma cláusula destes Termos for considerada inválida, as outras continuam valendo, salvo se a falta dela causar ônus excessivo a uma das partes (CDC, art. 51, §2º) [incerto: lei não reaberta].
 
 **14.6 Comunicações.** Falamos com você pelo app, pelo e-mail ou pelo celular confirmado no login. Você fala conosco pelo SAC (item 13.4).
 
@@ -345,7 +346,7 @@ Esta seção é interna. Cada ponto diz o que o rascunho assume e o que precisa 
 | P4 | Cancelar depois de pagar e arrependimento. | O app não tem botão para cancelar atendimento pago (cliente nem profissional) nem botão de arrependimento. O texto manda ao SAC (7.3). O CDC, art. 49, e o Decreto 7.962/2013, art. 5º e §1º, falam em meios claros e na "mesma ferramenta" da contratação. O SAC basta nesta fase? E para serviço já iniciado? (documento 04). | 7 | F1, F2 |
 | P5 | Aceite e prova do aceite. | Uma só caixa para Termos e Privacidade; os dois links apontam para `/legal`, hoje um texto provisório. O registro guarda usuário, finalidade, versão e hora do servidor; não guarda o texto, o IP nem o aparelho. O aceite do visitante só por navegação tem pouco valor [incerto]. O Decreto 7.962/2013, art. 4º, I, pede sumário do contrato com as cláusulas restritivas enfatizadas (por isso o Resumo) e o inciso IV pede cópia que permita conservação e reprodução. O CDC, art. 46, diz que o contrato não obriga o consumidor que não teve oportunidade de conhecer o conteúdo, e o art. 54, §§3º e 4º, trata de fonte e destaque. | 1 | F1, F2 |
 | P6 | Idade mínima e ECA Digital. | O texto exige 18 anos por declaração; o app não confere. A Lei 15.211/2025 vale desde 17/03/2026 (art. 41-A) e o Decreto 12.880/2026 (18/03/2026) a regulamenta. O art. 18 do decreto manda quem "oferte ou intermedeie a compra e a venda" de produtos e serviços proibidos a menores (art. 15, §1º, I a VII, que inclui bebidas alcoólicas e fogos) adotar verificação de idade efetiva, sem autodeclaração (a Lei 15.211/2025, art. 9º, §1º, também veda a autodeclaração para conteúdo, produto ou serviço impróprio ou proibido a menores de 18 anos). O catálogo tem "Gelo e bebidas para festas" (a política diz: bebida alcoólica só a maiores de 18 anos, conferir a idade na entrega) e "Fogos de artifício e pirotecnia", entre outras. O app é "de acesso provável" por menores (art. 1º, parágrafo único)? Intermediar essas ocupações exige verificação de idade no cadastro? A autoridade administrativa é a ANPD (Decreto 12.622/2025, art. 2º). | 3.3 | F5, F6, F7 |
-| P7 | Remoção de conteúdo, notificação e reporte. | Itens 10.2 e 10.3. O STF declarou o art. 19 do Marco Civil parcialmente inconstitucional (notícia de 26/06/2025) e concluiu os ajustes da tese em 17/06/2026, com efeitos desde 5/8/2025 (item 13 da tese). O texto segue o art. 20 do Marco Civil (informar o autor do motivo) e a tese do STF (itens 3, 3.2, 7 a 10). A Lei 15.211/2025, art. 27, vale para todo fornecedor disponível no país, e o Decreto 12.880/2026 (arts. 36 a 39) manda reportar ao Centro Nacional de Triagem de Notificações, da Polícia Federal. Os itens 7 a 10 da tese (autorregulação, canal de atendimento, representante no país) valem para provedor de pequeno porte? Notícia do STF de 11/06/2026 diz que o dever de cuidado fica restrito a provedores de grande porte [incerto: li a notícia, não o acórdão]. O processo interno de remoção e reporte precisa de dono e de roteiro (documentos 05 e 08). | 10 | F3, F5, F6, F11, F12, F13, F14 |
+| P7 | Remoção de conteúdo, notificação e reporte. | Itens 10.2 e 10.3. O STF declarou o art. 19 do Marco Civil parcialmente inconstitucional (notícia de 26/06/2025) e concluiu os ajustes da tese em 17/06/2026, com efeitos desde 5/8/2025 (item 13 da tese). O texto segue o art. 20 do Marco Civil (informar o autor do motivo) e a tese do STF (itens 3, 3.2, 7 a 10). A Lei 15.211/2025, art. 27, vale para todo fornecedor disponível no país, e o Decreto 12.880/2026 (arts. 36 a 39) manda reportar ao Centro Nacional de Triagem de Notificações, da Polícia Federal. Os itens 7 a 10 da tese (autorregulação, canal de atendimento, representante no país) valem para provedor de pequeno porte? Notícia do STF de 11/06/2026 diz que o dever de cuidado fica restrito a provedores de grande porte [incerto: li a notícia, não o acórdão; a notícia de 17/06/2026 não repete essa frase]. O processo interno de remoção e reporte precisa de dono e de roteiro (documentos 05 e 08). | 10 | F3, F5, F6, F11, F12, F13, F14 |
 | P8 | Mudança unilateral dos Termos e suspensão unilateral da conta. | 1.4: a nova versão só vale depois de novo aceite, e atendimentos já confirmados mantêm a versão em que nasceram. 3.6: motivo avisado, meio de resposta e exclusão livre da conta. O CDC, art. 51, XIII e XI, anula cláusulas que permitam ao fornecedor mudar o contrato depois de celebrado ou cancelá-lo sem igual direito ao consumidor. Prazos de resposta do WorkEasy são decisão de negócio. | 1.4, 3.6 | F1 |
 | P9 | Foro e arbitragem. | Consumidor: foro do domicílio, sem arbitragem. Não consumidor: comarca da sede (a definir). CDC, art. 101, I; art. 51, VII e XVII. CPC, art. 63, §1º (redação da Lei 14.879/2024): o foro de eleição exige pertinência com o domicílio de uma das partes ou com o local da obrigação, "ressalvada a pactuação consumerista, quando favorável ao consumidor"; §3º: o juiz pode reputar ineficaz de ofício, antes da citação, a cláusula de foro abusiva. | 14 | F1, F9 |
 | P10 | Limite semanal do trabalho doméstico. | Texto alinhado às telas (`LaborLockNotice.tsx`, `pages/pro/Agenda.tsx`, `lib/errors.ts`): "a lei pode tratar ... como relação de emprego (LC 150/2015)". Perguntas: (a) o texto pode ser lido como orientação trabalhista, ou como "porto seguro"? (b) as telas mandam "contratar diretamente" quando o limite é atingido: aceitável? (c) o limite vale por profissional e por casa, então a família pode revezar profissionais: há risco? (d) o parágrafo único do art. 1º da LC 150 proíbe contratar menor de 18 anos para trabalho doméstico (tratar no documento 02). | 5.6 | F4 |
@@ -370,6 +371,12 @@ Esta seção é interna. Cada ponto diz o que o rascunho assume e o que precisa 
 10. Se a regra "sem ranking por nota por regra do conselho" vale de fato para cada uma das 272 ocupações marcadas (item 8.2). Depende da matriz por conselho (Frente A).
 11. Aplicação do direito de arrependimento (CDC, art. 49) a serviço já iniciado ou executado (item 7.4; documento 04).
 12. Se um marketplace de serviços é "modalidade análoga" de compra coletiva para o art. 3º, III, do Decreto 7.962/2013 (P14).
+13. Leis e decretos não reabertos em 2026-11-08: planalto.gov.br bloqueou o acesso ("Esta requisição foi bloqueada") para F1 a F6, F9 e F10. Conferir o texto de cada artigo marcado [incerto] antes da publicação. O PDF da tese do STF (F11) não pôde ser lido: os itens 3.2, 6, 8, 10, 11 e 13 não foram reconferidos, e isso afeta também P1, P7 e P8.
+14. Decreto 12.880/2026 e art. 41-A da Lei 15.211/2025 ("incluído pela Lei 15.352/2026", vigência em 17/03/2026): não reconferidos. Se a verificação de idade (P6) for exigida, o item 3.3 muda antes da publicação.
+15. Prazo do SAC: o documento 10 cita o Decreto 13.135/2026, art. 21, com 7 dias corridos para demandas não urgentes, e adota o prazo mais curto. Este texto (13.4) diz 5 dias, o prazo do Decreto 7.962/2013, art. 4º. Confirmar se o decreto de 2026 se aplica.
+16. Estorno com split: a regra do Asaas para estorno de cobrança com divisão, quando a subconta do profissional já sacou, não está publicada (pesquisa/asaas.md, R11). O item 7.2 foi corrigido para o que a integração faz hoje (cartão e Pix), mas esse ponto segue [incerto].
+17. Inteligência artificial (itens 4.6 e 5.7): a sugestão de orçamento (quote-assist) e o resumo semanal da linha Cuidado (care-summary) enviam texto a um serviço de IA de terceiros quando a chave está configurada. Confirmar quais campos saem do produto, se o provedor fica fora do Brasil e se o aviso e a informação do texto bastam. O documento 03 já cita o provedor.
+18. Edição de avaliação: a ARQUITETURA diz que o autor edita nota e comentário sem prazo. O documento 05 propõe edição livre por 7 dias. Este texto não fala de edição. Decidir e incluir no item 8.
 
 ### C. O que o texto pressupõe e o produto ainda não faz
 
@@ -387,6 +394,7 @@ Esta seção é interna. Cada ponto diz o que o rascunho assume e o que precisa 
 12. **Menu Cuidado.** `navModelFor` (`components/navItems.ts`) mostra "Cuidado" a todo cliente com sessão, enquanto `DECISOES.md` (D12) manda não divulgar o menu antes dos pré-requisitos (item 5.7).
 13. **Dados de saúde na linha Cuidado.** A tela diz "O WorkEasy não guarda dados de saúde", mas campos de texto livre (preferências, contato de emergência, observações do plantão, descrição do pedido) podem receber esse tipo de dado. O item 5.7 (c) diz só que o app "não foi feito para guardar" tais dados.
 14. **Documento de arquitetura.** A tabela de rotas de `ARQUITETURA.md` diz que o login é "por código (e-mail ou WhatsApp/SMS)", mas `services/auth.ts` envia o código só por e-mail ou SMS. O texto (item 3.1) segue o código.
+15. **Textos das lojas.** `docs/lojas/app-store.md` descreve o perfil como "informado" ou "conferido pela equipe", enquanto o produto e estes Termos dizem "confirmado pelo WorkEasy". Alinhar as lojas com o produto.
 
 ### D. Números do catálogo (calculados de `apps/web/catalog/policies.json` em 2026-10-23)
 
@@ -447,6 +455,12 @@ Todas abertas em 2026-10-23. Os textos de lei (F1 a F10) e o PDF da tese do STF 
 | F16 | Ministério da Saúde, "SAMU 192" | número e horário | https://www.gov.br/saude/pt-br/composicao/saes/samu-192 | 2026-10-23 |
 | F17 | Consumidor.gov.br, "Conheça o Consumidor.gov.br" | o que é o serviço | https://www.consumidor.gov.br/pages/conteudo/publico/1 | 2026-10-23 |
 | F18 | Asaas, página "Sobre nós" (fonte do próprio Asaas, não é registro oficial) | autodeclaração de instituição de pagamento; rodapé com razão social e CNPJ | https://www.asaas.com/sobre-nos | 2026-10-23 |
+
+### Reabertura em 2026-11-08
+
+- **Reabertas e conferidas (7 de 18):** F12 (STF, 26/06/2025: art. 19 do Marco Civil "parcialmente inconstitucional", confirmado); F13 (STF, 17/06/2026: conclusão dos aperfeiçoamentos, prazo de 60 dias e efeitos desde 5/8/2025, confirmados); F14 (STF, 11/06/2026: frase sobre "dever de cuidado" e "grande porte" confirmada, mas a notícia de 17/06/2026 não a repete); F15 (STJ, 26/01/2026: Tema 1.173, REsp 2.008.542, regra geral e exceções, confirmados); F16 (SAMU 192: gratuito, 24 horas, 7 dias por semana, confirmado); F17 (Consumidor.gov.br: serviço público e gratuito, confirmado); F18 (Asaas: autodeclaração de instituição de pagamento e razão social no rodapé, confirmadas; não é registro do Banco Central, que segue [incerto]).
+- **Não reabertas (11):** F1 a F6, F9 e F10 (planalto.gov.br respondeu "Esta requisição foi bloqueada"; a leitura de 2026-10-23 não foi reconferida); F11 (PDF da tese: conteúdo comprimido, não legível); F7 e F8 (não tentadas nesta data). As citações de lei afetadas estão marcadas [incerto].
+- **Busca de novas fontes:** o limite de buscas da sessão foi atingido; nenhuma fonte nova foi usada.
 
 ### Trechos lidos (curtos, como estão nas fontes)
 

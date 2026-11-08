@@ -11,7 +11,7 @@
 | Encarregado | [E-MAIL DO ENCARREGADO]. Ainda não indicado. |
 | Atendimento ao titular | [E-MAIL DO SAC] |
 | Estado do produto | MVP mesclado na `main` (PR #2). Não implantado, sem usuários reais. Nada foi testado contra Asaas, WhatsApp ou Resend de verdade. |
-| Quem escreveu | Rascunho preparado com apoio de ferramenta de IA, a pedido do dono. Nenhum advogado, encarregado ou contador o revisou. |
+| Quem escreveu | Rascunho preparado com apoio de ferramenta de IA, a pedido do dono (23/10/2026). Revisado em 08/11/2026 por revisor independente (ferramenta de IA), que conferiu fatos e fontes e corrigiu o que estava errado (ver "Pontos para o advogado"). Nenhum advogado, encarregado ou contador o revisou. |
 | Próxima revisão | Antes do primeiro usuário real e, no máximo, até 23/04/2027 (seção 11) |
 
 ## Como ler
@@ -20,7 +20,7 @@
 2. **Ordem.** Segue o conteúdo que a ANPD recomenda (itens a a l; mapa abaixo) e acrescenta a seção 5, de necessidade e proporcionalidade.
 3. **Marcas.** `[PLANEJADO]`: não existe no código hoje. `[CONDICIONAL: depende de parecer]`: escolha jurídica que cabe ao advogado. `[incerto]`: não consegui confirmar em fonte aberta nesta sessão.
 4. **Códigos.** T1 a T4: os quatro tratamentos deste relatório. R01 a R23: riscos. S01 a S20: salvaguardas que existem. G01 a G23: lacunas, cada uma com a medida proposta. F1 a F12: finalidades da seção 4. O registro das operações (`07-registro-das-operacoes-de-tratamento.md`, em elaboração) usa outro código, OP-01 a OP-25; a tabela da seção 2.2 liga os dois.
-5. **"Hoje"** quer dizer o código da branch `claude/plano-restante` em 23/10/2026 (commit `961af70`). Li migrations, funções, telas e testes. **Não executei os testes** nesta tarefa. Quando digo que um teste "fixa" uma regra, li o arquivo do teste.
+5. **"Hoje"** quer dizer o código da branch `claude/plano-restante` em 23/10/2026 (commit `961af70`). Li migrations, funções, telas e testes. **Não executei os testes** nesta tarefa. Quando digo que um teste "fixa" uma regra, li o arquivo do teste. Em 08/11/2026 a branch está em `2831d9b`, com 174 arquivos alterados desde `961af70`. Não mudaram as migrations de cuidado, documentos e privacidade (`…09_care`, `…03_providers`, `…10_privacy_audit`) nem `catalog/policies.json`. Mudaram `config/legal.ts` e `services/admin.ts`, entraram as funções `care-summary` e `quote-assist`, e há migrations novas (monetização, lembretes, métricas de funil). Onde o texto ainda descreve 23/10, a revisão de 08/11 corrigiu.
 6. **Nomes em inglês** (tabelas, funções, arquivos) são os do código, para o desenvolvedor e o advogado acharem a origem.
 7. **Uso.** Documento interno. A ANPD diz que publicar o RIPD não é obrigatório, mas é boa prática, e que a versão pública pode diferir da interna para proteger segredo comercial.
 8. **Nada aqui garante segurança ou conformidade.** São mecanismos que existem no código, cada um com o limite dito ao lado.
@@ -101,7 +101,7 @@ A empresa ainda não existe. Nenhum contrato abaixo foi assinado por ela.
 | [RAZÃO SOCIAL] (WorkEasy) | Controlador | Tudo o que este relatório descreve | Não existe ainda | Brasil. Sede: [ENDEREÇO] |
 | Supabase | Operador: banco, arquivos, login e funções | Tudo o que está no banco e nos arquivos | DPA padrão do fornecedor (Versão 1, de 01/08/2026, lido em 23/10/2026): fornecedor é operador; avisa o incidente sem demora injustificada e, quando viável, em 48 horas; usa cláusulas-padrão da UE e adendos do Reino Unido e da Suíça; **não vi menção a Brasil nem à LGPD**. Contrato da empresa: `[PLANEJADO]` | Região São Paulo é intenção (`docs/DECISOES.md`, seção 8) `[PLANEJADO]`. As Edge Functions rodam, por padrão, na região mais próxima de quem chama; o código não fixa região |
 | Asaas | Operador e, nas obrigações próprias de instituição de pagamento, possivelmente controlador `[incerto]`. Não abri a política do Asaas. O ROPA (`07`, item S2) traz a leitura do Acordo de Processamento feita por outro agente, que não conferi | Dados de pagadores e de prestadores | Contrato da empresa: `[PLANEJADO]` | `[incerto]` |
-| Anthropic | Operador (assistente de pedidos) | Texto livre e instruções, sem identificadores do usuário | Termos Comerciais (vigência 17/06/2025) e DPA (vigência 24/02/2025), incorporado automaticamente. O DPA diz: cliente é controlador, Anthropic é operadora. A empresa ainda não aceitou os termos `[PLANEJADO]` | Dados armazenados nos EUA; o tráfego pode ser roteado a EUA, Europa, Ásia e Austrália |
+| Anthropic | Operador (assistente de pedidos, orçamento do prestador e resumo semanal do Cuidado) | Texto livre e instruções, sem identificadores do usuário | Termos Comerciais (vigência 17/06/2025) e DPA (vigência 24/02/2025), incorporado automaticamente. O DPA diz: cliente é controlador, Anthropic é operadora. A empresa ainda não aceitou os termos `[PLANEJADO]` | Dados armazenados nos EUA. Por padrão, o tráfego pode ser roteado a países dos EUA, Europa, Ásia e Austrália, salvo acordo em contrário (página do fornecedor, lida em 08/11/2026) |
 | Meta (WhatsApp Cloud API) | Operador | Telefone e variáveis do modelo de mensagem | Não abri `[incerto]` | `[incerto]` |
 | Resend | Operador | E-mail e texto da mensagem | Não abri `[incerto]` | `[incerto]` |
 | Prestador Pro | Controlador dos dados dos próprios clientes (CRM, orçamentos, cobranças próprias). O WorkEasy seria operador nessa parte `[CONDICIONAL: depende de parecer]` | Dados dos clientes do prestador | Termos do Prestador (`02-termos-do-prestador.md`, em elaboração) | — |
@@ -111,7 +111,7 @@ A empresa ainda não existe. Nenhum contrato abaixo foi assinado por ela.
 
 1. O encarregado ainda não foi indicado, porque a empresa não existe. O canal público será [E-MAIL DO ENCARREGADO].
 2. A página da ANPD diz que "é desejável que o encarregado seja consultado na elaboração e na análise das conclusões do RIPD". Isso não aconteceu.
-3. A Res. CD/ANPD 2/2022 dispensa agentes de pequeno porte de indicar encarregado (art. 11), mas tira esse benefício de quem faz tratamento de alto risco (art. 3º, I). T1 e T2 provavelmente são de alto risco (seção 2.1). Este rascunho parte da premissa de que haverá encarregado. `[CONDICIONAL: depende de parecer]`
+3. A Res. CD/ANPD 2/2022 dispensa agentes de pequeno porte de indicar encarregado (art. 11), mas tira esse benefício de quem faz tratamento de alto risco (art. 3º, I). Mesmo sem encarregado, o agente de pequeno porte deve oferecer canal de comunicação com o titular (art. 11, §1º). T1 e T2 provavelmente são de alto risco (seção 2.1). Este rascunho parte da premissa de que haverá encarregado. `[CONDICIONAL: depende de parecer]`
 
 ### 1.3 Outras partes consultadas
 
@@ -137,8 +137,8 @@ Nenhuma. Não há parecer de advogado, contador, Apple, Google ou dos titulares 
 | ID | Tratamento | Onde está no código | No ROPA (`07`) | Estado hoje |
 |---|---|---|---|---|
 | T1 | Verificação de identidade e de antecedentes do prestador e conferência dos documentos da ocupação | `pages/pro/Cadastro.tsx` (passo 3), `services/providers.ts`, bucket `provider-documents`, `submit_provider_for_review`, `admin_review_document`, `components/admin/DocumentCard.tsx` | OP-06 (e OP-05 e OP-24, no que toca documentos) | Funciona no ambiente local. A conferência é feita por pessoa. Não implantado |
-| T2 | Linha Cuidado: casa, pessoa assistida, plantões, check-in e relatório do dia | `supabase/migrations/20261019000009_care.sql`, `services/care.ts`, `pages/cuidado/*`, `pages/pro/Plantoes.tsx`, `components/cuidado/*` | OP-18 a OP-21 | Funciona localmente. O item "Cuidado" já aparece no menu do cliente com login (`components/navItems.ts`), mas `docs/DECISOES.md` (D12) manda não divulgar antes dos pré-requisitos |
-| T3 | Assistente de pedidos com modelo de linguagem | Edge Function `request-assist`, `_shared/assist.ts` | OP-22 | A função e os testes existem. **Nenhuma tela a chama.** Sem a chave `ANTHROPIC_API_KEY` ela responde 503 |
+| T2 | Linha Cuidado: casa, pessoa assistida, plantões, check-in e relatório do dia | `supabase/migrations/20261019000009_care.sql`, `services/care.ts`, `pages/cuidado/*`, `pages/pro/Plantoes.tsx`, `components/cuidado/*`, `supabase/functions/care-summary` (resumo semanal com IA) | OP-18 a OP-21 (o resumo com IA não está no ROPA) | Funciona localmente. O item "Cuidado" já aparece no menu do cliente com login (`components/navItems.ts`), mas `docs/DECISOES.md` (D12) manda não divulgar antes dos pré-requisitos |
+| T3 | Assistente com modelo de linguagem: pedido (`request-assist`), orçamento do prestador (`quote-assist`) e resumo semanal do Cuidado (`care-summary`) | Edge Functions `request-assist`, `quote-assist`, `care-summary`; `_shared/assist.ts`; `services/aiAssist.ts` | OP-22 (só `request-assist`) | `request-assist` existe e **nenhuma tela a chama**. `quote-assist` é usada em `pages/pro/Orcamentos.tsx`; `care-summary`, em `pages/cuidado/Relatorios.tsx`. Sem `ANTHROPIC_API_KEY` as três respondem 503 e dividem a cota por hora |
 | T4 | Cobrança pelo Asaas: CPF/CNPJ do pagador, conta de recebimento do prestador, assinatura Pro, cobrança de clientes próprios | `payments-create`, `subscriptions-manage`, `asaas-onboard`, `charges-create`, `asaas-webhook` | OP-13 a OP-16 | Nunca testado contra o Asaas real. Comissão (`commission_enabled`) e pagamento retido (`escrow_enabled`) vêm desligados |
 
 ### 2.3 O que fica de fora
@@ -146,12 +146,13 @@ Nenhuma. Não há parecer de advogado, contador, Apple, Google ou dos titulares 
 1. **Telas de demonstração** (`/verification`, `/register-provider`, `/medical-records`, `/teleconsultation/:sessionId`): usam dados fictícios e não enviam nada. A tela `/verification` só mostra a prévia da câmera e diz: "Nenhuma imagem é capturada, enviada ou armazenada". Se algum dia virarem funcionalidade real (verificação por fornecedor, prontuário, teleconsulta), exigem RIPD próprio `[PLANEJADO]`.
 2. **Demais tratamentos:** login por código, pedidos e propostas, agenda, avaliações, notificações em geral, CRM do prestador, páginas públicas e de SEO. Entram no registro das operações (`07-registro-das-operacoes-de-tratamento.md`, em elaboração) e na política de privacidade (`03-politica-de-privacidade.md`, em elaboração).
 3. **Comissão e pagamento retido.** Desligados por padrão (`platform_settings`). Se forem ligados `[CONDICIONAL: depende de parecer]`, este relatório deve ser revisto antes (seção 11).
+4. **Métricas de funil (`product_events`, migração `20261108100000`).** Tabela nova desde 23/10/2026. Guarda o evento (por exemplo, pedido criado, pagamento recebido, plano Pro), o `user_id` de quem fez o passo (fica vazio quando a conta é excluída) e ids em `props`. Segundo o cabeçalho da migração, não guarda nome, telefone, e-mail, documento nem texto livre. Apaga registros com mais de 400 dias (job `product-events-retention`). Não aparece no ROPA nem neste relatório `[incerto: avaliar entrada no ROPA e menção na política]`. A migração `20261023200000` também trata `commission_enabled` e `escrow_enabled` em função própria de administrador (linha 37); não li a regra exata `[incerto]`.
 
 ### 2.4 Sistemas de informação (item e)
 
 - Aplicativo React (site/PWA, Android e iOS por Capacitor, desktop por Tauri). Só conhece a URL do Supabase e a chave publicável.
 - Supabase: Postgres com RLS em todas as tabelas, Auth por código (OTP), Storage (bucket privado `provider-documents`), Edge Functions em Deno, `pg_cron`, Vault.
-- Edge Functions: `payments-create`, `payments-void`, `charges-create`, `subscriptions-manage`, `asaas-onboard`, `asaas-webhook`, `notify-dispatch`, `account-export`, `account-delete`, `request-assist`.
+- Edge Functions: `payments-create`, `payments-void`, `charges-create`, `subscriptions-manage`, `asaas-onboard`, `asaas-webhook`, `notify-dispatch`, `account-export`, `account-delete`, `request-assist`, `quote-assist` e `care-summary` (estas duas últimas são de IA e dividem a cota com `request-assist`; ver 3.2, item 9, e 3.3).
 - Fornecedores externos: Asaas, Anthropic, WhatsApp Cloud API (Meta), Resend. Link aberto pelo usuário: OpenStreetMap.
 - Ambiente de produção: **não existe**. Tudo roda na stack local de desenvolvimento.
 
@@ -196,6 +197,7 @@ Cada tratamento tem o fluxo, da coleta à eliminação, e a tabela de dados. Tud
 6. **Leitura.** A família lê os check-ins (com link para mapa) e os relatórios. O cuidador lê os seus. Administradores leem tudo.
 7. **Cancelamento.** `cancel_shift` grava o motivo (texto livre) no `audit_log`, que não se apaga.
 8. **Guarda e eliminação.** Sem prazo. A exclusão da conta da família apaga casas, pessoas assistidas, plantões, check-ins e relatórios em cascata, depois de `anonymize_user`. A exclusão da conta do cuidador zera as coordenadas dos check-ins dele; check-ins e relatórios continuam com a família, sem identificar o cuidador.
+9. **Resumo semanal com IA (`care-summary`, só o dono da casa).** A família pede um resumo da semana de uma casa. A função lê os relatórios e os plantões dessa casa, retira nomes e dados de contato e envia ao modelo de IA só o texto de refeições, atividades, humor e observações. Relatório que cita termo de saúde não é enviado: a lista (`HEALTH_TERMS`) está em `supabase/functions/_shared/care-summary.ts`, e a resposta marca `mentions_health` e mostra um aviso. O resumo aparece na tela e não é gravado. Usa a cota de IA da hora. Não há base legal registrada para isso (F7 e G05).
 
 **Dados**
 
@@ -217,9 +219,9 @@ Cada tratamento tem o fluxo, da coleta à eliminação, e a tabela de dados. Tud
 1. **Hoje.** Nenhuma tela chama a função. `[PLANEJADO]`: a tela do pedido ofereceria "organizar com o assistente".
 2. **Entrada.** A função exige login. Valida o texto (10 a 2.000 caracteres) e consome uma unidade da cota (padrão: 10 por hora por usuário; o valor 0 desliga o assistente).
 3. **Preparo no servidor.** Escolhe até 20 ocupações candidatas do catálogo por palavras em comum com o texto. Esta etapa não usa modelo.
-4. **Envio ao fornecedor.** Manda a instrução de sistema, a lista de candidatos e o texto do cliente. **Não manda** nome, e-mail, telefone nem o id do usuário.
+4. **Envio ao fornecedor.** Manda a instrução de sistema, a lista de candidatos e o texto do cliente. **Não manda** nome, e-mail, telefone nem o id do usuário. Esta descrição vale para `request-assist`. `quote-assist` manda a descrição do serviço e dados da ocupação do catálogo; `care-summary` manda relatórios (3.2, item 9).
 5. **Resposta.** Estrutura fixa: ocupação (só entre os candidatos, ou "nenhuma"), urgente (sim ou não) e resumo de até 3 frases (até 500 caracteres). A função valida e devolve ao aplicativo. Não grava o texto nem o resumo. Grava só o contador da cota, apagado depois de 1 dia.
-6. **No fornecedor** (páginas do fornecedor lidas em 23/10/2026): entradas e saídas são apagadas automaticamente em 30 dias, com exceções (acordo de retenção zero; retenção maior para aplicar a política de uso, até 2 anos, e 7 anos para notas de classificação; exigência legal); clientes pagos de API não têm exclusão pontual; os dados ficam armazenados nos EUA e o tráfego pode ser roteado a EUA, Europa, Ásia e Austrália; os termos comerciais dizem que o fornecedor não treina modelos com o conteúdo do cliente.
+6. **No fornecedor** (páginas do fornecedor lidas em 23/10/2026): entradas e saídas são apagadas automaticamente em 30 dias, com exceções (acordo de retenção zero; retenção maior para aplicar a política de uso, até 2 anos, e 7 anos para notas de classificação; exigência legal); clientes pagos de API não têm exclusão pontual; os dados ficam armazenados nos EUA e o tráfego pode ser roteado a EUA, Europa, Ásia e Austrália; os termos comerciais dizem que o fornecedor "may not train models on Customer Content", ou seja, não pode treinar modelos com o conteúdo do cliente (lido em 08/11/2026).
 7. **Depois.** Se o cliente aproveitar o resumo no pedido, ele vira `requests.description`, que os prestadores aprovados da ocupação e do bairro leem, sem telefone nem e-mail do cliente.
 
 **Dados**
@@ -293,7 +295,7 @@ Cada tratamento tem o fluxo, da coleta à eliminação, e a tabela de dados. Tud
 | `payments` | Sem prazo fixado | Anonimizado, não apagado | Obrigação fiscal; prazo `[incerto]` |
 | `payment_events` | Sem prazo | Não tratado na exclusão | G16 |
 | Notificações | Sem prazo | Contato e parâmetros zerados na exclusão | — |
-| `assist_usage` | 1 dia | Job `workeasy-expire-stale`, a cada 15 minutos | É o único expurgo agendado do banco |
+| `assist_usage` | 1 dia | Job `workeasy-expire-stale`, a cada 15 minutos | Há outro expurgo agendado: `product_events` (ver 2.3, item 4) |
 | Texto do assistente no fornecedor | 30 dias | Automático | Sem exclusão pontual |
 | Backups do Supabase | `[incerto]` | `[incerto]` | A página do fornecedor diz que bancos pagos têm backup diário |
 
@@ -301,7 +303,7 @@ Cada tratamento tem o fluxo, da coleta à eliminação, e a tabela de dados. Tud
 
 1. Para cada finalidade: uma hipótese **proposta**, alternativas e a dúvida. Nada aqui é decisão. `[CONDICIONAL: depende de parecer]` vale para a seção inteira.
 2. Hoje o código só exige o aceite de `terms` e `privacy` (`REQUIRED_CONSENTS` em `services/account.ts`). `background_check` e `location` são pedidos nas telas, na hora do uso. `marketing` é opcional.
-3. Dado sensível só se trata nas hipóteses do art. 11. A ANPD lembra, no estudo sobre biometria, que sem o consentimento específico e destacado "o controlador poderá utilizar uma das hipóteses legais do inciso II, do art. 11 da Lei" (Radar Tecnológico nº 2, p. 22). Para crianças, o Enunciado CD/ANPD 1/2023 admite as hipóteses dos arts. 7º ou 11, "desde que observado e prevalecente o seu melhor interesse".
+3. Dado sensível só se trata nas hipóteses do art. 11. A ANPD lembra, no estudo sobre biometria, que sem o consentimento específico e destacado "o controlador poderá utilizar uma das hipóteses legais do inciso II, do art. 11 da Lei" (Radar Tecnológico nº 2, p. 22) `[incerto: PDF não lido em 08/11/2026]`. Para crianças, o Enunciado CD/ANPD 1/2023 admite as hipóteses dos arts. 7º ou 11, "desde que observado e prevalecente o seu melhor interesse".
 
 ### 4.1 Finalidades, hipóteses e dúvidas
 
@@ -325,7 +327,7 @@ Cada tratamento tem o fluxo, da coleta à eliminação, e a tabela de dados. Tud
 #### 4.2.1 Documento com foto e selfie
 
 1. **Fato.** O aplicativo recebe um arquivo de imagem ou PDF. Ninguém extrai modelo facial e nenhum programa compara rostos. Uma pessoa confere (seção 3.1).
-2. **Biometria, segundo a ANPD:** "análise técnica, realizada por meios matemáticos e estatísticos" das características fisiológicas ou comportamentais (Radar nº 2, p. 6). A verificação consiste em "realizar a comparação de dois templates biométricos" (p. 13). Esse passo não existe no WorkEasy.
+2. **Biometria, segundo a ANPD:** "análise técnica, realizada por meios matemáticos e estatísticos" das características fisiológicas ou comportamentais (Radar nº 2, p. 6) `[incerto]`. A verificação consiste em "realizar a comparação de dois templates biométricos" (p. 13). Esse passo não existe no WorkEasy.
 3. **Mesmo assim:** (i) o art. 5º, II inclui "dado genético ou biométrico, quando vinculado a uma pessoa natural"; (ii) o art. 11, §1º aplica o regime dos sensíveis a "qualquer tratamento de dados pessoais que revele dados pessoais sensíveis e que possa causar dano ao titular"; (iii) a ANPD observa que "uma imagem bruta de uma biometria facial pode revelar informações de saúde" (p. 21).
 4. **Adotado:** tratar como sensível por cautela, **sem afirmar** que é dado biométrico. Efeitos pretendidos: base do art. 11, acesso mínimo, guarda curta e nenhum reaproveitamento da imagem. Hoje faltam o acesso mínimo e a guarda curta (G01 a G03). A busca no código não achou outro uso da imagem além da conferência do administrador. `[CONDICIONAL: depende de parecer]`
 5. **Se entrar um fornecedor de verificação com reconhecimento facial** `[PLANEJADO]`, este relatório deve ser refeito. O comentário da tela de demonstração já registra que isso exige fornecedor contratado, base legal documentada (LGPD, art. 11) e tratamento no servidor.
@@ -337,7 +339,7 @@ Cada tratamento tem o fluxo, da coleta à eliminação, e a tabela de dados. Tud
 3. **Por que risco elevado.**
    - A recusa pode "impedir o exercício de direitos ou a utilização de um serviço" e causar "discriminação" (Res. CD/ANPD 2/2022, art. 4º, §2º).
    - O princípio da não discriminação (art. 6º, IX) impede tratamento para fins discriminatórios ilícitos ou abusivos.
-   - O TST (IRR, Tema 1) diz que exigir a certidão de candidato a emprego não é legítimo e gera dano moral quando "traduzir tratamento discriminatório ou não se justificar" por lei, pela natureza do ofício ou pela "fidúcia" especial. A mesma tese admite a exigência, "a exemplo de empregados domésticos, cuidadores de menores, idosos ou deficientes".
+   - O TST (IRR, Tema 1) diz que exigir a certidão de candidato a emprego não é legítimo e gera dano moral quando "traduzir tratamento discriminatório ou não se justificar" por lei, pela natureza do ofício ou pela "fidúcia" especial. A mesma tese admite a exigência, "a exemplo de empregados domésticos, cuidadores de menores, idosos ou deficientes". `[incerto]`: o PDF da tese não pôde ser lido em 08/11/2026; conferir no portal do TST.
    - **414 das 631 ocupações** que exigem a certidão não são regulamentadas: nenhum conselho a exige, a escolha é da plataforma. 373 das 631 têm política `a_confirmar`.
 4. **Limite da analogia.** O precedente é trabalhista e trata de candidato a emprego. O WorkEasy intermedeia autônomos. Os exemplos do TST se parecem com a linha Cuidado; para as demais ocupações a justificativa tem de ser feita ocupação por ocupação. `[CONDICIONAL: depende de parecer]`
 
@@ -352,7 +354,7 @@ Cada tratamento tem o fluxo, da coleta à eliminação, e a tabela de dados. Tud
 1. Enviar o texto à Anthropic é transferência internacional: o art. 5º, XV define a "transferência de dados pessoais para país estrangeiro ou organismo internacional". O fornecedor diz que os dados ficam armazenados nos EUA.
 2. O art. 33 só permite a transferência em casos listados. Interessam: I (país ou organismo com grau de proteção adequado); II (quando o controlador "oferecer e comprovar garantias de cumprimento dos princípios, dos direitos do titular" etc., por exemplo com cláusulas-padrão); e VIII (consentimento "específico e em destaque para a transferência").
 3. A Res. CD/ANPD 19/2024 (Anexo I, art. 9º, II) lista os mecanismos válidos: decisão de adequação; cláusulas-padrão, normas corporativas globais ou cláusulas específicas; ou as hipóteses do art. 33 (II, "d", e III a IX). A transferência amparada em cláusulas-padrão "pressupõe a adoção integral e sem alteração do texto disponibilizado no Anexo II" (art. 16). O prazo de 12 meses para incorporar essas cláusulas aos contratos, contado da publicação da resolução (agosto de 2024), já terminou (Res. 19/2024, art. 2º, parágrafo único).
-4. O DPA da Anthropic que li cita as cláusulas-padrão da União Europeia (módulos 2 e 3) e adendos do Reino Unido e da Suíça. **Não vi menção ao Brasil nem à LGPD** `[incerto]: leitura da página, confirmar no texto integral`. O DPA da Supabase tem a mesma estrutura. Sem cláusulas da ANPD firmadas, nenhum mecanismo do art. 33 está demonstrado para esses fornecedores (G09, G12).
+4. O DPA da Anthropic que li cita as cláusulas-padrão da União Europeia (módulos 2 e 3) e adendos do Reino Unido e da Suíça. **Não vi menção ao Brasil nem à LGPD** `[incerto]: leitura da página, confirmar no texto integral`. O DPA da Supabase (Versão 1) tem a mesma estrutura. Em 08/11/2026, a leitura automática do DPA da Supabase também não encontrou "Brasil" nem "LGPD" `[incerto: confirmar no texto integral]`. Sem cláusulas da ANPD firmadas, nenhum mecanismo do art. 33 está demonstrado para esses fornecedores (G09, G12).
 
 ## 5. Necessidade e proporcionalidade
 
@@ -369,7 +371,7 @@ Cada tratamento tem o fluxo, da coleta à eliminação, e a tabela de dados. Tud
 | T2 | Relatório do dia | Informar a família | Opções fechadas; telefonema; sem relatório | O formato livre convida a dado de saúde. Decisão do dono e do advogado (G05) |
 | T3 | Texto livre enviado ao modelo | Transformar a descrição em pedido estruturado: ocupação, urgência, resumo | (1) O formulário manual, que já existe. (2) A etapa local que escolhe candidatos por palavras, sem modelo | **Necessidade baixa.** O ganho extra do modelo é o resumo e a urgência. Se mantido, só com aviso e opt-in (G08, G09) |
 | T4 | CPF ou CNPJ do pagador | A API do Asaas exige `cpfCnpj` para criar o cliente (documentação "Criar novo cliente") | Nenhuma dentro do Asaas | Necessário. Pedir só na primeira cobrança e não gravar em coluna própria, como já é |
-| T4 | Dados do prestador na subconta | A API do Asaas exige nome, e-mail, CPF/CNPJ, telefone, renda, endereço e CEP; data de nascimento só para pessoa física (documentação "Criar subconta") | Nenhuma dentro do Asaas | Necessário para esta forma de cobrança. O código pede só o que a API pede |
+| T4 | Dados do prestador na subconta | A API do Asaas exige nome, e-mail, CPF/CNPJ, celular, renda, endereço, número, bairro e CEP (documentação "Criar subconta", lida em 08/11/2026). Data de nascimento e tipo de empresa são opcionais | Nenhuma dentro do Asaas | Necessário para esta forma de cobrança. O código também envia data de nascimento ou tipo de empresa, que a API não exige: avaliar se precisa (G16) |
 | T4 | `payments.raw` | Suporte (o admin lê por `admin_get_payment_raw`) | Guardar só campos fiscais | Mais que o necessário: `anonymize_user` já reduz `raw` aos campos fiscais, o que mostra que o resto não é preciso depois (G16) |
 
 ## 6. Análise dos princípios da LGPD (item h)
@@ -446,7 +448,7 @@ Cada tratamento tem o fluxo, da coleta à eliminação, e a tabela de dados. Tud
 | R06 | **3.** Observações, preferências e relatório são texto livre. Humor e refeições de uma pessoa idosa dizem muito sobre a saúde dela. É o uso normal, não um abuso | **3.** Dado de saúde de pessoa vulnerável (art. 11, §1º): discriminação, constrangimento e exposição a quem não precisa saber |
 | R07 | **2.** Até 10 cuidadores veem a oferta antes de aceitar e as observações são livres. Depende do que a família escreve | **3.** Rotina e local de uma pessoa vulnerável nas mãos de estranhos: furto, golpe, assédio |
 | R08 | **3.** Cada check-in com localização grava coordenadas com precisão de cerca de 10 cm e as guarda sem prazo | **2.** São dois pontos por plantão, não rastreio contínuo. Mesmo assim mostram onde a pessoa estava e, em geral, a casa da pessoa assistida |
-| R09 | **3.** Babá e cuidadora de recém-nascido são usos centrais. O formulário não pergunta a idade | **3.** Criança é grupo vulnerável (art. 14). O melhor interesse precisa ser avaliado |
+| R09 | **3.** Babá e cuidadora de recém-nascido são usos centrais. O formulário pede o ano de nascimento, mas não pergunta se a pessoa é menor de idade | **3.** Criança é grupo vulnerável (art. 14). O melhor interesse precisa ser avaliado |
 | R10 | **3.** Acontece em todo cadastro que preenche o campo | **1.** Nome e telefone de um parente, lidos só pela família e pelo administrador |
 
 **T3. Assistente de pedidos**
@@ -512,7 +514,7 @@ Todas as medidas abaixo são `[PLANEJADO]`. **Quando:** A = antes de qualquer us
 
 | ID | Lacuna e evidência | Medida proposta | Reduz | Quando |
 |---|---|---|---|---|
-| G01 | **Guarda sem prazo de documentos, selfie e certidão.** Arquivos aceitos e rejeitados ficam até a exclusão da conta (`document_object_locked`, políticas de delete). O único expurgo agendado do banco é o de `assist_usage` (`private.expire_stale`) | Política de retenção por tipo de arquivo, com prazo definido pelo advogado. Depois da conferência, guardar só decisão, data, validade e revisor, e apagar a imagem. Para a certidão, guardar só o resultado. Job de expurgo. Dizer o prazo na política de privacidade | R01, R02, R03 | A |
+| G01 | **Guarda sem prazo de documentos, selfie e certidão.** Arquivos aceitos e rejeitados ficam até a exclusão da conta (`document_object_locked`, políticas de delete). Hoje há dois expurgos agendados: `assist_usage` (`private.expire_stale`, a cada 15 minutos, 1 dia) e `product_events` (400 dias) | Política de retenção por tipo de arquivo, com prazo definido pelo advogado. Depois da conferência, guardar só decisão, data, validade e revisor, e apagar a imagem. Para a certidão, guardar só o resultado. Job de expurgo. Dizer o prazo na política de privacidade | R01, R02, R03 | A |
 | G02 | **Leitura de documento não deixa rastro.** `createDocumentUrl` roda no navegador do administrador; o `audit_log` só tem `document.accepted` e `document.rejected`. A leitura de `payments.raw` já é registrada (`payment.raw_viewed`); a de documento não | Emitir o link por uma função do servidor que grava `document.viewed` (quem, qual documento, quando) antes de devolver a URL | R01, R19 | A |
 | G03 | **Administrador sem MFA, sem papéis separados e com leitura ampla.** `admins` é uma lista só. `is_admin()` libera leitura de documentos, perfis, casas, pessoas assistidas, plantões, check-ins e relatórios. O `supabase/config.toml` local mantém o MFA desligado e o código não usa MFA. A configuração de produção não existe | MFA obrigatório para administrador; papéis (revisor de documentos, financeiro, suporte) com visão mínima; revisão periódica da lista de `admins`; termo de confidencialidade | R01, R19 | A |
 | G04 | **Consentimento só na tela.** `check_in` aceita coordenadas sem consultar `consents`; o envio de `antecedentes` não consulta `background_check`; revogar não apaga nem bloqueia | O banco confere o último consentimento: descarta coordenadas sem `location` e recusa `antecedentes` sem `background_check`. Fluxo de revogação: parar de usar, apagar ou bloquear o arquivo e dizer à pessoa o efeito na aprovação. Decidir junto com a base legal (F1, F3, F6) | R03, R08, R20 | A |
@@ -524,7 +526,7 @@ Todas as medidas abaixo são `[PLANEJADO]`. **Quando:** A = antes de qualquer us
 | G10 | **Contato de emergência de terceiro sem ciência dele** | Campo com declaração da família ("tenho autorização para informar este contato"), remoção a pedido e explicação na política. Avaliar se o campo é necessário: o cuidador não o vê | R10 | B |
 | G11 | **Localização com precisão excessiva e sem prazo.** `locate()` arredonda a 6 casas decimais (cerca de 10 cm, diz o comentário do código); `checkins.lat` e `.lng` ficam até a exclusão; `ShiftRecords.tsx` abre o OpenStreetMap com as coordenadas na URL | Arredondar para menos casas (valor a decidir) ou guardar só "dentro ou fora do raio"; prazo curto; avisar que o link abre site de terceiro | R08 | B |
 | G12 | **Operadores sem contrato, sem região e sem mecanismo de transferência.** Não há produção. `invokeFunction` não fixa a região das Edge Functions. O DPA da Supabase (Versão 1, 01/08/2026) cita cláusulas da UE, do Reino Unido e da Suíça, não o Brasil. Asaas, Meta e Resend não foram abertos | Contratar pela empresa já constituída; projeto Supabase em São Paulo; fixar a região das Edge Functions (a documentação do fornecedor lista `sa-east-1`); listar suboperadores; registrar no ROPA; saber onde ficam backups e arquivos `[incerto]` | R01, R16, R21 | A |
-| G13 | **Textos legais não publicados.** `/legal` diz "Documentos em elaboração". `CONSENT_VERSIONS.terms` e `.privacy` valem `2026-10-rascunho`, com um TODO em `config/legal.ts`. `TermsGate` grava o aceite dessas versões | Publicar termos, política e textos de consentimento (`01`, `03`, `11`) antes de qualquer usuário real e só então fixar a versão | R23 | A |
+| G13 | **Textos legais não publicados.** `/legal` diz "Documentos em elaboração". `CONSENT_VERSIONS.terms` e `.privacy` valem `2026-10-rascunho`, e `config/legal.ts` só tira o sufixo `-rascunho` quando `VITE_LEGAL_STATUS` vale `vigente`. `TermsGate` grava o aceite dessas versões | Publicar termos, política e textos de consentimento (`01`, `03`, `11`) antes de qualquer usuário real e só então fixar a versão | R23 | A |
 | G14 | **Exportação incompleta.** `EXPORT_PLAN` lê `checkins` e `daily_reports` só por `provider_id`; `HOUSEHOLD_CHILDREN` cobre `care_recipients` e `shifts`. Os arquivos de documentos saem no JSON só como caminho. O texto do próprio export diz que "o conteúdo pode ser baixado pelo app", mas só o administrador gera link de arquivo (`services/admin.ts`); o prestador não tem essa função no aplicativo | Incluir check-ins e relatórios dos plantões da família. Dar ao prestador um modo de baixar os próprios arquivos, ou corrigir o texto do export. Cobrir com teste | R23 | A |
 | G15 | **Sem encarregado e sem canal para a pessoa assistida e o contato de emergência** | Indicar encarregado `[CONDICIONAL: depende de parecer]`; publicar [E-MAIL DO ENCARREGADO]; aceitar pedido por representante; fixar prazo de resposta | R23 | A |
 | G16 | **Pagamentos: papéis e retenção indefinidos.** `redactAsaasPayload` só remove chaves `creditCard*`; `raw` e `payment_events.payload` guardam o resto. `anonymize_user` limpa `raw` e não toca `payment_events`. `account-delete` não remove o cliente nem a subconta no Asaas. O prazo fiscal está "a confirmar com o contador" (`docs/DECISOES.md`, D7) | Confirmar com o Asaas o papel de cada parte e o contrato; guardar de `raw` só o necessário; tratar `payment_events.payload`; pedir a remoção do cliente no Asaas onde a regra permitir; fixar o prazo com o contador | R15 a R18 | A |
@@ -542,7 +544,7 @@ Todas as medidas abaixo são `[PLANEJADO]`. **Quando:** A = antes de qualquer us
 
 | ID | Hoje (P×I) e por quê | Alvo (P×I) e por quê | Decisão proposta |
 |---|---|---|---|
-| R01 | **2×3=6.** Bucket privado, RLS por pasta e link de 5 minutos fecham o acesso público (S02, S03, S05). Sobram a conta de administrador sem MFA, os arquivos que se acumulam e o fornecedor sem contrato | **1×3=3.** Retenção curta (G01), leitura registrada (G02), MFA (G03) e contrato (G12) tornam o acesso indevido remoto. O impacto continua alto porque o conteúdo é documento de identidade | Reduzir |
+| R01 | **2×3=6.** Bucket privado, RLS por pasta e link de 5 minutos reduzem o acesso público (S02, S03, S05). Sobram a conta de administrador sem MFA, os arquivos que se acumulam e o fornecedor sem contrato | **1×3=3.** Retenção curta (G01), leitura registrada (G02), MFA (G03) e contrato (G12) tornam o acesso indevido remoto. O impacto continua alto porque o conteúdo é documento de identidade | Reduzir |
 | R02 | **3×2=6.** Nada limita a guarda. S06 só limita quais itens se pedem | **1×2=2** com G01, G17 e G18 | Reduzir |
 | R03 | **2×3=6.** Rejeitar exige motivo, que o prestador lê (S04), mas não há critério escrito nem segunda revisão, e a certidão fica guardada | **2×2=4.** Critérios, lista de ocupações, segunda revisão, contestação e guarda só do resultado reduzem o impacto. A decisão continua discricionária, por isso a probabilidade não cai a 1 | Reduzir. O advogado valida a lista de ocupações |
 | R04 | **2×3=6.** Sem roteiro nem segunda revisão. S04 só exige motivo e arquivo | **1×3=3** com G23 e G18 | Reduzir |
@@ -552,7 +554,7 @@ Todas as medidas abaixo são `[PLANEJADO]`. **Quando:** A = antes de qualquer us
 | R08 | **2×2=4.** A localização é opcional na tela e o sistema pede permissão (S14), mas o banco não confere o consentimento e guarda 6 casas sem prazo | **1×2=2** com G04 e G11 | Reduzir |
 | R09 | **3×2=6.** S11 mostra só o primeiro nome ao cuidador. Nada pergunta a idade nem registra o responsável | **2×2=4** com G06. O melhor interesse exige análise do advogado | Reduzir |
 | R10 | **3×1=3.** S11 esconde o contato do cuidador | **2×1=2** com G10 | Aceitar, com G10 |
-| R11 | **3×2=6.** Carga mínima, sem identificadores, sem treino e com apagamento automático em 30 dias (S16 e termos do fornecedor) reduzem o dano. Faltam aviso, consentimento e mecanismo (G08, G09) | **2×2=4.** Com consentimento e cláusulas, a transferência fica regular. O usuário ainda pode digitar dado sensível | Evitar até G08 e G09 |
+| R11 | **3×2=6.** Carga mínima, sem identificadores, com cláusula de não treino e com apagamento automático em 30 dias (S16 e termos do fornecedor) reduzem o dano. Faltam aviso, consentimento e mecanismo (G08, G09) | **2×2=4.** Com consentimento e cláusulas, a transferência fica regular. O usuário ainda pode digitar dado sensível | Evitar até G08 e G09 |
 | R12 | **3×2=6.** Nada no WorkEasy muda a retenção do fornecedor | **2×2=4.** Um acordo de retenção zero, se o fornecedor oferecer `[incerto]`, levaria a 1×2=2. Sem ele, a mitigação é aviso e consentimento | Reduzir, ou aceitar com consentimento |
 | R13 | **2×2=4.** As regras do prompt e o esquema ajudam, mas não garantem. Ainda não há tela de revisão | **1×2=2** com G08 | Reduzir |
 | R14 | **2×1=2.** Saída restrita e validada, recusa tratada e corpo fora do log (S16) | **1×1=1** | Aceitar |
@@ -695,6 +697,10 @@ Papéis, transferência internacional e retenção também aparecem nas pergunta
 13. **Incidentes.** Aplicar ao produto os critérios de "risco ou dano relevante" da Res. CD/ANPD 15/2024, art. 5º (dado sensível; criança, adolescente ou idoso; financeiro; autenticação). Quem comunica e como?
 14. **Este RIPD.** Precisa ser publicado, enviado ou apenas guardado? Convém ter versão pública?
 15. **Risco residual do Cuidado.** Com R06 ainda alto no alvo, o dono pode aceitar o risco que sobra? Com que condições (consentimento, prazos, campos fechados)?
+16. **IA no Cuidado e nas propostas.** O resumo semanal (`care-summary`) envia ao modelo de IA o texto de refeições, atividades, humor e observações, sem nomes e contatos, e deixa de fora os relatórios com termos de saúde. A tela está ligada em `pages/cuidado/Relatorios.tsx`. O orçamento (`quote-assist`) envia a descrição do serviço. Isso muda R06 e R11: o relato do dia passa a sair do servidor para o exterior. Qual base e qual aviso cabem? Também: `docs/ARQUITETURA.md` (linha 67) ainda diz que `ASSIST_HOURLY_LIMIT` vale só para `request-assist`, e a lista de cron (linhas 417 e 418) não cita `product-events-retention`. O ROPA (OP-22) também não cita as duas funções novas.
+17. **Biometria.** Este RIPD trata a selfie como dado sensível "por cautela", sem afirmar que é biométrica (seção 4.2.1). `docs/juridico/11-textos-de-consentimento-e-avisos.md` (seção 4.1) afirma que "selfie vinculada a uma pessoa é dado biométrico", e `03-politica-de-privacidade.md` (Q2) diz o mesmo. Escolher uma redação e usar a mesma nas três peças.
+18. **Nome do fornecedor de IA e links.** `03-politica-de-privacidade.md` usa o marcador [PROVEDOR DE IA]; este RIPD nomeia a Anthropic. Harmonizar. No `03`, o link `privacy.claude.com/en/articles/7996866` é descrito como "exclusão em 30 dias"; neste RIPD, o mesmo artigo é a página de retenção ("How long do you store my organization's data?"). Conferir o link correto.
+19. **Asaas (T4).** `docs/pesquisa/asaas.md` (08/11/2026) diz que criar subcontas pela API exige conta-raiz de pessoa jurídica e o modelo BaaS habilitado, e que há período de avaliação regulatória (até 10 subcontas, até R$ 2.000,00 por subconta, até 60 dias). Isso muda o cenário de T4 e não está neste RIPD. A mesma pesquisa diz que `asaas-onboard` grava `active` antes da aprovação; não verifiquei. Confirmar com o Asaas antes de tratar T4 como pronto `[incerto]`.
 
 ### Itens marcados `[incerto]`
 
@@ -713,13 +719,17 @@ Papéis, transferência internacional e retenção também aparecem nas pergunta
 | I11 | Norma recente sobre serviços digitais para crianças e adolescentes | Não consegui abrir o texto (Planalto, HTTP 503). Existência e alcance ficam incertos | Advogado |
 | I12 | Aspectos trabalhistas do monitoramento do cuidador; Estatuto da Pessoa Idosa | Não pesquisei | Advogado |
 | I13 | Volume de titulares | Não há projeção | Dono |
-| I14 | Texto oficial da LGPD no Planalto | O Planalto respondeu HTTP 503 nas quatro tentativas de abrir a LGPD (três endereços). Usei o texto atualizado da Câmara dos Deputados | Conferir no Planalto |
+| I14 | Texto oficial da LGPD no Planalto | O Planalto respondeu HTTP 503 nas quatro tentativas de abrir a LGPD (três endereços). Em 08/11/2026, o endereço da LGPD compilada devolveu bloqueio de acesso da Presidência. Usei o texto atualizado da Câmara dos Deputados | Conferir no Planalto |
 | I15 | Publicação oficial (DOU) das resoluções e do enunciado | Abri cópias (páginas da ANPD e Biblioteca Digital do Ministério da Justiça) que dizem não substituir o DOU | Conferir no DOU |
 | I16 | Base legal do Asaas para os dados de subconta (art. 7º, II) | Depende das regras do instituto de pagamento, que não li | Advogado e contrato com o Asaas |
+| I17 | Citações do Radar Tecnológico nº 2 (pp. 6, 13, 21 e 22) e da tese do TST (Tema 1) | Os dois PDFs não puderam ser lidos pela ferramenta em 08/11/2026 (conteúdo binário) | Abrir os PDFs no site da ANPD e no portal do TST e conferir página por página |
+| I18 | Conta-raiz PJ, modelo BaaS e avaliação regulatória do Asaas | Vem da pesquisa de 08/11/2026 (`docs/pesquisa/asaas.md`), não confirmada no contrato | Confirmar com o gerente de contas do Asaas antes de abrir subcontas |
 
 ## Fontes consultadas
 
 Todas foram abertas em **23/10/2026**, como diz a coluna "Aberta em". Cada citação entre aspas é um trecho curto lido na página.
+
+Revisão de 08/11/2026: 17 das 21 fontes numeradas foram reabertas com WebFetch, e as citações de lei listadas em "Pontos para o advogado" foram conferidas no texto da Câmara dos Deputados. Não consegui ler as fontes 8 e 9 (PDFs do Radar nº 2 e da tese do TST) e não reabri as fontes 10 e 16. As marcas `[incerto]` valem para essas quatro.
 
 ### Normas, orientações e decisões
 
@@ -740,10 +750,10 @@ Todas foram abertas em **23/10/2026**, como diz a coluna "Aberta em". Cada cita�
 
 | # | Fonte | Uso | URL | Aberta em | Trecho lido |
 |---|---|---|---|---|---|
-| 11 | Anthropic, Commercial Terms of Service (vigência 17/06/2025) | Sem treino com conteúdo do cliente; DPA incorporado | https://www.anthropic.com/legal/commercial-terms | 23/10/2026 | "Anthropic may not train models on Customer Content from Services." |
+| 11 | Anthropic, Commercial Terms of Service (vigência 17/06/2025) | Não pode treinar modelos com conteúdo do cliente ("may not train"); DPA incorporado | https://www.anthropic.com/legal/commercial-terms | 23/10/2026 | "Anthropic may not train models on Customer Content from Services." |
 | 12 | Anthropic, Data Processing Addendum (vigência 24/02/2025) | Papéis, cláusulas de transferência, suboperadores, devolução e exclusão, aviso de incidente em 48 horas | https://www.anthropic.com/legal/data-processing-addendum | 23/10/2026 | "Customer is the controller and Anthropic is Customer's processor." |
 | 13 | Anthropic Privacy Center, "How long do you store my organization's data?" (atualizado em 01/07/2026) | Retenção de 30 dias; exceções | https://privacy.claude.com/en/articles/7996866-how-long-do-you-store-my-organization-s-data | 23/10/2026 | "we automatically delete inputs and outputs on our backend within 30 days of receipt or generation" |
-| 14 | Anthropic Privacy Center, "Where are your servers located…" (atualizado em 15/06/2026) | Local dos dados | https://privacy.claude.com/en/articles/7996890-where-are-your-servers-located-do-you-host-your-models-on-eu-servers | 23/10/2026 | "Note that data is stored in the US." |
+| 14 | Anthropic Privacy Center, "Where are your servers located…" (atualizado em 15/06/2026) | Local dos dados | https://privacy.claude.com/en/articles/7996890-where-are-your-servers-located-do-you-host-your-models-on-eu-servers | 23/10/2026 | "Note that data is stored in the US."; e "By default, we may route customer traffic to select countries in the US, Europe, Asia and Australia" (reaberta em 08/11/2026) |
 | 15 | Anthropic Privacy Center, "Can you delete data that I sent via API?" (16/03/2026) | Sem exclusão pontual | https://privacy.claude.com/en/articles/7996875-can-you-delete-data-that-i-sent-via-api | 23/10/2026 | "For paid API customers, we do not support ad hoc deletion." |
 | 16 | Anthropic Privacy Center, "How do I view and sign your DPA?" (16/03/2026) | DPA incorporado aos termos | https://privacy.claude.com/en/articles/7996862-how-do-i-view-and-sign-your-data-processing-addendum-dpa | 23/10/2026 | "is automatically incorporated into our Commercial Terms of Service" |
 | 17 | Supabase, "Security at Supabase" (sem data na página) | Declarações de criptografia e backup | https://supabase.com/security | 23/10/2026 | "All customer data is encrypted at rest with AES-256 and in transit via TLS." |
@@ -754,11 +764,12 @@ Todas foram abertas em **23/10/2026**, como diz a coluna "Aberta em". Cada cita�
 
 ### Tentativas que falharam
 
-- planalto.gov.br (cinco tentativas em quatro endereços: a LGPD compilada, em duas grafias do endereço, a LGPD no texto original e uma lei sobre serviços digitais para crianças e adolescentes): HTTP 503 em todas.
+- planalto.gov.br (cinco tentativas em quatro endereços: a LGPD compilada, em duas grafias do endereço, a LGPD no texto original e uma lei sobre serviços digitais para crianças e adolescentes): HTTP 503 em todas. Em 08/11/2026, o endereço da LGPD compilada devolveu bloqueio de acesso da Presidência, não o texto.
 - Política de privacidade do Asaas (quatro tentativas: três em `www.asaas.com`, que redirecionaram para a página de login, e uma em `docs.asaas.com`, que deu HTTP 404).
 - ANPD, página própria da Res. CD/ANPD 15/2024: HTTP 404; usei a cópia do Ministério da Justiça. O link do DOU informado pela página da ANPD (`https://www.in.gov.br/en/web/dou/-/resolucao-cd/anpd-n-15-de-24-de-abril-de-2024-556243024`) não foi aberto.
 - Anthropic `/legal/dpa`: HTTP 404; usei `/legal/data-processing-addendum`.
 - Página de notícia do TST sobre o Tema 1: veio vazia.
+- Radar nº 2 (fonte 8) e tese do TST (fonte 9), em 08/11/2026: o PDF veio como conteúdo binário e não foi possível ler as páginas citadas.
 
 ### Repositório lido em 23/10/2026
 

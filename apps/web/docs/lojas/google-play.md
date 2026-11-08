@@ -4,7 +4,8 @@
 
 | | |
 |---|---|
-| Data da pesquisa | 23/10/2026 |
+| Data da pesquisa | 23/10/2026; fontes reabertas e conferidas em 08/11/2026 |
+| Versão | `2026-10-rascunho` (mesma etiqueta dos documentos jurídicos; revisado em 08/11/2026) |
 | App | WorkEasy, pacote `br.com.workeasy`, Capacitor 8.5.2, `minSdk` 24, `targetSdk` 36 |
 | Estado do produto | MVP na `main`, **não implantado**, sem usuários reais. Nada foi testado contra Asaas, WhatsApp ou Resend |
 | Escopo | só Google Play (Android). iOS/macOS e desktop ficam em `docs/lojas/app-store.md` e `docs/lojas/desktop-e-assinatura.md` |
@@ -25,7 +26,7 @@
 3. Em paralelo: publicar Termos, Política de Privacidade e página de exclusão (L01, L03 e seção 10); ajustar o código (seção 2.3); pôr o back-end de produção no ar (I03); definir o canal de login (D3).
 4. Gerar a chave de upload e o primeiro pacote assinado (seção 14) e subir no **teste interno** (disponível em minutos, até 100 testadores) (G29).
 5. Preencher o Conteúdo do app (seções 7 a 10) e a ficha (seções 5 e 6).
-6. **Teste fechado** com o mesmo build que irá para produção. Conta pessoal: 12 testadores por 14 dias seguidos, obrigatório. Conta de organização: não obrigatório, recomendado (G14).
+6. **Teste fechado** com um build do mesmo perfil que irá para produção (seção 2.1). Conta pessoal: 12 testadores por 14 dias seguidos, obrigatório (G14). A Ajuda descreve esse requisito só para contas pessoais; para conta de organização, confirmar no Console [incerto].
 7. Produção. A revisão pode levar até sete dias, ou mais em casos excepcionais (G31). A primeira versão não aceita lançamento em porcentagem (G30).
 
 ### Decisões que só o dono toma
@@ -47,7 +48,7 @@
 | ID | Bloqueio | Evidência | Gravidade | Quem destrava |
 |---|---|---|---|---|
 | B01 | Não existe conta de organização: a PJ não foi aberta e o D-U-N-S leva até 30 dias | `docs/DECISOES.md` seção 8 (itens 3 e 5); G16, G18 | Crítico | Dono |
-| B02 | Política de Privacidade e Termos não estão publicados. `/legal` mostra "Documentos em elaboração"; os dois links do aceite apontam para a mesma rota; `CONSENT_VERSIONS` está em `2026-10-rascunho`. O Google exige a Política em URL público **e dentro do app**, e Termos separados da Política | `pages/LegalDocs.tsx`, `pages/conta/Entrar.tsx`, `components/TermsGate.tsx`, `config/legal.ts`; G03, G24, G28 | Crítico | Advogado (L01 a L03) e dev (M07) |
+| B02 | Política de Privacidade e Termos não estão publicados. `/legal` mostra "Documentos em elaboração"; os dois links do aceite apontam para a mesma rota; `CONSENT_VERSIONS` está em `2026-10-rascunho`. O Google exige a Política em URL público **e dentro do app**, e Termos que definam conteúdo censurável (separá-los da Política é só sugestão, G28) | `pages/LegalDocs.tsx`, `pages/conta/Entrar.tsx`, `components/TermsGate.tsx`, `config/legal.ts`; G03, G24, G28 | Crítico | Advogado (L01 a L03) e dev (M07) |
 | B03 | Não há URL web para pedir exclusão de conta. Existe só `/conta` (exige login) e `public/robots.txt` bloqueia `/conta` e `/entrar` | `public/robots.txt`, `pages/conta/routes.tsx`; G02, G03 | Crítico | Dev (M07, M08) e site no ar |
 | B04 | Não há denunciar nem bloquear no app. Existe conteúdo de usuário visível a outros: biografia, serviços e avaliações na página pública do profissional. Moderação só pelo admin | busca por `denunc`, `reportar`, `bloquear` e `moderat` em `pages`, `components`, `services`, `lib`, `supabase/migrations` e `supabase/functions`: só o "relatório do dia" do Cuidado e a ocultação de avaliação pelo admin (`reviews_admin_update`); G27, G28 | Alto | Dev (M06) |
 | B05 | Conteúdo de demonstração no pacote de produção: faixa "Protótipo de demonstração" em toda tela e no rodapé; médicos fictícios em `/health`, `/search` e nas páginas de área; teleconsulta e prontuário de demonstração; tela de verificação com câmera; cadastro de profissional de demonstração (`/register-provider`, "Nesta demonstração, nenhum dado é enviado"), que é o destino de "Ofereço este serviço" e do link de Minha conta mesmo com backend ligado (o menu já aponta para `/pro/cadastro`). Conferi no bundle de `vite build --mode native` (feito fora do repositório): estão lá "Protótipo de demonstração", "profissionais de demonstração encontrados", "Dr. Roberto Costa (fictício)", "Verificação de identidade (simulação)", "Paciente Fictício (demonstração)" e "Funcionalidade futura" | `AppShell.tsx`, `components/DemoBanner.tsx`, `pages/HealthSearch.tsx`, `pages/Search.tsx`, `pages/AreaPage.tsx`, `pages/Verification.tsx`, `pages/ProviderRegistration.tsx`, `pages/OccupationPage.tsx`, `pages/conta/Conta.tsx`; G35 | Alto | Dev (M01, M02) |
@@ -98,7 +99,7 @@ Demonstrações fora, faixa de protótipo fora com backend ligado, `CAMERA` fora
 | M09 | Flag de build para as abas de login (E-mail e Celular), conforme D3 | `pages/conta/Entrar.tsx` | A e B | B09 |
 | M10 | `versionCode` e `versionName` por propriedade do Gradle e `signingConfig` opcional lendo `keystore.properties` (proposta na seção 14.7) | `android/app/build.gradle` | A e B | B10 |
 | M11 | `.gitignore`: `*.jks` e `keystore.properties` | `apps/web/.gitignore` | A e B | B10 |
-| M12 | Decidir `android:allowBackup="true"`: o backup do Android copia o armazenamento do WebView, que guarda a sessão do Supabase | manifesto | A e B | nota |
+| M12 | Manter `android:allowBackup="false"` (valor de hoje, conferido no manifesto); mudar só por decisão, porque com `true`: o backup do Android copia o armazenamento do WebView, que guarda a sessão do Supabase | manifesto | A e B | nota |
 
 ---
 
@@ -109,7 +110,7 @@ Demonstrações fora, faixa de protótipo fora com backend ligado, `CAMERA` fora
 | Idade | 18 anos ou mais | G15 |
 | Taxa | US$ 25,00, única. Cartão MasterCard, Visa, American Express (Discover só nos EUA; Visa Electron só fora dos EUA). Pré-pago não vale | G15 |
 | Tipo | Organização ou empresa: informar nome público do desenvolvedor, D-U-N-S, nome, endereço, telefone e site da organização, nome do contato, e-mail e telefone de contato (confirmados por código) e e-mail e telefone do desenvolvedor | G16, G17, G18 |
-| D-U-N-S | número de 9 dígitos da Dun & Bradstreet, gratuito. Pode levar até 30 dias. Sem ele não se cria conta de organização | G18 |
+| D-U-N-S | número de 9 dígitos da Dun & Bradstreet, gratuito. Pode levar até 30 dias. Sem ele não se cria conta de organização, salvo o método alternativo para quem não consegue o número (G18) | G18 |
 | O que fica público | nome civil, endereço oficial, e-mail e telefone do desenvolvedor aparecem no Google Play. **Use os dados da empresa, não os pessoais** | G18 |
 | E-mail de contato | confirmado por senha única; numa conta de organização não deve ser genérico nem pessoal; deve ser associado à organização | G17 |
 | Identidade | verificar nome e endereço antes de publicar | G18 |
@@ -149,7 +150,7 @@ Limites oficiais (G21): nome do app 30 caracteres, descrição breve 80, descri�
 | Bloco opcional Cuidado | | ver 5.1 | 317 |
 | Bloco opcional Pagamento | | ver 5.1 | 243 |
 | Base mais os dois blocos | 4.000 | | 2.239 |
-| Notas da versão (teste fechado) | 500 por idioma (G30) | ver 15 | 314 |
+| Notas da versão (teste fechado) | 500 por idioma (G30) | ver 15 | 255 |
 | Notas da versão 1.0.0 | 500 por idioma | ver 15 | 261 |
 
 ### 5.1 Textos para copiar
@@ -202,6 +203,7 @@ Notas sobre o texto base:
 
 - "por e-mail ou SMS": tirar "ou SMS" se a aba Celular sair do app (D3).
 - "A equipe do WorkEasy analisa o cadastro": é regra do banco (profissional só aparece na busca depois de aprovado), mas depende de a operação de análise estar ativa no lançamento [CONDICIONAL: depende de parecer].
+- "Os serviços são prestados pelos profissionais, que respondem pelo atendimento" é cláusula de responsabilidade: [CONDICIONAL: depende de parecer] antes de publicar.
 - O aviso de dispositivo médico é o que a Ajuda pede para apps de saúde (G11). Use enquanto a declaração de saúde estiver marcada (seção 7.4).
 - Não há números ("44 áreas", "1.710 profissões"), nomes de selo, promessa de segurança, de rapidez ou de qualidade, nem preço: a política de metadados proíbe termos de ranking, preço e promoção em título e descrição breve, e o app não tem como provar os outros (G20, G22, G35).
 
@@ -249,10 +251,10 @@ Sem emoji, sem repetição de pontuação, sem palavras todas em maiúsculas par
 |---|---|---|---|---|---|
 | Ícone do app | Sim | PNG de 32 bits (com alfa), **512 × 512 px**, sRGB | até 1.024 KB; quadrado inteiro, sem cantos arredondados e sem sombra (o Play aplica a máscara) | `apps/web/public/icons/icon-maskable-512.png` serve (512 × 512, RGBA, 44 KB, cantos opacos). `icon-512.png` **não serve** (cantos transparentes) | copiar o `icon-maskable-512.png` |
 | Recurso gráfico | Sim | JPEG ou PNG de 24 bits, sem alfa, **1.024 × 500 px** | pontos focais no centro; sem preço, ranking ou "novo" | não existe | criar |
-| Capturas de telefone | Sim, no mínimo 2 | JPEG ou PNG de 24 bits, sem alfa; lado menor de pelo menos 320 px; lado maior de no máximo 3.840 px; **o lado maior não pode passar de 2 vezes o menor**; até 8 | para formatos de destaque: pelo menos 4 com lado menor de 1.080 px ou mais, em 9:16 (**1.080 × 1.920 px**) | não existem | capturar |
-| Capturas de tablet de 7 e 10 polegadas | Não | 16:9 ou 9:16, entre 1.080 e 7.680 px; recomendado pelo menos 4 | | | opcional |
+| Capturas de telefone | Sim, no mínimo 2 | JPEG ou PNG de 24 bits, sem alfa; lado menor de pelo menos 320 px; lado maior de no máximo 3.840 px; **o lado maior não pode passar de 2 vezes o menor**; até 8 | para recomendações em formatos com capturas (G20): pelo menos 4 com lado menor de 1.080 px (**1.080 × 1.920 px** ou 1.920 × 1.080 px) | não existem | capturar |
+| Capturas de tablet de 7 e 10 polegadas | Não | 16:9 ou 9:16, entre 1.080 e 7.680 px; recomendado pelo menos 4 [incerto: não conferido nesta revisão] | | | opcional |
 | Vídeo de prévia | Não | URL do YouTube público ou não listado, sem anúncios | | | opcional |
-| Texto alternativo | Recomendado | até 140 caracteres por imagem | sem "foto de" ou "imagem de" | | ver 6.1 |
+| Texto alternativo | Recomendado | até 140 caracteres por imagem [incerto: o limite não aparece na Ajuda aberta em 08/11/2026] | sem "foto de" ou "imagem de" | | ver 6.1 |
 | Ícone do launcher (APK) | já existe | adaptativo, em `android/app/src/main/res/mipmap-*` | separado do ícone da loja | feito | nenhuma |
 
 O texto oficial em inglês pede "a minimum of two screenshots across different device types" (G20); suba pelo menos duas de telefone e confira na tela de Gráficos [incerto: se as duas precisam ser de tipos de dispositivo diferentes]. Telas de celular com proporção 20:9 (por exemplo 1.080 × 2.400) **passam do limite de 2 vezes**: exporte em 1.080 × 1.920 (emulador com essa tela, ou recorte).
@@ -321,17 +323,17 @@ Caminho: Política > Conteúdo do app > Classificações de conteúdo > Iniciar.
 | Navegação livre na internet | Não (links externos abrem no navegador: fatura do Asaas, mapa, WhatsApp) |
 | Anúncios | Não |
 
-Não é possível prever o resultado; não force uma classificação. Duas notas da Ajuda: a classificação indicativa (ClassInd) do Brasil está sendo atualizada e pode ser preciso **reenviar o questionário** (G32); e a Ajuda anuncia que, a partir de março de 2026, o Google Play passa a bloquear ou filtrar no Brasil apps classificados como 18+ para menores de idade (G32). Não responda "18+" por precaução.
+Não é possível prever o resultado; não force uma classificação. Duas notas da Ajuda: a classificação indicativa (ClassInd) do Brasil está sendo atualizada e pode ser preciso **reenviar o questionário** (G32); e a Ajuda anunciava que, a partir de março de 2026, o Google Play passaria a bloquear ou filtrar no Brasil apps 18+ para menores (G32); a página aberta em 08/11/2026 diz que o Play bloqueia ou filtra, sem a data [incerto]. Não responda "18+" por precaução.
 
 ### 7.3 Público-alvo
 
-Marcar a faixa "18 anos ou mais" (G26). Não entrar no programa Famílias. A lei do ECA Digital (Lei 15.211/2025) vale desde 17/03/2026 e atinge produto ou serviço "direcionado a crianças e a adolescentes no País ou de acesso provável por eles" (N01, art. 1º); o Play oferece a API Play Age Signals (Beta) no Brasil (G32). Se o WorkEasy é de "acesso provável" por menores é pergunta para o advogado (seção 19, item 4).
+Marcar a faixa "18 anos ou mais" (G26). Não entrar no programa Famílias. A lei do ECA Digital (Lei 15.211/2025) vale desde 17/03/2026 e atinge produto ou serviço "direcionado a crianças e a adolescentes no País ou de acesso provável por eles" (N01, art. 1º) [incerto: planalto.gov.br bloqueou a leitura em 08/11/2026]; o Play oferece a API Play Age Signals (Beta) no Brasil (G32). Se o WorkEasy é de "acesso provável" por menores é pergunta para o advogado (seção 19, item 4).
 
 ### 7.4 Apps de saúde
 
 **Resposta recomendada:** marcar **Serviços e administração de saúde**. A Ajuda descreve essa categoria como ferramentas de marcação de consultas, telessaúde, auxílio na atenção a idosos, e inclui "apps que conectam pacientes a prestadores de cuidados de saúde" (G10). O catálogo tem as áreas `health`, `saude-mental`, `odontologia`, `terapias-e-reabilitacao`, `nutricao`, `enfermagem` e `exames-e-diagnostico`, e o perfil B tem o Cuidado. A política diz que um app que "não é principalmente de saúde, mas tem recursos relacionados" **ainda entra no escopo** (G11). [CONDICIONAL: depende de parecer]
 
-- **Não marcar** "Apps para dispositivos médicos": o app não diagnostica, não indica tratamento, não conversa com hardware médico. Não marcar Conexão Saúde nem pesquisa em seres humanos.
+- **Não marcar** "Apps para dispositivos médicos": o app não diagnostica, não indica tratamento, não conversa com hardware médico. Não marcar "Pesquisa em temas relacionados à saúde" (G10).
 - "Meu app não tem recursos de saúde" só serve se o build de loja não tiver áreas de saúde nem Cuidado; com o catálogo atual seria difícil sustentar (G10).
 - Depois de declarar: pôr na descrição o aviso de "não é dispositivo médico" e lembrar o usuário de consultar um profissional de saúde (G11, já está no texto 5.1); remover permissões não usadas (G11); a Política de Privacidade precisa explicar o uso (G11).
 - `CAMERA` e as permissões de localização estão na lista de permissões "no escopo dos dados sensíveis relacionados à saúde" e exigem declaração em destaque no app e consentimento (G12). Por isso M03 e M04.
@@ -369,8 +371,10 @@ Caminho: Política > Conteúdo do app > Segurança dos dados > Iniciar (G01). O 
 | `notify-dispatch` para WhatsApp Cloud API (Meta) [PLANEJADO: fase 2 em `docs/pesquisa/whatsapp-e-email.md`] | Meta | telefone e variáveis do modelo | provedor de serviços [CONDICIONAL: depende de parecer] |
 | `asaas-onboard`, `payments-create`, `charges-create`, `subscriptions-manage` para o Asaas | Asaas | nome, e-mail, telefone, CPF/CNPJ, data de nascimento, renda, endereço, valores | **marcar "compartilhado"** (leitura conservadora; ver nota) |
 | `request-assist` para a Anthropic | Anthropic | texto do pedido | a função existe, mas **o app não a chama hoje** (busca em `pages`, `components`, `services`). [PLANEJADO]. Ao ligar, reabrir o formulário e a Política (G03: integrações de IA de terceiros continuam sob a política) |
+| `quote-assist` e `care-summary` para a Anthropic (já chamados pelo app: `services/aiAssist.ts`, usado em `pages/pro/Orcamentos.tsx` e `components/pro/QuoteAssist.tsx`; resumo da semana do Cuidado em `components/cuidado/WeekSummary.tsx`) | Anthropic | `quote-assist`: descrição do serviço (até 2.000 caracteres) e referências de preço. `care-summary`: refeições, atividades, humor e observações do relatório, o primeiro nome da pessoa cuidada e os nomes que a função monta para o texto | **marcar "compartilhado"** (leitura conservadora, como no Asaas) [CONDICIONAL: depende de parecer]. Sem `ANTHROPIC_API_KEY` no servidor, respondem 503 |
 | Links externos tocados pelo usuário | OpenStreetMap (coordenadas na URL), WhatsApp (`wa.me`), fatura do Asaas | o que está no link | ação iniciada pelo usuário: não conta como compartilhamento (G01) |
-| SDK de análise, anúncios, falhas ou push | nenhum | | `package.json` só tem Capacitor (`core`, `app`, `android`, `ios`), `@supabase/supabase-js`, `lucide-react`, `react`, `react-dom`, `react-router-dom`; sem `google-services.json` |
+| Falhas (Sentry, `@sentry/react`) | Sentry, só se o build tiver `VITE_SENTRY_DSN` | erros do app; `lib/observability.ts` apaga usuário, cookies e corpos de requisição antes de enviar | desligado sem DSN. O `package.json` **tem** `@sentry/react`; `web-release.yml` e a seção 14.4 não definem o DSN. Se o DSN entrar no build de loja, declarar Registros de falhas e Diagnósticos e reabrir a seção 8 (`docs/lojas/app-store.md`, seção 5.4) [CONDICIONAL: depende de parecer] |
+| Análise, anúncios e push | nenhum | | sem SDK desses tipos; o `package.json` tem Capacitor (`core`, `app`, `android`, `ios`), `@supabase/supabase-js`, `lucide-react`, `react`, `react-dom`, `react-router-dom` e `@sentry/react`; sem `google-services.json` |
 
 Nota sobre o Asaas: ele recebe os dados por chamada de servidor a servidor e também os trata para abrir e manter a conta de recebimento (obrigação dele). Marcar "compartilhado" é a leitura conservadora. Se o advogado entender que o Asaas age só em nome do WorkEasy (provedor de serviços, G01), os tipos marcados abaixo com "Sim (Asaas)" passam para "Não". O fato de o Asaas manter esses cadastros depois da exclusão da conta no WorkEasy (seção 10.3) reforça a leitura conservadora. [CONDICIONAL: depende de parecer]
 
@@ -382,7 +386,7 @@ Perfil: A = sem Cuidado, B = com Cuidado. Se o código ficar como hoje, use toda
 |---|---|---|---|---|---|
 | Local > Local aproximado | Sim | Não | Obrigatório | Funcionalidade do app | A e B |
 | Local > Local exato | Sim | Não | Opcional | Funcionalidade do app | só B |
-| Informações pessoais > Nome | Sim | Sim (Asaas) | Obrigatório | Funcionalidade do app; Gerenciamento de contas | A e B |
+| Informações pessoais > Nome | Sim | Sim (Asaas; Anthropic no resumo da semana) | Obrigatório | Funcionalidade do app; Gerenciamento de contas | A e B |
 | Informações pessoais > Endereço de e-mail | Sim | Sim (Asaas) | Obrigatório | Funcionalidade do app; Gerenciamento de contas; Mensagens do desenvolvedor | A e B |
 | Informações pessoais > IDs de usuários | Sim | Não | Obrigatório | Funcionalidade do app; Gerenciamento de contas; Segurança, conformidade e prevenção de fraudes | A e B |
 | Informações pessoais > Endereço | Sim | Sim (Asaas) | Opcional | Funcionalidade do app; Segurança, conformidade e prevenção de fraudes | A e B |
@@ -390,12 +394,12 @@ Perfil: A = sem Cuidado, B = com Cuidado. Se o código ficar como hoje, use toda
 | Informações pessoais > Outras informações | Sim | Sim (Asaas) | Obrigatório | Funcionalidade do app; Segurança, conformidade e prevenção de fraudes | A e B |
 | Informações financeiras > Histórico de compras | Sim | Sim (Asaas) | Opcional | Funcionalidade do app; Segurança, conformidade e prevenção de fraudes | A e B |
 | Informações financeiras > Outras informações financeiras | Sim | Sim (Asaas) | Opcional | Funcionalidade do app; Segurança, conformidade e prevenção de fraudes | A e B |
-| Saúde e fitness > Informações sobre saúde | Sim | Não | Opcional | Funcionalidade do app | só B [CONDICIONAL: depende de parecer] |
+| Saúde e fitness > Informações sobre saúde | Sim | Sim (Anthropic, no resumo da semana) | Opcional | Funcionalidade do app | só B [CONDICIONAL: depende de parecer] |
 | Mensagens > Outras mensagens no app | Sim | Não | Opcional | Funcionalidade do app | A e B |
 | Fotos e vídeos > Fotos | Sim | Não | Obrigatório | Funcionalidade do app; Segurança, conformidade e prevenção de fraudes | A e B |
 | Arquivos e documentos > Arquivos e documentos | Sim | Não | Obrigatório | Funcionalidade do app; Segurança, conformidade e prevenção de fraudes | A e B |
 | Contatos > Contatos | Sim | Não | Opcional | Funcionalidade do app | A e B |
-| Atividade em apps > Outro conteúdo gerado pelo usuário | Sim | Não | Obrigatório | Funcionalidade do app | A e B |
+| Atividade em apps > Outro conteúdo gerado pelo usuário | Sim | Sim (Anthropic, em `quote-assist` e `care-summary`) | Obrigatório | Funcionalidade do app | A e B [CONDICIONAL: depende de parecer] |
 
 Por que cada escolha:
 
@@ -403,7 +407,7 @@ Por que cada escolha:
 - **Local aproximado:** o bairro escolhido no pedido, os bairros que o profissional atende e a cidade do perfil. Não vem do GPS. Escolhi declarar porque a definição inclui "cidade em que ele está" (G01).
 - **Outras informações:** CPF/CNPJ, data de nascimento, tipo de empresa, número de registro em conselho (obrigatório nas ocupações regulamentadas) e, no perfil B, ano de nascimento da pessoa cuidada.
 - **Contatos:** o cadastro de clientes do profissional (Pro) guarda nome, telefone e e-mail digitados por ele. O app **não lê a agenda do aparelho**. Declarei por ser, literalmente, informação sobre contatos do usuário (G01). [CONDICIONAL: depende de parecer]
-- **Informações sobre saúde (perfil B):** preferências, contato de emergência e o relatório do dia (refeições, atividades, humor, observações) são texto livre sobre a pessoa cuidada. A tela avisa "O WorkEasy não guarda dados de saúde", mas o campo aceita qualquer texto. Declarar evita divergência com o comportamento real; se o advogado concluir o contrário, retirar. Em qualquer dos casos, a frase do aviso (`components/cuidado/HealthDataNotice.tsx`) e a Política precisam dizer a mesma coisa que o formulário.
+- **Informações sobre saúde (perfil B):** preferências, contato de emergência e o relatório do dia (refeições, atividades, humor, observações) são texto livre sobre a pessoa cuidada. A tela avisa "O WorkEasy não guarda dados de saúde", mas o campo aceita qualquer texto. Declarar evita divergência com o comportamento real, e o resumo da semana (`care-summary`) envia esses textos à Anthropic, o que também justifica a marcação de compartilhado; se o advogado concluir o contrário, retirar. Em qualquer dos casos, a frase do aviso (`components/cuidado/HealthDataNotice.tsx`) e a Política precisam dizer a mesma coisa que o formulário.
 - **Outras mensagens no app:** o texto da proposta (`proposals.message`, opcional) e as anotações do atendimento. Não existe chat.
 - **Mensagens do desenvolvedor** em e-mail e telefone: os avisos transacionais (proposta recebida, atendimento confirmado, lembrete). **Publicidade ou marketing** fica desmarcada: o consentimento "Comunicações de novidades" é gravado, mas nenhum envio de marketing existe no código. Se passar a existir, marcar.
 - **Sem alterar a resposta:** o formulário vale para o app inteiro, em todos os países (G01).
@@ -446,8 +450,8 @@ Por que cada escolha:
 
 | Pergunta | Resposta | Por quê |
 |---|---|---|
-| Todos os dados coletados são criptografados em trânsito? | **Sim** | o app fala só com o Supabase por HTTPS; o Capacitor serve os arquivos em `https://localhost`; sem `server.cleartext` em `capacitor.config.ts`. Confirme que `VITE_SUPABASE_URL` é `https://`. Não afirme mais que isso: o formulário não pergunta de criptografia em repouso e este documento não a afirma |
-| Você oferece um jeito de pedir a exclusão dos dados? | **Sim**, com o `[URL-EXCLUSAO-DE-CONTA]` | seção 10 |
+| Todos os dados coletados são criptografados em trânsito? | **Sim** | o app fala só com o Supabase por HTTPS; o Capacitor serve os arquivos em `https://localhost`; com `server.cleartext: false` explícito em `capacitor.config.ts`. Confirme que `VITE_SUPABASE_URL` é `https://`. Não afirme mais que isso: o formulário não pergunta de criptografia em repouso e este documento não a afirma |
+| Você oferece um jeito de pedir a exclusão dos dados? | **Sim**, com o `[URL-EXCLUSAO-DE-CONTA]` (quando a página da seção 10.4 estiver no ar) | seção 10 |
 | Compromisso com a Política para Famílias | Não | o app não é para crianças (G26) |
 | Análise independente de segurança | Não | não existe |
 
@@ -457,12 +461,12 @@ Por que cada escolha:
 - Score de crédito; raça e etnia; posicionamento político ou religioso; orientação sexual.
 - E-mails e SMS (o app não lê as mensagens do aparelho); todos os de áudio; vídeos; eventos da agenda do aparelho.
 - Histórico de pesquisa no app: a busca do catálogo roda no aparelho; a consulta de profissionais (`search_providers`) recebe a ocupação e o bairro e **não grava** a consulta. É processamento efêmero (G01) [incerto: conferir se o hospedeiro registra consultas]. Informações sobre condicionamento físico: ver nota do perfil B acima.
-- Apps instalados; histórico de navegação; registros de falhas, diagnósticos e outros dados de desempenho (sem SDK); identificadores do dispositivo (sem SDK, sem ID de publicidade); interações no app e outras ações (sem análise; `log_event` não é chamado pelo cliente).
+- Apps instalados; histórico de navegação; registros de falhas só se o Sentry for ligado (seção 8.2); identificadores do dispositivo (sem ID de publicidade); interações no app e outras ações (sem análise; `log_event` não é chamado pelo cliente).
 - Endereço IP: o WorkEasy não o usa para localização nem para identificar o aparelho. Registros de infraestrutura do hospedeiro e do provedor de SMS ficam fora deste formulário [incerto: confirmar nos documentos deles] (G01 FAQ sobre IP).
 
 ### 8.7 Quando reabrir o formulário
 
-Ao ligar o Cuidado; ao chamar `request-assist` no app; ao adotar SDK de análise, falhas ou push; ao enviar marketing; ao escolher o provedor de SMS ou WhatsApp; ao trocar o tratamento do Asaas; ao ligar comissão ou pagamento retido; ao mudar qualquer resposta da Política de Privacidade. As respostas precisam ser precisas e completas, e o Google pode bloquear atualizações ou remover o app por divergência (G01).
+Ao ligar o Cuidado; ao mudar o que as funções de IA enviam (`quote-assist` e `care-summary` já enviam; `request-assist` ainda não é chamado); ao adotar SDK de análise, falhas ou push; ao enviar marketing; ao escolher o provedor de SMS ou WhatsApp; ao trocar o tratamento do Asaas; ao ligar comissão ou pagamento retido; ao mudar qualquer resposta da Política de Privacidade. As respostas precisam ser precisas e completas, e o Google pode bloquear atualizações ou remover o app por divergência (G01).
 
 ---
 
@@ -486,7 +490,7 @@ Pontos da política que este uso precisa atender:
 
 - **Escopo mínimo:** a política manda pedir a localização aproximada em vez da exata e em primeiro plano em vez de segundo plano, quando o recurso permitir (G04). A exata se justifica por registrar **onde** foi feito o registro; o app trata a concessão só da aproximada sem quebrar. Se o revisor insistir em aproximada, o recurso perde valor: decisão do dono.
 - **Declaração em destaque e consentimento:** a divulgação precisa estar no app, no uso normal, descrever o dado, dizer como é usado e compartilhado, e vir **antes** do pedido do sistema (G03). Hoje o `CheckinPanel` mostra a caixa "Enviar minha localização neste registro", com o texto "A família vê onde o registro foi feito. É opcional...", e grava o consentimento `location` antes de ler a posição. Ajuste o texto ao modelo do Google ("O WorkEasy coleta [dado] para [recurso]...") em L11 (`docs/juridico/11-textos-de-consentimento-e-avisos.md`) [PLANEJADO] (G03).
-- **Mudança futura:** a Ajuda anuncia que, a partir de **27/01/2027**, o botão de localização passa a ser o escopo mínimo recomendado para localização exata (G04). Reveja este item até lá.
+- **Mudança futura (página em pré-visualização):** a partir de **27/01/2027**, apps para Android 17 (API 37 ou mais nova) precisam usar o botão de localização do sistema em pedidos pontuais ou pouco frequentes, e usar `ACCESS_FINE_LOCATION` exige uma declaração no Play Console que explique por que a localização aproximada ou o botão não bastam (G04). Ainda não vale; reveja este item até lá.
 
 ---
 
@@ -551,7 +555,7 @@ Escreva para [E-MAIL DO ENCARREGADO] com o nome e o e-mail ou o celular da conta
 
 ### 10.5 No Console
 
-Segurança dos dados > "Você oferece um jeito de pedir a exclusão dos dados?" = **Sim**, e o campo de URL da exclusão de conta com `[URL-EXCLUSAO-DE-CONTA]`. O selo vale mesmo com retenção por motivo legal ou prevenção de abuso (G01). Depois de publicado, **abra o link num navegador sem sessão** e confira que a página carrega e mostra o caminho.
+Segurança dos dados > "Você oferece um jeito de pedir a exclusão dos dados?" = **Sim**, e o campo de URL da exclusão de conta com `[URL-EXCLUSAO-DE-CONTA]`. O Google pede que a retenção por motivo legal seja informada aos usuários (G02); isso vai na Política e na página de exclusão (seção 10.3). Depois de publicado, **abra o link num navegador sem sessão** e confira que a página carrega e mostra o caminho.
 
 ---
 
@@ -563,7 +567,7 @@ Segurança dos dados > "Você oferece um jeito de pedir a exclusão dos dados?" 
 - O Play Billing **não pode** ser usado quando o pagamento é principalmente "para a compra de serviços físicos (como serviços de transporte, limpeza, passagem aérea, academia, entrega de comida, ingressos para eventos ao vivo)" (G05). Essa é a **declaração oficial** que isenta o pagamento do serviço contratado.
 - Fora essas exceções, o app **não pode levar o usuário a outro meio de pagamento** por botões, links, mensagens, WebViews ou fluxos de tela (G05).
 - Transações de serviços clínicos regulamentados não usam o Play Billing (G11).
-- Em países elegíveis há programas: faturamento alternativo no app e direcionamento para fora do app (G05). **O Brasil está na lista do piloto de escolha de faturamento do usuário**; exige desenvolvedor registrado como empresa, oferecer o Play Billing junto, integrar as APIs de faturamento alternativo, ter suporte e disputa de transação, e pagar taxa de serviço (padrão reduzida em 4%) (G06).
+- Em países elegíveis há programas: faturamento alternativo no app e direcionamento para fora do app (G05). **O Brasil está na lista do piloto de escolha de faturamento do usuário**; exige desenvolvedor registrado como empresa, oferecer o Play Billing junto, integrar as APIs de faturamento alternativo, ter suporte e disputa de transação, e pagar taxa de serviço (padrão reduzida em 4%) (G06); a tabela de exceções da Ajuda cita só EEE, Reino Unido e EUA, então a taxa para o Brasil fica [incerto].
 
 ### 11.2 Aplicação ao WorkEasy
 
@@ -596,12 +600,12 @@ O que a política exige (G27, G28) e como está:
 | Exigência | Situação hoje |
 |---|---|
 | Aceitar os Termos antes de criar conteúdo | **Existe**: caixa no `/entrar` e `TermsGate` registram o aceite em `consents`. Os Termos ainda não estão publicados (B02) |
-| Termos definem conteúdo e comportamento censurável, separados da Política | **Em elaboração**: a minuta `docs/juridico/01-termos-de-uso.md` (L01) traz a cláusula "Conduta e usos proibidos" (hoje a 10). Falta publicar (B02) e fazer o mesmo nos Termos do Prestador (L02) |
+| Termos definem conteúdo e comportamento censurável (separá-los da Política é só sugestão, G28) | **Em elaboração**: a minuta `docs/juridico/01-termos-de-uso.md` (L01) traz a cláusula "Conduta e usos proibidos" (hoje a 10). Falta publicar (B02) e fazer o mesmo nos Termos do Prestador (L02) |
 | Sistema **no app** para denunciar conteúdo e usuários | **Falta** (B04, M06). A minuta (hoje 10.2, "Como denunciar") manda escrever ao SAC; o Google pede um sistema dentro do app (G27), então, ao fazer a M06, atualize essa cláusula |
 | Bloquear usuário em interação individual (proposta, atendimento) | **Falta** (M06) |
 | Moderação contínua e ação em tempo hábil | existe o admin (`reviews_admin_update`, `admin_set_provider_status`); falta a fila de denúncias |
 
-A Ajuda recomenda dois controles separados e claramente rotulados para denunciar e bloquear (G28).
+A Ajuda dá como dica, sem exigir, dois controles separados e claramente rotulados para denunciar e bloquear (G28); o que se exige é o recurso de denunciar e bloquear no app, de fácil acesso (G28).
 
 ---
 
@@ -623,7 +627,7 @@ A opção 1 é a que usa mecanismo suportado pelo Supabase e segue o texto do Go
 
 ### 13.2 OTP fixo no Supabase (celular)
 
-O Supabase expõe `sms_test_otp` e `sms_test_otp_valid_until` em `PATCH /v1/projects/{ref}/config/auth` (S01). `sms_test_otp` aceita só `número=código`, separados por vírgula (padrão `^([0-9]{1,15}=[0-9]+,?)*$`); o número vai **só com dígitos, com 55 e DDD** (13 dígitos, no formato do exemplo local abaixo) e o código tem **6 dígitos** (o app confere 6, `services/auth.ts`; no projeto hospedado, `sms_otp_length` e `mailer_otp_length` precisam continuar em 6, como o `otp_length = 6` do `config.toml` local). O app só aceita celular brasileiro de 11 dígitos, com o 9 depois do DDD (`toE164MobileBR` em `lib/phone.ts`), e o envia ao Auth como `+55DDDNNNNNNNNN`. O stack local do repositório tem o mesmo recurso em `[auth.sms.test_otp]`, com o comentário "Never copy this block to a hosted project" (o número local `5511999990000` com código `123456` é só de desenvolvimento) e avisa que, localmente, **o Auth recusa o login por celular sem provedor de SMS habilitado, mesmo para o número de teste**.
+O Supabase expõe `sms_test_otp` e `sms_test_otp_valid_until` em `PATCH /v1/projects/{ref}/config/auth` (S01). `sms_test_otp` aceita só `número=código`, separados por vírgula (padrão `^([0-9]{1,15}=[0-9]+,?)*$`, [incerto: não reconferido em 08/11/2026; o trecho do esquema não apareceu na leitura]); o número vai **só com dígitos, com 55 e DDD** (13 dígitos, no formato do exemplo local abaixo) e o código tem **6 dígitos** (o app confere 6, `services/auth.ts`; no projeto hospedado, `sms_otp_length` e `mailer_otp_length` precisam continuar em 6, como o `otp_length = 6` do `config.toml` local). O app só aceita celular brasileiro de 11 dígitos, com o 9 depois do DDD (`toE164MobileBR` em `lib/phone.ts`), e o envia ao Auth como `+55`, DDD de 2 dígitos e 9 dígitos. O stack local do repositório tem o mesmo recurso em `[auth.sms.test_otp]`, com o comentário "Never copy this block to a hosted project" (o número local `5511999990000` com código `123456` é só de desenvolvimento) e avisa que, localmente, **o Auth recusa o login por celular sem provedor de SMS habilitado, mesmo para o número de teste**.
 
 ```bash
 # NÃO commite o token. SUPABASE_ACCESS_TOKEN é um token pessoal da sua conta Supabase.
@@ -700,7 +704,7 @@ Notes
 | Build de release | `minifyEnabled false`, sem `signingConfig` | `android/app/build.gradle` |
 | Versão do web app | `0.1.0` | `package.json` |
 
-O `targetSdk` 36 atende o requisito vigente: desde 31/08/2026, apps novos e atualizações precisam mirar o Android 16 (API 36) (G13). Sem código nativo próprio (só Java e WebView), o app já atende a regra de páginas de 16 KB, que vale para atualizações a partir de 01/02/2027 (A09); confirme no Analisador de APK que não há `.so`.
+O `targetSdk` 36 atende o requisito vigente: desde 31/08/2026, apps novos e atualizações precisam mirar o Android 16 (API 36) (G13); a extensão pedida até 01/11/2026 já expirou. Sem código nativo próprio (só Java e WebView), o app já atende a regra de páginas de 16 KB, que vale para atualizações a partir de 01/02/2027 (A09); confirme no Analisador de APK que não há `.so`.
 
 ### 14.2 Esquema de versão
 
@@ -719,7 +723,7 @@ Proposta: `versionName = MAJOR.MINOR.PATCH` (igual ao `version` do `package.json
 
 ### 14.3 Chave de upload e regras do keystore
 
-Com a Assinatura de apps do Google Play, você assina o pacote com uma **chave de upload** (RSA de 2.048 bits ou mais) e o Google guarda a **chave de assinatura do app**. Para apps novos, o app é registrado automaticamente com chaves geradas pelo Google (G19). **Aceite esse padrão.** As chaves precisam ser diferentes (G19).
+Com a Assinatura de apps do Google Play, você assina o pacote com uma **chave de upload** (RSA de 2.048 bits ou mais, G19) e o Google guarda a **chave de assinatura do app**. Para apps novos, o app é registrado automaticamente com chaves geradas pelo Google (G19). **Aceite esse padrão.** As chaves precisam ser diferentes (G19).
 
 ```bash
 # Gere FORA do repositório (por exemplo em ~/workeasy-signing). Conferi estes comandos com JDK 21.0.12 e uma chave descartável.
@@ -852,15 +856,14 @@ Sobre o Capacitor: a documentação do projeto diz que o app é enviado à Googl
 
 Não use as notas para promoção nem para pedir ação (G30). Formato com etiqueta de idioma.
 
-#### Notas da versão 0.1.0 (teste fechado)
+#### Notas da versão 0.2.0 (teste fechado)
 
 ```text
 <pt-BR>
-Versão de teste 0.1.0.
+Versão de teste 0.2.0.
 - Pedir serviço, receber e aceitar propostas, agendar com profissionais.
 - Área do profissional: cadastro, agenda, propostas e orçamentos por link.
 - Minha conta: consentimentos, cópia dos dados e exclusão da conta.
-Envie seu feedback pelo canal indicado na página de teste.
 </pt-BR>
 ```
 
@@ -909,7 +912,7 @@ Não envie documentos nem dados pessoais reais além dos necessários ao seu pap
 
 | Data | O que muda | Efeito no WorkEasy | Fonte |
 |---|---|---|---|
-| 17/03/2026 | ECA Digital em vigor; a Ajuda anuncia que o Play passa a bloquear ou filtrar apps 18+ para menores no Brasil | decidir se o app é de "acesso provável" por menores; não classificar como 18+ | N01, G32 |
+| 17/03/2026 | ECA Digital em vigor [incerto: N01 não reaberto]; a Ajuda anunciava bloqueio ou filtro de apps 18+ para menores no Brasil a partir de março de 2026, mas a página aberta em 08/11/2026 traz só "bloqueia ou filtra", sem data [incerto] | decidir se o app é de "acesso provável" por menores; não classificar como 18+ | N01, G32 |
 | 31/08/2026 | apps novos e atualizações devem mirar o Android 16 (API 36) | já atendido (`targetSdk` 36) | G13 |
 | 30/09/2026 | verificação de desenvolvedor Android no Brasil | distribuir só pelo Play ou registrar o desenvolvedor | A01 |
 | 27/01/2027 | botão de localização como escopo mínimo recomendado para localização exata; política de contatos | rever a localização do Cuidado (perfil B) | G04 |
@@ -971,12 +974,12 @@ Não envie documentos nem dados pessoais reais além dos necessários ao seu pap
 
 1. **Asaas e compartilhamento.** Para o formulário, o Asaas é "provedor de serviços" (não compartilhado) ou terceiro (compartilhado)? Hoje marquei compartilhado (seção 8.2). A resposta deve bater com a Política (G03). [CONDICIONAL: depende de parecer]
 2. **Retenção.** Pagamentos e atendimentos anonimizados ficam por quanto tempo? O `audit_log` é imutável e guarda o identificador da conta: isso atende o direito de exclusão e a exigência do Google de excluir "os dados associados"? Os consentimentos são apagados por cascata na exclusão: há necessidade de guardar prova do aceite? Os cadastros que ficam no Asaas depois da exclusão (seção 10.3) precisam de aviso e de um jeito de pedir a exclusão a ele? (`docs/DECISOES.md` D7 e pergunta 6; G02, G03.)
-3. **Dado de saúde nos campos livres do Cuidado.** Marcar "Informações sobre saúde" no formulário (perfil B)? E a frase "O WorkEasy não guarda dados de saúde" precisa mudar? (seção 8.3.)
+3. **Dado de saúde nos campos livres do Cuidado.** Marcar "Informações sobre saúde" no formulário (perfil B)? E a frase "O WorkEasy não guarda dados de saúde" precisa mudar? (seção 8.3.) O resumo da semana (`care-summary`) envia esses campos à Anthropic (seção 8.2): a frase precisa ser conferida à luz disso.
 4. **ECA Digital.** O WorkEasy é de "acesso provável" por crianças e adolescentes (Lei 15.211/2025, art. 1º e parágrafo único)? Se sim, o art. 14 manda adotar medidas para receber o sinal de idade que a loja fornece (art. 12), e o Play oferece a API Play Age Signals (Beta). A política de dados do Google restringe o uso desse sinal a obrigação legal (G04). A política do catálogo tem o campo `audience_minors`. (N01, G32.)
 5. **Idade mínima.** Texto dos Termos para "18 anos ou mais" e como o app a faz valer (hoje só a declaração).
 6. **Teste de 30 dias com cobrança automática.** Aviso e cancelamento exigidos pelo CDC; se for adotado o Play Billing, os avisos da política de Assinaturas (G07). (`docs/DECISOES.md` pergunta 7.)
 7. **Marketing.** O consentimento "Comunicações de novidades" existe, mas nenhum envio de marketing existe: manter assim até haver texto e canal aprovados (seção 8.3).
-8. **IA de terceiros.** Quando `request-assist` for ligado, a política do Google mantém a responsabilidade com o desenvolvedor, inclusive uso limitado, divulgação e consentimento (G03).
+8. **IA de terceiros.** `quote-assist` e `care-summary` já enviam texto à Anthropic (o do Cuidado inclui saúde); `request-assist` ainda não é chamado. A política do Google mantém a responsabilidade com o desenvolvedor, inclusive uso limitado, divulgação e consentimento (G03). Decidir se o envio do Cuidado precisa de consentimento específico e de aviso no app.
 9. **Documentos sensíveis do profissional** (documento com foto, certidão de antecedentes): base legal e retenção, na Política e no RIPD (L06).
 10. **Venda do Pro e serviços só online.** Parecer sobre o enquadramento nas regras de pagamentos do Google (seção 11) não é jurídico, mas o dono deve decidir D4 com o advogado, junto com as perguntas 1 e 2 de `docs/DECISOES.md` seção 8.
 11. **Comerciante no Brasil.** Se um dia vender pelo Google Play: CNPJ, beneficiários finais e executivos (G32).
@@ -992,13 +995,14 @@ Não envie documentos nem dados pessoais reais além dos necessários ao seu pap
 - **Pesquisa na web.** O limite de buscas da sessão acabou no meio do trabalho; as páginas foram abertas por endereço direto. O que dependia de busca ficou [incerto].
 - **Provedores.** SMS, e-mail e WhatsApp ainda não foram escolhidos (`docs/pesquisa/whatsapp-e-email.md`); o formulário de dados deve ser revisto na escolha.
 - **Gráficos.** Não produzi capturas nem o recurso gráfico.
+- **Revisão de 08/11/2026.** Não reabri a Lei 15.211 (planalto.gov.br bloqueou a leitura), o trecho do esquema `sms_test_otp` do Supabase (não apareceu na leitura) nem a página G27. Esses pontos estão com [incerto] no texto.
 - **Documentos irmãos.** Estão em elaboração por outros agentes. `docs/pesquisa/whatsapp-e-email.md` foi lido (as seções citadas conferem). Da minuta `docs/juridico/01-termos-de-uso.md` li só as cláusulas 3, 8 e 10 e a parte C. `docs/juridico/03-politica-de-privacidade.md`, `docs/juridico/11-textos-de-consentimento-e-avisos.md`, `docs/lojas/app-store.md`, `docs/lojas/desktop-e-assinatura.md` e `docs/pesquisa/supabase-producao.md` ainda não existiam quando conferi: os nomes são os previstos e podem mudar.
 
 ---
 
 ## 21. Fontes consultadas
 
-Todas abertas em **23/10/2026**. Páginas da Ajuda do Play Console: `https://support.google.com/googleplay/android-developer/answer/<número>?hl=pt-BR`, salvo indicação. O trecho é copiado da página aberta.
+Abertas em **23/10/2026** e reabertas em **08/11/2026** pela revisão: G01 a G06, G08, G10, G12 a G15, G18, G19, G20, G25, G28, G30, G32 (parcial) e A03. Não reabertas: N01 (bloqueada) e o esquema do Supabase (trecho ausente). Páginas da Ajuda do Play Console: `https://support.google.com/googleplay/android-developer/answer/<número>?hl=pt-BR`, salvo indicação. O trecho é copiado da página aberta.
 
 | ID | Página | Endereço | Trecho lido |
 |---|---|---|---|
@@ -1102,7 +1106,7 @@ LIMITES = {
     "Título": 30,
     "Descrição breve": 80,
     "Descrição completa, base": 4000,
-    "Notas da versão 0.1.0 (teste fechado)": 500,
+    "Notas da versão 0.2.0 (teste fechado)": 500,
     "Notas da versão 1.0.0": 500,
 }
 EXTRAS = ["Bloco opcional: Cuidado", "Bloco opcional: Pagamento"]

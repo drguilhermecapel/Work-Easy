@@ -5,7 +5,7 @@
 | Campo | Valor |
 |---|---|
 | Data | 2026-11-08 |
-| Estado do produto | MVP no `main`, não publicado, sem usuários reais. Asaas, WhatsApp e Resend não foram testados contra serviços reais (`apps/web/docs/ARQUITETURA.md`). |
+| Estado do produto | MVP informado como mesclado no `main` (não conferido nesta sessão), não publicado, sem usuários reais. Asaas, WhatsApp e Resend não foram testados contra serviços reais (`apps/web/docs/ARQUITETURA.md`). |
 | Árvore conferida | `/home/user/work-easy`, branch `claude/plano-restante`, commit `ed8aa38` |
 | Banco usado na validação | Postgres 17.11 local em `127.0.0.1:54322`, sem dados nas tabelas de operação |
 | Escopo | Procedimentos. Não altera código, migração, configuração nem dado. |
@@ -595,7 +595,7 @@ O código lê as variáveis na inicialização do módulo (`config` em `supabase
 | `ANTHROPIC_API_KEY` | `request-assist`, `quote-assist`, `care-summary` | Chamadas com a chave antiga falham. A cota da hora já foi consumida antes da chamada (`takeQuota`), então o usuário perde uma unidade. | Nova chave no console da Anthropic **[incerto: caminho não aberto]**; `supabase secrets set`; revogar a antiga depois do teste. | Uma chamada ao assistente sem 503 |
 | `WHATSAPP_TOKEN` (e `WHATSAPP_PHONE_NUMBER_ID`) | `notify-dispatch` | 401 e 403 não são retriáveis: a linha vai direto para `failed` (`nextNotificationState`). Isso fica definitivo até reenfileirar. | Gerar o token novo antes de revogar o antigo; `supabase secrets set`; depois, S22. | S16 e S19 depois do teste |
 | `RESEND_API_KEY` (e `EMAIL_FROM`) | `notify-dispatch` (e-mail) | Mesmo efeito: 401 e 403 viram `failed`. | Igual ao WhatsApp. | Igual |
-| `CRON_SECRET` (função) e `cron_secret` (Vault) | `notify-dispatch` confere antes de reivindicar lotes; `private.dispatch_notifications` envia | Valores diferentes: o despachante responde 401 antes de reivindicar nada, então **as linhas ficam em `queued`** e não se perdem. S20 mostra o 401 em `net._http_response`. | 1) atualizar o Vault com S50 (usar o id de S47); 2) `supabase secrets set CRON_SECRET` com o mesmo valor. Faça as duas em sequência curta. | S20 com 200 depois da troca |
+| `CRON_SECRET` (função) e `cron_secret` (Vault) | `notify-dispatch` confere antes de reivindicar lotes; `private.dispatch_notifications` envia | Valores diferentes: o despachante recusa a chamada antes de reivindicar nada (`notify-dispatch/handler.ts`), então **as linhas ficam em `queued`** e não se perdem. S20 mostra o código HTTP em `net._http_response`. | 1) atualizar o Vault com S50 (usar o id de S47); 2) `supabase secrets set CRON_SECRET` com o mesmo valor. Faça as duas em sequência curta. | S20 com 200 depois da troca |
 | Segredos de CI (`SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, ambiente `production`) | `deploy-supabase.yml` | O workflow de publicação falha até o segredo do GitHub ser atualizado. | Atualizar no GitHub antes de rodar o workflow de novo. | Dry run do workflow |
 
 **Derivar o token de uma subconta** (mesma regra de `deriveSubaccountToken`, `_shared/secrets.ts`: HMAC-SHA256 com o token da plataforma como chave, sobre a string `asaas-subaccount:` seguida do id do prestador em minúsculas, saída em hexadecimal). Conferido contra um cálculo de referência com valores de teste:
@@ -632,7 +632,7 @@ A validação mostrou que `vault.update_secret` não acusa erro com um id inexis
 
 **O que o Supabase informa** (página "Backups", aberta em 2026-11-08):
 
-- Backup diário: projetos Pro guardam os últimos 7 dias; Team, 14; Enterprise, até 30. O plano free não entra no backup automático e o Supabase recomenda exportar com `db dump`.
+- Backup diário: projetos Pro guardam os últimos 7 dias; Team, 14; Enterprise, até 30. O plano free não aparece entre os projetos com backup diário automático, e a página recomenda exportar com `db dump`.
 - PITR é complemento pago em Pro, Team e Enterprise, com retenção de 7, 14 ou 28 dias. RPO de dois minutos. Ativar PITR desliga o backup diário.
 - Restaurar para um ponto anterior **substitui o estado atual**. Para preservar os dados atuais, restaure antes para um **projeto novo**. O projeto fica inacessível durante a restauração.
 - Não entram no backup: objetos do Storage (o banco só guarda metadados), objetos apagados depois do backup (não voltam), e senhas de papéis customizados (é preciso redefinir). Assinaturas e slots de replicação precisam ser removidos antes e recriados depois.
@@ -649,6 +649,7 @@ A validação mostrou que `vault.update_secret` não acusa erro com um id inexis
    - **Vault:** confirme se as chaves das subcontas existem. S34 (última consulta) lista contas com referência sem segredo.
    - **Storage:** documentos sem arquivo. Use S32. Esses prestadores precisam reenviar; as aprovações que dependiam deles seguem valendo até o admin revisar (ver Apêndice A, item 10).
    - **Auth:** compare `auth.users` com `profiles` em S34.
+
 Consultas de conferência pós-restauro (além de S40 e S39):
 
 ```sql
@@ -669,14 +670,14 @@ select a.provider_id, a.status
    - Liste no Asaas as cobranças com referência externa `booking:<id>` (campo gravado por `payments-create`). A forma exata de busca no painel **[incerto]**.
    - Para cada cobrança paga, siga o item 2 com o id do atendimento. Se a linha de `payments` não existe, recriá-la exige valor, método e id que só o Asaas tem. Faça com o time técnico, sem SQL padronizado aqui.
    - Assinaturas: rode S14 e compare com a tabela do item 4.
-   - Registre o horário do incidente e os dois limites: S34 mostra `last_payment` e `last_audit`. O `audit_log` também volta ao ponto escolhido, então o registro do restauro fica fora do banco.
+   - Compare o horário do incidente com `last_payment` e `last_audit` de S34: o que aconteceu depois desse ponto não está no banco restaurado. O `audit_log` também volta ao ponto escolhido, então o registro do restauro fica fora do banco.
 
 **Verificação.** S34 com os contadores coerentes com o ponto escolhido. S14 sem linhas. S32 com a lista explicada. Cobranças do Asaas do período conferidas uma a uma.
 
 **Prevenção.**
-- Escolha a retenção de PITR conforme a janela de perda aceitável. Não há no repositório um RPO definido **[lacuna]**.
+- Escolha a retenção de PITR conforme a janela de perda aceitável. Não encontrei um RPO definido no repositório nesta revisão **[lacuna]**.
 - Exporte periodicamente com `supabase db dump --linked -f <caminho fora do repositório>` (o dump tem dados pessoais: não o versione).
-- Ensaie um restauro em projeto novo antes de precisar. A frequência não está definida no repositório.
+- Ensaie um restauro em projeto novo antes de precisar. Não encontrei frequência definida no repositório nesta revisão.
 
 ---
 
@@ -712,7 +713,7 @@ supabase db push --linked --skip-vault --dry-run
 **Correção.**
 
 1. **Não rode o workflow de novo** antes de entender o estado.
-2. **Não altere migração já aplicada.** A regra do repositório é criar uma migração nova (`ARQUITETURA.md`: "Nunca edite uma migration existente: adicione uma nova"). Se o arquivo que falhou tem erro, o correto é uma migração nova com o timestamp seguinte, que trate o estado parcial.
+2. **Não altere migração já aplicada.** A regra do plano de trabalho é criar uma migração nova ("Never edit an existing migration: add a new one", `plan/PREAMBLE.md`, regra 4). Atenção: `ARQUITETURA.md`, na seção "Testes e CI", manda editar a migração quando muda assinatura do banco. Essa contradição está no Apêndice A. Até ser resolvida, prefira migração nova. Se o arquivo que falhou tem erro, o correto é uma migração nova com o timestamp seguinte, que trate o estado parcial.
 3. **Estado parcial.** Não verifiquei se a CLI aplica cada arquivo numa transação só **[incerto]**. Presuma estado parcial até conferir os objetos com S41.
 4. **Histórico do banco.** Só use `supabase migration repair --status applied|reverted <versão> --linked` depois de decidir o estado real. `reverted` apenas marca o histórico; não desfaz o SQL.
 
@@ -890,9 +891,9 @@ select at, action, entity, entity_id, data
    - `payment.raw_viewed`: o admin viu o payload de pagamento, que contém dados do pagador. Trate como possível incidente de dados pessoais: plano de incidente interno em `docs/juridico/08-plano-de-resposta-a-incidentes.md` (consultado só em trecho) **[CONDICIONAL: depende de parecer]**.
    - `dispute.resolved` e `payment.reviewed`: revise o motivo registrado.
 
-**Verificação.** Contagem de `admins` para o id zero; `auth.sessions` sem a conta; S29 mostra só o que foi conferido. Nenhuma alteração indevida ficou pendente.
+**Verificação.** Contagem de `admins` para o id zero; `auth.sessions` sem a conta; S29 e S30 batem com o que foi revisado. Nenhuma alteração indevida ficou pendente.
 
-**Prevenção.** Admin novo só depois de MFA conferida em produção. Revisão mensal de S30 por admin. Dois admins para ações de configuração de risco, como a comissão.
+**Prevenção.** Admin novo só depois de MFA conferida em produção. Revisão mensal de S30 por admin. Sugestão, não existente hoje: exigir dois admins para mudanças de configuração de risco, como a comissão. Hoje `admin_set_setting` aceita um admin só.
 
 ---
 
@@ -926,7 +927,7 @@ select d.id, d.provider_id, d.step, d.status, d.storage_path, o.id as object_id
 
 **Correção.**
 
-1. **Contenha.** Remova o arquivo pela API de Storage, como `account-delete` faz (`bucket.remove`), ou pelo painel do Storage **[incerto: caminho no painel não aberto]**. Não apague só a linha de `storage.objects`: o conteúdo continua no armazenamento.
+1. **Contenha.** Remova o arquivo pela API de Storage, como `account-delete` faz (`bucket.remove`), ou pelo painel do Storage **[incerto: caminho no painel não aberto]**. Não apague só a linha de `storage.objects`: o comentário de `anonymize_user` (`10_privacy_audit.sql`) diz que o SQL não consegue apagar objetos do Storage, então a linha sozinha deixa o conteúdo para trás.
 2. **Trate o documento no banco pela tela do admin**, não por SQL. Em `/admin/prestadores/:id`, use "revisar documentos" e recuse com motivo ("arquivo removido por incidente"). Isso muda o status para `rejected`, e o trigger `provider_documents_revoke_approvals` retira a aprovação das ocupações que dependiam do documento (`occupation.approval_revoked`, causa `document_rejected`). Se o registro deve sumir, a exclusão também revoga (causa `document_removed`).
 3. **Peça novo envio** ao prestador. O registro novo passa pela análise normal.
 4. **Avaliação de incidente.** Se o documento é de identidade de pessoa, trate como incidente de dados pessoais: `docs/juridico/08-plano-de-resposta-a-incidentes.md` (consultado só em trecho). Comunicações a titular e à autoridade **[CONDICIONAL: depende de parecer]**.
@@ -1032,7 +1033,7 @@ select cron.schedule('workeasy-dispatch-notifications', '* * * * *', 'select pri
 
 Estes pontos foram encontrados ao ler o código e conferir o banco. Não foram corrigidos, porque a tarefa é documentação. Cada um vai para a fila de correção.
 
-1. **Exportação do titular perde pagamentos.** `account-export` usa `select *` em `payments` e `provider_payment_accounts`. O papel `authenticated` não tem esse privilégio (conferido: `permission denied for table payments`). A função marca as tabelas em `unavailable` e segue. Afeta todo titular com pagamento. Uma correção em `EXPORT_PLAN` deve listar as colunas autorizadas, sem `raw`.
+1. **Exportação do titular sempre omite pagamentos.** `account-export` usa `select *` em `payments` e `provider_payment_accounts`. O papel `authenticated` não tem esse privilégio (conferido: `permission denied for table payments`). A consulta falha mesmo sem linhas, então toda exportação sai com essas tabelas em `unavailable`. Uma correção em `EXPORT_PLAN` deve listar as colunas autorizadas, sem `raw`.
 2. **Evento sem cobrança não se reaplica.** Quando a cobrança ainda não existe no banco, o webhook responde 200 como `unknown_payment` e marca o evento como concluído. A corrida é real: `payments-create` grava a linha **depois** do `POST /payments` no Asaas. Não há reprocessamento automático nem alerta.
 3. **Transição recusada some.** Em `asaas-webhook`, quando a regra do banco recusa a transição do atendimento, a função só registra no log e na resposta. Não grava `payment_event` nem `audit_log`. O pagamento fica `received` e o atendimento fica para trás sem trilha no banco.
 4. **Exclusão de conta pode parar em `processing`.** Se `deleteAuthUser` falha depois da anonimização, a função responde 500 e não marca `failed`. A linha de `data_requests` fica em `processing`. A anonimização já aconteceu.
@@ -1043,11 +1044,12 @@ Estes pontos foram encontrados ao ler o código e conferir o banco. Não foram c
 9. **Agendador silencioso.** O job de disparo aparece como `succeeded` mesmo com o Vault vazio (conferido localmente: execuções `succeeded` sem chaves). Só `net._http_response` mostra a chamada real.
 10. **Aprovação sobrevive a arquivo perdido.** Restauro ou sumiço de arquivo não revoga a aprovação; só a rejeição ou a exclusão do documento revogam (trigger de `provider_documents`).
 11. **Reregistro de webhook de subconta não existe.** Trocar `ASAAS_WEBHOOK_TOKEN` exige atualizar cada subconta, e nada no código faz isso.
-12. **Documentação desatualizada.** `supabase/functions/README.md` diz que `verify_jwt = false` fica em `config.toml`; o arquivo não tem essa seção (`grep` sem resultado) e o workflow compensa com a flag. `ARQUITETURA.md` lista dois agendamentos; o banco local tem seis, e quatro vêm de outras migrações ou de [SEG-S1].
+12. **Documentação desatualizada.** `supabase/functions/README.md` diz que `verify_jwt = false` fica em `config.toml`; o arquivo não tem essa seção (`grep` sem resultado) e o workflow compensa com a flag. `ARQUITETURA.md` lista dois agendamentos; o banco local tem seis: dois (`workeasy-booking-reminders` e `product-events-retention`) vêm de migrações já na árvore e não estão listados, e os outros dois são de [SEG-S1].
 13. **Entrega do Asaas.** `ARQUITETURA.md` afirma que o Asaas "entrega ao menos uma vez e fora de ordem". A página aberta não confirma nem nega isso: não diz se a fila é sequencial nem a ordem de entrega **[incerto]**.
 14. **Deriva da base local.** O banco local tem sete migrações que não estão na árvore conferida. Testes e consultas feitos nele refletem a branch `SEG-S1`, não o `main`.
 15. **Verificação de MFA para admin não conferida.** A configuração local desliga MFA TOTP. Não verifiquei a exigência em produção.
+16. **Regra de migração contraditória.** O plano de trabalho diz para nunca editar migração aplicada. `ARQUITETURA.md`, na seção "Testes e CI", diz para editar a migração, rodar `supabase db reset` e gerar os tipos quando a assinatura do banco muda. Vale definir uma regra única.
 
 ## Apêndice B. Lista de consultas
 
-Os blocos SQL deste documento são os mesmos executados na validação (50 blocos). Dois deles (S09 e S44) terminam com a exceção `not_allowed` quando o atendimento não existe, o que confirma a checagem. Nenhum bloco foi executado com dado real.
+Os blocos SQL deste documento são os mesmos executados na validação: 50 consultas distintas. A consulta de S39 aparece duas vezes, nas seções 4 e 12. Dois deles (S09 e S44) terminam com a exceção `not_allowed` quando o atendimento não existe, o que confirma a checagem. Nenhum bloco foi executado com dado real.

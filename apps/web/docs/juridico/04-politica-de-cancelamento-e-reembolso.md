@@ -28,10 +28,10 @@
 | Pedi um horário e ainda não há resposta | Você cancela. Nada é cobrado. | Botão "Cancelar atendimento" no app | Não há prazo (cláusula 3) |
 | O profissional aceitou e eu ainda não paguei | Você cancela. A cobrança em aberto é cancelada. | Botão "Cancelar atendimento" no app | Não há prazo (cláusula 3) |
 | Paguei e quero desistir ou cancelar | O app não tem botão para isso. | SAC: [E-MAIL DO SAC] | Resposta em até 5 dias (proposta, cláusula 9) |
-| Paguei um atendimento que já estava cancelado | O WorkEasy pede o estorno total ao Asaas (Pix e cartão). | Automático. Se falhar, a equipe resolve pelo SAC. | Cartão: até 10 dias úteis para aparecer na fatura, segundo o Asaas. Pix: [incerto] |
-| Paguei por boleto e o atendimento foi cancelado | O estorno de boleto depende de dados bancários que você envia. O app não faz isso sozinho hoje. | SAC: [E-MAIL DO SAC] | [incerto] |
+| Paguei um atendimento que já estava cancelado | O WorkEasy pede o estorno total ao Asaas. Pela documentação do Asaas, o estorno só vale para cartão e Pix. | Automático. Se o Asaas recusar, o caso vai para a lista "Exigem atenção" da equipe. | Cartão: até 10 dias úteis para aparecer na fatura, segundo o Asaas. Pix: [incerto] |
+| Paguei por boleto e o atendimento foi cancelado | O app pede o estorno ao Asaas, que, pela documentação, só aceita cartão e Pix. O caso vai para a lista "Exigem atenção" da equipe. O estorno pelo endpoint próprio de boleto depende de dados bancários que você envia, e o app não o usa hoje. | SAC: [E-MAIL DO SAC] | [incerto] |
 | O serviço não foi feito como combinado | Você pode contestar. A equipe decide a situação do atendimento no app. Essa decisão não devolve dinheiro. | Botão "Contestar atendimento" (só em "Concluído") | Até 7 dias depois do fim do horário |
-| O profissional não compareceu | O app não tem marcação de não comparecimento. | SAC: [E-MAIL DO SAC] | Resposta em até 5 dias (proposta) |
+| O profissional não compareceu | Em atendimento, o app não tem marcação de não comparecimento (cláusula 4.8). | SAC: [E-MAIL DO SAC] | Resposta em até 5 dias (proposta) |
 | Quero desistir em até 7 dias da contratação | Direito de arrependimento (CDC, art. 49). Efeito e valor dependem de parecer. | SAC: [E-MAIL DO SAC] | 7 dias (cláusula 6) |
 | Quero que o WorkEasy refaça o serviço ou me devolva o valor | O WorkEasy não oferece essa garantia. Seus direitos contra o profissional continuam (cláusula 7). | SAC, para mediação | Não se aplica |
 
@@ -39,7 +39,7 @@
 
 1.1 O WorkEasy é o aplicativo que conecta clientes e profissionais. O serviço é prestado pelo profissional. O papel do WorkEasy na relação é tema de parecer [CONDICIONAL: depende de parecer] (ver "Pontos para o advogado", A1).
 
-1.2 Esta política vale para atendimentos e cobranças feitos pelo app. Pagamento combinado fora do app não passa pelo WorkEasy (Termos de Uso, cláusula 6.5).
+1.2 Esta política vale para atendimentos e cobranças feitos pelo app. Pagamento combinado fora do app não passa pelo WorkEasy (Termos de Uso, cláusula 6.5). A assinatura Pro (mensalidade do WorkEasy) não é tratada aqui: ver Termos do Prestador, cláusula 10.
 
 1.3 Atendimento de cliente próprio do profissional segue as mesmas regras de estado. A cobrança é emitida pelo profissional, na conta de recebimento dele, e a cobrança em aberto é cancelada pelo mesmo caminho da cláusula 3.4.
 
@@ -56,7 +56,7 @@ Só o banco de dados muda o estado de um atendimento. Cada mudança entra no his
 | Concluído | O profissional marcou como concluído | Liberar, ou contestar em até 7 dias depois do fim do horário | Nada |
 | Liberado | O cliente liberou, ou a equipe decidiu a favor do profissional | Nada | Nada |
 | Em contestação | Contestação aberta | Nada | Nada (a equipe decide) |
-| Cancelado | Cancelado por você, pelo profissional ou pela equipe | Nada | Nada |
+| Cancelado | Cancelado por você, pelo profissional, ou pela equipe (só ao decidir uma contestação) | Nada | Nada |
 
 2.1 **Hoje, depois do pagamento, nenhum dos dois lados pode cancelar o atendimento pelo app.** O botão não aparece em "Pago". Veja a cláusula 5.5 para o caminho atual.
 
@@ -81,7 +81,7 @@ Só o banco de dados muda o estado de um atendimento. Cada mudança entra no his
 
 3.6 Um pedido de horário sem resposta não vence sozinho. Ele continua reservando o horário até o profissional responder ou até alguém cancelar. [PLANEJADO: vencimento automático do pedido.]
 
-3.7 Pedido "urgente": o marcador de urgência muda só a ordem em que o profissional vê o pedido. Não muda prazo, multa nem reembolso. [PROPOSTA: nenhuma regra própria para urgência nesta fase.]
+3.7 Pedido de orçamento "urgente" (marketplace; não é o horário marcado): o marcador muda só a ordem em que o profissional vê os pedidos. Não muda prazo, multa nem reembolso. [PROPOSTA: nenhuma regra própria para urgência nesta fase.]
 
 ## 4. Cancelar como profissional
 
@@ -97,9 +97,9 @@ Só o banco de dados muda o estado de um atendimento. Cada mudança entra no his
 
 4.6 Quando o atendimento já está pago, o profissional fala com o SAC (cláusula 5.5).
 
-4.7 Cancelamentos não entram na ordem das buscas. As buscas usam nota e nome. Nas ocupações em que o ranking por nota não é permitido, a ordem muda a cada dia, por um código calculado a partir do profissional e da data (sem relação com cancelamentos). Ver ARQUITETURA.md, seção de página pública do profissional.
+4.7 Cancelamentos não entram na ordem das buscas. As buscas usam nota (média, com pelo menos 3 avaliações) e nome. Nas ocupações em que o ranking por nota não é permitido, a ordem muda a cada dia, por um código calculado a partir do profissional e da data (sem relação com cancelamentos). Ver ARQUITETURA.md, seção de página pública do profissional.
 
-4.8 Não comparecimento do profissional: o app não tem marcação de não comparecimento. Você pede pelo SAC, e a equipe analisa (cláusula 8). [PLANEJADO: estado de não comparecimento para atendimento.]
+4.8 Não comparecimento do profissional: em atendimento, o app não tem marcação de não comparecimento. Na linha Cuidado, o plantão tem o estado "Cuidador não compareceu" (`no_show`), mas não confirmei quem o marca [incerto]. Você pede pelo SAC, e a equipe analisa (cláusula 8). [PLANEJADO: estado de não comparecimento para atendimento.]
 
 4.9 Não comparecimento do cliente: o app não tem marcação para isso. Para concluir, o profissional precisa primeiro iniciar o atendimento. [PLANEJADO.]
 
@@ -115,7 +115,7 @@ Só o banco de dados muda o estado de um atendimento. Cada mudança entra no his
 |---|---|---|---|
 | Cartão de crédito | Pelo app, por API, total | O Asaas diz que o cancelamento "pode levar até 10 dias úteis para aparecer na fatura do pagador". O prazo depende do emissor do cartão. [incerto] | O caso aparece na lista "Exigem atenção" da equipe |
 | Pix | Pelo app, por API, total | O Asaas não informa prazo. O estorno exige saldo suficiente na conta, senão responde erro 400. [incerto] | Mesmo caminho do cartão |
-| Boleto | O app não chama o estorno de boleto hoje. O Asaas tem endpoint próprio, "Estornar boleto", que depende de dados bancários que você envia. [PLANEJADO] | O Asaas não informa prazo. [incerto] | O caso vai para o SAC |
+| Boleto | O app chama o estorno geral do Asaas, que pela documentação só aceita cartão e Pix. O endpoint próprio "Estornar boleto" não é chamado hoje. Ele depende de dados bancários que você envia. [PLANEJADO] | O Asaas não informa prazo. [incerto] | O caso aparece na lista "Exigem atenção" da equipe |
 
 5.4 Prazo proposto para o WorkEasy pedir o estorno: até 5 dias úteis depois da decisão ou do aviso de pagamento. O prazo do banco ou da operadora de cartão vem depois disso (cláusula 5.3). [PROPOSTA]
 
@@ -123,7 +123,7 @@ Só o banco de dados muda o estado de um atendimento. Cada mudança entra no his
 
 5.6 A decisão da equipe no app muda a situação do atendimento. Ela não devolve nem repassa dinheiro pelo app. A tela de administração diz isso expressamente. Por isso, a devolução depende do procedimento da cláusula 5.5.
 
-5.7 Repasse ao profissional: com a comissão desligada, a taxa da plataforma é zero, e o split envia o valor inteiro à conta de recebimento do profissional (`supabase/functions/_shared/split.ts`). O WorkEasy não retém esse valor. Se o estorno desfaz o repasse que já chegou à conta do profissional, o efeito é [incerto].
+5.7 Repasse ao profissional: com a comissão desligada, a taxa da plataforma é zero (`commission_enabled` falso). A cobrança da plataforma é emitida na conta Asaas raiz da plataforma. O split envia 100% do valor líquido, depois da taxa do Asaas, à conta de recebimento do profissional (`supabase/functions/_shared/split.ts`). Por isso o dinheiro passa pela plataforma antes do repasse. Se isso é recebimento ou retenção, é tema de parecer [CONDICIONAL: depende de parecer]. Se o estorno desfaz o repasse que já chegou à conta do profissional, o efeito é [incerto].
 
 5.8 Cobrança errada ou não reconhecida: fale com o SAC. Ver Termos de Uso, cláusula 6.7.
 
@@ -135,7 +135,7 @@ Só o banco de dados muda o estado de um atendimento. Cada mudança entra no his
 
 6.2 Parágrafo único: "Se o consumidor exercitar o direito de arrependimento previsto neste artigo, os valores eventualmente pagos, a qualquer título, durante o prazo de reflexão, serão devolvidos, de imediato, monetariamente atualizados."
 
-6.3 Aplicação ao WorkEasy: a contratação é feita pelo app. Se o art. 49 vale para serviço contratado pelo app é questão de parecer. [CONDICIONAL: depende de parecer.] A notícia do STJ de 2015 diz que a regra vale para compras feitas pela internet. É uma notícia, não o acórdão. Um caso de passagem aérea comprada pela internet (REsp 1.913.986, 4ª Turma) foi suspenso por pedido de vista (cláusula 6.5 e "Pontos para o advogado", B2).
+6.3 Aplicação ao WorkEasy: a contratação é feita pelo app. Se o art. 49 vale para serviço contratado pelo app é questão de parecer. [CONDICIONAL: depende de parecer.] A notícia do STJ de 2015 fala de compras feitas por telefone ou pela internet. Não trata de serviço contratado online. É uma notícia, não o acórdão. Um caso de passagem aérea comprada pela internet (REsp 1.913.986, 4ª Turma) foi suspenso por pedido de vista (cláusula 6.5 e "Pontos para o advogado", B2).
 
 6.4 Prazo: 7 dias. Quando a contagem começa para um atendimento do app (aceite, pagamento ou data do serviço) é tema de parecer. [CONDICIONAL: depende de parecer.]
 
@@ -147,7 +147,7 @@ Só o banco de dados muda o estado de um atendimento. Cada mudança entra no his
 - Caput: "O fornecedor deve informar, de forma clara e ostensiva, os meios adequados e eficazes para o exercício do direito de arrependimento pelo consumidor."
 - § 1º: "O consumidor poderá exercer seu direito de arrependimento pela mesma ferramenta utilizada para a contratação, sem prejuízo de outros meios disponibilizados."
 - § 2º: "O exercício do direito de arrependimento implica a rescisão dos contratos acessórios, sem qualquer ônus para o consumidor."
-- § 3º: o exercício do arrependimento é comunicado ao emissor do cartão ou à instituição financeira. O texto completo das hipóteses está truncado na leitura, e não o copiei. [incerto]
+- § 3º: "O exercício do direito de arrependimento será comunicado imediatamente pelo fornecedor à instituição financeira ou à administradora do cartão de crédito ou similar, para que: I - a transação não seja lançada na fatura do consumidor; ou II - seja efetivado o estorno do valor, caso o lançamento na fatura já tenha sido realizado."
 - § 4º: "O fornecedor deve enviar ao consumidor confirmação imediata do recebimento da manifestação de arrependimento."
 
 6.8 Aplicação do § 1º ao caso concreto: o pedido pelo SAC basta, ou o app precisa de botão próprio? [CONDICIONAL: depende de parecer.] Ver "Pontos para o advogado", B4.
@@ -192,11 +192,11 @@ Só o banco de dados muda o estado de um atendimento. Cada mudança entra no his
 9.2 Prazo de resposta proposto: 5 dias corridos. [PROPOSTA] Base: Decreto 7.962/2013, art. 4º, parágrafo único: "A manifestação do fornecedor às demandas previstas no inciso V do caput será encaminhada em até cinco dias ao consumidor." O inciso V manda manter atendimento eletrônico que permita resolver demandas de "informação, dúvida, reclamação, suspensão ou cancelamento do contrato". [CONDICIONAL: depende de parecer quanto a serviço contratado pelo app.]
 
 9.3 Decreto 13.135/2026 (texto lido na cópia da Câmara):
-- Revoga o Decreto 11.034/2022 (art. 24). Os rascunhos 01 e 02 citam o decreto revogado. Ver "Pontos para o advogado", A4.
-- Entra em vigor 20 dias após a publicação (art. 25). A cópia indica publicação no DOU de 13/10/2026. Pela contagem, a vigência seria 02/11/2026. [incerto: confirmar a data no DOU.]
+- Revoga o Decreto 11.034/2022 (art. 24). Os rascunhos 01, 02 e 10 citam o decreto revogado. Ver "Pontos para o advogado", A4.
+- Entra em vigor 20 dias após a publicação (art. 25). A cópia indica publicação no DOU de 13/10/2026. Pela contagem, a vigência seria 02/11/2026: se estiver certa, o decreto já está em vigor na data desta revisão (08/11/2026). [incerto: confirmar a data no DOU, com prioridade.]
 - Demandas não urgentes: resposta em até 7 dias corridos (art. 21).
-- Histórico: fornecido em até 5 dias úteis, mediante solicitação, e guardado por seis meses (art. 18, § 4º, I e II).
-- Cancelamento: efeitos imediatos, salvo processamento técnico justificado (art. 20, § 1º, II). É preciso opção de cancelamento imediato de contratos e serviços no atendimento eletrônico (art. 13, § 1º, I).
+- Histórico: fornecido em até 5 dias úteis, mediante solicitação (art. 18, § 4º, I), e mantido por pelo menos seis meses, contados da resolução da demanda (art. 18, § 4º, II).
+- Cancelamento: "os efeitos do pedido de cancelamento serão imediatos, independentemente do adimplemento contratual" (art. 20, § 1º, II). Não confirmei no trecho lido se há exceção de processamento técnico [incerto]. É preciso opção de cancelamento imediato de contratos e serviços no atendimento eletrônico (art. 13, § 1º, I).
 - Aplicação ao WorkEasy: [CONDICIONAL: depende de parecer.] O art. 1º, parágrafo único, alcança fornecedores de serviços regulados pelo Poder Executivo federal e serviços financeiros supervisionados pelo Banco Central. O art. 2º alcança operadores de plataformas digitais de intermediação. O texto aberto do art. 2º não define esse termo. [incerto: texto completo do art. 2º.]
 
 9.4 Cancelamento pelo SAC [PROPOSTA]: para atendimento não pago, o SAC faz o mesmo que o botão do app (cláusula 3). Para atendimento pago, aplica-se a cláusula 5.5.
@@ -229,16 +229,17 @@ Só o banco de dados muda o estado de um atendimento. Cada mudança entra no his
 
 **A. Papel do WorkEasy e aplicação das normas**
 
-- **A1.** O WorkEasy atua como intermediário, como fornecedor do serviço, ou em outra posição? A resposta muda a aplicação dos arts. 3º, 7º, parágrafo único, 14 e 25, § 1º do CDC. Hoje o WorkEasy não recebe nem retém o valor pago (cláusula 5.7).
+- **A1.** O WorkEasy atua como intermediário, como fornecedor do serviço, ou em outra posição? A resposta muda a aplicação dos arts. 3º, 7º, parágrafo único, 14 e 25, § 1º do CDC. Hoje a cobrança da plataforma é emitida na conta Asaas raiz, e o split repassa o valor líquido ao profissional (cláusula 5.7). Se isso é recebimento ou retenção, é tema do parecer.
 - **A2.** O Decreto 13.135/2026 alcança o WorkEasy pelo art. 1º, parágrafo único, ou pelo art. 2º (plataforma digital de intermediação)? Se alcança, há obrigações de cancelamento com efeitos imediatos, opção de cancelamento em todos os níveis do atendimento eletrônico, e envio de modelos de atendimento à Senacon (art. 2º). Preciso o texto completo do art. 2º. [incerto]
 - **A3.** O Decreto 7.962/2013 trata de "contratação no comércio eletrônico" (art. 1º). O texto lido não define o termo. Um serviço contratado pelo app entra nele?
 - **A4.** Os rascunhos 01 (Termos de Uso) e 02 (Termos do Prestador), além do documento 10 (SAC), citam o Decreto 11.034/2022. Esse decreto foi revogado pelo art. 24 do Decreto 13.135/2026. As referências devem ser atualizadas antes de publicar. O decreto revogado não foi aberto nesta revisão, porque o planalto.gov.br bloqueou o acesso.
+- **A5.** A assinatura Pro (mensalidade, teste grátis e cancelamento) não é tratada nesta política; o Termos do Prestador, cláusula 10, trata disso. Se o CDC (arts. 49 e 51) vale para essa assinatura, é pergunta para o advogado (DECISOES.md, seção 8, pergunta 7).
 
 **B. Arrependimento**
 
 - **B1.** O art. 49 do CDC vale para o serviço contratado pelo app? Qual evento inicia a contagem de 7 dias: o aceite, o pagamento, ou a data do serviço?
-- **B2.** Serviço já começado ou feito: qual é a devolução? Não encontrei decisão do STJ que trate desse caso. Há um caso pendente, REsp 1.913.986 (4ª Turma), sobre passagens aéreas. A notícia de 18/11/2025 diz que o relator votou pela aplicação do art. 49 e que o julgamento foi suspenso por pedido de vista. A notícia também cita o art. 740 do Código Civil e um índice de retenção de até 5% para compras a menos de 7 dias do embarque. Não abri o Código Civil nem o acórdão. [incerto: andamento do REsp depois de 18/11/2025.]
-- **B3.** O § 3º do art. 5º do Decreto 7.962/2013 manda comunicar o exercício do arrependimento ao emissor do cartão. Quem faz essa comunicação: o WorkEasy, o Asaas, ou o profissional, quando a cobrança é da conta dele? O texto completo das hipóteses do § 3º não foi lido. [incerto]
+- **B2.** Serviço já começado ou feito: qual é a devolução? Não encontrei decisão do STJ que trate desse caso. Há um caso pendente, REsp 1.913.986 (4ª Turma), sobre passagens aéreas. A notícia de 18/11/2025 diz que o relator, Min. Marco Buzzi, votou pela aplicação do prazo de arrependimento previsto no CDC, e que o julgamento foi suspenso por pedido de vista do Min. Antonio Carlos Ferreira. A notícia também cita o art. 740 do Código Civil e um índice de retenção de até 5% para compras a menos de 7 dias do embarque. Não abri o Código Civil nem o acórdão. [incerto: andamento do REsp depois de 18/11/2025.]
+- **B3.** O § 3º do art. 5º do Decreto 7.962/2013 manda que o "fornecedor" comunique o arrependimento à instituição financeira ou à administradora do cartão. Quem é o fornecedor nesse caso: o WorkEasy, o profissional (quando a cobrança é da conta dele), ou ambos? Qual é o papel do Asaas?
 - **B4.** O pedido pelo SAC é "meio adequado e eficaz" (art. 5º, caput), ou o § 1º exige que o app ofereça o arrependimento pela mesma ferramenta da contratação?
 
 **C. Cancelamento e multas**
@@ -258,12 +259,12 @@ Só o banco de dados muda o estado de um atendimento. Cada mudança entra no his
 **E. Garantia e responsabilidade**
 
 - **E1.** Uma "Garantia WorkEasy" só pode ser oferecida depois de ligar o pagamento retido (DECISOES.md, seção 4) e de parecer. Até lá, a palavra "garantia" em telas, anúncios ou lojas pode criar obrigação própria? Qual é a regra?
-- **E2.** Quanto de responsabilidade o WorkEasy assume como intermediário, sem reter valores (arts. 7º, parágrafo único, 14 e 25, § 1º)?
+- **E2.** Quanto de responsabilidade o WorkEasy assume como intermediário, sem reter valores, premissa que a cláusula 5.7 não confirma (arts. 7º, parágrafo único, 14 e 25, § 1º)?
 
 **F. SAC**
 
 - **F1.** Prazo de resposta: 5 dias (Decreto 7.962/2013, art. 4º, parágrafo único) ou 7 dias corridos (Decreto 13.135/2026, art. 21)? A proposta adota 5 dias, o prazo mais curto que li.
-- **F2.** O e-mail basta como canal? Se o Decreto 13.135/2026 se aplica, quais canais e horários são exigidos? Não li esses dispositivos com atenção. [incerto]
+- **F2.** O e-mail basta como canal? Se o Decreto 13.135/2026 se aplica, quais canais e horários são exigidos? A notícia do Ministério da Justiça (fonte 4) descreve contato humano em até 20 segundos para pelo menos 80% das demandas por telefone e espera máxima de 5 minutos. Não li os artigos que preveem isso. O documento 10 (SAC) fala em canal telefônico e atendimento das 8h às 20h, a confirmar. [incerto]
 
 **Itens [incerto], lista completa**
 
@@ -273,14 +274,21 @@ Só o banco de dados muda o estado de um atendimento. Cada mudança entra no his
 4. Efeito do estorno sobre o repasse já recebido pelo profissional (cláusula 5.7 e D2).
 5. Andamento do REsp 1.913.986 depois de 18/11/2025 (cláusula 6.3 e B2).
 6. Data de vigência do Decreto 13.135/2026: contagem para 02/11/2026, a confirmar no DOU (cláusula 9.3).
-7. Texto completo do art. 2º do Decreto 13.135/2026 e das hipóteses do § 3º do art. 5º do Decreto 7.962/2013, lidos apenas em trecho (cláusula 6.7 e 9.3).
+7. Texto completo do art. 2º do Decreto 13.135/2026, lido só em trecho (cláusulas 9.3 e A2).
 8. Texto oficial do CDC, do Decreto 7.962/2013, do Decreto 13.135/2026 e do Decreto 11.034/2022. O planalto.gov.br bloqueou o acesso desta revisão. Os textos foram lidos nas cópias do portal da Câmara, que avisam não substituir o DOU. Conferir antes de publicar.
+9. Vigência do Decreto 13.135/2026: se a contagem do art. 25 estiver certa, ele já vale desde 02/11/2026 (cláusula 9.3). Tratar com prioridade.
+10. Exceção de processamento técnico no cancelamento (art. 20, § 1º, II do Decreto 13.135/2026, cláusula 9.3). Não confirmada no trecho lido.
+11. Efeito de um estorno recebido com atendimento em contestação ou já cancelado (nota técnica abaixo).
 
 **Nota técnica para a equipe (não é parecer)**
 
 Duas divergências entre o código e a fonte, que a equipe precisa resolver antes de o texto virar regra:
 - `supabase/functions/_shared/asaas-client.ts` diz que o estorno da API vale só para cartão e Pix. A documentação do Asaas tem um endpoint separado de estorno de boleto. O código de `asaas-webhook` pede o estorno também para boleto e, quando falha, registra `payment.refund_failed`.
 - A documentação do Asaas para estorno de boleto não diz que o procedimento é impossível pela API. Ele depende de dados bancários do pagador.
+- `docs/operacao/04-operacao-concierge-do-dia-a-dia.md`, L12: um estorno recebido com atendimento em "Em contestação" ou já "Cancelado" pede a transição para "Cancelado", mas a matriz do banco só aceita `paid → canceled`. Não testado. Resolver antes de a regra virar texto.
+- A mesma operação (seções 6.6 e 6.9) prevê estorno manual no painel do Asaas quando o estorno falha, com decisão do responsável. Esta política não prevê esse procedimento para o consumidor [CONDICIONAL: depende de parecer].
+- A operação manda cobrar pela Trilha B até o parecer, e só depois pela Trilha A (cobrança pelo app), que esta política descreve. Alinhar com o parecer.
+- `docs/juridico/02-termos-do-prestador.md`, cláusula 11.5, afirma que o repasse "é desfeito" quando há estorno, e que boleto "é tratado pelo SAC". Esta política trata o repasse como [incerto] (cláusula 5.7) e registra que o código tenta o estorno também para boleto. Alinhar.
 
 ## Fontes consultadas
 
@@ -289,15 +297,15 @@ Todas foram abertas em 2026-11-08, salvo indicação.
 | # | Fonte (URL) | Norma ou documento | O que foi lido |
 |---|---|---|---|
 | 1 | https://www2.camara.leg.br/legin/fed/lei/1990/lei-8078-11-setembro-1990-365086-normaatualizada-pl.html | Lei 8.078/1990 (CDC), texto atualizado, portal da Câmara | Arts. 3º, caput e § 2º; 7º, parágrafo único; 14, caput; 20, caput, incisos I a III e §§ 1º e 2º; 25, § 1º; 26, caput e incisos I e II; 35, caput e incisos I a III; 39, caput, incisos VIII, IX e XII; 49, caput e parágrafo único; 51, caput, incisos I, II, XI, XIII e § 2º. Art. 18, § 1º foi lido, mas não é aplicável a serviço e não foi usado. |
-| 2 | https://www2.camara.leg.br/legin/fed/decret/2013/decreto-7962-15-marco-2013-775557-publicacaooriginal-139266-pe.html | Decreto 7.962/2013 (comércio eletrônico), publicação original segundo a própria página (DOU de 15/03/2013) | Art. 1º, caput e incisos I a III; art. 2º (só o caput); art. 4º, caput, inciso V e parágrafo único; art. 5º, caput e §§ 1º a 4º. O § 3º foi lido só até o início das hipóteses. |
-| 3 | https://www2.camara.leg.br/legin/fed/decret/2026/decreto-13135-9-outubro-2026-800053-publicacaooriginal-181591-pe.html | Decreto 13.135/2026 (data 9/10/2026; DOU de 13/10/2026, seção 1, p. 5, segundo a página) | Art. 1º, caput e parágrafo único; art. 2º, caput (trecho); art. 8º; art. 13, § 1º, I; art. 18, § 4º, I e II; art. 20, § 1º, II; art. 21; art. 24 (revoga o Decreto 11.034/2022); art. 25 (vigência em 20 dias). A página avisa que não substitui o DOU. |
+| 2 | https://www2.camara.leg.br/legin/fed/decret/2013/decreto-7962-15-marco-2013-775557-publicacaooriginal-139266-pe.html | Decreto 7.962/2013 (comércio eletrônico), publicação original segundo a própria página (DOU de 15/03/2013) | Art. 1º, caput e incisos I a III; art. 2º (só o caput); art. 4º, caput, inciso V e parágrafo único; art. 5º, caput e §§ 1º a 4º. O § 3º foi lido por completo na revisão de 2026-11-08. |
+| 3 | https://www2.camara.leg.br/legin/fed/decret/2026/decreto-13135-9-outubro-2026-800053-publicacaooriginal-181591-pe.html | Decreto 13.135/2026 (data 9/10/2026; DOU de 13/10/2026, seção 1, p. 5, segundo a página) | Art. 1º, caput e parágrafo único; art. 2º, caput (trecho); art. 8º; art. 13, § 1º, I; art. 18, § 4º, I e II; art. 20, § 1º, II; art. 21; art. 24 (revoga o Decreto 11.034/2022); art. 25 (vigência em 20 dias). A página avisa que não substitui o DOU. Revisão de 2026-11-08: conferidos art. 1º, parágrafo único; art. 2º, caput (só o início); art. 13, § 1º, I; art. 18, § 4º, I e II; art. 20, § 1º, II (só a frase principal); art. 21; art. 24; art. 25. Art. 8º não reconferido. |
 | 4 | https://www.gov.br/mj/pt-br/assuntos/noticias-1/novo-decreto-do-sac-amplia-protecao-ao-consumidor-e-estabelece-regras-de-atendimento | Notícia do Ministério da Justiça sobre o Decreto 13.135/2026, publicada em 13/10/2026 | Confirma a revogação do Decreto 11.034/2022. É referência oficial, não o texto da norma. |
-| 5 | https://docs.asaas.com/reference/estornar-cobranca | Asaas, "Estornar cobrança" (última atualização 08/09/2026, segundo a página) | Endpoint `POST /v3/payments/{id}/refund`; cartão e Pix; prazo de até 10 dias úteis para o cancelamento aparecer na fatura; saldo exigido no Pix (erro 400). |
+| 5 | https://docs.asaas.com/reference/estornar-cobranca | Asaas, "Estornar cobrança" (data de atualização no metadado da página: 08/09/2026; sem rótulo visível) | Endpoint `POST /v3/payments/{id}/refund`; cartão e Pix; prazo de até 10 dias úteis para o cancelamento aparecer na fatura; saldo exigido no Pix (erro 400). |
 | 6 | https://docs.asaas.com/reference/estornar-boleto | Asaas, "Estornar boleto" | Estorno de cobrança paga por boleto; depende de dados bancários do pagador; permissão `PAYMENT_REFUND:WRITE`; concluído quando o status for `DONE`. Sem prazo. |
 | 7 | https://www.stj.jus.br/sites/portalp/Paginas/Comunicacao/Noticias-antigas/2015/2015-05-03_08-00_Consumidor-que-compra-pela-internet-tem-assegurado-o-direito-de-se-arrepender.aspx | Notícia do STJ sobre arrependimento em compras pela internet, com referência ao REsp 1.340.604 (2ª Turma) | Notícia, não acórdão. Datas exibidas: 03/05/2015, 12/04/2019 e 13/04/2019. Não se sabe qual é a data de publicação. |
 | 8 | https://www.stj.jus.br/sites/portalp/Paginas/Comunicacao/Noticias/2025/18112025-Passagem-aerea-pela-internet-relator-da-sete-dias-para-desistencia-com-devolucao-do-dinheiro.aspx | Notícia do STJ de 18/11/2025 sobre o REsp 1.913.986 (4ª Turma) | Voto do relator, Min. Marco Buzzi, pela aplicação do art. 49; julgamento suspenso por pedido de vista. Não conferi o andamento depois dessa data. |
 
-**Não consegui abrir** (acesso bloqueado pelo planalto.gov.br nesta sessão): texto oficial da Lei 8.078/1990, do Decreto 7.962/2013, do Decreto 13.135/2026 e do Decreto 11.034/2022. Os textos foram lidos nas cópias da Câmara (fontes 1 a 3). O Código Civil, art. 740, aparece apenas como citação em notícia (fonte 8) e não foi aberto.
+**Não consegui abrir** (acesso bloqueado pelo planalto.gov.br nesta sessão e no reteste de 2026-11-08): texto oficial da Lei 8.078/1990, do Decreto 7.962/2013, do Decreto 13.135/2026 e do Decreto 11.034/2022. Os textos foram lidos nas cópias da Câmara (fontes 1 a 3). O Código Civil, art. 740, aparece apenas como citação em notícia (fonte 8) e não foi aberto.
 
 **Repositório lido** (caminhos relativos a `/home/user/work-easy/`):
 - `apps/web/docs/ARQUITETURA.md` (seções de bookings, pagamentos, Edge Functions, webhook, cobranças, conta e administração)

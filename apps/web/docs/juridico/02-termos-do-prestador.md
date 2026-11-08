@@ -211,7 +211,7 @@ Estes Termos do Prestador ("Termos") são um contrato entre você e [RAZÃO SOCI
 
 **10.8 Assinar de novo.** Se você assinar de novo dentro de um período já pago, a cobrança começa no fim desse período, não hoje.
 
-**10.9 Atraso.** Se uma cobrança vence sem pagamento, a assinatura passa a "Pagamento atrasado". Você continua no Pro até o fim do período já pago mais a carência do Anexo I; depois, o plano volta ao grátis. Se você pagar depois, o Pro volta e o novo período conta do vencimento da cobrança paga. Um teste que não é pago termina do mesmo jeito. Seus dados continuam: só deixam de valer as vantagens do Pro.
+**10.9 Atraso.** Se uma cobrança vence sem pagamento, a assinatura passa a "Pagamento atrasado". Você continua no Pro até o fim do período já pago mais a carência do Anexo I; depois, o plano volta ao grátis. **[PLANEJADO]** Hoje o plano só volta ao grátis quando o Asaas avisa o atraso depois desse prazo: nenhuma rotina rebaixa o plano na data (G5a). Se você pagar depois, o Pro volta e o novo período conta do vencimento da cobrança paga. Um teste que não é pago termina do mesmo jeito. Seus dados continuam: só deixam de valer as vantagens do Pro.
 
 **10.10 Outras cobranças.** Hoje o WorkEasy não cobra de você nada além da mensalidade do Pro. A comissão está desligada (cláusula 12). O Asaas pode cobrar tarifas pelo uso da conta de recebimento (cláusula 11).
 
@@ -242,7 +242,7 @@ Estes Termos do Prestador ("Termos") são um contrato entre você e [RAZÃO SOCI
 **12.2 Comissão, se for ligada.** **[CONDICIONAL: depende de parecer]** A regra planejada é esta:
 
 - (a) vale só para ocupações cuja política diz "comissão só no primeiro serviço com cliente novo trazido pelo WorkEasy";
-- (b) incide só sobre o primeiro atendimento entre você e um cliente que a plataforma trouxe, pago pelo app. Os seguintes entre vocês dois não têm comissão;
+- (b) incide só sobre o primeiro atendimento entre você e um cliente que a plataforma trouxe, pago pelo app. Os seguintes entre vocês dois não têm comissão. **[PLANEJADO]** Hoje o código não distingue um cliente que a plataforma trouxe de um que você já atendia por fora (G17);
 - (c) nunca incide sobre clientes seus (origem "próprio");
 - (d) tem percentual e teto definidos nas configurações do WorkEasy (programados hoje em 12% e R$ 150,00, e desligados) e é fixada quando o atendimento é aceito;
 - (e) não vale para ocupações marcadas "só assinatura" nem "em análise jurídica";
@@ -259,13 +259,13 @@ Estes Termos do Prestador ("Termos") são um contrato entre você e [RAZÃO SOCI
 
 **13.2 Quem responde.** Você responde por cumprir as normas de publicidade do seu conselho ou órgão e a lei. A lei do consumidor proíbe a publicidade enganosa ou abusiva (CDC, art. 37) e exige que a publicidade possa ser identificada como tal (art. 36). Conforme o seu conselho, isso inclui: dados obrigatórios no anúncio; proibição de sensacionalismo e de promessa de resultado; regras sobre preço, desconto e promoção; e regras sobre depoimentos e imagens de clientes.
 
-**13.3 As regras variam de conselho para conselho.** Por exemplo, a norma de publicidade médica do CFM (Resolução CFM 2.336/2023) exige o nome, o número do CRM com a palavra MÉDICO e, quando houver, a especialidade com o número do RQE (art. 4º), e permite informar valores de consulta e anunciar descontos em campanhas (art. 9º, VI e VIII). Já o provimento da OAB (Provimento 205/2021) veda a referência a valores de honorários, forma de pagamento, gratuidade, descontos e reduções de preço como forma de captar clientes (art. 3º, I). O WorkEasy não confere os seus anúncios um a um e não decide por você o que o seu conselho permite. *(P11)*
+**13.3 As regras variam de conselho para conselho.** Por exemplo, a norma de publicidade médica do CFM (Resolução CFM 2.336/2023) exige o nome, o número do CRM com a palavra MÉDICO e, quando houver, a especialidade com o número do RQE (art. 4º), e permite informar valores de consulta e anunciar descontos em campanhas (art. 9º, VI e VIII) **[incerto]**. Já o provimento da OAB (Provimento 205/2021) veda a referência a valores de honorários, forma de pagamento, gratuidade, descontos e reduções de preço como forma de captar clientes (art. 3º, I). O WorkEasy não confere os seus anúncios um a um e não decide por você o que o seu conselho permite. *(P11)*
 
 **13.4 Registro mostrado.** A sua página pública mostra o nome do registro, o número, a UF e a situação ("informado pelo profissional" ou "confirmado pelo WorkEasy"). O app ainda não tem campos próprios para outros dados que o seu conselho possa exigir no anúncio (por exemplo, especialidade e número de especialista, ou responsável técnico). Se for o seu caso, escreva esses dados na "Apresentação". **[PLANEJADO]** Campos próprios. *(G7)*
 
 **13.5 Preço sempre público.** O app mostra a faixa de preço dos seus serviços na busca e na sua página, em todas as ocupações, e hoje não há como ocultá-la por política da ocupação. **Se o seu conselho proíbe ou limita divulgar preço, não cadastre serviços no WorkEasy enquanto essa opção não existir; use só propostas, cujo preço apenas o cliente do pedido vê.** **[PLANEJADO]** Ocultar o preço por política da ocupação. **[CONDICIONAL: depende de parecer]** *(P11, G13)*
 
-**13.6 Ocultar conteúdo.** **O WorkEasy pode ocultar avaliações, retirar a aprovação de uma ocupação ou, quando necessário, suspender o cadastro (cláusula 17) quando a política da ocupação ou a regra do conselho exigir, quando o conselho ou uma autoridade pedir, ou quando houver indício de infração.** Avisamos você, com o motivo. Isso não é penalidade. **[PLANEJADO]** Ocultar preço ou texto isoladamente. *(G13)*
+**13.6 Ocultar conteúdo.** **O WorkEasy pode ocultar avaliações, retirar a aprovação de uma ocupação ou, quando necessário, suspender o cadastro (cláusula 17) quando a política da ocupação ou a regra do conselho exigir, quando o conselho ou uma autoridade pedir, ou quando houver indício de infração.** Avisamos você, com o motivo. Isso não é penalidade. **[PLANEJADO]** Ocultar preço ou texto isoladamente, e avisar por mensagem com o motivo (hoje não há mensagem; G2). *(G13)*
 
 **13.7 Saúde.** Não use o WorkEasy para divulgar serviço, método ou produto que a lei ou o seu conselho proíbem, nem para prometer cura, diagnóstico ou resultado de saúde. O WorkEasy não é plataforma de telemedicina nem de prontuário. **[PLANEJADO]** Telemedicina e prontuário só com os requisitos das normas aplicáveis (a diretriz do produto fala em empresa registrada no CRM, responsável técnico e prontuário certificado) **[incerto]** e com termos próprios. *(P23)*
 
@@ -277,7 +277,7 @@ Estes Termos do Prestador ("Termos") são um contrato entre você e [RAZÃO SOCI
 
 **14.3 MEI e Simples.** Pela LC 123/2006, o MEI é dispensado de emitir documento fiscal para o consumidor final, mas é obrigado a emitir nas vendas e nas prestações de serviço para destinatário com CNPJ. As demais empresas do Simples Nacional emitem documento fiscal conforme as instruções do Comitê Gestor (art. 26, I, § 1º e § 6º, II). Confirme com o seu contador. *(P14)*
 
-**14.4 Seus dados fiscais.** O cadastro pede o CPF ou CNPJ, e o Asaas pode pedir mais. Informe dados corretos. **[PLANEJADO]** Perguntar se você é MEI, Simples ou outro regime. Hoje o app não pergunta. *(G9)*
+**14.4 Seus dados fiscais.** A tela "Assinatura" pede o CPF ou CNPJ (na assinatura do Pro e na conta de recebimento), e o Asaas pode pedir mais. Informe dados corretos. **[PLANEJADO]** Perguntar se você é MEI, Simples ou outro regime. Hoje o app não pergunta. *(G9)*
 
 **14.5 Informações ao Fisco.** **[CONDICIONAL: depende de parecer]** A lei pode obrigar plataformas digitais a informar à Receita Federal e ao Comitê Gestor do IBS as operações que intermediam, com a identificação do prestador, e a responder pelo tributo junto com o prestador que é contribuinte e não emite nota fiscal (LC 214/2025, art. 22). Se isso se aplicar ao WorkEasy, enviaremos esses dados por obrigação legal (seu nome, CPF ou CNPJ, valor e data das operações) e você concorda em emitir os documentos fiscais exigidos de você. *(P13)*
 
@@ -446,7 +446,7 @@ Estes valores são configurações da plataforma. O dono pode mudá-los sem novo
 
 ## Anexo II. O que o produto faz hoje, e onde conferi (2026-10-23)
 
-Li o código e `ARQUITETURA.md`; **não executei** o app, a stack local nem os testes. As migrations são citadas pelo número (`supabase/migrations/2026101900000N_*.sql`, de 01 a 11, e `2026102200001N_*.sql`, 12 e 13). Quando o código e `ARQUITETURA.md` divergem, ficou o código.
+Li o código e `ARQUITETURA.md`; **não executei** o app, a stack local nem os testes. Revisão de 2026-11-08: conferidas de novo as regras de trava, proposta, comissão, teste, cancelamento, atraso e exclusão; corrigidos 10.9, 12.2(b) e 14.4 (ver G17); a migração `20261108100000_product_events.sql` não altera nenhum fato deste anexo. As migrations são citadas pelo número (`supabase/migrations/2026101900000N_*.sql`, de 01 a 11, e `2026102200001N_*.sql`, 12 e 13). Quando o código e `ARQUITETURA.md` divergem, ficou o código.
 
 | Cláusula | O que o texto afirma | Onde conferi |
 |---|---|---|
@@ -523,7 +523,7 @@ Nenhum dos dois temas trata de marketplace de serviços gerais. São contexto, n
 **P2. Convenção 193 da OIT: alcance e sinais para o texto.** *(cláusulas 8.5, 17; F7 a F9)*
 
 - **Assume:** o texto não afirma conformidade com a Convenção. As cláusulas 8.5 e 17 seguem a direção dela (informar os automatismos, avisar e deixar responder antes de suspender).
-- **Li:** "digital labour platform" é a pessoa que, "using automated decision-making systems", "organizes and/or facilitates work performed by persons for remuneration" (art. 1(a)). O resumo da OIT de 25/09/2026 diz que a Convenção "does not go so far as to cover platforms that are online billboards, search engines or online marketplaces" (nota 5). Se valesse: informar sobre sistemas automatizados (art. 13); explicação por escrito e revisão de suspensão, com "appropriate human involvement" (art. 15); vedação de suspensão por motivo discriminatório ou ilícito (art. 17); informação sobre pagamentos e descontos (art. 11); termos claros (art. 18).
+- **Li:** "digital labour platform" é a pessoa que, "using automated decision-making systems", "organizes and/or facilitates work performed by persons for remuneration" (art. 1(a)). O resumo da OIT de 25/09/2026 diz que a Convenção "does not go so far as to cover platforms that are online billboards, search engines or online marketplaces" (nota 5, **[incerto]**: não reaberta). Se valesse: informar sobre sistemas automatizados (art. 13); explicação por escrito e revisão de suspensão, com "appropriate human involvement" (art. 15); vedação de suspensão por motivo discriminatório ou ilícito (art. 17); informação sobre pagamentos e descontos (art. 11); termos claros (art. 18).
 - **Pergunto:** o WorkEasy é "marketplace" nesse sentido ou "digital labour platform"? Ele calcula a ordem da busca, aplica limites, cobra pelo app e suspende.
 
 **P3. Aceite próprio destes Termos.** *(cláusula 3; F17)*
@@ -653,12 +653,14 @@ O documento 01 (P1 e P2) trata da posição do WorkEasy perante o consumidor. Aq
 | 6 | Prazo de guarda do registro financeiro | 20.4, P19 | Contador e advogado |
 | 7 | Atos conjuntos RFB/CGIBS sobre a informação das plataformas; leitura do art. 544, VI, da LC 214 sobre os arts. 21 a 23 | P13 | Contador e advogado tributarista |
 | 8 | Resolução BCB 150/2021 | P7 | Advogado |
-| 9 | Regras de publicidade dos conselhos além do CFM e da OAB; o texto oficial do CFM (li a cópia hospedada pelo CRM-ES) | 13.3, P11, P12 | Matriz por conselho (Frente A) |
+| 9 | Regras de publicidade dos conselhos além do CFM e da OAB; o texto oficial do CFM (a cópia do CRM-ES não pôde ser relida em 2026-11-08: PDF ilegível; a página oficial do CFM pede senha) | 13.3, P11, P12 | Matriz por conselho (Frente A) |
 | 10 | Requisitos de telemedicina e prontuário | 13.7, P23 | Advogado de saúde |
 | 11 | Redação vigente do art. 22, II, da LC 214 (alínea "c") | P13 | Texto da LC 227/2026 e do regulamento |
 | 12 | Se o WorkEasy é "plataforma digital" (LC 214) e "digital labour platform" (C193) | P2, P13 | Advogado |
 | 13 | Se um perfil em plataforma de terceiros é "rede própria" do médico (CFM, art. 8º) | P12 | Advogado, com o CFM |
 | 14 | LC 238/2026 (aparece como "Vide" no art. 18-A, § 1º, da LC 123) | P14 | Contador |
+| 15 | Leis lidas no planalto.gov.br em 2026-10-23 (CLT, CDC, LC 150/2015, LC 123/2006, LC 214/2025, LC 227/2026, Decretos 7.962/2013 e 12.955/2026, LGPD, Lei 12.865/2013, CTN, Código Civil). Não reabertas em 2026-11-08: a página de bloqueio da Presidência respondeu às tentativas feitas (LC 150, LC 214, LC 227 e CDC) e as demais não foram tentadas. Os artigos citados valem como lidos em 2026-10-23 | 2.1, 14.3, 14.5, 15.2, 18.3, 19.2, 19.4, 20.4, P4, P13, P16, P17, P19 | Reabrir cada lei no planalto.gov.br ou no DOU, ou pedir ao advogado a conferência, antes de publicar |
+| 16 | Convenção 193 (F7) e nota 5 do resumo da OIT (F9) não reabertas: PDFs ilegíveis para a ferramenta. O P2 cita a nota 5 ("online marketplaces") e o art. 1(a) | P2, quadro | Ler o texto oficial em formato de texto e conferir antes de publicar |
 
 ### C. O que o texto pressupõe e o produto ainda não faz (para o dono)
 
@@ -685,6 +687,7 @@ Cada item diz o que o texto assume e o que o código faz. Os itens G5(a), G1, G2
 - **G14. Ativação no Asaas.** A tela não avisa que o Asaas pode enviar e-mail de ativação e pedir documentos. O modelo (BaaS ou não-BaaS) não está definido. Os limites do período de avaliação do Asaas afetam o beta (P9). *(11.2)*
 - **G15. Nota fiscal da mensalidade.** O app não emite. *(10.11)*
 - **G16. Cliente próprio sem aviso.** A página pública do orçamento (`pages/publico/Orcamento.tsx`) e a cobrança não mostram aviso de privacidade ao cliente próprio, que é terceiro sem conta. O nome, o CPF ou CNPJ, o e-mail e o telefone dele vão ao Asaas pela subconta do prestador (`charges-create`). *(18.3, 18.4)*
+- **G17. Comissão e "cliente trazido".** O código cobra a taxa em todo atendimento de origem plataforma que não tenha antes um atendimento pago pela plataforma com o mesmo cliente ou a mesma entrada do CRM. Não verifica se a plataforma trouxe o cliente nem se você já o atendia por fora. *(12.2, P10)*
 
 ### D. Números do catálogo (calculados de `apps/web/catalog/policies.json` em 2026-10-23)
 
@@ -717,7 +720,7 @@ Nenhum tem norma por trás. São decisões de negócio do dono, com o advogado.
 | 17.5 | Revisão respondida em 10 dias úteis | Igual aos demais |
 | 17.6 | Devolução proporcional da mensalidade se a suspensão for desfeita por erro | Escolha minha (P6) |
 | 20.6 | Aviso de 60 dias se o WorkEasy encerrar o serviço | Tempo de baixar os dados |
-| 21.2 | Resposta do SAC ao prestador em 10 dias úteis | O documento 01 promete 5 dias ao consumidor (Decreto 7.962/2013, art. 4º, parágrafo único): alinhar com o documento 10 |
+| 21.2 | Resposta do SAC ao prestador em 10 dias úteis | O documento 10 fixa 5 dias corridos para o SAC (base: Decreto 7.962/2013, art. 4º, parágrafo único); o documento 04 lê 7 dias corridos no Decreto 13.135/2026, art. 21, para demandas não urgentes (a confirmar). Alinhar antes de publicar |
 
 ### F. Antes de publicar
 
@@ -726,13 +729,13 @@ Nenhum tem norma por trás. São decisões de negócio do dono, com o advogado.
 3. Decidir o aceite próprio (P3) e, se for o caso, criar a finalidade em migration nova e atualizar `CONSENT_VERSIONS` em `apps/web/config/legal.ts`.
 4. Corrigir no produto, antes de aceitar prestadores reais: G5(a), G2 e G3. Os demais G dizem o que o texto não pode prometer enquanto não existirem.
 5. Conferir, na data da publicação, o quadro do STF e da OIT, o catálogo (seção D) e os valores do Anexo I.
-6. Alinhar números e nomes com os documentos 01, 03, 04, 05, 10 e 11 (prazo do SAC, contestação em 7 dias, ordem da busca, trava de 2 dias).
+6. Alinhar números e nomes com os documentos 01, 03, 04, 05, 10 e 11 (prazo do SAC, contestação em 7 dias, ordem da busca, trava de 2 dias). Também: a mensalidade do Pro (10.7 e 10.9) não tem regra no documento 04 (reembolso e arrependimento).
 7. Retirar do texto público os anexos, esta seção e as fontes.
 8. Rodar `test/claims-guard.test.ts` depois de copiar qualquer trecho deste texto para o código do app.
 
 ## Fontes consultadas
 
-Todas abertas em 2026-10-23. As leis, decretos e normas (F1, F2, F7, F9 a F24) foram baixados e lidos no original, artigo por artigo, do site oficial (exceto F23, cópia hospedada por um conselho regional). As páginas F3 a F6, F8 e F25 a F27 foram lidas por uma ferramenta de leitura de páginas, que devolve resumo e trechos curtos: os trechos dessas fontes, abaixo, são curtos e vale reconferi-los. Resultados de busca, blogs e a notícia do Poder360 sobre o Tema 1.389 serviram só para achar as fontes primárias; não são base de nenhuma afirmação.
+Todas abertas em 2026-10-23. **Revisão de 2026-11-08:** reabertas e conferidas as fontes F2, F3, F4, F5, F6, F8, F21, F24, F26 e F27, sem divergência com o texto. **Não reabertas nesta revisão:** F1 (não tentada), F10 a F19 e F22 (planalto.gov.br devolveu a página de bloqueio da Presidência para F10, F11, F12 e F15, sem texto de lei; as demais leis desse site não foram tentadas; camara.leg.br devolveu 404 para a LC 150/2015); F7 e F9 (PDFs da OIT ilegíveis para a ferramenta); F20 (não tentada); F23 (PDF do CFM protegido por senha ou ilegível). Esses trechos seguem como lidos em 2026-10-23 e estão em B.15 e B.16. As leis, decretos e normas (F1, F2, F7, F9 a F24) foram baixados e lidos no original, artigo por artigo, do site oficial (exceto F23, cópia hospedada por um conselho regional). As páginas F3 a F6, F8 e F25 a F27 foram lidas por uma ferramenta de leitura de páginas, que devolve resumo e trechos curtos: os trechos dessas fontes, abaixo, são curtos e vale reconferi-los. Resultados de busca, blogs e a notícia do Poder360 sobre o Tema 1.389 serviram só para achar as fontes primárias; não são base de nenhuma afirmação.
 
 ### Lista de fontes
 
@@ -801,4 +804,4 @@ Todas abertas em 2026-10-23. As leis, decretos e normas (F1, F2, F7, F9 a F24) f
 
 ### O que não foi aberto
 
-NORMLEX da OIT (erro 403); termos de uso do Asaas para titular de subconta (a URL de termos redirecionou para o login); Resolução BCB 150/2021; atos conjuntos da RFB e do CGIBS sobre as plataformas digitais; LC 238/2026; acórdãos do STF (Temas 1.389 e 1.291) e do STJ; jurisprudência sobre consumidor "destinatário final" na contratação de ferramentas profissionais; normas de publicidade dos conselhos além do CFM (cópia) e da OAB; regras de telemedicina e prontuário; CPC art. 63, Marco Civil da Internet e ECA Digital (lidos no documento 01, não reabertos aqui); Decreto 11.034/2022 (documento 10). Os fatos do produto estão no Anexo II.
+NORMLEX da OIT (erro 403); termos de uso do Asaas para titular de subconta (a URL de termos redirecionou para o login); Resolução BCB 150/2021; atos conjuntos da RFB e do CGIBS sobre as plataformas digitais; LC 238/2026; acórdãos do STF (Temas 1.389 e 1.291) e do STJ; jurisprudência sobre consumidor "destinatário final" na contratação de ferramentas profissionais; normas de publicidade dos conselhos além do CFM (cópia) e da OAB; regras de telemedicina e prontuário; CPC art. 63, Marco Civil da Internet e ECA Digital (lidos no documento 01, não reabertos aqui); Decreto 13.135/2026 (que revogou o Decreto 11.034/2022, art. 24, segundo o documento 04; ver também o documento 10). Os fatos do produto estão no Anexo II.

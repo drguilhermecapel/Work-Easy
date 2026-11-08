@@ -25,8 +25,8 @@ Conversão: dólar PTAX de venda de 22/10/2026 = R$ 5,0383 (Banco Central, fonte
 
 ### 1.1 Recomendação
 
-1. **Lançamento (beta fechado com concierge): e-mail.** Login por código de e-mail (c) e avisos por e-mail (`notify-dispatch` + Resend). A aba "Celular" sai da tela enquanto o canal de celular não existir [PLANEJADO: flag de build]. Motivos: custo ≈ zero por código; nenhuma fila de aprovação externa; a tela `/entrar` já abre na aba E-mail; o Supabase recomenda código em vez de link porque filtros de e-mail pré-abrem links e os consomem (S8); a operação inicial é concierge, com atendimento manual por WhatsApp (`VITE_CONCIERGE_WHATSAPP`; `docs/DECISOES.md`, seção 5), então o WhatsApp automático não é o gargalo.
-2. **Fase 2: WhatsApp como canal de celular**, pelo hook Send SMS (b) com modelo de autenticação, e avisos por WhatsApp com os seis modelos de utilidade. O e-mail continua disponível como reserva. Motivos: cerca de 9 vezes mais barato que SMS [estimativa]; o hook deixa o servidor decidir (só celular +55, limite por número, sem confiar na validação do navegador); e login por WhatsApp prova que o número recebe WhatsApp, que é o que `private.notify` já supõe ao mandar avisos para telefone confirmado (seção 3, linha 9).
+1. **Lançamento (beta fechado com concierge): e-mail.** Login por código de e-mail (c) e avisos por e-mail (`notify-dispatch` + Resend). A aba "Celular" sai da tela enquanto o canal de celular não existir [PLANEJADO: flag de build]. Motivos: custo ≈ zero por código; nenhuma fila de aprovação externa; a tela `/entrar` já abre na aba E-mail; o Supabase recomenda código em vez de link porque filtros de e-mail pré-abrem links e os consomem (S8; razão [incerto]: não reconfirmada em 08/11/2026); a operação inicial é concierge, com atendimento manual por WhatsApp (`VITE_CONCIERGE_WHATSAPP`; `docs/operacao/01-plano-de-45-dias-concierge.md`, item 2), então o WhatsApp automático não é o gargalo.
+2. **Fase 2: WhatsApp como canal de celular**, pelo hook Send SMS (b) com modelo de autenticação, e avisos por WhatsApp com os seis modelos de utilidade. O e-mail continua disponível como reserva. Motivos: cerca de 9 vezes mais barato que SMS [estimativa]; o hook deixa o servidor decidir (só celular +55, limite por número, sem confiar na validação do navegador); e um código entregue por WhatsApp indica que o número recebe WhatsApp (sem webhook de status, essa entrega não é confirmada), premissa que `private.notify` já adota ao mandar avisos para telefone confirmado (seção 3, linha 9).
 3. **SMS (a) não entra no lançamento.** É o canal mais caro por código, o mais exposto a fraude de tarifa e o menos coerente com os avisos por WhatsApp. Fica como reserva atrás do mesmo hook (a função tenta SMS se a Meta recusar o envio).
 4. **Reserva:** e-mail sempre disponível. Se a Meta pausar o número ou os modelos, desligar a aba Celular pela flag e manter só o e-mail. Se o Resend falhar, trocar o SMTP do Supabase para um segundo provedor já configurado (o Supabase recomenda ter outro SMTP em espera, S5).
 
@@ -106,7 +106,7 @@ Fontes: S1 (página do hook), S2 (visão geral de hooks), S10, S12, S14.
 | Saída | "No outputs are required. An empty response with a status code of 200 is taken as a successful response." (S1) |
 | Assinatura (hook HTTP) | Padrão Standard Webhooks: cabeçalhos `webhook-id`, `webhook-timestamp` e `webhook-signature`; segredo no formato `v1,whsec_<base64>` (S2). O conteúdo assinado é `id.timestamp.corpo`, o algoritmo é HMAC-SHA256 e o cabeçalho pode trazer várias assinaturas separadas por espaço (S14). |
 | Limites | Corpo de até 20 KB. Orçamento de 5 s para a chamada inteira, repetições incluídas. Toda resposta, inclusive de erro, precisa de `Content-Type: application/json`, senão o Auth devolve erro 500 (S2). |
-| Códigos HTTP | 200, 202 e 204 seguem. 400 e 403 viram erro 500 para o cliente. 429 e 503 com `retry-after` não vazio são repetidos até 3 vezes, com espera de 2 s (S2). |
+| Códigos HTTP | 200, 202 e 204 seguem. 400 e 403 viram erro 500 para o cliente [incerto: não reconfirmado em 08/11/2026]. 429 e 503 são repetidos até 3 vezes, com espera de 2 s (S2; a página cita esses dois como exemplos, e a condição de `retry-after` não aparece no texto lido). |
 | Planos | Disponível nos planos Free e Pro (S2). |
 | Configuração local | `[auth.hook.send_sms]` com `enabled`, `uri` (`http://host.docker.internal:54321/functions/v1/<nome>`) e `secrets = "env(SEND_SMS_HOOK_SECRETS)"` (S2, S12). No projeto hospedado: painel Authentication > Hooks (S2). |
 | Função Edge | Rodar com `--no-verify-jwt`, porque o hook roda antes de existir JWT (S2, S10). |
@@ -125,7 +125,7 @@ Fontes: S1 (página do hook), S2 (visão geral de hooks), S10, S12, S14.
 5. Trocar o texto do SMS para **sem acento** (por exemplo, "Seu codigo WorkEasy: {{ .Code }}"): a Twilio informa que várias operadoras brasileiras trocam acentos por ASCII e que Oi, NEXTEL e CTBC não suportam unicode (T4). O texto de hoje tem "código".
 
 **Custo por código (23/10/2026).**
-- Twilio, SMS de saída para o Brasil: **US$ 0,0599 por segmento** ≈ R$ 0,30. A página diz "Pricing current as of October 2026", avisa que podem existir taxas de operadora e cobra US$ 0,001 por mensagem que termina em falha (T1).
+- Twilio, SMS de saída para o Brasil: **US$ 0,0599 por segmento** ≈ R$ 0,30 (reaberto em 08/11/2026: o valor está na linha "International Numbers" da página do Brasil; não há tarifa doméstica separada no texto lido). A página diz "Pricing current as of October 2026", avisa que podem existir taxas de operadora e cobra US$ 0,001 por mensagem que termina em falha (T1).
 - Twilio Verify: US$ 0,05 por verificação **bem-sucedida** mais o canal ≈ US$ 0,11 ≈ R$ 0,55 [estimativa: a página do Verify só lista a tarifa do canal SMS nos EUA; somei a do SMS do Brasil]. Não cobra a taxa base de verificações que falham ou expiram. A taxa base inclui a proteção automática contra "SMS pumping" (Verify Fraud Guard) (T2).
 - MessageBird e Vonage: preço para o Brasil [incerto: não consegui abrir página oficial].
 
@@ -178,7 +178,7 @@ O código aparece duas vezes (corpo e botão), com no máximo 15 caracteres. URL
 - A Meta cobra por mensagem **entregue**, por categoria e pelo país do destinatário (M8). O Brasil tem tarifa própria no cartão de preços.
 - O único valor do Brasil em texto na página da Meta é **0,68 centavo de dólar por mensagem**, na nota de rodapé "Based on Meta's current rate for utility and authentication messages to users in Brazil" (M8) ≈ R$ 0,034. [incerto: os valores oficiais em BRL estão nos arquivos "BRL list rates" (CSV) e "BRL rates and volume tiers" (PDF) da página, que não consegui abrir; confira lá antes de contar com este número.]
 - Utilidade e autenticação têm faixas de desconto por volume mensal, por mercado (M8). O Brasil **não** está entre os mercados com tarifa "authentication-international" (M9).
-- Avisos (utilidade): desde 01/10/2026 a Meta também cobra a mensagem de utilidade enviada dentro da janela de 24 h aberta pelo usuário (M8); não conte com aviso gratuito. Um atendimento com 5 avisos (2 confirmações, 2 lembretes, 1 pagamento) ≈ R$ 0,17 se a tarifa do rodapé valer também para utilidade [estimativa, sem descontos].
+- Avisos (utilidade): desde 01/10/2026 a Meta também cobra a mensagem de utilidade enviada dentro da janela de 24 h aberta pelo usuário (M8; exceto em janela de ponto de entrada gratuito); não conte com aviso gratuito. Um atendimento com 5 avisos (2 confirmações, 2 lembretes, 1 pagamento) ≈ R$ 0,17 se a tarifa do rodapé valer também para utilidade [estimativa, sem descontos].
 - Pelo canal nativo da Twilio (variante b', abaixo): taxa da Twilio de US$ 0,005 por mensagem somada à tarifa da Meta (T3) ≈ R$ 0,06 [estimativa].
 
 **Entrega no Brasil.** Sem estatística pública aberta [incerto]. O que as fontes dizem:
@@ -190,7 +190,7 @@ O código aparece duas vezes (corpo e botão), com no máximo 15 caracteres. URL
 **Abuso.**
 - Custo: no teto padrão do Auth (30 por hora), 720 mensagens por dia ≈ US$ 4,90 ≈ R$ 25 [estimativa].
 - O risco principal é outro: alguém digitar o número de **terceiros** e disparar códigos que ninguém pediu. Quem recebe pode bloquear ou denunciar, e a Meta limita a taxa de empresas de baixa qualidade por tempo prolongado (M11) e pode pausar modelos com retorno ruim (M1).
-- Mitigações: CAPTCHA; o limite do Auth de uma solicitação a cada 60 s por usuário (S4); cota por número dentro da função (poucos códigos por hora e por dia); recusar tudo que não seja celular +55.
+- Mitigações: CAPTCHA; o padrão do Auth de uma solicitação a cada 60 s por usuário (S4), que o `config.toml` versionado altera para 5 s no SMS (seção 9, item 19); cota por número dentro da função (poucos códigos por hora e por dia); recusar tudo que não seja celular +55.
 - O payload do hook não tem IP (S1). Limite por IP só no CAPTCHA e nos limites do Auth (S4).
 
 **Regulatório.**
@@ -314,7 +314,7 @@ Texto curto, sem propaganda e sem rodapé de marketing, como o Supabase recomend
 
 **Passo 7. Limites de envio do Auth.** Authentication > Rate Limits (S4, S5):
 - "Emails sent" (`rate_limit_email_sent`): depois de ligar o SMTP próprio o Auth impõe 30 por hora; ajuste ao tamanho do beta e ao plano do Resend (Free = 100 por dia).
-- "Send OTPs or magic links": padrão de 1 pedido a cada 60 s por usuário; manter.
+- "Send OTPs or magic links": padrão de 1 pedido a cada 60 s por usuário (S4). O `config.toml` versionado define `max_frequency` de 1 s (e-mail) e 5 s (SMS): escolher o valor de produção antes do beta (seção 9, item 19).
 - "Sign-ups and sign-ins" (30 por 5 minutos por IP): atenção a redes compartilhadas (um escritório ou uma rede móvel com muitos usuários pode estourar).
 - Expiração do código de e-mail: o padrão é 1 hora (`otp_expiry = 3600`); defina o prazo que o dono aceita (S13). Valor acima de 1 dia é desaconselhado (S7). A mesma configuração vale para links de e-mail (S7).
 
@@ -398,7 +398,7 @@ curl -sS -X POST "https://<ref>.supabase.co/functions/v1/notify-dispatch" \
 
 **Passo 16. App, conta do WhatsApp Business (WABA) e moeda** (M14, M8).
 1. developers.facebook.com > Create App > caso de uso **Connect with customers through WhatsApp** > escolher o portfólio > criar ou conectar a conta do WhatsApp Business.
-2. **Moeda: escolha BRL ao criar a conta.** A moeda não muda depois (existe uma API de migração). Empresas de integração direta cujo país de cobrança ("Sold-To") no Billing Hub é o Brasil podem criar contas em BRL desde 01/07/2026, são faturadas em BRL pela Facebook Brasil, e as contas **não** BRL desses clientes deixam de entregar mensagens a partir de 01/07/2027 (M8). Que a empresa se enquadre como "Sold-To Brasil": [CONDICIONAL: depende dos dados cadastrados e do contador].
+2. **Moeda: escolha BRL ao criar a conta.** A moeda não muda depois (existe uma API de migração). Solution Providers e empresas de integração direta cujo país de cobrança ("Sold-To") no Billing Hub é o Brasil podem criar contas em BRL desde 01/07/2026, são faturadas em BRL pela Facebook Brasil, e as contas **não** BRL desses clientes deixam de entregar mensagens a partir de 01/07/2027 (M8). Que a empresa se enquadre como "Sold-To Brasil": [CONDICIONAL: depende dos dados cadastrados e do contador].
 3. Anotar o **ID da conta do WhatsApp Business** (`WABA_ID`), usado para criar modelos.
 
 **Passo 17. Forma de pagamento.** Billing Hub: cadastrar a forma de pagamento antes do primeiro envio; a falta dela é uma das causas do erro 131042 (M16). A Meta cobra apenas mensagens **entregues** (M8). Limite de gasto ou alerta de gasto: [incerto: não abri o procedimento].
@@ -610,6 +610,8 @@ Nota: a tabela de variáveis de `docs/ARQUITETURA.md` não lista `SITE_URL` nem 
 
 ### 8.1 Pontos, fontes e o que falta decidir
 
+> Revisão de 08/11/2026: planalto.gov.br (L1) bloqueou o acesso nesta sessão. Os artigos da LGPD citados nas linhas 1 a 6 não foram reconfirmados e ficam [incerto] até nova leitura. A Resolução nº 19/2024 (L2) foi reaberta e confere, exceto a data de publicação no DOU.
+
 | # | Ponto | Fonte (aberta em 23/10/2026) | Aplicação ao WorkEasy | Marca |
 |---|---|---|---|---|
 | 1 | Telefone e e-mail são dado pessoal (art. 5º, I). "Dado referente à saúde" é dado pessoal sensível (art. 5º, II). | L1 | Aviso com ocupação de saúde + nome da pessoa (ex.: "atendimento de Psicólogo… com Maria") pode revelar dado de saúde; a linha Cuidado envolve idosos. | [CONDICIONAL: depende de parecer] |
@@ -617,7 +619,7 @@ Nota: a tabela de variáveis de `docs/ARQUITETURA.md` não lista `SITE_URL` nem 
 | 3 | Bases legais: consentimento (art. 7º, I), execução de contrato ou procedimentos preliminares a pedido do titular (art. 7º, V), legítimo interesse (art. 7º, IX). | L1 | Qual base cobre (i) o código de acesso e (ii) os avisos de pedido, proposta, atendimento e pagamento. Marketing, se existir um dia, é outra conversa. | [CONDICIONAL: depende de parecer] |
 | 4 | Consentimento: por escrito ou outro meio que demonstre a vontade; ônus da prova do controlador; finalidades determinadas; revogável a qualquer momento por procedimento gratuito e facilitado (art. 8º, caput, §2º, §4º, §5º). | L1 | Se o aceite do WhatsApp for por consentimento, é preciso registrar (a tabela `consents` não tem finalidade própria para isso) e oferecer revogação (hoje não existe). | [CONDICIONAL: depende de parecer] |
 | 5 | Direitos do titular, inclusive oposição ao tratamento sem consentimento e revogação (art. 18, §2º e IX). | L1 | Controle de avisos na conta [PLANEJADO]. | |
-| 6 | Transferência internacional (art. 33) e Regulamento da ANPD (Resolução CD/ANPD nº 19/2024, DOU de 23/08/2024): mecanismos válidos são decisão de adequação, cláusulas-padrão, normas corporativas, cláusulas específicas ou as hipóteses do art. 33; as cláusulas-padrão da ANPD valem se adotadas "integral e sem alteração" (art. 16); quem já usava cláusulas contratuais tinha 12 meses da publicação para incorporá-las (art. 2º, parágrafo único). A transferência se limita ao mínimo necessário (art. 9º, parágrafo único). | L1, L2 | Meta/WhatsApp, Resend (EUA) e Twilio são importadores de telefone e e-mail. | [CONDICIONAL: depende de parecer] |
+| 6 | Transferência internacional (art. 33) e Regulamento da ANPD (Resolução CD/ANPD nº 19/2024, ato de 23/08/2024; data de publicação no DOU [incerto]: a página lida em 08/11/2026 mostra 26/04/2024 no cabeçalho): mecanismos válidos são decisão de adequação, cláusulas-padrão, normas corporativas, cláusulas específicas ou as hipóteses do art. 33; as cláusulas-padrão da ANPD valem se adotadas "integral e sem alteração" (art. 16); quem já usava cláusulas contratuais tinha 12 meses da publicação para incorporá-las (art. 2º, parágrafo único). A transferência se limita ao mínimo necessário (art. 9º, parágrafo único). | L1, L2 | Meta/WhatsApp, Resend (EUA) e Twilio são importadores de telefone e e-mail. | [CONDICIONAL: depende de parecer] |
 | 7 | Contratos dos fornecedores: WhatsApp (termos de 22/08/2025): negócio controlador, WhatsApp operador, transferência por "Global Data Transfer Addendum" (incorporado por referência; não abri o aditivo), sem citar Brasil nem LGPD nos termos. Resend (DPA de 31/12/2025): processamento nos EUA, cláusulas-padrão da UE/UK e Data Privacy Framework, sem citar Brasil. Twilio (DPA de 09/04/2026): cita a LGPD e aplica cláusulas-padrão brasileiras da Res. CD/ANPD nº 19/2024. | M20, R13, T6 | O advogado define se basta o que cada fornecedor oferece ou se é preciso aditivo. | [CONDICIONAL: depende de parecer] |
 | 8 | Política de mensagens da Meta: só contatar quem deu o número e deu opt-in; respeitar pedidos para parar; iniciar conversa só com modelo aprovado; não usar o WhatsApp para telemedicina ou para enviar/pedir informação de saúde se a regra aplicável proíbe; lista de setores proibidos ou restritos. | M19, M11 | Ver 8.2 e 8.3. | |
 | 9 | Regras da Twilio para SMS no Brasil: consentimento antes de qualquer comunicação; marketing só entre 09h e 22h e nunca aos domingos; sem SMS para quem está em lista de não perturbe; sem SMS para telefone fixo. | T4 | Valem só se a opção (a) for usada. Código de acesso não é marketing. | |
@@ -675,12 +677,14 @@ Quando o canal de celular for WhatsApp, a nota da aba (hoje "O envio por SMS dep
 16. **Validade do código**: `otp_expiry = 3600` para e-mail; o padrão para celular é 1 hora (S3), mas o modelo de autenticação sugerido diz 10 minutos.
 17. **`lib/errors.ts` não conhece o erro que o hook devolve** [incerto qual seja].
 18. **Sem tratamento de bounce nem de reclamação do Resend** (R12): o Resend exige bounce abaixo de 4% e spam abaixo de 0,08% (R5) e, sem webhook, só o painel mostra as taxas.
+19. **Limite de OTP diferente do padrão**: o padrão do Auth é 1 pedido a cada 60 s por usuário (S4), mas o `config.toml` define `max_frequency` de 1 s para e-mail (`[auth.email]`) e 5 s para SMS (`[auth.sms]`). Confirmar o valor do projeto hospedado e alinhar com CAPTCHA e cota por número.
+20. **Documentos irmãos com texto diferente**: `docs/ARQUITETURA.md`, linha 798, diz que `/entrar` aceita login "por código (e-mail ou WhatsApp/SMS)", mas o WhatsApp não é oferecido nesta versão (`README.md`, linha 73); `docs/juridico/03-politica-de-privacidade.md`, item 3.1, descreve login "por e-mail ou por SMS" (marcado [PLANEJADO]), que este documento propõe tirar do lançamento; o texto de aceite da seção 8.3 difere do "Texto A" em `docs/operacao/05-templates-whatsapp.md` (linha 354). Alinhar antes do beta.
 
 ---
 
 ## 10. Fontes consultadas
 
-Todas abertas em **23/10/2026**. Quando a página existe em versão Markdown (`.md`), li essa versão. "Fornecedor" = página do próprio fornecedor, fonte primária só para o preço e a política dele. Nenhuma fonte secundária (blog, escritório de advocacia, revendedor) foi usada para fato: a busca devolveu guias de terceiros sobre verificação da empresa, e usei no lugar a página oficial da Meta (M17).
+Todas abertas em **23/10/2026**. Reaberturas de **08/11/2026**: S1, S2, S3, S4, S5, T1, T4, M2, M5, M7, M8, R5 e L2 (L1 bloqueada). Não reabertas nesta revisão: B1, O1, O2, S6 a S14, M1, M3, M4, M6, M9 a M20, R1 a R4, R6 a R14, T2, T3, T5 e T6. Quando a página existe em versão Markdown (`.md`), li essa versão. "Fornecedor" = página do próprio fornecedor, fonte primária só para o preço e a política dele. Nenhuma fonte secundária (blog, escritório de advocacia, revendedor) foi usada para fato: a busca devolveu guias de terceiros sobre verificação da empresa, e usei no lugar a página oficial da Meta (M17).
 
 ### Banco Central
 
@@ -777,8 +781,8 @@ Base: https://resend.com/docs/
 
 | ID | URL | O que li |
 |---|---|---|
-| L1 | https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm | Lei 13.709/2018 (LGPD), texto compilado: arts. 5º, 6º, 7º, 8º, 9º, 10, 11, 18 e 33 |
-| L2 | https://www.gov.br/anpd/pt-br/acesso-a-informacao/institucional/atos-normativos/regulamentacoes_anpd/resolucao-cd-anpd-no-19-de-23-de-agosto-de-2024 | Resolução CD/ANPD nº 19/2024: arts. 2º (parágrafo único), 3º, 5º, 6º, 7º, 9º, 15 e 16 |
+| L1 | https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm | Lei 13.709/2018 (LGPD), texto compilado: arts. 5º, 6º, 7º, 8º, 9º, 10, 11, 18 e 33. **Reaberta em 08/11/2026: bloqueada (aviso de requisição negada); não reconfirmada** |
+| L2 | https://www.gov.br/anpd/pt-br/acesso-a-informacao/institucional/atos-normativos/regulamentacoes_anpd/resolucao-cd-anpd-no-19-de-23-de-agosto-de-2024 | Resolução CD/ANPD nº 19/2024: arts. 2º (parágrafo único), 3º, 5º, 6º, 7º, 9º, 15 e 16. **Reaberta em 08/11/2026: arts. 2º (parágrafo único), 9º (parágrafo único) e 16 conferidos; data de publicação no DOU não confirmada** |
 | L3 | https://www.gov.br/anpd/pt-br/acesso-a-informacao/institucional/atos-normativos/regulamentacoes_anpd | índice das resoluções da ANPD (usei para localizar a nº 19/2024; as demais, como a nº 15/2024 sobre incidentes, só tiveram o título lido) |
 
 ### Repositório (leitura)

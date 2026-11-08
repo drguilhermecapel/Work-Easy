@@ -189,8 +189,8 @@
           "type": "BUTTONS",
           "buttons": [
             {
-              "type": "OTP",
-              "otp_type": "COPY_CODE",
+              "type": "otp",
+              "otp_type": "copy_code",
               "text": "Copiar código"
             }
           ]

@@ -9,12 +9,13 @@
 | Estado do produto | protótipo mesclado em `main`, **não implantado**, sem usuários; nada aqui foi testado contra a Meta, o WhatsApp, o Asaas ou o Resend reais |
 | Arquivo irmão | [`05-templates-whatsapp.json`](05-templates-whatsapp.json): corpo das requisições de criação, no formato da API da Meta |
 | Empresa | [RAZÃO SOCIAL], CNPJ [CNPJ]: ainda não existe (ver `docs/DECISOES.md`) |
+| Revisão | 08/11/2026, revisão independente: fontes reabertas na seção 13; correções marcadas no texto; a LGPD não pôde ser reaberta `[incerto]` |
 
 **Como ler**
 
 - `[PLANEJADO]` = não existe no código hoje. `[CONDICIONAL: depende de parecer]` = depende de opinião jurídica. `[incerto]` = não consegui abrir fonte primária ou as fontes se contradizem.
-- Toda regra, limite e preço da Meta foi lido em **23/10/2026** (fontes na seção 13, com os códigos `[M1]`, `[P1]`, `[S1]`, `[L1]`). Preço só muda no 1º dia de cada trimestre (`Meta may update pricing only on the 1st day of each quarter` [M1]), mas as regras de categoria e de política mudam sem calendário. Releia as páginas antes de registrar.
-- Trechos entre aspas em inglês são literais e curtos; a tradução e o resto são meus. Nenhum trecho foi citado de memória.
+- Toda regra, limite e preço da Meta foi lido em **23/10/2026** e reconferido em **08/11/2026** (fontes na seção 13, com os códigos `[M1]`, `[P1]`, `[S1]`, `[L1]`). Preço só muda no 1º dia de cada trimestre (`Meta may update pricing only on the 1st day of each quarter` [M1]), mas as regras de categoria e de política mudam sem calendário. Releia as páginas antes de registrar.
+- Trechos entre aspas em inglês foram reconferidos em 08/11/2026. Onde a página não trouxe a frase citada, o texto foi corrigido ou marcado `[incerto]`. A tradução e o resto são meus.
 - Os exemplos de mensagem foram gerados rodando as funções reais do código (`supabase/functions/_shared/notifications.ts`, via Deno), não digitados.
 
 ---
@@ -24,11 +25,11 @@
 | # | Achado (23/10/2026) | Efeito | O que fazer |
 |---|---|---|---|
 | 1 | **"Resposta dentro da janela de 24 h é grátis" já não vale sem ressalva.** A página de preços da Meta diz que desde 1º/10/2026 as mensagens de serviço só são grátis até 1.000 por mês por número, e que as de utilidade enviadas em resposta ao usuário (janela aberta) voltaram a ser cobradas [M1][M25]. O site comercial da Meta ainda diz que não cobra nos dois casos [M2]. | Todo aviso entregue pode custar. Sem forma de pagamento, a Meta deixa de entregar mensagens de serviço depois da cota. | Seguir a página de desenvolvedores (mais detalhada e datada). Cadastrar forma de pagamento. Conferir o objeto `pricing` do webhook de status nas primeiras mensagens. `[incerto]`: duas páginas da Meta se contradizem. |
-| 2 | **Dois dos seis corpos do código não devem passar na análise.** `proposta_recebida` começa com variável e põe as variáveis fora de ordem (contraria duas regras escritas); `lembrete_atendimento` termina em variável seguida só de ponto final (contraria a regra se o ponto não contar) [M6][M3]. | Sem ajuste, a Meta recusa o modelo. | Usar o corpo da seção 4 no WhatsApp. O e-mail fica como está. |
-| 3 | **Não existe opt-in de WhatsApp nem opt-out.** `private.notify` manda WhatsApp para todo `auth.users.phone` confirmado. Esse número foi confirmado por código no login; o enum `consent_purpose` não tem propósito para avisos por WhatsApp; não há preferência de canal. | A Meta exige opt-in de quem vai receber [P1]; a LGPD exige revogação a qualquer momento (art. 8º, §5º) [L1]. Hoje não há como parar o WhatsApp de uma pessoa sem apagar o telefone dela. | **Bloqueio de go-live.** Itens G1 a G3 da seção 11. |
+| 2 | **Dois dos seis corpos do código podem não passar na análise.** `proposta_recebida` começa com variável e põe as variáveis fora de ordem (contraria duas regras escritas); `lembrete_atendimento` termina em variável seguida só de ponto final (contraria a regra se o ponto não contar) [M6][M3]. | Sem ajuste, a análise pode recusar o modelo. | Usar o corpo da seção 4 no WhatsApp. O e-mail fica como está. |
+| 3 | **Não existe opt-in de WhatsApp nem opt-out.** `private.notify` manda WhatsApp para todo `auth.users.phone` confirmado. Esse número foi confirmado por código no login; o enum `consent_purpose` não tem propósito para avisos por WhatsApp; não há preferência de canal. | A Meta exige opt-in de quem vai receber [P1]; a LGPD exige revogação a qualquer momento (art. 8º, §5º) [L1] `[incerto]`. Hoje não há como parar o WhatsApp de uma pessoa sem apagar o telefone dela. | **Bloqueio de go-live.** Itens G1 a G3 da seção 11. |
 | 4 | **WhatsApp só alcança quem entra por celular**, e o canal é fixo na hora de enfileirar. Não achei tela para confirmar celular em conta criada por e-mail (não há `updateUser` no app). Sem credencial do WhatsApp, a linha vira `skipped` e a pessoa fica sem aviso mesmo com e-mail confirmado. | Se o lançamento oferecer só login por e-mail, o canal WhatsApp fica sem destinatários. Se oferecer celular e o WhatsApp falhar, não há fallback. | O dossiê I02 recomenda lançar com login e avisos por e-mail e deixar celular e WhatsApp para a fase 2. Lacunas 1 e 2 (seção 11.4). |
 | 5 | **A política da Meta lista bens e serviços proibidos que o catálogo toca**, e a lista de violações cita serviços veterinários, de banho e tosa e de hospedagem de animais [P1][M19]. A área `pets` tem 42 ocupações. | Risco de restrição do número, que também envia os avisos das demais ocupações. | Lista de exclusão (e-mail em vez de WhatsApp) até resposta da Meta e parecer. Seção 10. |
-| 6 | **Os modelos levam nome da ocupação, data e nome da outra parte.** Nas 443 ocupações de saúde isso pode ser "dado referente à saúde" (LGPD, art. 5º, II) [L1], e a Meta diz para não usar o WhatsApp com informação de saúde quando a regulação proibir [P1]. | Possível dado sensível indo para a Meta. | `[CONDICIONAL: depende de parecer]`. Seções 10 e 12. |
+| 6 | **Os modelos levam nome da ocupação, data e nome da outra parte.** Nas 443 ocupações de saúde isso pode ser "dado referente à saúde" (LGPD, art. 5º, II) [L1] `[incerto]`, e a Meta diz para não usar o WhatsApp com informação de saúde quando a regulação proibir [P1]. | Possível dado sensível indo para a Meta. | `[CONDICIONAL: depende de parecer]`. Seções 10 e 12. |
 | 7 | **O plano Pro (R$ 49/mês) não pode ser vendido nem renovado por WhatsApp.** A lista de violações proíbe "links to or processing of any subscription sales, renewals, or upgrades" [M19]. | Avisos de fim do teste e de cobrança do Pro ficam em e-mail e no app. | Nenhum dos seis modelos toca no Pro. Não criar modelo novo para isso. |
 | 8 | **OTP por WhatsApp é possível com o Send SMS hook** (planos Free e Pro), mas não existe no código: `services/auth.ts` pede `channel: 'sms'` e a tela diz SMS [S1][S2]. | Exige função nova, segredos, modelo de autenticação e textos novos. | Seção 5. O dossiê I02 trata como fase 2. |
 
@@ -85,7 +86,7 @@ Os valores de texto passam por `formatParam`: máximo de 300 caracteres, quebras
 
 1. Formato **POSITIONAL** (o padrão da Meta quando nada é dito [M3]); variáveis nomeadas não funcionam, porque o código não envia `parameter_name`.
 2. **Mesmo número de variáveis** do código, na mesma ordem. Número diferente dá o erro 132000 [M20].
-3. Variável só no **corpo**: o código não monta componentes de cabeçalho nem de botão. Rodapé e botões **estáticos** são livres (o exemplo oficial de utilidade com botões de URL, telefone e resposta rápida envia só os componentes de cabeçalho de mídia e de corpo [M7]).
+3. Variável só no **corpo**: o código não monta componentes de cabeçalho nem de botão. Rodapé e botões **estáticos** são livres (o exemplo oficial de utilidade com botões de URL, telefone e resposta rápida envia só os componentes de cabeçalho de mídia e de corpo [M7, não reaberto `[incerto]`]).
 4. Texto sem promessa de prazo: nada de "em X minutos" ou "agora". A Meta não garante ordem nem prazo de entrega (`the order in which messages are delivered is not guaranteed to match the order of your API requests` [M3]).
 
 ---
@@ -99,9 +100,9 @@ Os valores de texto passam por `formatParam`: máximo de 300 caracteres, quebras
 | Utilidade não vende | "These messages should not promote, recommend, upsell, or cross-sell products; include offers; or attempt to secure renewals." | nenhum aviso oferece Pro, desconto ou indicação | [M4] |
 | Conteúdo misto | "Templates with mixed content (for example, both utility and marketing, such as an order update with a promo ..." são marketing | idem | [M4] |
 | Marketing | "Marketing templates are the most flexible." Retargeting, incluindo renovar assinatura, "These are marketing even if requested by users." | novidades e ofertas serão marketing (seção 9) | [M4] |
-| Reclassificação | "the template is approved as MARKETING" quando você pede UTILITY e a Meta discorda (desde 9/4/2025); aviso de 1 dia, ou nenhum para quem já foi advertido; "You have 60 days to review and appeal these changes in Business Support Home." | conferir `category` depois da análise (4.8) | [M4] |
+| Reclassificação | "the template is approved as MARKETING" quando você escolhe UTILITY e a Meta discorda (desde 9/4/2025); aviso de 1 dia, ou nenhum para quem já foi advertido; "You have 60 days to review and appeal these changes in Business Support Home." | conferir `category` depois da análise (4.8) | [M4] |
 | Categoria errada repetida | "If a business is detected to be consistently misclassifying marketing templates as utility, WhatsApp may apply escalating restrictions." | não recriar o mesmo texto com outro nome para "ganhar" utilidade | [M4] |
-| Autenticação | "Only authentication templates can be used to send a one-time passcode for identity verification." Sem URL, mídia nem emoji; parâmetro de até 15 caracteres | seção 5 | [M4][M8] |
+| Autenticação | "you must use an authentication template" (M8) para enviar código de uso único. A frase "Only authentication templates can be used to send a one-time passcode..." não apareceu nas páginas reabertas. Sem URL, mídia nem emoji e limite de 15 caracteres: não confirmados `[incerto]`; validade do código de 1 a 90 min (M8) | seção 5 | [M8][M9] |
 | Variáveis posicionais | "Example values in template creation payloads and real values in template send payloads must appear in the order in which their corresponding placeholders appear in the component text string." | `{{1}}`, `{{2}}`... em ordem no texto | [M3] |
 | Revisão do texto | "The message template cannot start or end with a parameter (dangling parameters are not allowed)." Variáveis não sequenciais e "too many variable parameters relative to the message length" também reprovam; amostra é obrigatória | corpos da seção 4 | [M6] |
 | Limites de componente | corpo até 1.024 caracteres; rodapé até 60; cabeçalho de texto até 60 e 1 variável; até 10 botões; botão de URL aceita 1 variável, no fim | rodapé estático | [M5] |
@@ -176,7 +177,7 @@ Esperado: `status` = `APPROVED`, `category` = `UTILITY`, `correct_category` vazi
 | `{{2}}` | `occupation_name` | Eletricista |
 | `{{3}}` | `price_cents` | R$ 150,00 |
 
-**Por que utilidade.** É a notícia de que alguém respondeu ao pedido que a própria pessoa criou, com dados dele (quem, serviço, valor). Não tem oferta nossa. Encaixa em "Confirm, update, or cancel an order or transaction with a customer, using specific order or transaction details" [M4]. **Risco:** "proposta" com preço pode ser lida como comercial; se a Meta aprovar como MARKETING, ver 4.8.
+**Por que utilidade.** É a notícia de que alguém respondeu ao pedido que a própria pessoa criou, com dados dele (quem, serviço, valor). Não tem oferta nossa. Encaixa no grupo "Order Management" [M4]; a frase de exemplo "Confirm, update, or cancel an order..." não foi reconfirmada nesta revisão `[incerto]`. **Risco:** "proposta" com preço pode ser lida como comercial; se a Meta aprovar como MARKETING, ver 4.8.
 
 **Por que o corpo difere do código.** O texto do código (`{provider_name} enviou uma proposta de {price_cents} para o seu pedido de {occupation_name}...`) abre com variável e traz as variáveis na ordem 1, 3, 2: a Meta reprova as duas coisas [M6][M3]. A ordem dos **valores** enviados não muda (`provider_name`, `occupation_name`, `price_cents`).
 
@@ -214,7 +215,7 @@ Esperado: `status` = `APPROVED`, `category` = `UTILITY`, `correct_category` vazi
 | `{{2}}` | `starts_at` | 28/10/2026 às 14:30 |
 | `{{3}}` | `other_party_name` | Carlos Lima |
 
-**Por que utilidade.** "Account Alerts or Updates": "important or time-sensitive updates or alerts or other information specific to purchased or subscribed products/services". O exemplo oficial da Meta é um lembrete de cobrança mensal ("Reminder: Your monthly payment for ... will be billed on ...") [M4]. Não acrescente texto de venda ("indique", "aproveite").
+**Por que utilidade.** Objetivo "Account Alerts": "Send important or time-sensitive updates or alerts" (a frase completa sobre produtos comprados não foi reconfirmada `[incerto]`). O exemplo oficial da Meta é um lembrete de cobrança mensal ("Reminder: Your monthly payment for ... will be billed on ...") [M4]. Não acrescente texto de venda ("indique", "aproveite").
 
 **Por que o corpo difere do código.** O do código termina em `{other_party_name}.`; a Meta proíbe terminar com variável [M6] e não diz se um ponto final depois dela basta (`[incerto]`). A frase final elimina a dúvida.
 
@@ -278,14 +279,14 @@ Esperado: `status` = `APPROVED`, `category` = `UTILITY`, `correct_category` vazi
 | Cabeçalho | nenhum | o código não envia parâmetros de cabeçalho |
 | Rodapé | `Aviso automático do WorkEasy` | não promete resposta nem opt-out que não existem. Trocar por "Para parar de receber, responda SAIR" **só depois** de existir o webhook de entrada (seção 7); trocar o rodapé de um modelo em uso o devolve para análise [M13] |
 | Botão de link estático | opcional, `Abrir o WorkEasy` (16 caracteres; limite de 25) | não exige mudança no código (botão estático não pede componente no envio [M7]). Exige o domínio final: `[DOMÍNIO DO WORKEASY]` |
-| Botão de resposta rápida "Parar de receber avisos" (23 caracteres) | **só com o webhook de entrada** `[PLANEJADO]` | tocar no botão gera uma mensagem de entrada que alguém precisa tratar. Resposta rápida junto com outro tipo de botão não abre no WhatsApp para computador [M5] |
+| Botão de resposta rápida "Parar de receber avisos" (23 caracteres) | **só com o webhook de entrada** `[PLANEJADO]` | tocar no botão gera uma mensagem de entrada que alguém precisa tratar. Resposta rápida junto com outro tipo de botão não abre no WhatsApp para computador [M5, não reconfirmado `[incerto]`] |
 
 Os dois componentes opcionais estão em `optional_components` no JSON.
 
 ### 4.8 Se a Meta aprovar como MARKETING
 
-1. Veja `category` e `correct_category` (comando de 4.0). Mudança de UTILITY para MARKETING mantém o modelo `APPROVED` e **zera a validade** (`message_send_ttl_seconds` vira nula; a faixa de marketing é de 12 h a 30 dias) [M4][M11].
-2. A cobrança passa à tarifa de marketing do Brasil (valor `[incerto]`, seção 9) e passam a valer limites por usuário para marketing [M3]; o erro 131049, "This message was not delivered to maintain healthy ecosystem engagement", remete a esses limites [M20].
+1. Veja `category` e `correct_category` (comando de 4.0). Mudança de UTILITY para MARKETING mantém o modelo `APPROVED`. A validade de 43.200 s (12 h) continua dentro da faixa de marketing, de 12 h a 30 dias [M11]; se a Meta a zera nesse caso, não está nas páginas reabertas `[incerto]`.
+2. A cobrança passa à tarifa de marketing do Brasil (valor `[incerto]`, seção 9) e passam a valer limites por usuário para marketing [M20]; o erro 131049, "This message was not delivered to maintain healthy ecosystem engagement", remete a esses limites [M20].
 3. Opções: aceitar; reescrever sem nenhum convite e pedir revisão de categoria (prazo de 60 dias, pelo WhatsApp Manager, em Business Support Home) [M4]; ou mover essa mensagem para e-mail e app.
 4. **Não** recriar o mesmo texto com outro nome para tentar utilidade (ver "Categoria errada repetida", seção 3).
 
@@ -303,9 +304,9 @@ Os dois componentes opcionais estão em `optional_components` no JSON.
 | Idioma | `pt_BR` (consta da lista [M24]) |
 | Corpo | texto **fixo e gerado pela Meta** (em inglês: "`<VERIFICATION_CODE>` is your verification code."); a tradução em pt_BR não pode ser editada. Opção `add_security_recommendation: true` acrescenta a frase "For your security, do not share this code." traduzida [M8] |
 | Rodapé | `code_expiration_minutes` (1 a 90) acrescenta "This code expires in <NUM_MINUTES> minutes." traduzida [M8] |
-| Botão | `OTP` do tipo `COPY_CODE`, texto opcional de até 25 caracteres (`Copiar código`) [M9] |
+| Botão | tipo `otp`, com `otp_type` `copy_code` (grafia do exemplo de [M9]), texto de até 25 caracteres (`Copiar código`) [M9]. A Meta pode gravar o tipo como `URL` ao criar: conferir na análise |
 | Validade da mensagem | `message_send_ttl_seconds` de 30 a 900 s; padrão de 10 min [M11]; no JSON, 600 |
-| Restrições | sem URL, mídia nem emoji; o código tem no máximo 15 caracteres [M4][M9] |
+| Restrições | sem URL, mídia nem emoji, e limite de 15 caracteres: não encontrados em [M8] nem [M9] `[incerto]` |
 | Entrega | só no aparelho principal da pessoa; nos aparelhos vinculados aparece mascarado [M8] |
 
 **Antes de registrar:** veja a prévia exata em pt_BR com `GET /{WABA_ID}/message_template_previews?category=AUTHENTICATION&language=pt_BR&add_security_recommendation=true&code_expiration_minutes=10&button_types=OTP` [M8]. Não executei. O JSON usa 10 minutos; **iguale ao prazo real do código no Supabase**. A página de login por celular do Supabase diz que o código expira em 1 hora e, em outro trecho da mesma página, que a pessoa precisa confirmar o código "within 60 seconds" [S3]. Não confirmei se o painel permite reduzir `[incerto]`. Se não permitir, use 60 minutos no modelo (o máximo da Meta é 90) e a mesma validade no JSON antes de enviar.
@@ -318,15 +319,15 @@ O suporte nativo existe só para quem usa Twilio ou Twilio Verify: "At this time
 |---|---|
 | 1. Ativar o hook | Painel do Supabase, Authentication, Hooks. No ambiente local: `[auth.hook.send_sms]` com `enabled = true`, `uri = "http://host.docker.internal:54321/functions/v1/auth-send-sms"` (nome sugerido no dossiê I02), `secrets = "env(SEND_SMS_HOOK_SECRETS)"` |
 | 2. Função nova `[PLANEJADO]` | Edge Function que recebe `POST` com `user` (inclui `phone`) e `sms.otp` (6 dígitos). Sem outros campos: **o canal escolhido pelo app não vem no payload**, então o hook decide por todos os logins por celular |
-| 3. Autenticidade | Padrão Standard Webhooks: cabeçalhos `webhook-id`, `webhook-timestamp` e `webhook-signature`; segredo no formato `v1,whsec_<base64>` em `SEND_SMS_HOOK_SECRETS`. Deploy com `--no-verify-jwt`, porque o hook roda antes de existir JWT. Limite de 20 KB no payload |
-| 4. Telefone | Normalizar com `normalizePhoneBR` (o exemplo da documentação mostra `+` no JSON e `+${...}` no código; não dependa do formato) `[incerto]` |
+| 3. Autenticidade | Padrão Standard Webhooks: cabeçalhos `webhook-id`, `webhook-timestamp` e `webhook-signature`; segredo no formato `v1,whsec_<base64>` em `SEND_SMS_HOOK_SECRETS`. Deploy com `--no-verify-jwt`, porque o hook roda antes de existir JWT `[incerto: não verificado]`. Limite de 20 KB no payload |
+| 4. Telefone | Normalizar com `normalizePhoneBR` (o exemplo da documentação mostra `+` no JSON e `+${...}` no código; não dependa do formato) `[incerto]`. O dossiê I02 (passo 7) usa `to` com `+` no modelo de autenticação; os exemplos do JSON deste documento não usam. Decidir antes do G7 |
 | 5. Envio | `POST /{PHONE_NUMBER_ID}/messages`, modelo `codigo_de_verificacao`, com o código **duas vezes**: no corpo e no botão `sub_type: "url"`, `index: "0"` [M9]. Exemplo pronto em `send_examples.codigo_de_verificacao` no JSON |
-| 6. Resposta | Sucesso: corpo vazio com status 200 ("An empty response with a status code of 200 is taken as a successful response"). Erro: status 400 ou mais com JSON `error`. `429` ou `503` com `retry-after` repete até 3 vezes |
+| 6. Resposta | Sucesso: corpo vazio com status 200 ("An empty response with a status code of 200 is taken as a successful response") `[incerto: não reaberto]`. Erro: status 400 ou mais com JSON `error`. `429` ou `503` com `retry-after` repete até 3 vezes |
 | 7. Tempo | "We have a time budget of 5s for the entire webhook invocation, including retry requests": o `fetch` ao Graph precisa de limite bem menor que 5 s (o dossiê I02 sugere 3,5 s) |
 
-**Regras da Meta que valem aqui [M8][M10]:** (a) quem oferece código por WhatsApp "must use an authentication template"; (b) a Meta recomenda oferecer "a choice of authentication channels (such as WhatsApp, email, and SMS)" e deixar a pessoa confirmar o número do WhatsApp, porque "WhatsApp does not enforce ownership of the phone number past initial registration"; (c) deixar claro na tela que o código vai por WhatsApp. No WorkEasy isso significa rotular a opção como "Celular (código por WhatsApp)" e manter o e-mail para quem não tem WhatsApp.
+**Regras da Meta que valem aqui [M8][M10]:** (a) quem oferece código por WhatsApp "must use an authentication template"; (b) a Meta recomenda oferecer "a choice of authentication channels (such as WhatsApp, email, and SMS)" e deixar a pessoa confirmar o número do WhatsApp, porque "WhatsApp does not enforce ownership of the phone number past initial registration"; (c) recomendação nossa, não da Meta (M10 não diz isso): deixar claro na tela que o código vai por WhatsApp. No WorkEasy isso significa rotular a opção como "Celular (código por WhatsApp)" e manter o e-mail para quem não tem WhatsApp.
 
-**Pontos abertos:** o hook não tem fallback automático para SMS, a menos que a função o implemente (o uso "Fall back to another provider if your primary one fails" consta de [S1]); a página de envio de [M9] diz "you must first initiate a handshake" mas o assunto "handshake" pertence às páginas de preenchimento automático, não à de copiar código `[incerto]`: teste com um número real; abuso e custo por pedido (limites do Supabase, captcha) ficam no dossiê I02.
+**Pontos abertos:** o hook não tem fallback automático para SMS, a menos que a função o implemente (o uso "Fall back to another provider if your primary one fails" consta de [S1]); a página [M9] diz "you must first initiate a handshake between your app and the WhatsApp client" e remete a uma seção Handshake, cujos passos não foram reabertos `[incerto]`: teste com um número real; abuso e custo por pedido (limites do Supabase, captcha) ficam no dossiê I02.
 
 ---
 
@@ -365,7 +366,7 @@ Só publique o texto A quando o interruptor em Conta existir (portão G2); ele p
 
 Este texto não vale como texto A: pedir o código não ativa os avisos.
 
-**Texto C: novidades e ofertas.** Já existe o propósito `marketing` (revogável) em Conta. Continua separado e só vale para modelos de marketing, que ainda não existem.
+**Texto C: novidades e ofertas.** Já existe o propósito `marketing` (revogável) em Conta. Continua separado e só vale para modelos de marketing, que ainda não existem. **Atenção:** o L11 (linha 106) propõe "Quero receber novidades e ofertas do WorkEasy por WhatsApp ou e-mail.", o que mistura o canal WhatsApp ao propósito `marketing`. Alinhar com o L11 antes de publicar; até lá, o Texto C não vale para WhatsApp.
 
 **Texto D: confirmação de ativação** (modelo `avisos_ativados`, `[PLANEJADO]`; a própria Meta dá "Thanks for confirming opt-in! You'll now receive notifications via WhatsApp." como exemplo de utilidade, objetivo "Opt-In Management on WhatsApp" [M4]):
 
@@ -375,7 +376,7 @@ Só existe no JSON em `planned_templates`: exige novo nome na lista do código e
 
 ### 6.4 O que gravar `[PLANEJADO]`
 
-Hoje não existe onde gravar. Mínimo para provar o consentimento (a LGPD põe o ônus no controlador: art. 8º, §2º [L1]):
+Hoje não existe onde gravar. Mínimo para provar o consentimento (a LGPD põe o ônus no controlador: art. 8º, §2º [L1] `[incerto]`):
 
 | Dado | Onde |
 |---|---|
@@ -392,7 +393,7 @@ Hoje não existe onde gravar. Mínimo para provar o consentimento (a LGPD põe o
 ### 7.1 Regras
 
 - Meta: "You must respect all requests (either on or off WhatsApp) by a person to block, discontinue, or otherwise opt out of communications from you via WhatsApp" [P1]. Boa prática: "Provide clear instructions for how people can opt out ... and honor these requests" [M17].
-- LGPD: o consentimento "pode ser revogado a qualquer momento mediante manifestação expressa do titular, por procedimento gratuito e facilitado" (art. 8º, §5º; art. 18, IX) [L1].
+- LGPD: o consentimento "pode ser revogado a qualquer momento mediante manifestação expressa do titular, por procedimento gratuito e facilitado" (art. 8º, §5º; art. 18, IX) [L1] `[incerto: não reaberto]`.
 - Se a base legal dos avisos transacionais for a execução de contrato (art. 7º, V) e não o consentimento, a revogação do art. 8º, §5º pode não se aplicar a eles; a regra da Meta de respeitar pedidos de saída continua valendo `[CONDICIONAL: depende de parecer]`.
 
 ### 7.2 Caminhos de saída e estado atual
@@ -434,9 +435,9 @@ update public.notifications
 | Dentro da janela | mensagens livres (texto, imagem, interativas) sem aprovação prévia, e também modelos | [M16][M1] |
 | Fora da janela | só modelos aprovados: "You may only initiate conversations using an approved Message Template" | [P1] |
 | Opt-in continua | "you can only send messages to WhatsApp users who have opted in" mesmo dentro da janela | [M16] |
-| Automação | "You may use automation when responding during the 24-hour window, but must also have available prompt, clear, and direct escalation paths" (por exemplo e-mail ou site) | [P1] |
+| Automação | "You may use automation when responding during the 24-hour window, but must also have available prompt, clear, and direct escalation paths" (por exemplo e-mail ou site) | [P1] `[incerto: não reconfirmado]` |
 | Perfil | manter perfil do WhatsApp Business com contato de suporte: e-mail, site ou telefone | [P1] |
-| Qualidade | pesa bloqueios, denúncias, silenciamentos e arquivamentos dos últimos 7 dias; "Avoid sending too many messages per day" | [M16] |
+| Qualidade | o modelo pesa feedback negativo de usuários e baixa taxa de leitura [M12]. Bloqueios, denúncias, silenciamentos, janela de 7 dias e "Avoid sending too many messages per day" não foram reconfirmados em [M16] `[incerto]` | [M12][M16] |
 | Custo (muda em 1º/10/2026) | resposta livre = categoria **serviço**: 1.000 por mês por número sem cobrança, depois cobrada pela mesma tarifa de utilidade e autenticação do país, sem desconto por volume. Modelo de utilidade dentro da janela: cobrado. Antes: serviço sem cobrança desde 1º/11/2024; utilidade em janela sem cobrança desde 1º/7/2025 | [M1][M25] |
 
 ### 8.2 O que o WorkEasy faz hoje
@@ -461,7 +462,7 @@ Resposta automática única da opção B (mensagem de serviço, dentro da janela
 
 **Fonte e data:** [M1] (página "Pricing on the WhatsApp Business Platform") e [M25] (página "Upcoming pricing updates for Meta Business Agent, service and utility messages"), lidas em **23/10/2026**; [M1] diz refletir as mudanças em vigor desde **1º/10/2026**. As tarifas por país ficam em arquivos CSV e PDF por moeda que **não consegui abrir** (os links dos arquivos não aparecem no texto da página que obtive). A tabela do site comercial é montada por JavaScript e também não trouxe números [M2]. Por isso não há tarifa em reais neste documento.
 
-**Único número que achei para o Brasil:** [M25] diz "The 0.68 USD cent message delivery rate is based on the current rate (as of July 1, 2026) for utility and authentication messages to users in Brazil" e que, por mercado, "rates for service messages will be the same as the rates for utility and authentication messages". [M1] repete "0.68 ¢ per message" numa tabela comparativa. São **0,68 centavo de dólar** por mensagem entregue (US$ 0,0068), tarifa de lista. [M1] lista as mudanças de tarifa de 1º/10/2025 a 1º/10/2026 e o Brasil não aparece em nenhuma. Tarifa em reais e tarifa de marketing do Brasil: `[incerto]`.
+**Único número que achei para o Brasil:** [M25] diz "The 0.68 USD cent message delivery rate is based on the current rate (as of July 1, 2026) for utility and authentication messages to users in Brazil" e que, por mercado, "rates for service messages will be the same as the rates for utility and authentication messages". [M1] repete "0.68 ¢ per message" numa tabela comparativa. São **0,68 centavo de dólar** por mensagem entregue (US$ 0,0068), tarifa de lista. [M1] lista as mudanças de tarifa de 1º/10/2025 a 1º/10/2026 e o Brasil não aparece em nenhuma `[incerto: não reconfirmado nesta revisão]`. Tarifa em reais e tarifa de marketing do Brasil: `[incerto]`.
 
 | Mensagem | Quem recebe e quando | Categoria Meta | Fatores de custo | Observação |
 |---|---|---|---|---|
@@ -481,14 +482,14 @@ Resposta automática única da opção B (mensagem de serviço, dentro da janela
 
 - Cobra-se por mensagem **entregue**: "Businesses are only charged when a message is delivered." Mensagem de pessoa para empresa não é cobrada.
 - A tarifa depende da categoria e do **país do telefone de destino** (+55 = Brasil).
-- Desconto por volume só para utilidade e autenticação, por mês, por país e categoria, somando o portfólio; só mensagens cobradas contam. Irrelevante no volume do MVP.
-- Janela de entrada por anúncio de clique para WhatsApp (FEP): sem cobrança por até 7 dias, segundo a página de desenvolvedores; o site comercial diz 72 horas `[incerto]`. O WorkEasy não usa anúncios desse tipo.
-- Moeda: desde 1º/7/2026 existe conta de mensagens em reais, faturada pela Facebook Brasil. A moeda é escolhida na criação da conta e não muda (existe uma API de migração de moeda); contas em outra moeda de clientes elegíveis param de entregar em 1º/7/2027. **Crie a conta já em BRL.**
+- Desconto por volume só para utilidade e autenticação, por mês, por país e categoria, somando o portfólio; só mensagens cobradas contam. Irrelevante no volume do MVP `[incerto: não reconfirmado]`.
+- Janela de entrada por anúncio de clique para WhatsApp (FEP): sem cobrança por 72 horas, segundo a página comercial [M2]. A página de desenvolvedores reaberta ([M1][M25]) não dá a duração, e os 7 dias não aparecem nas páginas reabertas `[incerto]`. O WorkEasy não usa anúncios desse tipo.
+- Moeda: desde 1º/7/2026 existe conta de mensagens em reais, faturada pela Facebook Brasil [M1]. A página de moedas [M25] diz que empresas no Brasil só podem escolher a moeda local. A data de 1º/7/2027 para contas em outra moeda e a regra de não mudança não aparecem nas páginas reabertas `[incerto]`. **Crie a conta já em BRL.**
 - Sem forma de pagamento, a Meta entrega mensagens de serviço só dentro da cota gratuita [M1]. O erro 131042 indica problema de pagamento [M20].
 
 **Ordem de grandeza `[estimativa]`:** um atendimento com as 4 mensagens entregues custa 4 × 0,68 ¢ ≈ 2,7 centavos de dólar; 1.000 atendimentos por mês, cerca de US$ 27, **se** todas as pessoas tiverem WhatsApp e a tarifa de lista for a do exemplo. Não é cotação.
 
-**Como ver o custo real:** o webhook de status traz o objeto `pricing` (`billable`, `pricing_model`, `type`, `category`) e aceita `biz_opaque_callback_data`, devolvido no webhook, útil para amarrar à linha de `notifications` [M21]. O WorkEasy não tem esse webhook `[PLANEJADO]`.
+**Como ver o custo real:** o webhook de status traz o objeto `pricing` (`type`, `category`, `pricing_model`; `billable` está marcado como descontinuado [M21]) e aceita `biz_opaque_callback_data`, devolvido no webhook, útil para amarrar à linha de `notifications` [M21]. O WorkEasy não tem esse webhook `[PLANEJADO]`.
 
 ---
 
@@ -498,11 +499,11 @@ Catálogo em 23/10/2026: 1.710 ocupações em 44 áreas (`catalog/areas.json`). 
 
 | Tema | O que a Meta escreve | Onde toca o WorkEasy | Proposta |
 |---|---|---|---|
-| Aplicação da política | para quem reincide: bloqueio de 1 ou 3 dias de modelos, depois de 5, 7 ou 30 dias de qualquer mensagem, "An account lock, which is an indefinite block on sending any messages; can only be removed via an appeal" [M18] | um número só envia os avisos de todas as ocupações | manter o e-mail como canal de reserva |
+| Aplicação da política | para quem reincide: bloqueio de 1 ou 3 dias de modelos, depois de 5, 7 ou 30 dias de qualquer mensagem, "An account lock, which is an indefinite block on sending any messages; can only be removed via an appeal" [M18, não reaberto `[incerto]`] | um número só envia os avisos de todas as ocupações | manter o e-mail como canal de reserva |
 | Saúde | "Don't use WhatsApp for telemedicine or to send or request any health related information, if applicable regulations prohibit distribution of such information to systems that do not meet heightened requirements to handle health related information." [P1] | 8 áreas de saúde somam **443** ocupações: `health` 118, `saude-mental` 46, `odontologia` 37, `terapias-e-reabilitacao` 61, `nutricao` 43, `enfermagem` 49, `exames-e-diagnostico` 54, `terapias-integrativas` 35. Mais a área `cuidados` (33: cuidador de idosos, de pessoas com deficiência, babá etc.) e a linha de cuidado (plantões). Os modelos levam ocupação, data e contraparte | `[CONDICIONAL: depende de parecer]`: variante sem o nome da ocupação e da contraparte para essas áreas, ou só e-mail e app. Telemedicina por WhatsApp está fora do escopo (é demonstração de futuro) |
 | Serviços de saúde | a lista de violações diz: "Manufacturers and healthcare services who do not engage in direct sale are allowed" [M19]; a política de comércio proíbe "medical and healthcare products and services" em conteúdo de comércio [P2] | idem | as duas páginas não se alinham: perguntar à Meta `[incerto]` |
 | Animais | `ANIMALS`: "Businesses may not transact in the sale of any animals", com exemplos "Veterinary services", "Grooming services", "Boarding services" [M19]. A política principal lista "Live non-endangered animals excluding livestock" [P1] | área `pets`: **42 ocupações** (veterinários, banho e tosa, hospedagem, passeador, creche) | lista de exclusão: e-mail em vez de WhatsApp, até resposta da Meta |
-| Cobrança de dívidas | "Payday loans, paycheck advances, peer-to-peer lending, debt collection, and bail bonds"; vale "irrespective of the global or local licenses, registrations, or other approvals your business may hold" [P1] | `cobranca-de-dividas`, `advogado-de-cobranca-e-execucao-de-credito` | lista de exclusão |
+| Cobrança de dívidas | "Payday loans, paycheck advances, peer-to-peer lending, debt collection, and bail bonds"; vale "irrespective of the global or local licenses, registrations, or other approvals your business may hold" [P1] `[incerto: cláusula não reconfirmada]` | `cobranca-de-dividas`, `advogado-de-cobranca-e-execucao-de-credito` | lista de exclusão |
 | Armas | lista "Firearms"; exemplos de violação "Promoting safety training or licenses for legal weapons" e "Gun ranges" [P1][M19] | `instrutor-de-tiro-esportivo-e-clube-de-tiro`, `seguranca-pessoal-e-escolta` (escolta armada), `avaliacao-psicologica-porte-de-arma` | lista de exclusão |
 | Álcool | "Alcohol and tobacco" na lista [P1]; `ALCOHOL`: "may not transact in the sale of alcohol" [M19] | `cervejeiro-e-bebidas-artesanais`; `bartender` e `sommelier` são serviço, não venda `[incerto]` | lista de exclusão para a primeira; as outras, dúvida para a Meta |
 | Assinaturas digitais | `DIGITAL_SERVICES_PRODUCTS`: "including links to or processing of any subscription sales, renewals, or upgrades" [M19] | plano **Pro** | nunca vender, renovar nem cobrar o Pro por WhatsApp; fim de teste só por e-mail e app |
@@ -588,13 +589,15 @@ O despachante só olha o status HTTP; o `error.code` não é gravado. Para inves
 8. `pagamento_recebido` diz "recebido pelo Asaas" também em `confirmed` (ver 4.4).
 9. Ocupação, contraparte e `quote_title` (texto livre) vão para a Meta, inclusive nas áreas de saúde e cuidado; não há variante genérica.
 10. Não há lista de exclusão por ocupação.
-11. OTP por WhatsApp não existe (seção 5); o README diz que o envio por WhatsApp não é oferecido, e as notificações usam WhatsApp: vale esclarecer a frase.
+11. OTP por WhatsApp não existe (seção 5); o README diz que o envio por WhatsApp não é oferecido, e as notificações usam WhatsApp: vale esclarecer a frase. Além disso, `docs/ARQUITETURA.md`, linha 798 (rota `/entrar`), diz "e-mail ou WhatsApp/SMS", e o L01 (item 14) já registra essa divergência.
 
 ---
 
 ## 12. Pontos para o advogado
 
-1. **Base legal dos avisos por WhatsApp.** Consentimento (LGPD art. 7º, I e art. 8º) ou execução de contrato (art. 7º, V)? A Meta exige opt-in de qualquer forma. O item 13.2 do rascunho dos Termos (L01) já fala em avisos por WhatsApp: isso basta como opt-in, ou vale o texto A, separado? Se for consentimento por escrito, precisa de cláusula destacada (art. 8º, §1º)? [L1]
+Os artigos da LGPD citados nesta seção não foram reconferidos: o Planalto bloqueou a leitura em 08/11/2026.
+
+1. **Base legal dos avisos por WhatsApp.** Consentimento (LGPD art. 7º, I e art. 8º) ou execução de contrato (art. 7º, V)? A Meta exige opt-in de qualquer forma. O item 13.2 do rascunho dos Termos (L01) já fala em avisos por WhatsApp: isso basta como opt-in, ou vale o texto A, separado? Se for consentimento por escrito, precisa de cláusula destacada (art. 8º, §1º)? [L1] A L03 (item 3.7) já usa a base do art. 7º, V, para esses avisos, e o Texto A pede consentimento: o conflito precisa de resposta antes do G1.
 2. **Dado de saúde nas mensagens.** Nome de ocupação de saúde + data + contraparte em aviso constitui "dado referente à saúde" (art. 5º, II) e exige consentimento específico e destacado (art. 11, I)? Existe regulação brasileira que proíba esse envio a sistemas sem "heightened requirements" (regra da Meta)? Não pesquisei normas de conselhos profissionais sobre mensagens por aplicativo.
 3. **Meta como operadora, transferência internacional e Política de Privacidade.** A Meta recebe número e texto dos avisos. Tratar na L03 (`docs/juridico/03-politica-de-privacidade.md`).
 4. **Texto livre.** `quote_title` e nomes digitados por terceiros vão para a Meta. Limitar o conteúdo?
@@ -608,7 +611,7 @@ O despachante só olha o status HTTP; o `error.code` não é gravado. Para inves
 
 ## 13. Fontes consultadas
 
-Todas abertas em **23/10/2026**. Páginas da Meta lidas no texto original em Markdown (`.md`) obtido pelo mesmo endereço da página; as sem `.md` foram lidas em HTML.
+Todas abertas em **23/10/2026** e reabertas em **08/11/2026** pelo revisor, salvo a LGPD (L1). Páginas da Meta lidas no texto original em Markdown (`.md`) obtido pelo mesmo endereço da página; as sem `.md` foram lidas em HTML.
 
 | Código | Endereço | O que li | Trecho ou dado usado |
 |---|---|---|---|
@@ -626,7 +629,7 @@ Todas abertas em **23/10/2026**. Páginas da Meta lidas no texto original em Mar
 | M12 | https://developers.facebook.com/documentation/business-messaging/whatsapp/templates/template-quality | página inteira | GREEN, YELLOW, RED, UNKNOWN |
 | M13 | https://developers.facebook.com/documentation/business-messaging/whatsapp/templates/template-pausing | página inteira | pausa de 3 h, 6 h, desativação; edição volta à análise |
 | M14 | https://developers.facebook.com/documentation/business-messaging/whatsapp/templates/template-pacing | página inteira | pacing de utilidade só depois de uma pausa, por 7 dias |
-| M15 | https://developers.facebook.com/documentation/business-messaging/whatsapp/messaging-limits (e `upcoming-messaging-limits-changes`, na mesma pasta) | páginas inteiras | 250, 2.000; limite por portfólio desde 7/10/2025 |
+| M15 | https://developers.facebook.com/documentation/business-messaging/whatsapp/messaging-limits (e `upcoming-messaging-limits-changes`, na mesma pasta) | páginas inteiras | 250, 2.000; limite por portfólio (a página não traz data de vigência) |
 | M16 | https://developers.facebook.com/documentation/business-messaging/whatsapp/messages/send-messages | página inteira | janela de 24 h; qualidade; "only indicates that the API successfully accepted your request"; formatos de número de telefone (o `+`); validade das mensagens |
 | M17 | https://developers.facebook.com/documentation/business-messaging/whatsapp/getting-opt-in | página inteira | requisitos de opt-in |
 | M18 | https://developers.facebook.com/documentation/business-messaging/whatsapp/policy-enforcement | página inteira | escada de bloqueios |
@@ -642,7 +645,7 @@ Todas abertas em **23/10/2026**. Páginas da Meta lidas no texto original em Mar
 | S1 | https://supabase.com/docs/guides/auth/auth-hooks/send-sms-hook (código-fonte da página no repositório supabase/supabase, ramo master, e a página publicada) | página inteira | entradas, saída, WhatsApp como canal alternativo |
 | S2 | https://supabase.com/docs/guides/auth/auth-hooks (código-fonte no mesmo repositório) | página inteira | planos; Standard Webhooks; 5 s; 20 KB; configuração local |
 | S3 | https://supabase.com/docs/guides/auth/phone-login | página publicada e código-fonte | "WhatsApp is only supported as a channel for the Twilio and Twilio Verify Providers"; validade do código |
-| L1 | https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm | texto compilado da Lei 13.709/2018 | arts. 5º (II, XII), 6º, 7º (I, V), 8º, 9º, 11 (I), 18 (IX) |
+| L1 | https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm | texto compilado da Lei 13.709/2018 (**não reaberto em 08/11/2026**: o Planalto bloqueou a leitura nas duas URLs tentadas) | arts. 5º (II, XII), 6º, 7º (I, V), 8º, 9º, 11 (I), 18 (IX) |
 
 Artefatos do repositório lidos: `apps/web/supabase/functions/_shared/{notifications,notification-context,dates,money,validate,config}.ts`, `notify-dispatch/{handler,index}.ts`, migrações 08, 09 e 10, `supabase/config.toml`, `services/auth.ts`, `pages/conta/{Entrar,Conta}.tsx`, `config/legal.ts`, `catalog/areas.json`, `test/claims-guard.test.ts`, `docs/ARQUITETURA.md`, `docs/DECISOES.md`.
 
@@ -657,3 +660,7 @@ Artefatos do repositório lidos: `apps/web/supabase/functions/_shared/{notificat
 - Normas de conselhos profissionais sobre mensagens por aplicativo e dado de saúde.
 - Se o painel do WhatsApp Manager permite definir validade (TTL) e rodapé na criação manual.
 - A lista de exclusão da seção 10 vem de busca por palavras-chave no catálogo, não de revisão ocupação por ocupação.
+- LGPD: os artigos citados (L1) não foram reconferidos; o Planalto devolveu "Acesso Negado" nas duas URLs tentadas.
+- Revisão de 08/11/2026: as consultas das seções 7.3 e 11.2 foram executadas no banco local dentro de transação revertida; os seis exemplos da seção 2 e 4 foram gerados pelo código real via Deno e batem com o texto; o JSON foi validado e `jq` seleciona os seis modelos de utilidade.
+- Não reconfirmados em 08/11/2026: M5 (resposta rápida com outro botão), M7, M18, a cláusula de P1 sobre cobrança de dívidas e a automação em P1, M20 (códigos 132012 e 132018), desconto por volume, tarifas do Brasil e a regra de aviso de 1 dia da reclassificação.
+- Divergências com documentos irmãos, não corrigidas aqui: L11 linha 106 (novidades "por WhatsApp ou e-mail") frente ao Texto C; L03 item 3.7 (base do art. 7º, V) frente ao Texto A (consentimento); `docs/ARQUITETURA.md` linha 798 (login "e-mail ou WhatsApp/SMS") frente ao código e ao README; I02 passo 7 (`to` com "+") frente aos exemplos do JSON (sem "+"); O01 linha 445 (modelo `pedido_novo`, que não existe aqui) e linha 683 (tarifa em reais de R$ 0,035 derivada de US$ 0,68 ¢, câmbio não citado; este documento não tem tarifa em reais).

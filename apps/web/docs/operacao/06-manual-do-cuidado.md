@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Versão | 2026-10-rascunho, escrita em 23/10/2026 |
+| Versão | 2026-10-rascunho, escrita em 23/10/2026; revisada em 08/11/2026 (ver seção 19, reabertura de fontes) |
 | Para quem | O dono (operador único) e quem ele indicar para tocar a escala |
 | Estado do produto | Protótipo **não implantado**, sem usuários reais. A linha existe no código (casas, plantões, ofertas, entrada e saída, relatório do dia) e foi testada só contra o banco local |
 | Estado da linha | **Fechada ao público** (`docs/DECISOES.md`, D12). Este manual serve para operar em modo concierge com 3 famílias e para cumprir os portões da seção 17 |
@@ -115,6 +115,8 @@ Conferido no código em 23/10/2026 (`supabase/migrations/20261019000009_care.sql
 ---
 ## 3. Definição do serviço e limites duros
 
+> **Revisão de 08/11/2026.** As leis e normas citadas nesta seção (Lei 7.498, Decreto 94.406, LC 150, Estatuto da Pessoa Idosa, CP, Lei 13.146, LGPD e CDC) não puderam ser reabertas hoje, porque planalto.gov.br recusou o acesso. COFEN, COREN-SP e COREN-DF (F03, F04, F06, F07, F12) também não abriram. Todas as citações literais dessas fontes, em todo o manual, valem como **[incerto]** até conferência (seção 19).
+
 ### 3.1 O que o WorkEasy é e não é nesta linha
 
 | É | Não é |
@@ -133,7 +135,7 @@ O cuidador é profissional **independente**. Se a mesma pessoa for chamada para 
 | # | Atividade | Condição | Base |
 |---|---|---|---|
 | 1 | Companhia, conversa, leitura, música, jogos, estímulo a atividades e ao contato com a família | — | CBO grupos C e F (lista transcrita em [F08], de segunda mão); Manual do Cuidador, item 3, transcrito em [F07] |
-| 2 | Apoiar higiene pessoal e banho de chuveiro, vestir, cuidar de unhas e cabelo | Pessoa colabora; sem técnica especial; sem ferida | COREN-SP 030/2022 (sobre acompanhante em hospital): "nada impede que realizem atividades conforme as descritas, desde que contratados pela família ou pelo paciente" [F06]. Atenção: o Decreto 94.406, art. 11, IV, lista higiene, conforto e "alimentá-lo ou auxiliá-lo a alimentar-se" também entre as atividades do auxiliar de enfermagem [F02]; o limite "sem técnica" existe por isso |
+| 2 | Apoiar higiene pessoal e banho de chuveiro, vestir, cuidar de unhas e cabelo | Pessoa colabora; sem técnica especial; sem ferida | COREN-SP 030/2022 (sobre acompanhante em unidade hospitalar; aplicar à casa é extrapolação **[incerto]**): "nada impede que realizem atividades conforme as descritas, desde que contratados pela família ou pelo paciente" [F06]. Atenção: o Decreto 94.406, art. 11, IV, lista higiene, conforto e "alimentá-lo ou auxiliá-lo a alimentar-se" também entre as atividades do auxiliar de enfermagem [F02, **incerto nesta revisão**]; o limite "sem técnica" existe por isso |
 | 3 | Preparar e servir refeições, estimular líquidos, ajudar a comer pessoa que engole bem | Seguir restrições alimentares que a **família passou por escrito**; na dúvida, não servir e ligar | CBO grupo D [F08] |
 | 4 | Apoiar a mobilidade: levantar, sentar, andar com bengala ou andador; prevenir queda arrumando o ambiente | Pessoa sustenta o próprio peso com ajuda leve | atividades da CBO A.4 e E.4 (não são anexos deste manual) [F08] |
 | 5 | Acompanhar a passeios, consultas e exames | Só acompanha e leva informação **da família**; não recebe prescrição nem decide | Manual do Cuidador, item 4 [F07] |
@@ -236,7 +238,7 @@ O cuidador é profissional **independente**. Se a mesma pessoa for chamada para 
 | COREN-DF Parecer Técnico 006/2023 [F07] | "cuidadores não fazem parte de uma profissão regulamentada, tratando-se de uma ocupação com descrição na CBO"; "cuidadores não devem executar atividades da equipe de Enfermagem no ambiente domiciliar", com exceção de acompanhante ou responsável legal quando delegado, orientado, capacitado e supervisionado pelo enfermeiro | Limites da seção 3.2 |
 | CBO 5162-10 (MTE), lida em segunda mão [F05][F08] (a consulta oficial pede reCAPTCHA [F25]) | Descrição sumária: "Cuidam de bebês, crianças, jovens, adultos e idosos, a partir de objetivos estabelecidos por instituições especializadas ou responsáveis diretos, zelando pelo bem-estar, saúde, alimentação, higiene pessoal, educação, cultura, recreação e lazer da pessoa assistida." A família "não compreende 3222 - técnicos e auxiliares de enfermagem" | É ocupação, não profissão. O cuidador não é classificado como pessoal de enfermagem |
 | Mensagem 289/2019 e Veto 25/2019 [F09][F10] | O PLC 11/2016, que criava as profissões de cuidador, foi **vetado integralmente** ("por inconstitucionalidade", art. 5º, XIII da Constituição) e o veto foi **mantido em 02/10/2019** | **Não há lei da profissão**: nenhum requisito de curso, idade ou antecedentes é obrigatório por lei. Os requisitos da seção 6 são do WorkEasy |
-| PL 76/2020, Senado [F11] | Em 23/10/2026: "Em tramitação"; último estado em 10/03/2026, "aguardando designação do relator" na Comissão de Assuntos Sociais | Pode mudar o quadro; reveja este item a cada trimestre. Outros projetos apareceram nas leituras: PL 731/2024 (unificado ao PL 1488/2024, sobre certidão de antecedentes de quem cuida de pessoa idosa) só pela notícia da Câmara [F23], e PL 203/2025, citado numa moção municipal juntada à página do PL 76/2020, sem que eu tenha identificado a casa legislativa. Nenhuma página de tramitação foi aberta **[incerto]** |
+| PL 76/2020, Senado [F11] | Em 23/10/2026: "Em tramitação"; último estado em 10/03/2026, "aguardando designação do relator" na Comissão de Assuntos Sociais | Reconferido em 08/11/2026 no Senado: mesmo estado, último registro em 10/03/2026. Pode mudar o quadro; reveja este item a cada trimestre. Outros projetos apareceram nas leituras: PL 731/2024 (unificado ao PL 1488/2024, sobre certidão de antecedentes de quem cuida de pessoa idosa) só pela notícia da Câmara [F23], e PL 203/2025, citado numa moção municipal juntada à página do PL 76/2020, sem que eu tenha identificado a casa legislativa. Nenhuma página de tramitação foi aberta **[incerto]** |
 | Lei 13.146/2015, art. 3º, XII [F16] | "Atendente pessoal": quem presta "cuidados básicos e essenciais à pessoa com deficiência ... excluídas as técnicas ou os procedimentos identificados com profissões legalmente estabelecidas" | É a única redação em lei, que achei, da mesma lógica. Vale para pessoa com deficiência, não para toda pessoa idosa |
 
 ### 3.7 Casa, não instituição
@@ -310,7 +312,7 @@ nunca gravado pelo produto: no_show
 
 Hoje: **"Se o cuidador escalado não puder ir, nós tentamos repor e avisamos você."** Não escreva "garantia de cobertura", "reposição garantida" nem prazo de reposição em tela, anúncio ou mensagem.
 
-Por quê: qualquer informação "suficientemente precisa" veiculada "obriga o fornecedor que a fizer veicular ou dela se utilizar e integra o contrato" (CDC, art. 30) [F18]; e quem promete a reposição passa a se parecer com o prestador do serviço, não com o intermediário (leitura deste manual; o advogado confirma): o CDC trata da responsabilidade do fornecedor de serviços sem culpa (art. 14), da solidariedade entre os responsáveis pelo dano (art. 25, § 1º) e da responsabilidade pelos atos de prepostos ou representantes autônomos (art. 34) [F18]. Uma "Garantia WorkEasy" (reexecução ou reembolso pela plataforma) é só uma ideia do plano: depende de parecer e de ligar o pagamento retido, que hoje está desligado (`docs/DECISOES.md`, seção 4); a política de cancelamento e reembolso trata do tema (`docs/juridico/04-politica-de-cancelamento-e-reembolso.md`) **[CONDICIONAL: depende de parecer e de ligar o pagamento retido]**.
+Por quê: qualquer informação "suficientemente precisa" veiculada "obriga o fornecedor que a fizer veicular ou dela se utilizar e integra o contrato" (CDC, art. 30) [F18, **incerto nesta revisão**]; e quem promete a reposição passa a se parecer com o prestador do serviço, não com o intermediário (leitura deste manual; o advogado confirma): o CDC trata da responsabilidade do fornecedor de serviços sem culpa (art. 14), da solidariedade entre os responsáveis pelo dano (art. 25, § 1º) e da responsabilidade pelos atos de prepostos ou representantes autônomos (art. 34) [F18]. Uma "Garantia WorkEasy" (reexecução ou reembolso pela plataforma) é só uma ideia do plano: depende de parecer e de ligar o pagamento retido, que hoje está desligado (`docs/DECISOES.md`, seção 4); a política de cancelamento e reembolso trata do tema (`docs/juridico/04-politica-de-cancelamento-e-reembolso.md`) **[CONDICIONAL: depende de parecer e de ligar o pagamento retido]**.
 
 Metas internas, só para você **[proposta]**: cobertura efetiva de pelo menos 95% dos plantões marcados nas primeiras 8 semanas (métrica A.3); toda falta ou cancelamento com menos de 6 h avisado à família até 30 minutos depois que você souber.
 
@@ -559,7 +561,7 @@ Regras de proteção do dado: os arquivos ficam no bucket privado; **não baixe*
 | Início e duração prevista | Planejar reservas | Sim | Ficha |
 | **E. Triagem de escopo** | 8.3 | Sim | Ficha (só "sim" ou "não") |
 | **F. Emergência** | | | |
-| Dois contatos (nome, parentesco, telefone) | Cartão de emergência; o cuidador **não lê** o campo do app | Sim | App (`emergency_contact`) **e** cartão impresso |
+| Dois contatos (nome, parentesco, telefone) | Cartão de emergência; o cuidador **não lê** o campo do app | Sim | App (`emergency_contact`, **um campo de texto livre**; o app não separa dois contatos) **e** cartão impresso (dois contatos) |
 | Hospital de preferência e convênio, se houver | Informar à família; quem decide o destino é o médico regulador | Opcional | Cartão |
 | **G. Outros profissionais em casa** (enfermeiro, técnico, fisioterapeuta): quem e que função | Deixar claro quem faz o quê | Opcional | Ficha (só a função) |
 | **H. Acerto** | | | |
@@ -614,7 +616,7 @@ Quatro campos de texto, todos opcionais, mas **ao menos um** precisa estar preen
 
 ### 9.3 O que não escrever
 
-- **Nenhuma palavra de saúde.** O app recusa o texto e mostra qual palavra pegou. A lista atual: diagnóstico, medicamento, medicação, remédio, dose (e "mg", "ml", "gotas"), receita médica, insulina, doença, sintoma, exame, laudo, prontuário, CID, pressão (arterial, alta, baixa), glicemia, hipertensão, diabetes, demência, Alzheimer, Parkinson, AVC, derrame, infarto, câncer, tumor, febre, vômito, tontura. Não tente driblar com outra grafia: o objetivo é o WorkEasy não guardar dado de saúde.
+- **Nenhuma palavra de saúde.** O app recusa o texto e mostra qual palavra pegou. A lista atual: diagnóstico, medicamento, medicação, remédio, dose e dosagem (e "mg", "mcg", "ml", "gotas"; a lista completa está em `HEALTH_TERMS` de `services/care.ts`), receita médica, insulina, doença, sintoma, exame, laudo, prontuário, CID, pressão (arterial, alta, baixa), glicemia, hipertensão, diabetes, demência, Alzheimer, Parkinson, AVC, derrame, infarto, câncer, tumor, febre, vômito, tontura. Não tente driblar com outra grafia: o objetivo é o WorkEasy não guardar dado de saúde.
 - **Se tomou ou não o remédio**: anote na folha de rotina de papel da casa.
 - Sobrenome, endereço, telefone, CPF, nome de terceiros, fotos.
 - Opinião sobre a família ou sobre a pessoa ("preguiçosa", "difícil").
@@ -741,7 +743,7 @@ Qualquer evento que (a) machucou ou poderia ter machucado a pessoa cuidada ou o 
 
 ### 12.1 O que a lei diz
 
-LC 150/2015, art. 1º: "Ao empregado doméstico, assim considerado aquele que presta serviços de forma contínua, subordinada, onerosa e pessoal e de finalidade não lucrativa à pessoa ou à família, no âmbito residencial destas, por mais de 2 (dois) dias por semana, aplica-se o disposto nesta Lei" [F13].
+LC 150/2015, art. 1º **[incerto nesta revisão]**: "Ao empregado doméstico, assim considerado aquele que presta serviços de forma contínua, subordinada, onerosa e pessoal e de finalidade não lucrativa à pessoa ou à família, no âmbito residencial destas, por mais de 2 (dois) dias por semana, aplica-se o disposto nesta Lei" [F13].
 
 Até 2 dias por semana, a LC 150 não alcança o trabalhador. **Isso não é salvo-conduto**: o mesmo artigo lista continuidade, subordinação, onerosidade e pessoalidade. Se um padrão fixo de 2 dias toda semana, com a plataforma controlando horário, entrada e relatório, muda a análise, é pergunta ao advogado **[incerto]**. "Semana" na trava é a semana ISO (segunda a domingo); a lei só diz "por semana" **[incerto]**.
 
@@ -766,7 +768,9 @@ Até 2 dias por semana, a LC 150 não alcança o trabalhador. **Isso não é sal
 
 Poucos cuidadores por casa baixa a continuidade de quem cuida. A métrica está em A.8 e A.9. É o motivo do Plano Gestão.
 
-### 12.4 Plano Gestão: a oferta, descrita como serviço a validar **[CONDICIONAL: depende de parecer]**
+### 12.4 Plano Gestão: a oferta, descrita como serviço a validar **[PLANEJADO]** **[CONDICIONAL: depende de parecer]**
+
+> Não há código nem documento de produto para o Plano Gestão (busca em `components/`, `pages/`, `services/` e `docs/` em 08/11/2026). Tudo abaixo é desenho, não funcionalidade.
 
 **Quando:** a família quer o mesmo cuidador em 3 dias ou mais por semana, ou noites todos os dias.
 
@@ -785,7 +789,7 @@ Poucos cuidadores por casa baixa a continuidade de quem cuida. A métrica está 
 
 **O que não faz:** ser empregador; assinar a carteira; calcular ou pagar salário e encargos; garantir que o empregado fique; avaliar a saúde da pessoa.
 
-**O que a família assume** (LC 150 [F13]): jornada normal de até 8 horas por dia e 44 por semana (art. 2º); 12 horas seguidas por 36 de descanso **só com acordo escrito** (art. 10); registro do horário de trabalho obrigatório (art. 12); intervalo (art. 13); trabalho noturno das 22 h às 5 h, hora de 52 minutos e 30 segundos e acréscimo de pelo menos 20% (art. 14); 11 horas entre jornadas (art. 15); descanso semanal (art. 16); férias de 30 dias com um terço (art. 17); FGTS e 3,2% de indenização (arts. 21 e 22); aviso prévio (art. 23); recolhimento mensal único (Simples Doméstico, art. 34): 8% de contribuição patronal, 0,8% de seguro de acidente, 8% de FGTS e 3,2% = **20% sobre a remuneração**, mais a contribuição do empregado, descontada do salário (art. 34, § 2º). A alíquota atual do empregado e o custo total são do contador (o art. 34 traz uma faixa de 8% a 11%; não a use sem conferir). Maus-tratos a pessoa idosa sob cuidado é justa causa (art. 27, I).
+**O que a família assume** (LC 150 [F13]): jornada normal de até 8 horas por dia e 44 por semana (art. 2º); 12 horas seguidas por 36 de descanso **só com acordo escrito** (art. 10); registro do horário de trabalho obrigatório (art. 12); intervalo (art. 13); trabalho noturno das 22 h às 5 h, hora de 52 minutos e 30 segundos e acréscimo de pelo menos 20% (art. 14); 11 horas entre jornadas (art. 15); descanso semanal (art. 16); férias de 30 dias com um terço (art. 17); FGTS e 3,2% de indenização (arts. 21 e 22); aviso prévio (art. 23); recolhimento mensal único (Simples Doméstico, art. 34): 8% de contribuição patronal, 0,8% de seguro de acidente, 8% de FGTS e 3,2% = **20% sobre a remuneração**, mais a contribuição do empregado, descontada do salário (art. 34, § 2º). A alíquota atual do empregado e o custo total são do contador (o art. 34 traz uma faixa de 8% a 11%; não a use sem conferir). Maus-tratos a pessoa idosa sob cuidado é justa causa (art. 27, I) **[incerto nesta revisão]**.
 
 **Preço:** a definir depois do parecer; o plano não traz faixa. Cobrar da **família**, nunca do candidato **[proposta]**.
 
@@ -911,7 +915,7 @@ Quem procurar: serviço social, gestão de altas, ouvidoria, coordenação de en
 | "Quem responde se algo acontecer?" | O acompanhante não executa atividade do hospital; a responsabilidade pelos internados é institucional [F06]. Nossos limites estão por escrito. Seguro: quando houver |
 | "Vocês fazem banho, curativo, remédio?" | Curativo e medicamento, não. Higiene e conforto só como a regra do hospital permitir; a equipe do hospital decide |
 | "Vocês compartilham dados?" | Não recebemos dado clínico. O relatório vai à família e é não clínico |
-| "Quanto custa para o hospital?" | Nada. A família contrata. Não pagamos nem recebemos comissão |
+| "Quanto custa para o hospital?" | Nada. A família contrata. Não pagamos nem recebemos comissão **[proposta: confirmar com o advogado e com `DECISOES.md`, D5, antes da conversa]** |
 | "Que resultados vocês têm?" | Ainda nenhum: estamos começando. Por isso propomos um piloto pequeno |
 
 ### 15.4 O que não prometer
@@ -1097,7 +1101,7 @@ Abertas em **23/10/2026**. "Trecho" é o que li; aspas indicam transcrição lit
 | F07 | COREN-DF, Parecer Técnico 006/CTA/2023 | https://coren-df.gov.br/wp-content/uploads/2023/05/Parecer-Tecnico_-06-23_Exercicio-ilegal-da-atuacao-dos-cuidadores-na-realizacao-de-procedimentos-de-Enfermagem-no-ambito-do-cuidado-domiciliar_Rinaldo.pdf | Quadros 1 a 5 e conclusões 2, 4 e 5. **Transcreve** o Manual do Cuidador da Pessoa Idosa (SDH, 2008) e o Guia Prático do Cuidador (MS, 2008): citações de segunda mão |
 | F08 | COREN-SP, Parecer 01/2019 (**revogado** pelo 004/2025) | https://portal.coren-sp.gov.br/wp-content/uploads/2019/03/Parecer-001_2019.pdf | Usado **só** pela transcrição da lista de atividades da CBO (grupos A a G e Z). A conclusão dele não é usada |
 | F09 | Mensagem nº 289, de 08/07/2019 (veto) | http://www.planalto.gov.br/ccivil_03/_ato2019-2022/2019/msg/vet/vet-289.htm | "decidi vetar integralmente, por inconstitucionalidade, o Projeto de Lei de nº 11, de 2016"; razão: "ofende direito fundamental previsto no art. 5º, XIII da Constituição da República" |
-| F10 | Congresso Nacional, Veto 25/2019 | https://www.congressonacional.leg.br/materias/vetos/-/veto/detalhe/12446 e https://www.congressonacional.leg.br/materias/pesquisa/-/materia/137625/pdf | "25.19.000 - Veto total \| Mantido \| Painel - Sessão de 02/10/2019"; "Último estado: 02/10/2019 - VETO DELIBERADO PELO PLENÁRIO" |
+| F10 | Congresso Nacional, Veto 25/2019 | https://www.congressonacional.leg.br/materias/vetos/-/veto/detalhe/12446 e https://www.congressonacional.leg.br/materias/pesquisa/-/materia/137625/pdf | "25.19.000 - Veto total \| Mantido \| Painel - Sessão de 02/10/2019"; situação "VETO DELIBERADO PELO PLENÁRIO" em 02/10/2019 (reaberta em 08/11/2026; a página não tem campo "Último estado") |
 | F11 | Senado, PL 76/2020 | https://www25.senado.leg.br/web/atividade/materias/-/materia/140481 | Campo "Situação Atual": "Em tramitação"; "Último estado: 10/03/2026 - AGUARDANDO DESIGNAÇÃO DO RELATOR" (Comissão de Assuntos Sociais) |
 | F12 | COFEN, notícias sobre o PLC 11/2016 | https://www.cofen.gov.br/regulamentacao-do-cuidador-de-idosos-nao-interfere-na-enfermagem/ (25/05/2019) e https://www.cofen.gov.br/projeto-de-lei-do-cuidador-e-vetado/ (10/07/2019) | "está proibido ao cuidador administrar medicamentos que não seja por via oral e com orientação por prescrição médica" (texto aprovado pelo Senado); "vetou integralmente" |
 | F13 | Lei Complementar 150/2015 | https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp150.htm | Arts. 1º, 2º, 10, 12 a 17, 19, 21 a 23, 27, 32 a 34, no texto compilado (que traz o Capítulo I-A, incluído pela Lei 15.455/2026, sem relação com este tema) |
@@ -1117,6 +1121,8 @@ Abertas em **23/10/2026**. "Trecho" é o que li; aspas indicam transcrição lit
 
 **Documentos do repositório lidos:** `docs/ARQUITETURA.md` (inteiro), `docs/DECISOES.md`, `README.md`, `supabase/migrations/20261019000009_care.sql` (inteira) e trechos das migrations `01`, `03`, `05`, `08` e `10` (as migrations `11`, `12` e `13` só pelo `ARQUITETURA.md`), `supabase/tests/database/00_helpers.test.sql` e `09_care.test.sql`, `services/care.ts`, `pages/cuidado/*`, `pages/pro/Plantoes.tsx`, `components/cuidado/*`, `components/navItems.ts`, `components/admin/settingDefs.ts`, `pages/pro/Cadastro.tsx`, `pages/conta/Conta.tsx`, `catalog/policies.json`, `test/claims-guard.test.ts`.
 
+**Reabertura de fontes em 08/11/2026 (revisão).** Reabertas e conferidas (8): F10 (com ressalva de texto), F11, F19, F20, F21, F22, F23 e F24. Não reabertas, com o motivo: F01, F02, F13, F14 e F18 (planalto.gov.br, "Acesso Negado", 5 tentativas; pelo mesmo domínio ficam F09, F15, F16 e F17, não tentadas); F03, F04 e F12 (cofen.gov.br, HTTP 403); F06 (ouvidoria.cofen.gov.br, HTTP 403); F07 (coren-df.gov.br, HTTP 503). Tudo que depende delas fica **[incerto]** até conferência por quem tenha acesso; advogado e enfermeiro devem conferir as citações literais antes do uso. Achados da reabertura: F10 não tem campo "Último estado" (corrigido acima); F19 confere, exceto o art. 16, não conferido; F11 confere e não mudou desde 10/03/2026.
+
 **Limites desta pesquisa:** o limite de buscas na web da sessão de pesquisa acabou antes de eu terminar; por isso itens como os números 190 e 193, a certidão estadual e o TST ficaram sem fonte aberta e estão marcados **[incerto]**. Páginas do Ministério da Saúde (bvsms) e a consulta da CBO não abriram.
 
 ---
@@ -1124,7 +1130,7 @@ Abertas em **23/10/2026**. "Trecho" é o que li; aspas indicam transcrição lit
 
 **Onde rodar:** no editor SQL do painel do Supabase, que entra como administrador do banco. Funções `private.*` só existem para esse papel: **não** funcionam pela API do app. Nunca copie estes comandos para tela do app nem use a chave de serviço no navegador. Todas leem, exceto A.11 e A.12.
 
-**Como foram validadas:** executei todas em 23/10/2026 contra o banco local (migrations 01 a 13), dentro de uma transação desfeita ao final, com os dados de teste do pgTAP (`tests.setup_fixture()`) mais plantões, entradas, relatórios, documentos e eventos de auditoria inseridos só para o teste. **Não foram executadas contra dados reais.** Os nomes de colunas e funções vêm das migrations. As métricas gerais da plataforma ficam em `docs/operacao/08-metricas-e-portoes.md`.
+**Como foram validadas:** executei todas em 23/10/2026 contra o banco local (migrations 01 a 13), dentro de uma transação desfeita ao final, com os dados de teste do pgTAP (`tests.setup_fixture()`) mais plantões, entradas, relatórios, documentos e eventos de auditoria inseridos só para o teste. **Não foram executadas contra dados reais.** Os nomes de colunas e funções vêm das migrations. **Reexecutadas em 08/11/2026:** 12 de 12 blocos sem erro, cada um numa transação com ROLLBACK, no banco local com as migrations 01 a 16. As métricas gerais da plataforma ficam em `docs/operacao/08-metricas-e-portoes.md`.
 
 ---
 
@@ -1524,7 +1530,7 @@ Mensagens **suas**, enviadas à mão por WhatsApp ou telefone (não são os mode
 
 **B.4 Plantão sem cobertura**
 
-> Oi, [NOME]. Infelizmente não consegui cuidador para [DIA e HORA]. Tentei [N] pessoas. O que você prefere: (1) mudar o horário para [OPÇÃO]; (2) outro dia; (3) um familiar cobre este turno? Se nenhuma opção servir, cancelo o plantão no app e você não paga nada por ele. Peço desculpas pelo transtorno.
+> Oi, [NOME]. Infelizmente não consegui cuidador para [DIA e HORA]. Tentei [N] pessoas. O que você prefere: (1) mudar o horário para [OPÇÃO]; (2) outro dia; (3) um familiar cobre este turno? Se nenhuma opção servir, cancelo o plantão no app. O pagamento desse turno é direto entre vocês; o WorkEasy não cobra nem repassa nada por ele **[CONDICIONAL: depende de parecer]**. Peço desculpas pelo transtorno.
 
 **B.5 Convite a cuidador reserva**
 

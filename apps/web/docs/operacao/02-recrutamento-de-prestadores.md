@@ -1,6 +1,6 @@
 # Recrutamento de prestadores: playbook dos primeiros 50
 
-Documento O02 · versão de 23/10/2026 · uso interno do dono do WorkEasy, que opera sozinho.
+Documento O02 · versão de 23/10/2026 · revisado em 08/11/2026 · uso interno do dono do WorkEasy, que opera sozinho.
 
 > **Rascunho para revisão de advogado. Não é parecer jurídico.** As notas de conformidade (seção 12) resumem fontes abertas em 23/10/2026. Quem decide o que é permitido é o advogado.
 >
@@ -8,7 +8,7 @@ Documento O02 · versão de 23/10/2026 · uso interno do dono do WorkEasy, que o
 
 | Marca | Significa |
 |---|---|
-| `[PLANEJADO]` | não existe no produto hoje |
+| `[PLANEJADO]` | não existe no produto hoje, ou existe sem teste com o provedor real (cobrança no Asaas, portão 6) |
 | `[CONDICIONAL: depende de parecer]` | só vale depois de parecer jurídico |
 | `[incerto]` | não consegui confirmar em fonte aberta |
 | `[estimativa]` | juízo de trabalho, não dado medido |
@@ -46,7 +46,7 @@ Cadastrar e aprovar prestadores nos bairros-piloto (de 3 a 5 bairros contíguos 
 
 ### 1.4 Para onde mandar a pessoa
 
-O link certo é `[SITE]/pro/cadastro`. Ele pede login por código de 6 dígitos, enviado por e-mail ou por SMS (o envio por WhatsApp não é oferecido). Três lugares do app ainda levam à página de demonstração `/register-provider`, que **não guarda nada**: o rodapé "Trabalhe Conosco", o botão "Ofereço este serviço" nas páginas de serviço e o link em "Minha conta". Enquanto isso não for corrigido (seção 14), nunca diga "procure no site": mande o link direto. Hoje o caminho é o navegador do celular (o site é instalável como PWA); os apps das lojas dependem de publicação `[PLANEJADO]`.
+O link certo é `[SITE]/pro/cadastro`. Ele pede login por código de 6 dígitos, enviado por e-mail ou por SMS (o envio por WhatsApp não é oferecido). No modo sem backend (demonstração), `/register-provider` **não guarda nada**. Cinco atalhos levam a essa tela: o rodapé "Trabalhe Conosco" (`components/SiteFooter.tsx`), o botão "Sou Profissional" do menu no modo demonstração (`components/navItems.ts`), o botão "Ofereço este serviço" nas páginas de serviço (`pages/OccupationPage.tsx`, `pages/OccupationNeighborhoodPage.tsx`) e o link em "Minha conta" (`pages/conta/Conta.tsx`). Com backend, a mesma rota redireciona para `/pro/cadastro` (`pages/prototype/redirects.tsx`). Enquanto isso não for corrigido (seção 14), nunca diga "procure no site": mande o link direto. Hoje o caminho é o navegador do celular (o site é instalável como PWA); os apps das lojas dependem de publicação `[PLANEJADO]`.
 
 ---
 
@@ -99,7 +99,7 @@ Regra de proporção `[critério sugerido]`: recrute para a demanda que você j�
 
 ### 3.3 Cuidado de idosos: `cuidador-de-idosos` (política `a_confirmar`)
 
-- **Perfil que encaixa** `[critério sugerido]`: experiência com idosos e referências que você consiga conferir; entende que não faz ato de enfermagem; aceita a trava de 2 dias por semana por casa; tem 18 anos ou mais. O Senac SP oferece o curso livre "Cuidador de Idoso" (160 horas; exige ensino fundamental 2 concluído e 18 anos ou mais) [F12]; a política do WorkEasy **não** exige curso para essa ocupação.
+- **Perfil que encaixa** `[critério sugerido]`: experiência com idosos e referências que você consiga conferir; entende que não faz ato de enfermagem; aceita a trava de 2 dias por semana por casa; tem 18 anos ou mais. O Senac SP oferece o curso livre "Cuidador de Idoso" (160 horas; exige ensino fundamental 2 concluído e 18 anos ou mais) [F12] `[incerto]`: a página retornou 403 em 08/11/2026; a política do WorkEasy **não** exige curso para essa ocupação.
 - **Escopo (nota da política):** "Sem lei federal confirmada para a profissão. Não aplica injetáveis nem faz curativos (atos de enfermagem, COREN)." Repita isso na triagem.
 - **O cadastro pede:** documento com foto e selfie; CPF ou CNPJ; certidão de antecedentes criminais.
 - **Não recrutar agora:** quem quer vínculo CLT; quem quer fazer curativo, injeção ou outro ato de enfermagem; quem não aceita a trava de dias.
@@ -139,7 +139,7 @@ Ordem para começar. Custo em dinheiro: só o que está citado. Velocidade, alca
 
 **3. Grupos de bairro.** Leia a descrição e as regras fixadas. Se divulgar serviço é proibido, não poste. Se for permitido, ou se o administrador autorizar (seção 6.5), faça uma única publicação, sem marcar ninguém, sem adicionar pessoas ao grupo e sem chamar no privado quem apenas reagiu. Responda dúvidas no próprio grupo e chame no privado só quem pedir. Apague o post se o administrador pedir. Regras de Facebook e Instagram: `[incerto]`, não conferi.
 
-**4. Escolas.** Use o texto da seção 6.6. Ofereça uma conversa de 15 minutos com a turma ou um cartão no mural, se a escola permitir. **Não peça lista** de alunos, e-mails ou telefones: a escola é quem trata esses dados, e cada aluno decide se procura você. Não use nome nem logotipo da escola sem autorização por escrito. O Senac SP mantém um espaço para empresas divulgarem **vagas de emprego, estágio e jovem aprendiz** (Senac Conecta e um mural digital pelo e-mail centralsenac@sp.senac.br; a página diz: "As vagas precisam ter relação com nossas áreas de atuação") [F13]. O que você oferece **não é vaga**: diga isso na primeira linha e pergunte se existe canal para oportunidades de trabalho autônomo, sem tentar enquadrar como vaga.
+**4. Escolas.** Use o texto da seção 6.6. Ofereça uma conversa de 15 minutos com a turma ou um cartão no mural, se a escola permitir. **Não peça lista** de alunos, e-mails ou telefones: a escola é quem trata esses dados, e cada aluno decide se procura você. Não use nome nem logotipo da escola sem autorização por escrito. O Senac SP mantém um espaço para empresas divulgarem **vagas de emprego, estágio e jovem aprendiz** (Senac Conecta e um mural digital pelo e-mail centralsenac@sp.senac.br; a página diz: "As vagas precisam ter relação com nossas áreas de atuação") [F13] `[incerto]`: a página retornou 403 em 08/11/2026. O que você oferece **não é vaga**: diga isso na primeira linha e pergunte se existe canal para oportunidades de trabalho autônomo, sem tentar enquadrar como vaga.
 
 **5. CATe e Sebrae.** O CATe é um serviço da Secretaria de Desenvolvimento Econômico e Trabalho da Prefeitura de São Paulo; orienta a formalização do MEI e tem busca de vagas; aceita parceiros de conteúdo pelo e-mail portalcate@prefeitura.sp.gov.br [F15]. Só escreva quando tiver razão social, Termos publicados e produto no ar, e não diga que há parceria até receber confirmação por escrito. Sebrae: a página sobre MEI abriu, mas o conteúdo útil carrega por script e não consegui ler cursos nem pontos de atendimento [F17]; trate como `[incerto]`, confira a programação atual no site do Sebrae SP e conheça MEIs como participante de eventos abertos, conversando um a um, sem distribuir material sem autorização da organização.
 
@@ -153,7 +153,7 @@ Ordem para começar. Custo em dinheiro: só o que está citado. Velocidade, alca
 
 ## 5. Quando posso escrever?
 
-A política do WhatsApp Business diz: "You may only contact people on WhatsApp if: (a) they have given you their mobile phone number or username; and (b)" [permissão da pessoa para receber mensagens seguintes]. As duas condições valem juntas, e a política cobre o app WhatsApp Business e a plataforma (API) [F4]. Com isso, e com a LGPD [F1][F2], a regra prática é:
+A política do WhatsApp Business diz: "You may only contact people on WhatsApp if: (a) they have given you their mobile phone number or username; and (b)" [permissão da pessoa para receber mensagens seguintes]. As duas condições valem juntas, e a política cobre o app WhatsApp Business e a plataforma (API) [F4]. Com isso, e com a LGPD [F1][F2] (`[incerto]`: não reabertas com texto em 08/11/2026; seção 15), a regra prática é:
 
 | Situação | WhatsApp na primeira mensagem? | Roteiro | Base (rascunho para o advogado) | O que registrar na planilha |
 |---|---|---|---|---|
@@ -161,7 +161,7 @@ A política do WhatsApp Business diz: "You may only contact people on WhatsApp i
 | A pessoa deu o número pessoalmente e disse que você pode chamar | Sim | 6.1-B | LGPD, art. 7, I (consentimento) e V | Data, local, quem ouviu a autorização |
 | Número passado por terceiro (indicação) | **Não** | 11 | Sem base própria ainda | Quem indicou. Peça ao indicador que apresente você ou entregue o seu contato; quem escreve primeiro é o indicado |
 | Contato profissional público (site, Instagram, Google) | **Não**; use o canal que a pessoa publica para contato profissional | 6.7 | LGPD, art. 7, IX e art. 10, I, com teste de balanceamento [F1][F2] | Fonte pública, data, teste de balanceamento |
-| Lista comprada, raspada ou exportada de grupo | **Nunca** | n/d | Sem base. A primeira sanção da ANPD foi sobre uma empresa que oferecia lista de contatos de WhatsApp [F3] | n/d |
+| Lista comprada, raspada ou exportada de grupo | **Nunca** | n/d | Sem base. A primeira sanção da ANPD foi sobre uma empresa que oferecia lista de contatos de WhatsApp [F3] `[incerto]` | n/d |
 | Já pediu para parar | **Nunca mais** | 6.8 | LGPD, art. 8, § 5º e art. 18 [F1] | Data do pedido, lista de não contatar |
 
 Ligação de triagem: só com quem respondeu e aceitou conversar. Ligação fria em massa está fora deste playbook.
@@ -341,7 +341,7 @@ Depois: apague a linha da planilha, mantenha só o número na aba "não contatar
 ```text
 {nome}, vi que seu cadastro foi enviado. Agora eu analiso os documentos e te aviso se faltar algo ou se algum for recusado; o motivo aparece na tela Cadastro. Não tenho um prazo fixo para prometer.
 
-Enquanto isso, você já pode preencher Serviços e Agenda. Pedidos e Cobranças só abrem depois da aprovação.
+Enquanto isso, você já pode preencher Serviços e Agenda. Pedidos só abrem depois da aprovação; Cobranças exigem também o Pro e a conta de recebimento (portão 6).
 
 Um aviso: eu nunca peço dinheiro, nem senha, nem o código que chega por e-mail ou SMS. Documento só pelo app.
 ```
@@ -433,7 +433,7 @@ Nomes que a tela usa: "Documento com foto e selfie", "CPF ou CNPJ (MEI, Simples 
 - [ ] Abrir `/pro` e zerar "Pendências do cadastro".
 - [ ] Cadastrar ao menos um serviço com preço e definir os horários.
 - [ ] Abrir "Ver minha página" e ler como um cliente leria.
-- [ ] Abrir Pedidos. Se houver pedido compatível, enviar a primeira proposta (o telefone do cliente só aparece se ele a escolher).
+- [ ] Abrir Pedidos. Se houver pedido compatível, enviar a primeira proposta (o telefone do cliente só aparece depois que ele aceita a sua proposta; a proposta, sozinha, não compartilha contato).
 - [ ] Se não houver pedido, **dizer a verdade**: o que existe é a ferramenta (agenda, orçamento, clientes próprios). Não invente pedido.
 - [ ] Opcional, só depois do portão 6: Pro e recebimento.
 
@@ -441,7 +441,7 @@ Nomes que a tela usa: "Documento com foto e selfie", "CPF ou CNPJ (MEI, Simples 
 
 ## 9. Folha "o que você recebe e quanto custa"
 
-Envie a quem pedir por escrito. Confira os valores em `/pro/assinatura` antes (preço, dias de teste e limite de propostas são configurações da plataforma). Enquanto o portão 6 estiver pendente, apague a seção "Plano Pro", a linha "Pro" de "Quanto custa" e a de tarifas do Asaas; depois que for cumprido, apague só a marca `[PLANEJADO...]`. Não adicione promessa.
+Envie a quem pedir por escrito. Por WhatsApp, não mande link de assinatura nem feche o Pro por lá: a assinatura é feita no app (O05, item 7). Confira os valores em `/pro/assinatura` antes (preço, dias de teste e limite de propostas são configurações da plataforma). Enquanto o portão 6 estiver pendente, apague a seção "Plano Pro", a linha "Pro" de "Quanto custa" e a de tarifas do Asaas; depois que for cumprido, apague só a marca `[PLANEJADO...]`. Não adicione promessa.
 
 ```text
 WORKEASY PARA PROFISSIONAIS AUTÔNOMOS
@@ -465,7 +465,7 @@ PLANO PRO (OPCIONAL): R$ 49,00 POR MÊS
 
 QUANTO CUSTA
 • Cadastro: R$ 0. Plano gratuito: R$ 0. Pro: R$ 49,00 por mês.
-• Comissão sobre seus serviços: hoje não existe. Se um dia for ligada, a regra prevista é de 12% só sobre o primeiro serviço com um cliente novo trazido pelo WorkEasy, com teto de R$ 150,00, e não nas profissões em que o conselho veda. [CONDICIONAL: depende de parecer] Só valerá como estiver escrito nos Termos do Prestador.
+• Comissão sobre seus serviços: hoje não existe. Se um dia for ligada, a regra prevista é de 12% só sobre o primeiro serviço com um cliente novo trazido pelo WorkEasy, com teto de R$ 150,00, e não nas profissões em que o conselho veda `[PLANEJADO: o código ainda não aplica essa exceção, ver seção 14.2, item 6]`. [CONDICIONAL: depende de parecer] Só valerá como estiver escrito nos Termos do Prestador.
 • Tarifas do Asaas: quem recebe pelo Asaas paga as tarifas dele por cobrança recebida; o WorkEasy não soma taxa própria às cobranças de clientes seus. Veja a tabela atual do Asaas.
 • Impostos e nota fiscal: o app não emite nota fiscal dos seus serviços. O que isso significa para os seus impostos, os Termos do Prestador (em elaboração) vão explicar.
 
@@ -485,7 +485,7 @@ Você pode excluir a conta no app (Minha conta). Seus dados pessoais são apagad
 
 **De onde cada linha vem (para você conferir):** página própria `/p/<endereço>` (`pages/publico/PaginaPrestador.tsx`); pedidos sem contato do cliente (`pages/pro/Pedidos.tsx`); 5 propostas por mês (`free_proposals_per_month`, migration 12, DECISOES D4); Pro a R$ 49,00 e teste de 30 dias, uma vez por conta (`pro_price_cents`, `pro_trial_days`, DECISOES D2 e D3, `pages/pro/Assinatura.tsx`); "sem taxa do WorkEasy" nas cobranças de clientes próprios (texto de `pages/pro/Assinatura.tsx`; só plano Pro: `charges-create`); orçamento que não substitui nota fiscal (`components/pro/QuoteDocument.tsx`); texto de exclusão de conta (`pages/conta/Conta.tsx`; a frase sobre a lei fiscal é a da tela, e DECISOES D7 pede conferir o prazo de guarda com o contador `[incerto]`).
 
-**Tarifas do Asaas (página aberta em 23/10/2026) [F16]:** a página lista, por cobrança recebida, dois valores para Pix e para boleto, R$ 1,99 e R$ 0,99, com a observação "Válido por 3 meses" (as perguntas frequentes falam de taxa promocional de 3 meses para contas novas); para cartão de crédito à vista, R$ 0,49 + 2,99% e R$ 0,49 + 1,99%; diz que "no Asaas, não há mensalidade ou taxa de adesão" e que "as taxas apresentadas são padrão". `[incerto]`: o texto da página não deixa claro qual coluna é a padrão em cada linha, nem se as subcontas dos prestadores têm as mesmas condições da conta raiz (depende do contrato do WorkEasy com o Asaas; ver o documento I01). **Não imprima esses números para o prestador** até confirmá-los na sua conta Asaas (menu do usuário, "Taxas").
+**Tarifas do Asaas (página reaberta em 08/11/2026) [F16]:** a leitura de 08/11/2026 mostrou R$ 2,15 e R$ 1,08 por transação recebida para Pix e boleto, e taxas de cartão de débito (R$ 0,35 + 1,89%); não encontrei os valores de 23/10 (R$ 1,99 e R$ 0,99; cartão de crédito R$ 0,49 + 2,99% e R$ 0,49 + 1,99%) nem as frases "no Asaas, não há mensalidade ou taxa de adesão" e "as taxas apresentadas são padrão". Os números divergem e a leitura pode estar truncada. `[incerto]`: o texto da página não deixa claro qual coluna é a padrão em cada linha, nem se as subcontas dos prestadores têm as mesmas condições da conta raiz (depende do contrato do WorkEasy com o Asaas; ver o documento I01). **Não imprima esses números para o prestador** até confirmá-los na sua conta Asaas (menu do usuário, "Taxas").
 
 ---
 
@@ -497,7 +497,7 @@ Respostas curtas, para falar ou escrever. Se a resposta depende de documento ain
 |---|---|---|---|
 | "Já tenho clientes pelo WhatsApp." | Medo de perder o que funciona | "Ótimo, não precisa mudar. O WorkEasy não tira seus clientes do WhatsApp. Você pode cadastrar seus clientes, marcar horário na agenda e mandar orçamento por link. Se quiser, também vê pedidos de clientes novos do bairro. Usa só o que ajudar." | "O WhatsApp é bagunça." "Você perde cliente sem o app." |
 | "Por que eu pagaria?" | Desconfiança de taxa escondida | "Cadastro e plano gratuito não custam nada. O Pro é opcional, R$ 49,00 por mês (confira na tela), e só faz diferença se você quiser mandar mais de 5 propostas novas por mês nos pedidos da plataforma ou cobrar seus clientes por Pix, boleto ou cartão pelo app. Tem 30 dias de teste; se cancelar antes do fim, não paga." (cobrança: `[PLANEJADO]` até o portão 6) | "Se paga sozinho." "Você vai ganhar mais." |
-| "É uma empresa que depois me manda embora? Vou ser empregado?" | Medo de vínculo e de perder o trabalho | "Não é emprego. Você define seus preços, seus horários e quais pedidos responde, e pode desmarcar a caixa de receber pedidos novos quando quiser. O sistema não aplica multa por você não responder a um pedido. Os Termos do Prestador, ainda em elaboração, vão dizer isso por escrito." Para cuidadores: "As ofertas de plantão você aceita ou recusa uma a uma." | "Não existe vínculo nenhum" (isso é conclusão jurídica). "Você é seu próprio patrão." |
+| "É uma empresa que depois me manda embora? Vou ser empregado?" | Medo de vínculo e de perder o trabalho | "Não é vaga de emprego. Você define seus preços, seus horários e quais pedidos responde, e pode desmarcar a caixa de receber pedidos novos quando quiser. O app não prevê multa por você não responder a um pedido. Os Termos do Prestador, ainda em elaboração, vão dizer isso por escrito." Para cuidadores: "As ofertas de plantão você aceita ou recusa uma a uma." | "Não existe vínculo nenhum" (isso é conclusão jurídica). "Você é seu próprio patrão." |
 | "Quanto vocês ficam de cada serviço?" | Medo de comissão | "Hoje o WorkEasy não cobra comissão. Se um dia ela for ligada, a regra prevista é de 12%, só sobre o primeiro serviço com um cliente novo trazido pelo WorkEasy, com teto de R$ 150,00, e não nas profissões em que o conselho veda. Isso depende de parecer jurídico e só valeria como estiver escrito nos Termos." `[CONDICIONAL: depende de parecer]` | "Nunca vamos cobrar comissão." "Sempre vai ser de graça." |
 | "Quantos clientes eu vou ter?" | Quer previsão | "Não sei dizer e não prometo. Estamos começando em {bairros}. Cada pedido aceita no máximo 3 propostas (hoje), e o limite vale por ordem de envio. O que existe com certeza é a ferramenta." | Número de pedidos, de clientes ou de ganho. "Você vai aparecer em primeiro." |
 | "Vou ser avisado quando tiver pedido novo?" | Quer não perder pedido | "Hoje o app não manda aviso de pedido novo por WhatsApp nem e-mail: você vê na tela Pedidos e no Painel. Os avisos que existem são de atendimento confirmado, lembrete, pagamento recebido, orçamento respondido e plantão oferecido, e ainda não estão ligados em produção: dependem de configurar o WhatsApp Business e o e-mail." | "Você recebe tudo no WhatsApp." |
@@ -505,7 +505,7 @@ Respostas curtas, para falar ou escrever. Se a resposta depende de documento ain
 | "Não tenho MEI nem CNPJ." | Medo de burocracia | "Você pode se cadastrar com CPF; o item é 'CPF ou CNPJ'. O app não emite nota fiscal dos seus serviços, e o que isso significa para os seus impostos os Termos do Prestador, ainda em elaboração, vão explicar. Se quiser se formalizar, o CATe da Prefeitura orienta sobre MEI." [F15] | Orientação tributária |
 | "Tenho medo de golpe. Nunca ouvi falar de vocês." | Desconfiança legítima | "Faz sentido. Somos novos e não tenho histórico para mostrar. Cadastro é gratuito, eu nunca peço dinheiro, nem senha, nem o código que chega por e-mail ou SMS, e a empresa é [RAZÃO SOCIAL], CNPJ [CNPJ]. Você pode começar no plano gratuito e sair quando quiser." | Depoimento, número de profissionais ou parceria que não existe |
 | "Quanto tempo leva para aprovar?" | Ansiedade | "Eu analiso cada cadastro pessoalmente e não tenho um prazo fixo para prometer. Se faltar algo, o motivo aparece na tela Cadastro." | Qualquer prazo |
-| "E se um cliente me avaliar mal?" | Medo de nota | "Só quem contratou e pagou pelo app pode avaliar. Em algumas profissões, por regra do conselho, a avaliação nem aparece publicamente. Existe moderação." | "Nota não pesa." "Vou apagar avaliação ruim." |
+| "E se um cliente me avaliar mal?" | Medo de nota | "Só quem contratou e pagou pelo app pode avaliar. Em algumas profissões, o app não mostra avaliação pública, por regra da política da profissão. Existe moderação." | "Nota não pesa." "Vou apagar avaliação ruim." |
 | "Sou psicólogo(a) ou nutricionista. Posso anunciar aí?" | Medo do conselho | "A sua divulgação segue o código do seu conselho, e essa responsabilidade é sua. Confira com o conselho antes de publicar. Hoje o app pede um preço no serviço e o mostra na página; para a sua profissão isso é uma decisão ainda em aberto." | "Está tudo de acordo com o conselho." |
 | "Não sei mexer em aplicativo." | Receio de errar | "A gente faz juntos por chamada. Você mesmo(a) digita, aceita os termos e envia os documentos; eu só oriento. Não preciso do seu código nem da sua senha." | Entrar na conta da pessoa |
 | "Posso atender 5 dias por semana na mesma casa?" (diarista, cuidador) | Quer renda fixa | "Por aqui, não. O app não deixa marcar mais de 2 dias diferentes na mesma semana com o mesmo cliente, porque a lei pode tratar mais de 2 dias por semana na mesma casa como emprego doméstico (LC 150/2015)." [F8] | "Dá para driblar." |
@@ -534,17 +534,17 @@ Variante para profissional regulamentado: peça apenas que ele **comente com col
 
 ## 12. Conformidade
 
-> **Rascunho para revisão de advogado. Não é parecer jurídico.** Cada afirmação abaixo vem de fonte aberta em 23/10/2026 (seção 15). O que não consegui abrir está marcado `[incerto]`.
+> **Rascunho para revisão de advogado. Não é parecer jurídico.** Cada afirmação abaixo vem de fonte aberta em 23/10/2026 (seção 15). O que não consegui abrir está marcado `[incerto]`. Em 08/11/2026 reabri algumas fontes (seção 15): a LGPD, a LC 150/2015 e o CDC (planalto.gov.br, acesso negado), o CFP (PDF ilegível), o Senac (403) e o texto do guia da ANPD não foram conferidos nesta revisão; as citações desses itens ficam `[incerto]` até reconferência.
 
 ### 12.1 Contato com quem não é cliente: LGPD
 
 - A LGPD só permite tratar dados pessoais em hipóteses listadas. Aqui entram: consentimento (art. 7, I); procedimentos preliminares **a pedido do titular** (art. 7, V); interesse legítimo (art. 7, IX) [F1].
 - **Consentimento** deve se referir a finalidades determinadas (as autorizações genéricas são nulas, art. 8, § 4º), pode ser revogado a qualquer momento por procedimento gratuito e facilitado (art. 8, § 5º), e o ônus de provar que foi obtido é seu (art. 8, § 2º) [F1]. Por isso a planilha registra quando e como a pessoa pediu ou autorizou.
 - **Informação ao titular (art. 9):** finalidade específica, forma e duração do tratamento, identificação e contato do controlador, uso compartilhado, responsabilidades e direitos [F1]. É o que o texto 6.1 resume.
-- **Interesse legítimo (art. 10):** serve para "apoio e promoção de atividades do controlador", só com os dados estritamente necessários e com transparência (§§ 1º e 2º) [F1]. O guia da ANPD (v1.0, fev/2024) diz que o teste de balanceamento é "uma boa prática e medida recomendável"; lista fatores de legítima expectativa (relação prévia; fonte dos dados: diretamente do titular, fonte pública ou compartilhamento de terceiros); traz como exemplo (Exemplo 5) mensagens promocionais com mecanismo de descadastramento; pede canal fácil para descadastrar e opor-se; e afirma que essa hipótese **não se aplica a dados sensíveis** [F2].
+- **Interesse legítimo (art. 10):** serve para "apoio e promoção de atividades do controlador", só com os dados estritamente necessários e com transparência (§§ 1º e 2º) [F1]. O guia da ANPD (v1.0, fev/2024; `[incerto]`: texto não reaberto em 08/11/2026, só a data de criação, 02/02/2024) diz que o teste de balanceamento é "uma boa prática e medida recomendável"; lista fatores de legítima expectativa (relação prévia; fonte dos dados: diretamente do titular, fonte pública ou compartilhamento de terceiros); traz como exemplo (Exemplo 5) mensagens promocionais com mecanismo de descadastramento; pede canal fácil para descadastrar e opor-se; e afirma que essa hipótese **não se aplica a dados sensíveis** [F2].
 - **Dados de acesso público:** o tratamento deve considerar a finalidade, a boa-fé e o interesse público que justificaram a disponibilização (art. 7, § 3º); a dispensa de consentimento para dados manifestamente públicos preserva direitos e princípios (§ 4º) e não desobriga as demais obrigações (§ 6º) [F1].
 - **Oposição:** o titular pode opor-se ao tratamento feito sem consentimento "em caso de descumprimento ao disposto nesta Lei" (art. 18, § 2º) [F1]. Na prática, trate qualquer "pare" como pedido a cumprir.
-- **Lista de contatos de WhatsApp:** a primeira sanção da ANPD (jul/2023) foi contra uma empresa que oferecia uma listagem de contatos de WhatsApp; a ANPD constatou tratamento "sem respaldo legal" e aplicou multa por inexistência de hipótese legal (art. 7) [F3]. Por isso: nada de lista comprada, raspada ou exportada de grupo.
+- **Lista de contatos de WhatsApp:** a primeira sanção da ANPD (jul/2023) foi contra uma empresa que oferecia uma listagem de contatos de WhatsApp; a ANPD constatou tratamento "sem respaldo legal" e aplicou multa por inexistência de hipótese legal (art. 7) [F3] `[incerto]`: só a data (jul/2023) foi reaberta; as citações, não. Por isso: nada de lista comprada, raspada ou exportada de grupo.
 - **Lei específica de mensagem comercial não solicitada:** não encontrei, nas fontes que abri, norma brasileira específica sobre mensagem comercial não solicitada por WhatsApp ou e-mail. `[incerto]`: o advogado deve confirmar se há norma setorial ou estadual aplicável.
 
 ### 12.2 Teste de balanceamento em 6 linhas (só para contato profissional público)
@@ -564,16 +564,16 @@ Modelo simplificado, inspirado nas partes do modelo da ANPD [F2]; não substitui
 - Termos de Serviço do WhatsApp (vigência "January 4, 2021" na página): proíbem comunicações ilegais ou não permitidas, como mensagens em massa, mensagens automáticas e discagem automática, e uso não pessoal sem autorização [F5].
 - Diretrizes de mensagens (atualizadas em "September 23, 2026"): tratam como comportamento adversarial o uso de clientes não oficiais, mensagens em massa e automação para prejudicar o WhatsApp ou usuários; incluem "contato repetido indesejado"; as medidas vão de aviso a suspensão da conta [F6].
 - **Prática:** use o app WhatsApp Business no número da operação; escreva e grave você mesmo; uma conversa por vez; sem programa de disparo; sem adicionar pessoas a grupos; no máximo um lembrete. Não consegui abrir as páginas de ajuda sobre listas de transmissão e sobre o link de conversa direta (`wa.me`); o formato do link usado neste documento é o do próprio app (`pages/cliente/concierge.ts`) `[incerto]`.
-- Se o mesmo número vai ao mesmo tempo no app WhatsApp Business e na API de notificações, isso depende de regra do WhatsApp que não conferi `[incerto]`. O documento O05 recomenda, enquanto a regra não for lida, usar um número separado para o concierge; siga essa linha também para o recrutamento (ver O05 e I02).
+- Se o mesmo número vai ao mesmo tempo no app WhatsApp Business e na API de notificações, isso depende de regra do WhatsApp que não conferi `[incerto]`. O documento O05 (opção C, linha 452) pede número separado para o concierge enquanto a regra de convivência não for lida; siga a mesma linha no recrutamento (ver O05 e I02).
 
 ### 12.4 Cancelar, apagar, lista de não contatar
 
-- Ao receber "SAIR", "pare" ou equivalente: responda uma vez (6.8), apague a linha e mantenha **só** o número e a data do pedido numa aba "não contatar", para não escrever de novo por engano. `[incerto]`: confirmar com o advogado se essa lista mínima é adequada.
+- Ao receber "SAIR", "pare" ou equivalente: responda uma vez (6.8), apague a linha e mantenha **só** o número e a data do pedido numa aba "não contatar", para não escrever de novo por engano. `[incerto]`: confirmar com o advogado se essa lista mínima é adequada. `[PLANEJADO]`: não há webhook de entrada para o "SAIR" (O05); ele é lido e tratado à mão pelo dono no WhatsApp Business.
 - Depois que a pessoa tem conta, promoções por WhatsApp ou e-mail dependem do consentimento "Comunicações de novidades" (em Minha conta); mensagens sobre os pedidos dela não dependem dele (texto de `pages/conta/Conta.tsx`).
 
 ### 12.5 Limites de divulgação dos conselhos (amostra de três códigos)
 
-O que vale para o profissional vale para o seu texto: se o WorkEasy convida ou ajuda o profissional a divulgar algo que o código dele veda, o risco é compartilhado. Amostra dos três códigos abertos (a matriz por conselho da Frente A, `[caminho a definir na integração]`, é a referência para os demais):
+O que vale para o profissional vale para o seu texto: se o WorkEasy convida ou ajuda o profissional a divulgar algo que o código dele veda, o risco é compartilhado. Amostra dos três códigos (a matriz por conselho da Frente A, `[caminho a definir na integração]`, é a referência para os demais). Reconferido em 08/11/2026: CFN e COFFITO confirmados (COFFITO arts. 10 V e 46 na redação da Res. 532/2021); CFP não reaberto (PDF ilegível), `[incerto]`:
 
 | Tema | Nutrição (Res. CFN 599/2018) [F9] | Psicologia (Res. CFP 010/2005) [F10] | Fisioterapia (Res. COFFITO 424/2013) [F11] |
 |---|---|---|---|
@@ -695,7 +695,7 @@ id;nome;whatsapp;ocupacao_slug;categoria;bairros;canal_origem;indicado_por_id;co
 
 ### 14.2 Lacunas do produto que afetam o recrutamento (não corrigidas aqui)
 
-1. `/register-provider` (demonstração, não guarda nada) é o destino de "Trabalhe Conosco" no rodapé (`AppShell.tsx`), do botão "Ofereço este serviço" (`pages/OccupationPage.tsx`) e do link em Minha conta (`pages/conta/Conta.tsx`). O caminho real é `/pro/cadastro`.
+1. `/register-provider` (modo sem backend: demonstração que não guarda nada) é o destino de "Trabalhe Conosco" no rodapé (`components/SiteFooter.tsx`), do botão "Sou Profissional" (`components/navItems.ts`), de "Ofereço este serviço" (`pages/OccupationPage.tsx`, `pages/OccupationNeighborhoodPage.tsx`) e do link em Minha conta (`pages/conta/Conta.tsx`). Com backend, a rota redireciona a `/pro/cadastro` (`pages/prototype/redirects.tsx`). O caminho real é `/pro/cadastro`.
 2. `/legal` mostra "Documentos em elaboração" enquanto o login pede "Li e aceito os Termos de Uso e a Política de Privacidade".
 3. Nenhum gatilho avisa o prestador de **pedido novo**: só existem seis modelos de notificação (`proposta_recebida`, `atendimento_confirmado`, `lembrete_atendimento`, `pagamento_recebido`, `orcamento_respondido`, `plantao_oferecido`) e nenhum é para o prestador sobre pedido novo. O prestador precisa abrir `/pro/pedidos`.
 4. `provider_documents.expires_at` existe e a tela do admin mostra "Validade informada", mas a tela de envio não preenche o campo e `admin_review_document` não recebe validade.
@@ -715,6 +715,7 @@ id;nome;whatsapp;ocupacao_slug;categoria;bairros;canal_origem;indicado_por_id;co
 - Regras de Facebook, Instagram, Google e de sites de vagas.
 - Tarifas do Asaas aplicadas às subcontas.
 - Pesquisas adicionais na web foram interrompidas durante a tarefa porque o limite compartilhado de buscas acabou; as fontes abaixo foram abertas por endereço direto.
+- Revisão de 08/11/2026: a busca na web estava esgotada (limite compartilhado); só houve reabertura por endereço direto. Não reabertas: LGPD, LC 150/2015, CDC, CFP, Senac e o texto do guia da ANPD (ver seção 15).
 
 ---
 
@@ -739,8 +740,10 @@ Todas abertas em **2026-10-23**. "Citação" é trecho copiado da página; para 
 | F13 | Senac SP, "Anúncio de vagas". `https://www.sp.senac.br/anuncio-de-vagas` | Espaço para empresas; mural digital | "Espaço para sua empresa ou organização divulgar vagas de emprego para estudantes e ex-estudantes do Senac."; mural pelo e-mail centralsenac@sp.senac.br; "As vagas precisam ter relação com nossas áreas de atuação." |
 | F14 | SENAI-SP, curso "Eletricista Instalador Predial". `https://www.sp.senai.br/curso/eletricista-instalador-predial/108288` | Carga horária e tipo | "Carga horária: 160 horas"; classificado como curso livre, "Qualificação Profissional" |
 | F15 | CATe, Prefeitura de São Paulo. `https://cate.prefeitura.sp.gov.br/o-cate/` | Serviços e parcerias | "serviço da Secretaria de Desenvolvimento Econômico e Trabalho da Prefeitura de São Paulo"; serviços incluem "Formalização do Microempreendedor Individual (MEI)" e "Busca de vagas"; "Para ser parceiro de conteúdo da plataforma, envie um e-mail para portalcate@prefeitura.sp.gov.br" |
-| F16 | Asaas, preços e taxas. `https://www.asaas.com/precos-e-taxas` | Tabela de tarifas e perguntas frequentes | "No Asaas, não há mensalidade ou taxa de adesão."; "As taxas apresentadas são padrão. Para conferir as condições aplicadas ao seu contrato, consulte-as diretamente na sua conta Asaas."; Pix e boleto: "R$ 1,99 R$ 0,99 por transação recebida (Válido por 3 meses)" |
+| F16 | Asaas, preços e taxas. `https://www.asaas.com/precos-e-taxas` | Tabela de tarifas e perguntas frequentes | Citações de 23/10/2026 **não confirmadas** em 08/11/2026: "No Asaas, não há mensalidade ou taxa de adesão." e "As taxas apresentadas são padrão" não aparecem na página reaberta; Pix e boleto apareceram com R$ 2,15 e R$ 1,08 por transação recebida (não R$ 1,99 e R$ 0,99). **Divergente**; ver seção 9 |
 | F17 | Sebrae, página sobre MEI. `https://www.sebrae.com.br/sites/PortalSebrae/mei` | Apenas a introdução (o resto carrega por script) | "Tudo que você precisa saber sobre o MEI, em um só lugar." |
+
+**Reabertura de 08/11/2026 (revisão de O02):** com texto conferido: F4, F5, F6, F9, F11, F14 e F15. Divergente: F16 (corrigida na seção 9 e nesta tabela). Abertas sem o texto citado: F2 (PDF, só o cabeçalho) e F3 (só a data, jul/2023). Não abertas: F1, F7 e F8 (planalto.gov.br, acesso negado), F10 (PDF ilegível), F12 e F13 (HTTP 403); F17 não tentada. Essas fontes ficam `[incerto]` nas seções 3, 4, 5, 10, 12 e 14.
 
 Documentos do repositório usados: `apps/web/docs/DECISOES.md` (D2 a D7, D11, D12, seções 4, 5, 7 e 8), `apps/web/docs/ARQUITETURA.md`, `apps/web/README.md`, `apps/web/catalog/policies.json`.
 
@@ -797,7 +800,7 @@ node -e "const p=require('./catalog/policies.json');for(const s of ['diarista','
 | 20 | Ordem da busca: por nota (com ao menos 3 avaliações) onde `ratingRanking`; senão ordem estável por dia, sem nota | ARQUITETURA (`search_providers`) |
 | 21 | Avaliação só após atendimento pago pelo app | ARQUITETURA (`reviews`) |
 | 22 | Exclusão de conta anonimiza e mantém o registro financeiro | `pages/conta/Conta.tsx`; DECISOES D7 |
-| 23 | `/register-provider` é demonstração que não guarda nada | `pages/ProviderRegistration.tsx` |
+| 23 | `/register-provider` é demonstração que não guarda nada no modo sem backend; com backend redireciona a `/pro/cadastro` | `pages/ProviderRegistration.tsx`; `pages/prototype/redirects.tsx`; `pages/prototype/routes.tsx` |
 | 24 | Serviço e agenda podem ser preenchidos antes da aprovação | migration `..._03_providers.sql` (`services_insert_own`, `availability_insert_own`) |
 | 25 | `expires_at` do documento não é preenchido pela tela de envio | `services/providers.ts` (`uploadProviderDocument`); ARQUITETURA (`admin_review_document`) |
 | 26 | Orçamento do app "não substitui nota fiscal"; o app não emite nota | `components/pro/QuoteDocument.tsx` |
