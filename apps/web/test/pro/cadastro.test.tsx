@@ -340,6 +340,19 @@ describe('/pro/cadastro: steps of a draft provider', () => {
     expect(consent?.payload).not.toHaveProperty('user_id');
   });
 
+  it('says what withdrawing the consent leaves in place, and how a certificate can be removed', async () => {
+    draft('diarista');
+    fake.tables.consents = (call: TableCall) =>
+      call.op === 'insert'
+        ? ok({ id: 'c-new', at: '2026-10-22T12:00:00Z', ...(call.payload as object) })
+        : ok(baseTables({ provider: null }).consents({ table: 'consents', op: 'select', filters: [] }).data);
+    renderPro('/pro/cadastro');
+
+    const checkbox = await screen.findByRole('checkbox', { name: /Autorizo o WorkEasy a usar a certidão/ });
+    expect(checkbox).toHaveAccessibleName(/A retirada fica registrada, mas não apaga a certidão já enviada nem muda quem pode vê-la/);
+    expect(checkbox).toHaveAccessibleName(/depois da análise, só posso apagá-la excluindo a minha conta/);
+  });
+
   it('shows documents_missing translated, with the steps lacking, then the status after the review request', async () => {
     draft();
     let status = 'draft';

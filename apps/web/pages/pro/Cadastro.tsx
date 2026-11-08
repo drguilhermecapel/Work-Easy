@@ -429,7 +429,9 @@ const DocumentsStep: React.FC<{ provider: ProviderRow; userId: string }> = ({ pr
                   <input type="checkbox" className="mt-1" checked={consentChecked} onChange={e => setConsentChecked(e.target.checked)} />
                   <span>
                     Autorizo o WorkEasy a usar a certidão de antecedentes para analisar o meu cadastro. Posso retirar a autorização em{' '}
-                    <Link to="/conta" className="text-primary underline">Minha conta</Link>.
+                    <Link to="/conta" className="text-primary underline">Minha conta</Link>. A retirada fica registrada, mas não apaga a
+                    certidão já enviada nem muda quem pode vê-la. Enquanto a certidão não for analisada, posso removê-la aqui; depois da análise,
+                    só posso apagá-la excluindo a minha conta.
                   </span>
                 </label>
               )}
