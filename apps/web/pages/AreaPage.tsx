@@ -73,7 +73,7 @@ const AreaPage: React.FC = () => {
             </Link>
           )}
           {hasDemoProviders && (
-            <Link to={`/search?category=${encodeURIComponent(area.slug)}`} className="text-sm font-medium bg-primary/10 text-primary px-4 py-2 rounded-full hover:bg-primary/20">
+            <Link to={`/search?category=${encodeURIComponent(area.slug)}`} className="text-sm font-medium bg-primary/10 text-secondary px-4 py-2 rounded-full hover:bg-primary/20">
               Ver profissionais de demonstração
             </Link>
           )}

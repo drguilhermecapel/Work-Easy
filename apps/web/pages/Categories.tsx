@@ -84,7 +84,7 @@ const Categories: React.FC = () => {
                 ))}
               </ul>
               {area.occupations.length > PREVIEW && (
-                <Link to={`/categorias/${area.slug}`} className="inline-flex items-center gap-1 text-sm font-medium text-primary mt-3">
+                <Link to={`/categorias/${area.slug}`} className="inline-flex items-center gap-1 text-sm font-medium text-secondary mt-3">
                   Ver todos os {area.occupations.length} <ChevronRight size={14} />
                 </Link>
               )}
