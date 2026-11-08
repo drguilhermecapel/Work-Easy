@@ -172,6 +172,7 @@ export const adminRpcs = (world: AdminWorld): FakeSupabase['rpcs'] => {
 
   return {
     is_admin: () => ok(world.isAdmin),
+    admin_log_document_view: guard(args => (blank(args.p_storage_path) ? rule('not_allowed') : ok(null))),
     admin_review_document: guard(args => {
       const doc = find('provider_documents', r => r.id === args.p_document);
       if (!doc) return rule('not_allowed');

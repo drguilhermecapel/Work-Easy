@@ -573,7 +573,11 @@ export const registryLookupUrl = (policy: Pick<AdminPolicy, 'registry_name' | 'r
 /** Signed address (5 minutes) of a file in the private bucket provider-documents. */
 export const SIGNED_URL_SECONDS = 300;
 
+/** The view is recorded first: when the record fails, no address is returned. */
 export const createDocumentUrl = async (storagePath: string): Promise<string> => {
+  await guarded(async () =>
+    unwrapMaybe<unknown>(await db().rpc('admin_log_document_view', { p_storage_path: storagePath })),
+  );
   const { data, error } = await db().storage.from('provider-documents').createSignedUrl(storagePath, SIGNED_URL_SECONDS);
   if (error) throw toAppError(error);
   if (!data?.signedUrl) throw new AppError('not_found');
