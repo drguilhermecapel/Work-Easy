@@ -545,6 +545,20 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"product_events": {
+                  Row: {
+                    "day": string | null,"event": string,"id": string,"occurred_at": string,"props": NonNullable<Json>,"subject_id": string | null,"user_id": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "day"?: never,"event": string,"id"?: string,"occurred_at"?: string,"props"?: NonNullable<Json>,"subject_id"?: string | null,"user_id"?: string | null
+                  }
+                  Update: {
+                    "day"?: never,"event"?: string,"id"?: string,"occurred_at"?: string,"props"?: NonNullable<Json>,"subject_id"?: string | null,"user_id"?: string | null
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"profiles": {
                   Row: {
                     "city": string | null,"created_at": string,"deleted_at": string | null,"full_name": string | null,"id": string,"phone": string | null,"role": Database["public"]['Enums']["user_role"]
@@ -1118,6 +1132,11 @@ isOneToOne: true
                            },
 "accept_shift_offer":
 { Args: { "p_shift": string }; Returns: Database["public"]['Enums']["shift_status"]
+                           },
+"admin_funnel_daily":
+{ Args: { "p_from": string,"p_to": string }; Returns: {
+              "day": string,"event": string,"events": number
+            }[]
                            },
 "admin_get_payment_raw":
 { Args: { "p_payment": string }; Returns: Json
