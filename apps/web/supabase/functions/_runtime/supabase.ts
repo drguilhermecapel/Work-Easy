@@ -7,6 +7,7 @@ import { AsaasClient } from '../_shared/asaas-client.ts';
 import { type FunctionConfig, readConfig } from '../_shared/config.ts';
 import { type AuditEntry, type AuthUser, DbError } from '../_shared/handler-kit.ts';
 import { cancelPendingPayment } from '../_shared/payment-cancel.ts';
+import type { OccupationApproval, ProviderApproval } from '../_shared/provider-approval.ts';
 import { bearerToken } from '../_shared/secrets.ts';
 import { PAID_PAYMENT_STATUSES, type PlanCode } from '../_shared/types.ts';
 import type { NewPayment, PaymentRecord } from '../payments-create/handler.ts';
@@ -167,6 +168,24 @@ export async function subaccountAsaas(providerId: string): Promise<AsaasClient |
   if (!root) return null;
   const key = await readSecret(providerId);
   return key ? root.withApiKey(key) : null;
+}
+
+/**
+ * Plan, status and occupation approvals of the caller's own provider account, read with the
+ * caller's JWT (RLS: own rows only). Null when the account has no provider row.
+ */
+export async function readProviderAccount(
+  db: SupabaseClient,
+  providerId: string,
+): Promise<(ProviderApproval & { id: string; plan: string }) | null> {
+  const provider = must(await db.from('providers').select('id, plan, status').eq('id', providerId).maybeSingle()) as
+    | { id: string; plan: string; status: string }
+    | null;
+  if (!provider) return null;
+  const occupations = must(
+    await db.from('provider_occupations').select('occupation_slug, approved, registry_status').eq('provider_id', providerId),
+  ) as OccupationApproval[] | null;
+  return { id: provider.id, plan: provider.plan, status: provider.status, occupations: occupations ?? [] };
 }
 
 export function serve(handler: (req: Request) => Promise<Response>): void {

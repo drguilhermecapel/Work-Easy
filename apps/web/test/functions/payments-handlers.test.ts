@@ -9,8 +9,32 @@ import {
 import {
   handler as subscriptions, type SubscriptionRow, type SubscriptionsDeps,
 } from '../../supabase/functions/subscriptions-manage/handler.ts';
+import type { ProviderApproval } from '../../supabase/functions/_shared/provider-approval.ts';
+
+type ProviderAccount = ProviderApproval & { id: string; plan: string };
 import { deriveSubaccountToken } from '../../supabase/functions/_shared/secrets.ts';
 import { asaasWith, baseDeps, BOOKING_ID, post, PROVIDER, QUOTE_ID, read, USER, VALID_CNPJ, VALID_CPF } from './helpers.ts';
+
+/** An account the admin approved, with an approved occupation (the money tools need both). */
+const APPROVED: ProviderAccount = {
+  id: PROVIDER.id,
+  plan: 'free',
+  status: 'approved',
+  occupations: [
+    { occupation_slug: 'diarista', approved: true, registry_status: 'not_required' },
+    { occupation_slug: 'eletricista', approved: true, registry_status: 'not_required' },
+  ],
+};
+
+const CLIENT_ID = '55555555-5555-4555-8555-555555555555';
+const OTHER_CLIENT_ID = '66666666-6666-4666-8666-666666666666';
+/** The provider's CRM record for the payer: the only source of the payer's data for own charges. */
+const CRM_CLIENT: {
+  provider_id: string; name: string; phone: string | null; email: string | null; cpf_cnpj: string | null; client_id: string | null;
+} = {
+  provider_id: PROVIDER.id, name: 'Dona Maria', phone: '11987654321', email: 'maria@example.com', cpf_cnpj: VALID_CNPJ,
+  client_id: null,
+};
 
 const BOOKING: BookingForPayment = {
   id: BOOKING_ID,
@@ -265,7 +289,14 @@ describe('payments-create', () => {
 });
 
 describe('charges-create', () => {
-  function chargesDeps(over: { plan?: string; quoteStatus?: string; apiKey?: string | null; open?: PaymentRecord | null; paid?: boolean } = {}) {
+  function chargesDeps(over: {
+    plan?: string; quoteStatus?: string; apiKey?: string | null; open?: PaymentRecord | null; paid?: boolean;
+    provider?: ProviderAccount;
+    /** CRM client linked to the quote (null: none) */
+    quoteClient?: string | null;
+    /** the CRM record the provider's client id resolves to (null: not found) */
+    client?: typeof CRM_CLIENT | null;
+  } = {}) {
     const inserted: NewPayment[] = [];
     const canceled: string[] = [];
     const { client, calls } = asaasWith({
@@ -278,16 +309,16 @@ describe('charges-create', () => {
       asaas: client,
       session: async () => ({
         user: PROVIDER,
-        getProvider: async () => ({ id: PROVIDER.id, plan: over.plan ?? 'pro' }),
+        getProvider: async () => ({ ...(over.provider ?? APPROVED), plan: over.plan ?? 'pro' }),
         getBooking: async () => ({
           id: BOOKING_ID, provider_id: PROVIDER.id, client_id: null, provider_client_id: null,
           occupation_slug: 'diarista', status: 'accepted', origin: 'platform', price_cents: 1000,
         }),
         getQuote: async () => ({
-          id: QUOTE_ID, provider_id: PROVIDER.id, provider_client_id: null, client_name: 'Dona Maria',
-          client_phone: '11987654321', title: 'Pintura', total_cents: 250050, status: over.quoteStatus ?? 'accepted',
+          id: QUOTE_ID, provider_id: PROVIDER.id, provider_client_id: over.quoteClient === undefined ? CLIENT_ID : over.quoteClient,
+          title: 'Pintura', total_cents: 250050, status: over.quoteStatus ?? 'accepted',
         }),
-        getProviderClient: async () => null,
+        getProviderClient: async () => (over.client === undefined ? CRM_CLIENT : over.client),
       }),
       admin: {
         getSubaccountApiKey: async () => (over.apiKey === undefined ? 'sub-key' : over.apiKey),
@@ -304,7 +335,21 @@ describe('charges-create', () => {
     return { deps, calls, inserted, canceled };
   }
 
-  const body = { quote_id: QUOTE_ID, method: 'boleto', customer: { cpf_cnpj: VALID_CNPJ } };
+  const body = { quote_id: QUOTE_ID, method: 'boleto', provider_client_id: CLIENT_ID };
+
+  /** An own booking (the provider's own client) on top of the approved provider. */
+  function ownBooking(over: { provider?: ProviderAccount; clientId?: string | null; occupation?: string } = {}) {
+    const made = chargesDeps({ provider: over.provider });
+    const session = made.deps.session;
+    made.deps.session = async req => ({
+      ...(await session(req))!,
+      getBooking: async () => ({
+        id: BOOKING_ID, provider_id: PROVIDER.id, client_id: null, provider_client_id: over.clientId === undefined ? CLIENT_ID : over.clientId,
+        occupation_slug: over.occupation ?? 'diarista', status: 'completed', origin: 'own', price_cents: 1000,
+      }),
+    });
+    return made;
+  }
 
   it('is a Pro feature', async () => {
     const res = await read(await chargesCreate(post('charges-create', body), chargesDeps({ plan: 'free' }).deps));
@@ -317,7 +362,10 @@ describe('charges-create', () => {
     const res = await read(await chargesCreate(post('charges-create', body), deps));
     expect(res.status).toBe(201);
     expect(calls.every(c => c.headers.access_token === 'sub-key')).toBe(true);
-    expect(calls[0].body).toMatchObject({ name: 'Dona Maria', cpfCnpj: VALID_CNPJ, mobilePhone: '11987654321' });
+    expect(calls[0].body).toMatchObject({
+      name: 'Dona Maria', cpfCnpj: VALID_CNPJ, mobilePhone: '11987654321', email: 'maria@example.com',
+      externalReference: `provider_client:${CLIENT_ID}`,
+    });
     expect(calls[1].body).toMatchObject({ value: 2500.5, billingType: 'BOLETO', externalReference: `quote:${QUOTE_ID}` });
     expect((calls[1].body as Record<string, unknown>).split).toBeUndefined();
     expect(inserted[0]).toMatchObject({ quote_id: QUOTE_ID, platform_fee_cents: 0, amount_cents: 250050 });
@@ -367,6 +415,73 @@ describe('charges-create', () => {
     expect(targets).toEqual([{ bookingId: BOOKING_ID }]);
   });
 
+  it('refuses to charge until the admin approves the provider, without calling Asaas', async () => {
+    for (const status of ['draft', 'pending_review', 'suspended']) {
+      const { deps, calls, inserted } = chargesDeps({ provider: { ...APPROVED, status } });
+      const res = await read(await chargesCreate(post('charges-create', body), deps));
+      expect(res.status, status).toBe(403);
+      expect(res.body.error.code, status).toBe('provider_not_approved');
+      expect(calls, status).toEqual([]);
+      expect(inserted, status).toEqual([]);
+    }
+  });
+
+  it('refuses an own booking whose occupation the admin has not approved', async () => {
+    const provider = { ...APPROVED, occupations: [{ occupation_slug: 'eletricista', approved: true, registry_status: 'not_required' }] };
+    const { deps, calls } = ownBooking({ provider, occupation: 'diarista' });
+    const res = await read(await chargesCreate(post('charges-create', { booking_id: BOOKING_ID, method: 'pix' }), deps));
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('provider_not_approved');
+    expect(calls).toEqual([]);
+  });
+
+  it('does not accept a customer block in the body: the payer comes from the CRM record only', async () => {
+    const { deps, calls, inserted } = chargesDeps();
+    const res = await read(await chargesCreate(post('charges-create', { ...body, customer: { cpf_cnpj: VALID_CPF, email: 'x@example.com' } }), deps));
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('invalid_input');
+    expect(calls).toEqual([]);
+    expect(inserted).toEqual([]);
+  });
+
+  it('refuses a quote with no CRM client: the provider has to choose one of its clients', async () => {
+    const { deps, calls } = chargesDeps({ quoteClient: null });
+    const res = await read(await chargesCreate(post('charges-create', { quote_id: QUOTE_ID, method: 'boleto' }), deps));
+    expect(res.status).toBe(400);
+    expect(calls).toEqual([]);
+  });
+
+  it('refuses a CRM client without a billing document, before calling Asaas', async () => {
+    const { deps, calls } = chargesDeps({ client: { ...CRM_CLIENT, cpf_cnpj: null } });
+    const res = await read(await chargesCreate(post('charges-create', body), deps));
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('customer_document_missing');
+    expect(calls).toEqual([]);
+  });
+
+  it('refuses a CRM client record that belongs to another provider', async () => {
+    const { deps, calls } = chargesDeps({ client: { ...CRM_CLIENT, provider_id: USER.id } });
+    const res = await read(await chargesCreate(post('charges-create', body), deps));
+    expect(res.status).toBe(404);
+    expect(calls).toEqual([]);
+  });
+
+  it('refuses a provider_client_id that differs from the client linked to the quote', async () => {
+    const { deps, calls } = chargesDeps();
+    const res = await read(await chargesCreate(post('charges-create', { ...body, provider_client_id: OTHER_CLIENT_ID }), deps));
+    expect(res.status).toBe(400);
+    expect(calls).toEqual([]);
+  });
+
+  it('uses the body provider_client_id only when the own booking has no linked client', async () => {
+    const { deps, calls } = ownBooking({ clientId: null });
+    const res = await read(await chargesCreate(post('charges-create', {
+      booking_id: BOOKING_ID, method: 'pix', provider_client_id: CLIENT_ID,
+    }), deps));
+    expect(res.status).toBe(201);
+    expect(calls[0].body).toMatchObject({ cpfCnpj: VALID_CNPJ, externalReference: `provider_client:${CLIENT_ID}` });
+  });
+
   it('rejects platform bookings, unaccepted quotes, ambiguous targets and missing subaccounts', async () => {
     const platform = await read(await chargesCreate(post('charges-create', { ...body, quote_id: undefined, booking_id: BOOKING_ID }), chargesDeps().deps));
     expect(platform.body.error.code).toBe('platform_booking');
@@ -395,6 +510,7 @@ describe('asaas-onboard', () => {
     busy?: boolean;
     noKey?: boolean;
     asaasFails?: boolean;
+    provider?: ProviderAccount;
   } = {}) {
     const saved: PaymentAccount[] = [];
     const secrets: Array<[string, string]> = [];
@@ -412,7 +528,7 @@ describe('asaas-onboard', () => {
       webhookUrl: 'https://proj.supabase.co/functions/v1/asaas-webhook',
       webhookToken: over.token ?? TOKEN,
       sleep: async ms => void sleeps.push(ms),
-      session: async () => ({ user: PROVIDER, getProvider: async () => ({ id: PROVIDER.id, display_name: 'Ana' }) }),
+      session: async () => ({ user: PROVIDER, getProvider: async () => over.provider ?? APPROVED }),
       admin: {
         getPaymentAccount: async () => over.existing ?? null,
         claimOnboarding: async () => !over.busy,
@@ -505,6 +621,17 @@ describe('asaas-onboard', () => {
     expect(saved).toEqual([]);
   });
 
+  it('refuses the receiving account before the admin approves the provider, without calling Asaas', async () => {
+    for (const status of ['draft', 'pending_review', 'suspended']) {
+      const { deps, calls, saved } = onboardDeps({ provider: { ...APPROVED, status } });
+      const res = await read(await onboard(post('asaas-onboard', fiscal), deps));
+      expect(res.status, status).toBe(403);
+      expect(res.body.error.code, status).toBe('provider_not_approved');
+      expect(calls, status).toEqual([]);
+      expect(saved, status).toEqual([]);
+    }
+  });
+
   it('requires birth date for CPF, company type for CNPJ, and refuses a second onboarding', async () => {
     const noBirth = await read(await onboard(post('asaas-onboard', { ...fiscal, birth_date: undefined }), onboardDeps().deps));
     expect(noBirth.body.error.details).toEqual(['birth_date: obrigatório para CPF']);
@@ -523,6 +650,7 @@ describe('subscriptions-manage', () => {
     routes: Record<string, { status?: number; body: unknown }> = {},
     claim = true,
     trialDays = 0,
+    provider: ProviderAccount = APPROVED,
   ) {
     const saved: SubscriptionRow[] = [];
     const plans: string[] = [];
@@ -535,7 +663,7 @@ describe('subscriptions-manage', () => {
     const deps: SubscriptionsDeps = {
       ...baseDeps,
       asaas: client,
-      session: async () => ({ user: PROVIDER, getProvider: async () => ({ id: PROVIDER.id, plan: 'free' }) }),
+      session: async () => ({ user: PROVIDER, getProvider: async () => provider }),
       admin: {
         getSubscription: async () => current,
         saveSubscription: async row => void saved.push(row),
@@ -554,6 +682,29 @@ describe('subscriptions-manage', () => {
     };
     return { deps, calls, saved, plans };
   }
+
+  it('does not start the subscription or the free trial before the admin approves the provider', async () => {
+    for (const status of ['draft', 'pending_review', 'suspended']) {
+      const { deps, calls, saved, plans } = subsDeps(null, {}, true, 30, { ...APPROVED, status });
+      const res = await read(await subscriptions(post('subscriptions-manage', { action: 'subscribe', method: 'pix' }), deps));
+      expect(res.status, status).toBe(403);
+      expect(res.body.error.code, status).toBe('provider_not_approved');
+      expect(calls, status).toEqual([]);
+      expect(saved, status).toEqual([]);
+      expect(plans, status).toEqual([]);
+    }
+  });
+
+  it('lets a suspended provider cancel a subscription that is still billing', async () => {
+    const current: SubscriptionRow = {
+      provider_id: PROVIDER.id, plan: 'pro', status: 'active', asaas_subscription_id: 'sub_1',
+      current_period_end: '2026-11-19T23:59:59-03:00', canceled_at: null,
+    };
+    const { deps, calls } = subsDeps(current, {}, true, 0, { ...APPROVED, status: 'suspended' });
+    const res = await read(await subscriptions(post('subscriptions-manage', { action: 'cancel' }), deps));
+    expect(res.status).toBe(200);
+    expect(calls.map(call => call.method)).toEqual(['DELETE']);
+  });
 
   it('subscribes monthly and waits for the first payment before switching Pro on', async () => {
     const { deps, calls, saved, plans } = subsDeps(null);
