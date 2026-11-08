@@ -12,17 +12,20 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "WorkEasy",
         "width": 1280,
         "height": 860,
         "minWidth": 380,
         "minHeight": 600,
         "resizable": true,
-        "center": true
+        "center": true,
+        "devtools": false
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob: mediastream:; connect-src 'self' ipc: http://ipc.localhost; object-src 'none'; base-uri 'self'; form-action 'self'"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob: mediastream:; connect-src 'self' ipc: http://ipc.localhost https://*.supabase.co wss://*.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'",
+      "devCsp": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob: mediastream:; connect-src 'self' ipc: http://ipc.localhost ws://localhost:3000 http://localhost:3000 https://*.supabase.co wss://*.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'"
     }
   },
   "bundle": {

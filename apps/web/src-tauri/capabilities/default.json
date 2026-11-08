@@ -1,11 +1,9 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "enables the default permissions",
+  "description": "A página não chama APIs do Tauri (src-tauri/src/lib.rs não expõe comandos). Por isso a janela principal não recebe nenhuma permissão. Conceda uma permissão específica somente quando a página precisar dela.",
   "windows": [
     "main"
   ],
-  "permissions": [
-    "core:default"
-  ]
+  "permissions": []
 }
