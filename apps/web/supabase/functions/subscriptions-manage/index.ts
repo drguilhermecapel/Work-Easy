@@ -1,9 +1,8 @@
 import {
-  asaasClient, audit, authenticate, config, DbError, getCustomerId, getProfile, logError, must, now, saveCustomerId, serve,
-  serviceClient, setProviderPlan,
+  asaasClient, audit, authenticate, config, DbError, getCustomerId, getProfile, logError, must, now, readProviderAccount,
+  saveCustomerId, serve, serviceClient, setProviderPlan,
 } from '../_runtime/supabase.ts';
 import { UNIQUE_VIOLATION } from '../_shared/handler-kit.ts';
-import type { PlanCode } from '../_shared/types.ts';
 import { handler, type SubscriptionRow, type SubscriptionsDeps } from './handler.ts';
 
 const DEFAULT_PRO_PRICE_CENTS = 4900;
@@ -19,10 +18,8 @@ const deps: SubscriptionsDeps = {
     if (!caller) return null;
     return {
       user: caller.user,
-      async getProvider() {
-        return must(await caller.db.from('providers').select('id, plan').eq('id', caller.user.id).maybeSingle()) as
-          | { id: string; plan: PlanCode }
-          | null;
+      getProvider() {
+        return readProviderAccount(caller.db, caller.user.id);
       },
     };
   },

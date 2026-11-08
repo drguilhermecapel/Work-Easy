@@ -31,9 +31,15 @@ Com a stack local de pé (`supabase start`) e `supabase/functions/.env` preenchi
 supabase functions serve --env-file supabase/functions/.env
 ```
 
-`asaas-webhook` e `notify-dispatch` não recebem JWT de usuário: rodar com
-`--no-verify-jwt` localmente e, no deploy, `verify_jwt = false` para essas duas
-em `supabase/config.toml` (ou `supabase functions deploy <nome> --no-verify-jwt`).
+`asaas-webhook` e `notify-dispatch` não recebem JWT de usuário: `verify_jwt = false`
+para essas duas já está em `supabase/config.toml` (e o `supabase functions serve` local
+herda essa configuração). Cada uma confere o próprio segredo no código
+(`asaas-access-token` e `x-cron-secret`).
+
+Cobranças e assinaturas (`charges-create`, `subscriptions-manage`, `asaas-onboard`) exigem
+conta de prestador aprovada pelo admin (e ao menos uma ocupação aprovada). Em
+`charges-create` o pagador é um cliente do CRM: o corpo envia só `provider_client_id`
+(e nunca `customer`); CPF/CNPJ, nome, e-mail e telefone vêm do registro do cliente.
 
 Exemplos (`$JWT` é o access token de um usuário logado; `$ANON` a chave publicável):
 
@@ -43,7 +49,7 @@ H=(-H "Authorization: Bearer $JWT" -H "apikey: $ANON" -H 'Content-Type: applicat
 
 curl "${H[@]}" -d '{"name":"Ana","email":"ana@example.com","cpf_cnpj":"52998224725","birth_date":"1990-05-10","mobile_phone":"11987654321","income_value_cents":500000,"address":"Rua A","address_number":"10","province":"Pinheiros","postal_code":"05422000"}' $BASE/asaas-onboard
 curl "${H[@]}" -d '{"booking_id":"<uuid>","method":"pix","cpf_cnpj":"52998224725"}' $BASE/payments-create
-curl "${H[@]}" -d '{"quote_id":"<uuid>","method":"boleto","customer":{"cpf_cnpj":"52998224725","name":"Cliente"}}' $BASE/charges-create
+curl "${H[@]}" -d '{"quote_id":"<uuid>","method":"boleto","provider_client_id":"<uuid de um cliente do CRM com cpf_cnpj>"}' $BASE/charges-create
 curl "${H[@]}" -d '{"booking_id":"<uuid de um atendimento cancelado>"}' $BASE/payments-void
 curl "${H[@]}" -d '{"action":"subscribe","method":"pix"}' $BASE/subscriptions-manage
 curl "${H[@]}" -d '{"action":"cancel"}' $BASE/subscriptions-manage
