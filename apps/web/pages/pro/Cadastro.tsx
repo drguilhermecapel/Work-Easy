@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle2, FileUp } from 'lucide-react';
+import { Camera, CheckCircle2, FileUp } from 'lucide-react';
 import { AREAS, findOccupation } from '../../catalog';
 import { VERIFICATION_LABELS } from '../../catalog/labels';
 import type { VerificationStep } from '../../catalog/types';
@@ -27,6 +27,7 @@ import {
 } from '../../services/providers';
 import { missingStepsOf } from '../../services/proErrors';
 import type { ProviderRow } from '../../services/types';
+import { captureFile } from '../../platform/files';
 import ErrorAlert from '../../components/ErrorAlert';
 import { Badge, Card, ConfirmButton, Field, SectionTitle } from '../../components/pro/ui';
 import ProPage from '../../components/pro/ProPage';
@@ -47,6 +48,8 @@ const UFS = [
 ];
 
 const ACCEPTED_FILES = Object.keys(DOCUMENT_TYPES).join(',');
+// Photos only: the camera takes pictures, not PDFs
+const CAPTURE_FILES = Object.keys(DOCUMENT_TYPES).filter(type => type.startsWith('image/')).join(',');
 
 // ---- Step 1: profile ----------------------------------------------------------
 
@@ -372,6 +375,12 @@ const DocumentsStep: React.FC<{ provider: ProviderRow; userId: string }> = ({ pr
     }
   };
 
+  // The camera opens on phones; on a computer the chooser opens instead
+  const photograph = async (step: VerificationStep) => {
+    const file = await captureFile({ accept: CAPTURE_FILES });
+    await upload(step, file ?? undefined);
+  };
+
   const remove = async (doc: { id: string; storage_path: string }) => {
     setError(null);
     try {
@@ -460,6 +469,15 @@ const DocumentsStep: React.FC<{ provider: ProviderRow; userId: string }> = ({ pr
                     void upload(item.step, file);
                   }}
                 />
+                <button
+                  type="button"
+                  className={`${secondaryButton} mt-2`}
+                  disabled={busyStep !== null || (needsConsent && !consentChecked)}
+                  onClick={() => void photograph(item.step)}
+                >
+                  <Camera size={16} aria-hidden="true" /> Fotografar
+                  <span className="sr-only"> — {VERIFICATION_LABELS[item.step]}</span>
+                </button>
                 {busyStep === item.step && <p role="status" className="text-xs text-gray-500 mt-1">Enviando…</p>}
               </div>
             </li>

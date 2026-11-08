@@ -241,6 +241,31 @@ describe('/pro/cadastro: steps of a draft provider', () => {
     expect(screen.getAllByText('Não enviado')).toHaveLength(2);
   });
 
+  it('photographs a document through the camera chooser, accepts only photos and uploads it', async () => {
+    draft();
+    const seen: Array<{ accept: string; capture: string | null }> = [];
+    vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(function (this: HTMLInputElement) {
+      seen.push({ accept: this.accept, capture: this.getAttribute('capture') });
+      Object.defineProperty(this, 'files', {
+        configurable: true,
+        value: [new File(['jpeg'], 'cpf.jpg', { type: 'image/jpeg' })],
+      });
+      this.dispatchEvent(new Event('change'));
+    });
+    const user = userEvent.setup();
+    renderPro('/pro/cadastro');
+
+    await user.click(await screen.findByRole('button', { name: /Fotografar.*CPF ou CNPJ/ }));
+
+    await waitFor(() => expect(fake.uploads).toHaveLength(1));
+    expect(seen).toHaveLength(1);
+    expect(seen[0].capture).toBe('environment');
+    expect(seen[0].accept).toContain('image/jpeg');
+    expect(seen[0].accept).not.toContain('pdf');
+    expect(fake.uploads[0].path).toMatch(/^prov-1\/cadastro_fiscal-[a-z0-9]+-[a-z0-9]+\.jpg$/);
+    expect(fake.uploads[0].options).toMatchObject({ contentType: 'image/jpeg', upsert: false });
+  });
+
   it('refuses a file of the wrong type or size before sending it', async () => {
     draft();
     const user = userEvent.setup({ applyAccept: false });
