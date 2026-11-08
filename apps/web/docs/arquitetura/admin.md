@@ -114,11 +114,16 @@ gráficos.
 
 - Testes Vitest: `test/admin/*` (inclui `settings`, `funnel`, `providers`, `lists`), `test/web/helpers.test.ts`
   e `test/claims-guard.test.ts`.
+- Vitest, TypeScript (`tsc --noEmit`) e ESLint (`--max-warnings 0`) dos arquivos tocados passaram.
 - pgTAP: `supabase/tests/database/30_admin_settings.test.sql` (aceitos e recusados, auditoria) e
-  `31_admin_metrics.test.sql` (números do funil e leitura só por administrador).
-- `lib/database.types.ts`: a linha da view `admin_metrics` foi ajustada à mão. A regeneração com
-  `supabase gen types typescript --local` depende do banco local e ainda precisa ser refeita e
-  comparada antes de publicar.
+  `31_admin_metrics.test.sql` (números do funil e leitura só por administrador). Os planos foram
+  conferidos à mão, mas as suítes ainda não rodaram contra as migrações: o banco local depende do
+  Docker, que estava parado nesta rodada.
+- Ainda não executados: `supabase db reset`, `supabase test db` (incluindo `11_admin` e `12_rls_matrix`)
+  e `npm run test:integration`.
+- `lib/database.types.ts`: a linha da view `admin_metrics` foi ajustada à mão, com as colunas da view.
+  A regeneração com `supabase gen types typescript --local` precisa ser feita com o banco no ar e a
+  diferença conferida antes de publicar.
 
 Nada disso foi validado com usuários reais, com o Asaas ou com os conselhos profissionais. A consulta
 pública de cada conselho é feita à mão, pelo administrador, com o número que o prestador informou.
