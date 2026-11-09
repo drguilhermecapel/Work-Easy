@@ -2,7 +2,7 @@
 -- deletion; a shift in progress, a past shift and other households' shifts are left as they are. Only the
 -- service role can run the function.
 begin;
-select plan(33);
+select plan(38);
 select has_function('tests', 'setup_fixture', 'test helpers are installed (run 00_helpers first)');
 select tests.setup_fixture();
 
@@ -98,6 +98,19 @@ select is((select count(*)::int from public.audit_log
               and data ->> 'cause' = 'account_deletion'), 1,
           'the cancellation is written to the audit log with its cause');
 
+-- The people left with a canceled shift are told, and the deleted family account is not.
+select is((select count(*)::int from public.notifications
+            where template = 'shift_canceled_by_deletion' and user_id = tests.uid('provider_c')
+              and params ->> 'shift_id' = (md5('assigned-a')::uuid)::text), 1,
+          'the caregiver of a canceled shift is told');
+select is((select count(*)::int from public.notifications
+            where template = 'shift_canceled_by_deletion' and user_id = tests.uid('provider_d')
+              and params ->> 'shift_id' = (md5('offered-a')::uuid)::text), 1,
+          'a caregiver still holding an offer on a canceled shift is told');
+select is((select count(*)::int from public.notifications
+            where template = 'shift_canceled_by_deletion' and user_id = tests.uid('client_a')), 0,
+          'the deleted family account is not told');
+
 -- ================================================================ caregiver account
 select tests.authenticate_service();
 select is(public.cancel_shifts_for_user_deletion(tests.uid('provider_c')), 1,
@@ -120,6 +133,16 @@ select is((select status from public.shift_offers where shift_id = md5('shared-b
           'expired', 'the offer of the caregiver who left is expired on the shared shift too');
 select is((select status from public.shift_offers where shift_id = md5('shared-b')::uuid and provider_id = tests.uid('provider_d')),
           'offered', 'and the other caregiver keeps its offer');
+
+-- The family of the canceled caregiver shift is told; the deleted caregiver is not.
+select is((select count(*)::int from public.notifications
+            where template = 'shift_canceled_by_deletion' and user_id = tests.uid('client_b')
+              and params ->> 'shift_id' = (md5('assigned-b')::uuid)::text), 1,
+          'the family of a shift canceled by the caregiver deletion is told');
+select is((select count(*)::int from public.notifications
+            where template = 'shift_canceled_by_deletion' and user_id = tests.uid('provider_c')
+              and params ->> 'shift_id' = (md5('assigned-b')::uuid)::text), 0,
+          'the deleted caregiver is not told');
 
 -- Running it again finds nothing left to cancel.
 select tests.authenticate_service();

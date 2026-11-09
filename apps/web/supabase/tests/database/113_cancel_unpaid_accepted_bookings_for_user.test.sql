@@ -2,7 +2,7 @@
 -- with the reason "cancelada pela exclusão da conta". Paid, in-progress, disputed, completed and requested
 -- bookings, and bookings of other people, are left as they are. Only the service role can run the function.
 begin;
-select plan(26);
+select plan(32);
 select has_function('tests', 'setup_fixture', 'test helpers are installed (run 00_helpers first)');
 select tests.setup_fixture();
 
@@ -84,6 +84,19 @@ select is((select status::text from public.bookings where id = (select id from i
 select is((select status::text from public.bookings where id = (select id from ids where name = 'other_c_b')), 'accepted',
           'an accepted booking of another client is not touched');
 
+-- The other party of each canceled booking is told; the deleted account is not, and an own booking has no one to tell.
+select is((select count(*)::int from public.notifications
+            where template = 'booking_canceled_by_deletion' and user_id = tests.uid('provider_c')
+              and params ->> 'booking_id' = (select id from ids where name = 'acc_a_c')::text), 1,
+          'the caregiver of a canceled family booking is told');
+select is((select count(*)::int from public.notifications
+            where template = 'booking_canceled_by_deletion' and user_id = tests.uid('provider_a')
+              and params ->> 'booking_id' = (select id from ids where name = 'acc_a_pa')::text), 1,
+          'the provider of another canceled family booking is told');
+select is((select count(*)::int from public.notifications
+            where template = 'booking_canceled_by_deletion' and user_id = tests.uid('client_a')), 0,
+          'the deleted family account is not told');
+
 -- ================================================================ provider account
 select tests.authenticate_service();
 select is(public.cancel_unpaid_accepted_bookings_for_user(tests.uid('provider_a')), 2,
@@ -97,6 +110,20 @@ select is((select canceled_reason from public.bookings where id = (select id fro
           'cancelada pela exclusão da conta', 'and it keeps the reason');
 select is((select status::text from public.bookings where id = (select id from ids where name = 'paid_b_pa')), 'paid',
           'a paid booking of provider A is not canceled here');
+
+-- The client of a canceled booking is told; the deleted provider is not, and an own booking tells no one.
+select is((select count(*)::int from public.notifications
+            where template = 'booking_canceled_by_deletion' and user_id = tests.uid('client_b')
+              and params ->> 'booking_id' = (select id from ids where name = 'acc_b_pa')::text), 1,
+          'the client of a canceled provider booking is told');
+select is((select count(*)::int from public.notifications
+            where template = 'booking_canceled_by_deletion' and user_id = tests.uid('provider_a')
+              and params ->> 'booking_id' = (select id from ids where name = 'acc_b_pa')::text), 0,
+          'the deleted provider account is not told');
+select is((select count(*)::int from public.notifications
+            where template = 'booking_canceled_by_deletion'
+              and params ->> 'booking_id' = (select id from ids where name = 'own_pa')::text), 0,
+          'an own booking tells no one: it has no client account');
 
 -- ================================================================ running again and unknown users
 select tests.authenticate_service();

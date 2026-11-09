@@ -65,12 +65,21 @@ describe('WhatsApp template payload', () => {
 
   it('has text for every contract template', () => {
     expect(Object.keys(TEMPLATES).sort()).toEqual([
-      'agendamento_solicitado', 'atendimento_confirmado', 'lembrete_atendimento', 'orcamento_respondido', 'pagamento_recebido',
-      'plantao_oferecido', 'proposta_recebida',
+      'agendamento_solicitado', 'atendimento_confirmado', 'booking_canceled_by_deletion', 'lembrete_atendimento',
+      'orcamento_respondido', 'pagamento_recebido', 'plantao_oferecido', 'proposta_recebida', 'shift_canceled_by_deletion',
     ]);
     for (const [name, spec] of Object.entries(TEMPLATES)) {
       for (const key of spec.params) expect(spec.body, `${name}.${key}`).toContain(`{${key}}`);
     }
+  });
+
+  it('has the account-deletion texts for the people left with a canceled shift or booking', () => {
+    expect(renderTemplateText('shift_canceled_by_deletion', {})).toBe(
+      'Um plantão com você foi cancelado porque a conta da outra parte foi excluída.',
+    );
+    expect(renderTemplateText('booking_canceled_by_deletion', {})).toBe(
+      'Uma reserva com você foi cancelada porque a conta da outra parte foi excluída.',
+    );
   });
 });
 
