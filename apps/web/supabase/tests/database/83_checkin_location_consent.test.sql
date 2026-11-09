@@ -13,8 +13,8 @@ insert into public.provider_occupations (provider_id, occupation_slug, approved)
 -- A family with one care recipient, and two shifts that are inside the check-in window now.
 insert into public.households (owner_id, name, neighborhood_id)
 values (tests.uid('client_a'), 'Casa de teste', tests.neighborhood('t-bairro-1'));
-insert into public.care_recipients (household_id, first_name)
-values ((select id from public.households where name = 'Casa de teste'), 'Teste');
+insert into public.care_recipients (household_id, first_name, adult_declared_at)
+values ((select id from public.households where name = 'Casa de teste'), 'Teste', now());
 insert into public.shifts (household_id, care_recipient_id, period, rate_cents, caregiver_payout_cents, status, provider_id)
 values ((select id from public.households where name = 'Casa de teste'),
         (select id from public.care_recipients where first_name = 'Teste'),
