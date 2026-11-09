@@ -89,13 +89,6 @@ const draftOf = (client: ClientRow): Draft => ({
   notes: client.notes ?? '',
 });
 
-/** Deleting unlinks the bookings of the client (the database sets provider_client_id to null): say so before. */
-const deleteQuestion = (name: string, bookings: number): string => {
-  if (bookings === 0) return `Excluir ${name}?`;
-  const them = bookings === 1 ? 'O atendimento dele' : `Os ${bookings} atendimentos dele`;
-  return `Excluir ${name}? ${them} continua${bookings === 1 ? '' : 'm'} na agenda, mas sem o nome do cliente, e deixa${bookings === 1 ? '' : 'm'} de ser somado${bookings === 1 ? '' : 's'} ao limite semanal por cliente.`;
-};
-
 const HISTORY_SHOWN = 10;
 
 /** Bookings and quotes of one client, newest first; collapsed so the list stays short. */
@@ -137,6 +130,10 @@ const Clients: React.FC = () => {
   const [editing, setEditing] = useState<Draft | null>(null);
   const [filter, setFilter] = useState('');
   const [error, setError] = useState<unknown>(null);
+
+  // An entry with a job or a quote cannot be deleted (the database refuses it), so the history keeps its client
+  const hasHistory = (clientId: string): boolean =>
+    (clients.data?.bookings[clientId] ?? 0) > 0 || (clients.data?.historyQuotes ?? []).some(quote => quote.provider_client_id === clientId);
 
   const visible = useMemo(() => {
     const term = filter.trim().toLowerCase();
@@ -222,12 +219,11 @@ const Clients: React.FC = () => {
               </button>
               <Link to={`/pro/agenda?cliente=${client.id}`} className={`${linkClass} text-sm`}>Novo atendimento</Link>
               <Link to={`/pro/orcamentos?cliente=${client.id}`} className={`${linkClass} text-sm`}>Novo orçamento</Link>
-              <ConfirmButton
-                label="Excluir"
-                question={deleteQuestion(client.name, clients.data?.bookings[client.id] ?? 0)}
-                confirmLabel="Sim, excluir"
-                onConfirm={() => remove(client)}
-              />
+              {hasHistory(client.id) ? (
+                <p className="text-sm text-gray-500">Não pode ser excluído: tem atendimentos ou orçamentos no histórico.</p>
+              ) : (
+                <ConfirmButton label="Excluir" question={`Excluir ${client.name}?`} confirmLabel="Sim, excluir" onConfirm={() => remove(client)} />
+              )}
             </div>
           </Card>
         ))}

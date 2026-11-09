@@ -51,19 +51,21 @@ export const listConsents = async (userId: string): Promise<ConsentRow[]> =>
  * Appends a consent decision (the table is insert-only: history, never update).
  * user_id is not sent: the table grants insert only on (purpose, version, granted)
  * and fills user_id with auth.uid(), so sending it fails with permission denied.
+ * A decision equal to the latest one of that purpose and version adds no row (the database
+ * skips it, migration 20261110100006): the call still succeeds and returns null.
  */
 export const recordConsent = async (
   _userId: string,
   purpose: ConsentPurpose,
   granted: boolean,
   version: string = CONSENT_VERSIONS[purpose],
-): Promise<ConsentRow> =>
-  unwrap<ConsentRow>(
+): Promise<ConsentRow | null> =>
+  unwrapMaybe<ConsentRow>(
     await db()
       .from('consents')
       .insert({ purpose, granted, version })
       .select('id, user_id, purpose, version, granted, at')
-      .single(),
+      .maybeSingle(),
   );
 
 /**

@@ -5,6 +5,8 @@ import type { VerificationStep } from '../catalog/types';
 // ones that read differently for a provider than for the client who pays.
 const PRO_MESSAGES: Record<string, string> = {
   provider_payment_account_missing: 'Ative o recebimento em Assinatura antes de cobrar clientes.',
+  client_has_history: 'Este cliente tem atendimentos ou orçamentos no histórico, então não pode ser excluído.',
+  quote_daily_limit: 'Você já criou o máximo de orçamentos de hoje. Tente de novo amanhã.',
 };
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
