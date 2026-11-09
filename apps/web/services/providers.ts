@@ -244,6 +244,29 @@ const randomPart = (): string => globalThis.crypto?.randomUUID?.().slice(0, 8) ?
 
 const TOO_LARGE = 'O arquivo precisa ter até 10 MB.';
 
+/** Files a provider keeps in the bucket, reviewed or not (private.provider_document_slot_free). */
+const DOCUMENT_LIMIT = 30;
+const DOCUMENT_LIMIT_MESSAGE =
+  `Você já enviou o máximo de ${DOCUMENT_LIMIT} documentos. Enquanto o cadastro estiver em rascunho, ` +
+  'remova os que ainda não foram analisados antes de enviar outro.';
+
+/**
+ * The database refuses an upload over the limit with the row policy (HTTP 403), the same answer as a
+ * refused permission. The folder is counted again: when it is full, the answer is the limit; otherwise
+ * the refusal stays as it is.
+ */
+const refusedUpload = async (error: unknown, providerId: string): Promise<unknown> => {
+  const refusal = error as { status?: unknown; message?: unknown } | null;
+  const denied = refusal?.status === 403 || (typeof refusal?.message === 'string' && /row-level security/i.test(refusal.message));
+  if (!denied) return error;
+  try {
+    const { data } = await db().storage.from(DOCUMENT_BUCKET).list(providerId, { limit: DOCUMENT_LIMIT });
+    return (data?.length ?? 0) >= DOCUMENT_LIMIT ? new AppError('invalid_input', { message: DOCUMENT_LIMIT_MESSAGE }) : error;
+  } catch {
+    return error;
+  }
+};
+
 /**
  * Sends the file to the private bucket (provider-documents/<provider_id>/...) and
  * records it for the review. A failed record removes the file again.
@@ -270,7 +293,7 @@ export const uploadProviderDocument = (input: { providerId: string; step: Verifi
     const path = `${providerId}/${step}-${Date.now().toString(36)}-${randomPart()}.${extension}`;
     const bucket = db().storage.from(DOCUMENT_BUCKET);
     const { error: uploadError } = await bucket.upload(path, prepared, { contentType: prepared.type, upsert: false });
-    if (uploadError) throw uploadError;
+    if (uploadError) throw await refusedUpload(uploadError, providerId);
     try {
       return unwrap<ProviderDocumentRow>(
         await db().from('provider_documents').insert({ provider_id: providerId, step, storage_path: path }).select(DOCUMENT_COLUMNS).single(),

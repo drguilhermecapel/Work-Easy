@@ -159,3 +159,35 @@ describe('uploadProviderDocument and photo metadata', () => {
     expect(fake.uploads).toEqual([]);
   });
 });
+
+describe('the document limit of the provider folder', () => {
+  // The storage refuses an upload over the limit with the row policy: HTTP 403, as a refused permission
+  const refused = { name: 'StorageApiError', status: 403, statusCode: '403', message: 'new row violates row-level security policy' };
+
+  beforeEach(() => {
+    calls.length = 0;
+    state.refuse = false;
+    state.oversize = 'none';
+    fake.reset();
+  });
+
+  it('says the limit when the folder is full and the storage refuses the file', async () => {
+    fake.folder = Array.from({ length: 30 }, (_, i) => `cadastro_fiscal-${i}.jpg`);
+    fake.uploadError = refused;
+
+    await expect(upload(PHOTO)).rejects.toMatchObject({
+      code: 'invalid_input',
+      message:
+        'Você já enviou o máximo de 30 documentos. Enquanto o cadastro estiver em rascunho, remova os que ainda não foram analisados antes de enviar outro.',
+    });
+    expect(fake.tableCalls).toEqual([]);
+  });
+
+  it('keeps the permission sentence when the folder still has room', async () => {
+    fake.folder = Array.from({ length: 29 }, (_, i) => `cadastro_fiscal-${i}.jpg`);
+    fake.uploadError = refused;
+
+    await expect(upload(PHOTO)).rejects.toMatchObject({ code: 'permission_denied' });
+    expect(fake.tableCalls).toEqual([]);
+  });
+});

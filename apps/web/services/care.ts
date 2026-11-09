@@ -113,8 +113,10 @@ export const LIMITS = {
   reportNotes: 2000,
   birthYearMin: 1900,
   birthYearMax: 2100,
-  /** offer_shift: offers per shift. */
+  /** offer_shift: caregivers per shift, expired and declined offers included. */
   offersPerShift: 10,
+  /** offer_shift: offers per family in a rolling 24 hours; a repeated offer counts again. */
+  offersPerDay: 30,
 } as const;
 
 // ---- Health data guard ----------------------------------------------------------
@@ -173,7 +175,7 @@ type Overrides = Partial<Record<string, string>>;
 const SHARED_MESSAGES: Overrides = {
   checkin_window:
     'Fora do horário de registro. A entrada vale de 2 horas antes a 2 horas depois do início do plantão, e a saída de 2 horas antes a 2 horas depois do fim.',
-  offer_limit: `Limite de ofertas atingido: no máximo ${LIMITS.offersPerShift} cuidadores por plantão e 30 ofertas novas por dia.`,
+  offer_limit: `Limite de ofertas atingido: no máximo ${LIMITS.offersPerShift} cuidadores por plantão e ${LIMITS.offersPerDay} ofertas em 24 horas.`,
 };
 
 /** The rule the database raised (it puts the code in the message), or null. */

@@ -24,6 +24,14 @@ export const DATABASE_ERROR_CODES = [
   'availability_overlap',
   'offer_limit',
   'free_proposal_limit',
+  'shift_too_long',
+  'offer_declined',
+  'household_has_shifts',
+  'client_has_history',
+  'cpf_cnpj_invalid',
+  'quote_daily_limit',
+  'data_request_limit',
+  'storage_not_empty',
 ] as const;
 
 export type DatabaseErrorCode = (typeof DATABASE_ERROR_CODES)[number];
@@ -96,18 +104,28 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
     'O valor deste orçamento mudou depois que você abriu a página. Atualize a página e confira o novo valor antes de aceitar.',
   unit_not_allowed: 'Esta unidade de preço não é permitida para esta ocupação.',
   quote_items_invalid:
-    'Confira os itens do orçamento: cada item precisa de descrição, quantidade maior que zero e preço unitário.',
+    'Confira os itens do orçamento: cada item precisa de descrição de até 500 caracteres, quantidade maior que zero e preço unitário.',
   slug_taken: 'Este endereço de página já está em uso. Escolha outro.',
   checkin_window: 'Fora do horário de registro. O registro vale de 2 horas antes a 2 horas depois do horário previsto.',
+  // The same code covers three rules: open requests of the client, its requests to one provider
+  // (a cancelled one counts for 24 hours), and the open requests the provider already holds.
   booking_limit:
-    'Você já tem muitos pedidos de agendamento aguardando resposta. Espere o profissional responder ou cancele algum.',
-  request_limit:
-    'Você já tem o número máximo de pedidos abertos. Cancele um deles ou aguarde o vencimento de algum para criar outro.',
-  availability_limit:
-    'Você já cadastrou o número máximo de horários semanais. Remova algum horário antes de adicionar outro.',
-  availability_overlap:
-    'Este horário se sobrepõe a outro do mesmo dia da semana. Ajuste o início ou o término.',
-  offer_limit: 'Limite de ofertas atingido para este plantão ou para hoje. Tente de novo mais tarde.',
+    'Você não pode enviar outro pedido agora: há muitos pedidos abertos seus ou deste profissional, e pedidos cancelados com ele contam por 24 horas. Aguarde as respostas ou escolha outro profissional.',
+  request_limit: 'Você já tem 5 pedidos abertos. Aguarde uma resposta ou o vencimento de um deles para criar outro.',
+  availability_limit: 'Você já tem o máximo de 50 janelas de horário. Remova alguma antes de adicionar outra.',
+  availability_overlap: 'Este horário se sobrepõe a outro do mesmo dia da semana. Ajuste o início ou o término.',
+  offer_limit:
+    'Este plantão já tem o número máximo de cuidadores convidados, ou a casa já enviou o máximo de convites nas últimas 24 horas. Para convidar mais, crie outro plantão ou tente de novo depois.',
+  shift_too_long: 'Um plantão pode durar no máximo 60 dias corridos. Para um período maior, crie um plantão para cada trecho.',
+  offer_declined: 'Este cuidador recusou este plantão e não pode ser convidado de novo.',
+  household_has_shifts:
+    'Esta casa tem plantões e não pode ser apagada. Se não vai mais usar a casa, basta não criar novos plantões nela.',
+  client_has_history: 'Este cliente tem atendimentos ou orçamentos e não pode ser apagado da lista. O histórico precisa ficar.',
+  cpf_cnpj_invalid: 'CPF ou CNPJ inválido. Confira os números.',
+  quote_daily_limit: 'Você já criou o máximo de 30 orçamentos hoje. O limite renova à meia-noite, no horário de Brasília.',
+  data_request_limit: 'Você já tem solicitações pendentes deste tipo. Aguarde a resolução antes de pedir outra.',
+  storage_not_empty:
+    'Ainda há arquivos enviados na sua conta. Tente excluir a conta de novo; se o erro continuar, fale com o suporte.',
   // The monthly allowance comes from platform_settings, so the sentence does not state a number
   free_proposal_limit:
     'Você usou as propostas grátis deste mês. No plano Pro (menu Assinatura) as propostas são ilimitadas; as grátis voltam no mês que vem.',
