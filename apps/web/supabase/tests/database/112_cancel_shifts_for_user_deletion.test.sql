@@ -2,7 +2,7 @@
 -- deletion; a shift in progress, a past shift and other households' shifts are left as they are. Only the
 -- service role can run the function.
 begin;
-select plan(28);
+select plan(33);
 select has_function('tests', 'setup_fixture', 'test helpers are installed (run 00_helpers first)');
 select tests.setup_fixture();
 
@@ -44,6 +44,16 @@ insert into public.shifts (id, household_id, period, rate_cents, status, provide
 -- The offer of the offered shift is open for provider D.
 insert into public.shift_offers (shift_id, provider_id, status) values
   (md5('offered-a')::uuid, tests.uid('provider_d'), 'offered');
+
+-- Offered shifts of the other family, held by the caregiver who leaves: one holds only that caregiver's offer
+-- (it goes back to open); the other is also offered to provider D (it stays offered to D).
+insert into public.shifts (id, household_id, period, rate_cents, status, provider_id) values
+  (md5('solo-b')::uuid, (select id from ids where name = 'house_b'), tests.sp_period(tests.at(111, 0, '08:00'), 4), 100, 'offered', null),
+  (md5('shared-b')::uuid, (select id from ids where name = 'house_b'), tests.sp_period(tests.at(111, 1, '08:00'), 4), 100, 'offered', null);
+insert into public.shift_offers (shift_id, provider_id, status) values
+  (md5('solo-b')::uuid, tests.uid('provider_c'), 'offered'),
+  (md5('shared-b')::uuid, tests.uid('provider_c'), 'offered'),
+  (md5('shared-b')::uuid, tests.uid('provider_d'), 'offered');
 
 -- ================================================================ permission
 select tests.authenticate_as('client_a');
@@ -99,6 +109,17 @@ select is((select status::text from public.shifts where id = md5('past-c')::uuid
           'the past shift of the caregiver stays as it is');
 select is((select status::text from public.shifts where id = md5('in-progress-b')::uuid), 'checked_in',
           'the shift in progress of another caregiver is still checked in');
+-- Offers held by the caregiver who left: the shift with no other offer goes back to open, the shared one stays offered.
+select is((select status::text from public.shifts where id = md5('solo-b')::uuid), 'open',
+          'a shift offered only to the caregiver who left goes back to open');
+select is((select status from public.shift_offers where shift_id = md5('solo-b')::uuid and provider_id = tests.uid('provider_c')),
+          'expired', 'the offer of the caregiver who left is expired');
+select is((select status::text from public.shifts where id = md5('shared-b')::uuid), 'offered',
+          'a shift still offered to another caregiver stays offered');
+select is((select status from public.shift_offers where shift_id = md5('shared-b')::uuid and provider_id = tests.uid('provider_c')),
+          'expired', 'the offer of the caregiver who left is expired on the shared shift too');
+select is((select status from public.shift_offers where shift_id = md5('shared-b')::uuid and provider_id = tests.uid('provider_d')),
+          'offered', 'and the other caregiver keeps its offer');
 
 -- Running it again finds nothing left to cancel.
 select tests.authenticate_service();
