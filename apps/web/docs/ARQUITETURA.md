@@ -30,13 +30,14 @@ Princípios:
 supabase/
   config.toml                 configuração do projeto local
   migrations/                 SQL versionado (um arquivo por domínio, em ordem)
-  seed.sql                    gerado: catálogo + bairros (não editar à mão)
+  seed.sql                    gerado: catálogo + bairros, para desenvolvimento (não editar à mão)
+  catalog.sql                 gerado: o mesmo catálogo, aplicado em produção pelo deploy-supabase.yml
   tests/database/*.test.sql   pgTAP: RLS, triggers, funções
   functions/
     _shared/                  lógica pura (sem APIs do Deno), testada com Vitest
     <nome>/index.ts           handler fino de cada Edge Function
 scripts/
-  generate-seed.mjs           catalog/*.json + data/neighborhoods.json → supabase/seed.sql
+  generate-seed.mjs           catalog/*.json + data/neighborhoods.json → supabase/seed.sql e supabase/catalog.sql
   prerender.mjs               páginas estáticas de SEO + sitemap (fase 3)
 lib/
   supabase.ts                 cliente único (ou null no modo demonstração)
@@ -57,7 +58,7 @@ pages/<área>/...              telas novas por área (pro, cliente, admin, cuida
 | `VITE_SITE_URL` | app (pública) | URL canônica para SEO (ex.: https://workeasy.com.br) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Edge Functions | já injetada pelo Supabase |
 | `ASAAS_API_KEY` | Edge Functions | chave da conta raiz da plataforma |
-| `ASAAS_BASE_URL` | Edge Functions | `https://api-sandbox.asaas.com/v3` (sandbox) ou `https://api.asaas.com/v3` |
+| `ASAAS_BASE_URL` | Edge Functions | obrigatória em produção, sem padrão (ausente = funções de pagamento respondem 503; o sandbox é recusado): `https://api.asaas.com/v3`. Fora de produção, padrão `https://api-sandbox.asaas.com/v3` |
 | `ASAAS_WEBHOOK_TOKEN` | Edge Functions | token que o Asaas envia no cabeçalho `asaas-access-token` |
 | `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` | Edge Functions | WhatsApp Cloud API; ausentes = mensagens marcadas `skipped` |
 | `RESEND_API_KEY`, `EMAIL_FROM` | Edge Functions | e-mail transacional; ausentes = `skipped` |
@@ -65,7 +66,8 @@ pages/<área>/...              telas novas por área (pro, cliente, admin, cuida
 | `CRON_SECRET` | Edge Functions | protege funções chamadas pelo agendador |
 | `PRO_GRACE_DAYS` | Edge Functions | dias que um Pro com cobrança atrasada mantém o plano depois do fim do período pago (padrão 0, máximo 60) |
 | `ASSIST_HOURLY_LIMIT` | Edge Functions | chamadas do assistente por usuário por hora, num contador só para `request-assist`, `quote-assist` e `care-summary` (padrão 10; 0 desliga os três) |
-| `ALLOW_DEV_ORIGINS` | Edge Functions | `true` libera `http://localhost:3000` e `http://127.0.0.1:3000` no CORS; já vale com o Asaas sandbox e nunca em produção |
+| `APP_ENV` | Edge Functions | `production` (padrão quando `SITE_URL` é um endereço público e a variável não existe), ou `development`, `staging`, `test`. Qualquer outro valor conta como produção. Em produção: `ASAAS_BASE_URL` obrigatória, sandbox recusado, localhost fechado no CORS |
+| `ALLOW_DEV_ORIGINS` | Edge Functions | `true` libera `http://localhost:3000` e `http://127.0.0.1:3000` no CORS fora de produção; já vale com o Asaas sandbox; em produção é ignorado |
 
 `claims-guard` passa a reprovar no código do cliente: `service_role`,
 `SERVICE_ROLE`, `sb_secret_`, `ASAAS_API_KEY`, `WHATSAPP_TOKEN`,

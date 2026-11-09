@@ -4,7 +4,7 @@
 
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.118.0';
 import { AsaasClient } from '../_shared/asaas-client.ts';
-import { type FunctionConfig, readConfig } from '../_shared/config.ts';
+import { asaasBaseUrl, type FunctionConfig, readConfig } from '../_shared/config.ts';
 import { type AuditEntry, type AuthUser, DbError } from '../_shared/handler-kit.ts';
 import { cancelPendingPayment } from '../_shared/payment-cancel.ts';
 import type { OccupationApproval, ProviderApproval } from '../_shared/provider-approval.ts';
@@ -55,9 +55,21 @@ export async function authenticate(req: Request): Promise<Caller | null> {
   };
 }
 
+/**
+ * Asaas client of the platform account, or null when none can be built: no API key, or production
+ * without a valid ASAAS_BASE_URL. Callers answer payments_not_configured (503) where they need
+ * Asaas, so nothing is sent to it; the configuration error is logged here, once per cold start.
+ */
 export function asaasClient(): AsaasClient | null {
+  let baseUrl: string;
+  try {
+    baseUrl = asaasBaseUrl(config);
+  } catch (error) {
+    logError(error);
+    return null;
+  }
   if (!config.asaas.apiKey) return null;
-  return new AsaasClient({ apiKey: config.asaas.apiKey, baseUrl: config.asaas.baseUrl, fetch: (input, init) => fetch(input, init) });
+  return new AsaasClient({ apiKey: config.asaas.apiKey, baseUrl, fetch: (input, init) => fetch(input, init) });
 }
 
 interface PgResult<T> {

@@ -36,7 +36,7 @@ describe('AsaasClient', () => {
 
   it('handles non-JSON errors', async () => {
     const fetch = async () => new Response('<html>bad gateway</html>', { status: 502 });
-    const client = new AsaasClient({ apiKey: 'k', fetch });
+    const client = new AsaasClient({ apiKey: 'k', fetch, baseUrl: 'https://api-sandbox.asaas.com/v3' });
     const error = await client.getPixQrCode('pay_1').catch(e => e);
     expect(error).toBeInstanceOf(AsaasError);
     expect(error.errors[0].code).toBe('http_502');
@@ -59,7 +59,7 @@ describe('AsaasClient', () => {
 
   it('refuses plain http and missing keys', () => {
     expect(() => new AsaasClient({ apiKey: 'k', fetch: fetch, baseUrl: 'http://api.asaas.com/v3' })).toThrow();
-    expect(() => new AsaasClient({ apiKey: '', fetch: fetch })).toThrow();
+    expect(() => new AsaasClient({ apiKey: '', fetch: fetch, baseUrl: 'https://api-sandbox.asaas.com/v3' })).toThrow();
   });
 });
 
@@ -148,10 +148,10 @@ describe('readConfig', () => {
 
   it('opens the dev origins only for the Asaas sandbox or ALLOW_DEV_ORIGINS=true', () => {
     expect(readConfig(() => undefined).allowDevOrigins).toBe(true); // defaults to the sandbox
-    const production = { ASAAS_BASE_URL: 'https://api.asaas.com/v3' };
-    expect(readConfig(n => (production as Record<string, string>)[n]).allowDevOrigins).toBe(false);
-    expect(readConfig(n => ({ ...production, ALLOW_DEV_ORIGINS: 'true' } as Record<string, string>)[n]).allowDevOrigins).toBe(true);
-    expect(readConfig(n => ({ ...production, ALLOW_DEV_ORIGINS: 'yes' } as Record<string, string>)[n]).allowDevOrigins).toBe(false);
+    const realAsaas = { ASAAS_BASE_URL: 'https://api.asaas.com/v3' };
+    expect(readConfig(n => (realAsaas as Record<string, string>)[n]).allowDevOrigins).toBe(false);
+    expect(readConfig(n => ({ ...realAsaas, ALLOW_DEV_ORIGINS: 'true' } as Record<string, string>)[n]).allowDevOrigins).toBe(true);
+    expect(readConfig(n => ({ ...realAsaas, ALLOW_DEV_ORIGINS: 'yes' } as Record<string, string>)[n]).allowDevOrigins).toBe(false);
   });
 
   it('reads the grace days and the assistant limit as bounded integers', () => {

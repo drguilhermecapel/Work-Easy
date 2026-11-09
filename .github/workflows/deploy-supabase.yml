@@ -1,10 +1,11 @@
 name: Publicar Supabase (migrations e Edge Functions)
 
-# Applies pending migrations and publishes the Edge Functions of apps/web to the
-# production Supabase project. Runs only on demand: there is no push or
-# pull_request trigger. The default input is a dry run that only lists the
-# pending migrations. Secrets of the Edge Functions are NOT set here: that is a
-# manual step (apps/web/docs/arquitetura/infra.md).
+# Applies pending migrations, then the production catalog (supabase/catalog.sql),
+# and publishes the Edge Functions of apps/web to the production Supabase project.
+# Runs only on demand: there is no push or pull_request trigger. The default input
+# is a dry run that only lists the pending migrations. Secrets of the Edge
+# Functions (ASAAS_BASE_URL, APP_ENV, ...) are NOT set here: that is a manual step
+# (apps/web/docs/arquitetura/infra.md).
 
 on:
   workflow_dispatch:
@@ -80,15 +81,35 @@ jobs:
       - name: Vincular o projeto
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
 
-      # Only migrations are pushed. The seed (supabase/seed.sql) holds demo data
-      # and is never applied to production: db push does not include it without
-      # --include-seed. --skip-vault keeps config.toml from touching vault secrets.
+      # Migrations come first, then the catalog. supabase/seed.sql is the development
+      # seed and is never applied here (db push does not include it without
+      # --include-seed). supabase/catalog.sql is the production catalog, generated from
+      # the same source and holding nothing but the four catalog tables.
+      # --skip-vault keeps config.toml from touching vault secrets.
       - name: Listar migrations pendentes
         run: supabase db push --linked --skip-vault --dry-run
+
+      - name: Conferir que o catálogo só toca tabelas de catálogo
+        run: |
+          test -s supabase/catalog.sql
+          grep -m1 -E '^-- [0-9]+ areas' supabase/catalog.sql
+          # Lines allowed at column 0: comments, begin/commit, the catalog inserts and the
+          # on conflict clause. Indented lines are the rows and the do-update set.
+          if grep -vE -e '^--' -e '^begin;$' -e '^commit;$' -e '^$' -e '^  ' -e '^on conflict ' \
+              -e '^insert into public\.(areas|occupations|occupation_policies|neighborhoods) \(' supabase/catalog.sql; then
+            echo "::error::supabase/catalog.sql tem instruções fora do catálogo."
+            exit 1
+          fi
 
       - name: Aplicar migrations pendentes
         if: ${{ !inputs.dry_run }}
         run: supabase db push --linked --skip-vault --yes
+
+      # One transaction, idempotent (insert ... on conflict do update). Catalog rows are
+      # overwritten with the repository's values: change them only in the repository.
+      - name: Aplicar o catálogo
+        if: ${{ !inputs.dry_run }}
+        run: supabase db query --linked -f supabase/catalog.sql
 
       - name: Publicar Edge Functions
         if: ${{ inputs.deploy_functions }}
