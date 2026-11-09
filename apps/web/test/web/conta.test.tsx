@@ -166,7 +166,8 @@ describe('/conta with a backend (simulated Supabase client)', () => {
     renderAt('/conta');
     const row = (await screen.findByText('Consulta de antecedentes')).closest('li') as HTMLElement;
     expect(row).toHaveTextContent('A retirada fica registrada, mas não apaga a certidão já enviada nem muda quem pode vê-la.');
-    expect(row).toHaveTextContent('Enquanto a certidão não for analisada, você a remove no cadastro');
+    expect(row).toHaveTextContent('Você remove a certidão no cadastro só enquanto ele está em rascunho e a certidão ainda não foi analisada.');
+    expect(row).toHaveTextContent('Depois do envio para análise, você não consegue removê-la; a exclusão da sua conta também apaga a certidão.');
   });
 
   it('shows a clear message when the account export fails', async () => {
