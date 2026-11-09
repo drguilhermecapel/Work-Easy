@@ -1,7 +1,8 @@
 -- Offer limits: a caregiver who declined a shift is not offered it again; a shift takes at most
 -- 10 caregivers; a family makes at most 30 offers in 24 hours, and a caregiver offered again
--- (an expired offer sent again) counts for that day as well. The checks run one after another
--- inside the same family across its shifts.
+-- (an expired offer sent again) counts for that day as well. offer_shift locks the family row
+-- before it counts; this suite runs the checks one after another, so it covers the counts
+-- themselves, not the locking between two sessions.
 begin;
 select plan(19);
 select has_function('tests', 'setup_fixture', 'test helpers are installed (run 00_helpers first)');

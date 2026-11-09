@@ -37,6 +37,10 @@ begin
     raise exception 'invalid_transition' using errcode = 'P0001';
   end if;
 
+  -- The family row is locked before anything is counted. The daily limit is per family, across all
+  -- of its shifts, so two offers made at the same time must not both see the same remaining slots.
+  perform 1 from public.households h where h.id = v_shift.household_id for update;
+
   select h.owner_id into v_owner from public.households h where h.id = v_shift.household_id;
   select coalesce(array_agg(distinct u.id), '{}') into v_providers
     from unnest(coalesce(p_providers, '{}')) u(id) where u.id is not null;
