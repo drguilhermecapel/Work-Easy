@@ -24,7 +24,9 @@ export type TemplateName =
   | 'lembrete_atendimento'
   | 'pagamento_recebido'
   | 'orcamento_respondido'
-  | 'plantao_oferecido';
+  | 'plantao_oferecido'
+  | 'shift_canceled_by_deletion'
+  | 'booking_canceled_by_deletion';
 
 interface TemplateSpec {
   /** Ordered keys of `notifications.params`; they fill {{1}}, {{2}}, ... */
@@ -72,6 +74,17 @@ export const TEMPLATES: Record<TemplateName, TemplateSpec> = {
     params: ['starts_at', 'neighborhood_name'],
     subject: 'Plantão oferecido',
     body: 'Há um plantão oferecido para você em {starts_at}, em {neighborhood_name}. Abra o WorkEasy para aceitar ou recusar.',
+  },
+  // Sent when the other party's account is deleted: no values to fill in.
+  shift_canceled_by_deletion: {
+    params: [],
+    subject: 'Plantão cancelado',
+    body: 'Um plantão com você foi cancelado porque a conta da outra parte foi excluída.',
+  },
+  booking_canceled_by_deletion: {
+    params: [],
+    subject: 'Reserva cancelada',
+    body: 'Uma reserva com você foi cancelada porque a conta da outra parte foi excluída.',
   },
 };
 

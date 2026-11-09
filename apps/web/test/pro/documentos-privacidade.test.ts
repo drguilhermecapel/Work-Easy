@@ -172,19 +172,19 @@ describe('the document limit of the provider folder', () => {
   });
 
   it('says the limit when the folder is full and the storage refuses the file', async () => {
-    fake.folder = Array.from({ length: 30 }, (_, i) => `cadastro_fiscal-${i}.jpg`);
+    fake.folder = Array.from({ length: 60 }, (_, i) => `cadastro_fiscal-${i}.jpg`);
     fake.uploadError = refused;
 
     await expect(upload(PHOTO)).rejects.toMatchObject({
       code: 'invalid_input',
       message:
-        'Você já enviou o máximo de 30 documentos. Enquanto o cadastro estiver em rascunho, remova os que ainda não foram analisados antes de enviar outro.',
+        'Você já enviou o máximo de 60 documentos. Enquanto o cadastro estiver em rascunho, remova os que ainda não foram analisados antes de enviar outro.',
     });
     expect(fake.tableCalls).toEqual([]);
   });
 
   it('keeps the permission sentence when the folder still has room', async () => {
-    fake.folder = Array.from({ length: 29 }, (_, i) => `cadastro_fiscal-${i}.jpg`);
+    fake.folder = Array.from({ length: 59 }, (_, i) => `cadastro_fiscal-${i}.jpg`);
     fake.uploadError = refused;
 
     await expect(upload(PHOTO)).rejects.toMatchObject({ code: 'permission_denied' });
