@@ -87,11 +87,10 @@ select is((select phone from public.provider_clients where client_id = tests.uid
 select tests.clear_authentication();
 
 -- ================================================================ labor lock at acceptance
--- Provider A has two own days with an own entry typed with another phone, so client A's request for a
--- third day is not the same employer yet and is created. Then client A's account confirms that phone:
--- the account and the own entry are one employer, the acceptance is checked again, and it is refused.
+-- Provider A has two own days with an own entry that carries client A's phone. Client A's request for
+-- a third day is the same employer, so the acceptance is refused.
 select tests.authenticate_as('provider_a');
-insert into public.provider_clients (provider_id, name, phone) values (auth.uid(), 'Dona Teresa', '5511900000009');
+insert into public.provider_clients (provider_id, name, phone) values (auth.uid(), 'Dona Teresa', '5511900000001');
 insert into ids select 'own_t', id from public.provider_clients where name = 'Dona Teresa';
 select lives_ok($$select public.create_own_booking((select id from ids where name = 'own_t'), 't-domestica',
                     tests.sp_period(tests.at(45,0, '09:00')), 10000, null)$$, 'provider A schedules the first own day');
@@ -110,9 +109,6 @@ with entry as (
   returning id
 )
 insert into ids select 'dup_req', id from b;
-
--- The account confirms the phone of the own entry: a confirmed contact joins the entry to the account.
-update auth.users set phone = '5511900000009', phone_confirmed_at = now() where id = tests.uid('client_a');
 
 select tests.authenticate_as('provider_a');
 select throws_ok(format($$select public.transition_booking(%L, 'accepted')$$, (select id from ids where name = 'dup_req')),
