@@ -171,7 +171,9 @@ describe('/pro/clientes (CRM)', () => {
     const card = (await screen.findByRole('heading', { name: 'Carlos Dias' })).closest('li') as HTMLElement;
     await user.click(within(card).getByRole('button', { name: 'Excluir' }));
     await user.click(within(card).getByRole('button', { name: 'Sim, excluir' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Este cliente tem atendimentos ou orçamentos no histórico, então não pode ser excluído.');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Este cliente tem atendimentos ou orçamentos e não pode ser apagado da lista. O histórico precisa ficar.',
+    );
     expect(clients).toHaveLength(1);
   });
 });

@@ -564,13 +564,21 @@ Funções e triggers sinalizam regras com `raise exception` e mensagens-código:
 `labor_lock`, `proposal_limit`, `request_not_open`, `not_allowed`,
 `invalid_transition`, `slot_unavailable`, `registry_required`,
 `documents_missing`, `review_not_allowed`, `quote_expired`, `unit_not_allowed`,
-`quote_items_invalid` (itens do orçamento), `slug_taken` (endereço da página já usado),
+`quote_items_invalid` (itens do orçamento), `quote_daily_limit` (30 orçamentos criados no dia),
+`slug_taken` (endereço da página já usado),
 `checkin_window` (check-in/out fora de ±2 h), `booking_limit` (pedidos de agendamento
-abertos demais), `offer_limit` (ofertas de plantão demais), `free_proposal_limit` (acabaram as propostas
+abertos demais, inclusive o ciclo de cancelar e pedir de novo ao mesmo profissional),
+`request_limit` (5 pedidos abertos do cliente), `offer_limit` (ofertas de plantão demais),
+`offer_declined` (cuidador que recusou o plantão), `shift_too_long` (plantão acima de 60 dias),
+`household_has_shifts` (casa com plantão não pode ser apagada), `client_has_history` (cliente do CRM com
+atendimento ou orçamento), `cpf_cnpj_invalid` (dígito verificador), `data_request_limit` (3 solicitações
+pendentes do mesmo tipo), `availability_limit` (50 janelas) e `availability_overlap` (janelas que se
+sobrepõem no mesmo dia da semana), `free_proposal_limit` (acabaram as propostas
 grátis do mês), `storage_not_empty` (a conta
 ainda tem arquivos no Storage; só a service role vê). Todos com `errcode P0001`.
-`lib/errors.ts` traduz cada código para uma frase em pt-BR: os do banco acima (menos
-`storage_not_empty`) e os códigos de conflito das Edge Functions (`already_paid`,
+O limite de documentos do prestador (30 arquivos no bucket `provider-documents`) não tem código: o
+Storage recusa o envio com HTTP 403 e `services/providers.ts` conta a pasta para trocar a frase.
+`lib/errors.ts` traduz cada código para uma frase em pt-BR: os do banco acima e os códigos de conflito das Edge Functions (`already_paid`,
 `booking_not_canceled`, `booking_not_chargeable`, `booking_not_payable`, `quote_not_accepted`,
 `platform_booking`, `own_booking`, `price_missing`, `payment_in_progress`,
 `provider_payment_account_missing`, `payment_key_missing`, `already_onboarded`,
