@@ -58,9 +58,9 @@ export const deleteClient = (id: string): Promise<void> =>
   });
 
 /**
- * How many bookings each CRM entry has (all statuses). Deleting an entry unlinks them
- * (bookings.provider_client_id is on delete set null): the agenda loses the name and the
- * weekly labor limit stops grouping that history by client.
+ * How many bookings each CRM entry has (all statuses). An entry with bookings or quotes cannot
+ * be deleted (the database refuses it), so its history keeps the client's name and the weekly
+ * labor limit keeps grouping it.
  */
 export const countBookingsByClient = (providerId: string): Promise<Record<string, number>> =>
   guard(async () => {

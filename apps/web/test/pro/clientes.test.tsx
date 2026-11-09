@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { blobHead, blobText, captureDownloads } from './download';
-import { baseTables, isEq, ok, providerRow, signInProvider, type ProFake, type TableCall } from './fake';
+import { baseTables, isEq, ok, providerRow, ruleError, signInProvider, type ProFake, type TableCall } from './fake';
 
 vi.mock('../../lib/supabase', async () => {
   const { createProFake } = await import('./fake');
@@ -131,28 +131,48 @@ describe('/pro/clientes (CRM)', () => {
     expect(clients.map(item => item.id)).toEqual(['cli-2']);
   });
 
-  it('warns before deleting a client that has bookings, since they lose the name and the weekly grouping', async () => {
-    clients = [client(), client({ id: 'cli-2', name: 'Marta Lima', origin: 'own' }), client({ id: 'cli-3', name: 'Paulo Reis', origin: 'own' })];
+  it('does not offer to delete a client with a job or a quote, since the history keeps its client', async () => {
+    clients = [
+      client(), client({ id: 'cli-2', name: 'Marta Lima', origin: 'own' }),
+      client({ id: 'cli-3', name: 'Paulo Reis', origin: 'own' }), client({ id: 'cli-4', name: 'Ana Souza', origin: 'own' }),
+    ];
     fake.tables.bookings = () =>
       ok([
         { provider_client_id: 'cli-1' }, { provider_client_id: 'cli-1' }, { provider_client_id: 'cli-1' },
         { provider_client_id: 'cli-2' }, { provider_client_id: null },
       ]);
+    fake.tables.quotes = () =>
+      ok([{ id: 'q-1', provider_client_id: 'cli-3', title: 'Pintura', status: 'draft', total_cents: 10000, items: [], created_at: '2026-10-02T00:00:00Z' }]);
     const user = userEvent.setup();
     renderPro('/pro/clientes');
 
-    const many = (await screen.findByRole('heading', { name: 'Carlos Dias' })).closest('li') as HTMLElement;
-    await user.click(within(many).getByRole('button', { name: 'Excluir' }));
-    expect(within(many).getByText(/Excluir Carlos Dias\? Os 3 atendimentos dele continuam na agenda, mas sem o nome do cliente/)).toBeInTheDocument();
+    const withJobs = (await screen.findByRole('heading', { name: 'Carlos Dias' })).closest('li') as HTMLElement;
+    expect(within(withJobs).queryByRole('button', { name: 'Excluir' })).not.toBeInTheDocument();
+    expect(within(withJobs).getByText('Não pode ser excluído: tem atendimentos ou orçamentos no histórico.')).toBeInTheDocument();
 
-    const one = screen.getByRole('heading', { name: 'Marta Lima' }).closest('li') as HTMLElement;
-    await user.click(within(one).getByRole('button', { name: 'Excluir' }));
-    expect(within(one).getByText(/Excluir Marta Lima\? O atendimento dele continua na agenda/)).toBeInTheDocument();
+    const withJob = screen.getByRole('heading', { name: 'Marta Lima' }).closest('li') as HTMLElement;
+    expect(within(withJob).queryByRole('button', { name: 'Excluir' })).not.toBeInTheDocument();
 
-    const none = screen.getByRole('heading', { name: 'Paulo Reis' }).closest('li') as HTMLElement;
-    await user.click(within(none).getByRole('button', { name: 'Excluir' }));
-    expect(within(none).getByText('Excluir Paulo Reis?')).toBeInTheDocument();
+    const withQuote = screen.getByRole('heading', { name: 'Paulo Reis' }).closest('li') as HTMLElement;
+    expect(within(withQuote).queryByRole('button', { name: 'Excluir' })).not.toBeInTheDocument();
+
+    const free = screen.getByRole('heading', { name: 'Ana Souza' }).closest('li') as HTMLElement;
+    await user.click(within(free).getByRole('button', { name: 'Excluir' }));
+    expect(within(free).getByText('Excluir Ana Souza?')).toBeInTheDocument();
     expect(fake.tableCalls.find(call => call.table === 'bookings')?.filters).toEqual([['eq', 'provider_id', 'prov-1']]);
+  });
+
+  it('shows the database refusal in words when a client with history is deleted anyway', async () => {
+    clients = [client()];
+    fake.tables.provider_clients = (call: TableCall) => (call.op === 'delete' ? ruleError('client_has_history') : ok(clients));
+    const user = userEvent.setup();
+    renderPro('/pro/clientes');
+
+    const card = (await screen.findByRole('heading', { name: 'Carlos Dias' })).closest('li') as HTMLElement;
+    await user.click(within(card).getByRole('button', { name: 'Excluir' }));
+    await user.click(within(card).getByRole('button', { name: 'Sim, excluir' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Este cliente tem atendimentos ou orçamentos no histórico, então não pode ser excluído.');
+    expect(clients).toHaveLength(1);
   });
 });
 
