@@ -346,6 +346,14 @@ describe('family screens of the care line', () => {
       );
     });
 
+    it('says in the form that a shift lasts up to 24 hours, and what to do for a longer period', async () => {
+      renderCare('/cuidado/plantoes');
+      const form = await screen.findByRole('form', { name: 'Novo plantão' });
+      expect(
+        within(form).getByText('Cada plantão dura até 24 horas. Para um período maior, crie um plantão para cada trecho.'),
+      ).toBeInTheDocument();
+    });
+
     it('refuses health information in the notes of a shift', async () => {
       renderCare('/cuidado/plantoes');
       const form = await screen.findByRole('form', { name: 'Novo plantão' });

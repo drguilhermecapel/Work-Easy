@@ -100,6 +100,7 @@ const ShiftForm: React.FC<Props> = ({ households, recipients, initialHouseholdId
           ? `Plantão: ${formatShiftPeriod(period)} (horário de Brasília).`
           : 'Horário de Brasília. Se o fim for antes do início, o plantão termina no dia seguinte (plantão noturno).'}
       </p>
+      <p className="text-xs text-gray-500">Cada plantão dura até 24 horas. Para um período maior, crie um plantão para cada trecho.</p>
       <Field
         id="plantao-valor"
         label="Valor do plantão (R$)"
