@@ -240,7 +240,7 @@ Use o filtro de entidade e de ator em `/admin/auditoria`. O filtro de ator pede 
 | `payment.raw_viewed` | `payment` | Acesso do admin ao payload bruto, por `admin_get_payment_raw` |
 | `payment_event.unverified`, `payment_event.failed` | conforme o registro | Evento não conferido no Asaas, ou erro de processamento |
 | `provider.status` | `provider` | Aprovação e suspensão, com motivo |
-| `occupation.approval` e `occupation.approval_revoked` | `provider_occupation` | Aprovação por ocupação, e revogação quando um documento deixa de ser aceito |
+| `occupation.approval` e `occupation.approval_revoked` | `provider_occupation` | Aprovação por ocupação, e revogação quando um documento deixa de ser aceito. A rejeição do registro também retira a aprovação, sem linha `approval_revoked`: o registro fica em `registry.status` |
 | `registry.status` | `provider_occupation` | Situação do registro profissional |
 | `setting.changed` | `platform_setting` | Mudança de configuração |
 | `user.anonymized` | `profile` | Exclusão de conta (`anonymize_user`) |
@@ -336,9 +336,9 @@ Só em fraude evidente, risco imediato à segurança ou ordem de autoridade (cl�
 | Pedido | Pelo app | Pelo SAC (e-mail) | Prazo | Base |
 |---|---|---|---|---|
 | Cópia dos dados | `account-export`: JSON na hora. Grava `data_requests` com `completed` (`account-export/handler.ts`, linha 59). | Só depois de confirmar a identidade `[PLANEJADO]` | 15 dias corridos para a declaração completa | LGPD, art. 19, II (lido na cópia da Câmara). Documento 10, §7 |
-| Exclusão da conta | `account-delete`. Recusa com 409 `active_bookings` se houver atendimento `accepted`, `paid`, `in_progress` ou `disputed`. Cancela a assinatura Pro e as cobranças `pending` no Asaas, apaga os documentos, anonimiza. | Não excluir por e-mail sem identidade confirmada `[PLANEJADO]` | 15 dias corridos `[incerto]`: o art. 19, II, trata de confirmação e acesso | LGPD, art. 18, VI, e art. 16, I (lidos na cópia da Câmara). Documento 03 e documento 10, §7. |
+| Exclusão da conta | `account-delete`. Recusa com 409 `active_bookings` se houver atendimento `accepted`, `paid`, `in_progress` ou `disputed` (plantões não entram nessa checagem: o bloqueio por plantão não foi integrado `[decisão do dono]`). Cancela a assinatura Pro e as cobranças `pending` no Asaas, apaga os documentos, anonimiza. | Não excluir por e-mail sem identidade confirmada `[PLANEJADO]` | 15 dias corridos `[incerto]`: o art. 19, II, trata de confirmação e acesso | LGPD, art. 18, VI, e art. 16, I (lidos na cópia da Câmara). Documento 03 e documento 10, §7. |
 | Correção | "Minha conta": nome, telefone e cidade | Pelo SAC, para os outros dados | `[PROPOSTA]`. LGPD, art. 18, III (lido na cópia da Câmara, 2026-11-08) | |
-| Revogação de consentimento | Sem tela `[PLANEJADO]` | Pelo SAC | `[PROPOSTA]` | Documento 03 |
+| Revogação de consentimento | Em Conta, para localização, consulta de antecedentes e novidades. Revogar a consulta de antecedentes marca os arquivos para remoção, mas nenhuma rotina do repositório os apaga ainda `[lacuna]`. Revogação de WhatsApp sem interruptor `[PLANEJADO]` | Pelo SAC | `[PROPOSTA]` | Documento 03 |
 
 ### 10.2 Procedimento
 

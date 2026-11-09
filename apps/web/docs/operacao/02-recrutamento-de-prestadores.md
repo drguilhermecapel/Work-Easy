@@ -385,7 +385,7 @@ Ligação ou chamada de vídeo de uns 10 minutos, **só** com quem respondeu e a
 | 1 | Perfil | `/pro/cadastro`, "1. Seu perfil" | Nome de exibição (2 a 120 caracteres), endereço da página (botão "Verificar"; só minúsculas, números e hífens, até 80 caracteres), ocupação principal; se a política pede, número do registro e UF | Cria o prestador em **rascunho**. Endereço já usado dá `slug_taken`. Registro exigido sem número dá `registry_required` | Ajude a escolher nome e endereço, sem escolher por ela | `cadastro_criado_em` |
 | 1b | Apresentação | mesmo cartão, "Dados da página" | Apresentação (até 2000 caracteres) e a caixa "Receber pedidos novos de clientes pelo WorkEasy" | Desmarcada, deixa de ver e responder pedidos novos | Explique a caixa | n/d |
 | 2 | Bairros | "2. Bairros atendidos" | Marca os bairros de São Paulo | Sem bairro marcado, não recebe pedidos | Sugira os bairros-piloto, sem forçar | n/d |
-| 3 | Documentos | "3. Documentos" | Envia um arquivo por item da política (foto JPG, PNG, WebP ou HEIC, ou PDF, até 10 MB). Para antecedentes, marca a autorização de uso da certidão | Cada passo da política precisa de documento. Mais de um arquivo por item é aceito. Só remove arquivo ainda não revisado. Arquivos ficam em espaço privado, visível só para a pessoa e para a equipe | Nunca receba documento por WhatsApp | n/d |
+| 3 | Documentos | "3. Documentos" | Envia um arquivo por item da política (foto JPG, PNG, WebP ou HEIC, ou PDF, até 10 MB). A foto é preparada no navegador antes do envio: metadados como localização e modelo do aparelho saem; HEIC vira JPEG. PDF vai sem tratamento. Para antecedentes, marca a autorização de uso da certidão | Cada passo da política precisa de documento. Mais de um arquivo por item é aceito. Remove arquivo só com o cadastro em rascunho e o documento não revisado; depois de "Enviar para análise" o banco não apaga mais (a tela ainda mostra "Remover" para arquivo enviado, `[lacuna]`). Arquivos ficam em espaço privado, visível só para a pessoa e para a equipe | Nunca receba documento por WhatsApp | n/d |
 | 4 | Enviar para análise | "4. Enviar para análise" | Botão "Enviar para análise" | Só passa se todo passo da política tem documento enviado; senão `documents_missing` e a tela lista os que faltam | n/d | `enviado_analise_em` (onboarded) |
 | 5 | Análise | `/admin/prestadores` e `/admin/prestadores/:id` (você) | Aguarda | Veja 8.3 | Veja 8.3 | `aprovado_em` |
 | 6 | Serviços | `/pro/servicos` | Nome do serviço, descrição, preço, preço máximo opcional, unidade (só as da política), duração opcional | A unidade precisa estar na política da ocupação. Pode ser preenchido antes da aprovação | Ajude a escolher unidade | n/d |
@@ -412,7 +412,7 @@ Nomes que a tela usa: "Documento com foto e selfie", "CPF ou CNPJ (MEI, Simples 
 - [ ] **Documento com foto e selfie:** legível, nome compatível com o cadastro, selfie corresponde ao documento `[critério sugerido]`.
 - [ ] **CPF ou CNPJ:** comprovante legível, nome ou razão social compatível `[critério sugerido]`.
 - [ ] **Antecedentes:** certidão legível, de quem se cadastra, dentro da idade máxima que você definir `[DECISÃO DO DONO]`. O app guarda `expires_at`, mas **nada preenche esse campo**; anote a validade por conta própria (seção 14). Na planilha, registre só "aceito" ou "recusado", nunca o conteúdo.
-- [ ] **Registro profissional:** consulte o cadastro público do conselho (endereços na matriz por conselho, `[caminho a definir na integração]`). O botão "Confirmar registro" **exige escrever como você conferiu** (por exemplo, a data da consulta). Divergência de nome, número ou situação: "Rejeitar registro" (a ocupação sai da busca e deixa de receber pedidos).
+- [ ] **Registro profissional:** consulte o cadastro público do conselho (endereços na matriz por conselho, `[caminho a definir na integração]`). O botão "Confirmar registro" **exige escrever como você conferiu** (por exemplo, a data da consulta). Divergência de nome, número ou situação: "Rejeitar registro" (a ocupação sai da busca, deixa de receber pedidos e perde a aprovação).
 - [ ] **Certificado de curso** (eletricista): legível, entidade e carga horária compatíveis com o que a política exige `[critério sugerido]`.
 - [ ] **Aceitar documento** (observação opcional) ou **Rejeitar documento** (motivo obrigatório, visível à pessoa).
 - [ ] **Aprovar prestador.** Na primeira aprovação, o banco já aprova as ocupações que cumprem a regra (documento aceito em cada passo e registro não rejeitado) e registra no histórico quais. As demais você aprova uma a uma em **Aprovar ocupação**.
@@ -478,7 +478,7 @@ Documento com foto e selfie e CPF ou CNPJ; e, conforme a sua ocupação, certid�
 Se a sua profissão tem conselho, a divulgação que você faz continua sujeita às regras dele.
 
 SEUS DADOS
-Você pode excluir a conta no app (Minha conta). Seus dados pessoais são apagados; pagamentos e atendimentos já realizados continuam registrados de forma anonimizada, porque a lei fiscal obriga a guardar esses registros.
+Você pode excluir a conta no app (Minha conta). Se houver atendimento em andamento, a exclusão é recusada até ele ser concluído ou cancelado. Seus dados pessoais são apagados; pagamentos e atendimentos já realizados continuam registrados de forma anonimizada, porque a lei fiscal obriga a guardar esses registros.
 
 [RAZÃO SOCIAL] · CNPJ [CNPJ] · [E-MAIL DO SAC] · [WHATSAPP DA OPERAÇÃO] · [SITE]
 ```
@@ -781,14 +781,14 @@ node -e "const p=require('./catalog/policies.json');for(const s of ['diarista','
 | 1 | O cadastro real é `/pro/cadastro`, em 4 passos: "1. Seu perfil", "2. Bairros atendidos", "3. Documentos", "4. Enviar para análise" | `pages/pro/Cadastro.tsx` |
 | 2 | Nome de exibição de 2 a 120 caracteres; endereço da página até 80 caracteres, só minúsculas, números e hífens | `services/providers.ts` (`becomeProvider`, `SLUG_PATTERN`) |
 | 3 | Número de registro e UF só quando a política tem o passo de registro profissional | `pages/pro/Cadastro.tsx` (`BecomeProviderForm`); `PolicyView.requiresRegistry` |
-| 4 | Arquivos JPG, PNG, WebP, HEIC ou PDF de até 10 MB; remoção só de arquivo ainda não revisado | `services/providers.ts` (`DOCUMENT_TYPES`, `DOCUMENT_MAX_BYTES`); `pages/pro/Cadastro.tsx` |
+| 4 | Arquivos JPG, PNG, WebP, HEIC ou PDF de até 10 MB; foto preparada no navegador antes do envio; remoção só com cadastro em rascunho e arquivo não revisado | `services/providers.ts` (`DOCUMENT_TYPES`, `DOCUMENT_MAX_BYTES`); `pages/pro/Cadastro.tsx` |
 | 5 | A autorização de antecedentes grava o consentimento `background_check` | `pages/pro/Cadastro.tsx` (`DocumentsStep`) |
 | 6 | O envio para análise exige documento enviado em cada passo da política | ARQUITETURA, `submit_provider_for_review`; `pages/pro/Cadastro.tsx` (`ReviewStep`) |
 | 7 | Situações Rascunho, Em análise, Aprovado, Suspenso e seus textos de ajuda | `components/pro/labels.ts` |
 | 8 | Login por código de 6 dígitos (e-mail ou SMS) com aceite de termos; WhatsApp não é oferecido | `pages/conta/Entrar.tsx`; README |
 | 9 | `/legal` diz "Documentos em elaboração" | `pages/LegalDocs.tsx` |
 | 10 | Ações do admin: aceitar e rejeitar documento, confirmar e rejeitar registro, aprovar ocupação, aprovar prestador | `components/admin/DocumentCard.tsx`, `components/admin/OccupationCard.tsx`, `pages/admin/PrestadorDetalhe.tsx` |
-| 11 | Primeira aprovação aprova as ocupações que cumprem a regra; documento aceito que deixa de ser aceito retira aprovações dependentes | ARQUITETURA (`provider_occupations`); migration `..._11_admin.sql` |
+| 11 | Primeira aprovação aprova as ocupações que cumprem a regra; documento aceito que deixa de ser aceito retira aprovações dependentes; registro rejeitado retira a aprovação da ocupação | ARQUITETURA (`provider_occupations`); migration `..._11_admin.sql` |
 | 12 | Pedidos só para prestador aprovado, com ocupação aprovada e bairro atendido; sem telefone do cliente | `pages/pro/Pedidos.tsx`; ARQUITETURA (`open_requests_for_me`) |
 | 13 | Máximo de propostas por pedido (`proposal_limit`, padrão 3); plano gratuito com 5 propostas novas por mês civil de São Paulo; retirar não devolve a vaga | ARQUITETURA; migration `..._12_monetization.sql`; `config/features.ts` |
 | 14 | Pro a R$ 49,00 (`pro_price_cents` 4900), teste de 30 dias uma vez por conta, cancelar mantém o Pro até o fim do período pago | ARQUITETURA; `pages/pro/Assinatura.tsx`; DECISOES D2 a D4 |

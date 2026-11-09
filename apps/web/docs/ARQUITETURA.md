@@ -64,7 +64,7 @@ pages/<área>/...              telas novas por área (pro, cliente, admin, cuida
 | `ANTHROPIC_API_KEY` | Edge Functions | IA opcional (fase 3); ausente = função responde 503 |
 | `CRON_SECRET` | Edge Functions | protege funções chamadas pelo agendador |
 | `PRO_GRACE_DAYS` | Edge Functions | dias que um Pro com cobrança atrasada mantém o plano depois do fim do período pago (padrão 0, máximo 60) |
-| `ASSIST_HOURLY_LIMIT` | Edge Functions | chamadas de `request-assist` por usuário por hora (padrão 10; 0 desliga o assistente) |
+| `ASSIST_HOURLY_LIMIT` | Edge Functions | chamadas do assistente por usuário por hora, num contador só para `request-assist`, `quote-assist` e `care-summary` (padrão 10; 0 desliga os três) |
 | `ALLOW_DEV_ORIGINS` | Edge Functions | `true` libera `http://localhost:3000` e `http://127.0.0.1:3000` no CORS; já vale com o Asaas sandbox e nunca em produção |
 
 `claims-guard` passa a reprovar no código do cliente: `service_role`,
@@ -146,11 +146,13 @@ Colunas listadas sem `created_at timestamptz default now()`, que toda tabela tem
   `pro_price_cents` (4900), `proposal_limit` (3), `labor_lock_days_per_week` (2) e, da migration 12,
   `commission_cap_cents` (15000: teto da comissão; 0 = sem teto), `free_proposals_per_month` (5:
   propostas novas por mês civil de São Paulo no plano grátis; 0 = sem limite) e `pro_trial_days`
-  (30: dias de Pro grátis na primeira assinatura; 0 = sem teste, no máximo 90). As três não têm
-  faixa checada em `admin_set_setting` nem campo na tela do admin ("outras chaves passam"): mude por
-  `admin_set_setting`. Valor ilegível volta ao padrão da regra (teto 0, limite 5, teste 0).
+  (30: dias de Pro grátis na primeira assinatura; 0 = sem teste, no máximo 90). `admin_set_setting`
+  checa a faixa das três (ver Administração) e a tela de configurações tem campo para cada uma.
+  Valor ilegível volta ao padrão da regra (teto 0, limite 5, teste 0).
 - RLS: leitura pública (anon e authenticated) de catálogo, bairros e das chaves
-  de `platform_settings` que não são internas; escrita só admin.
+  de `platform_settings` que não são internas. Escrita só por `admin_set_setting` (admin) e pela
+  service role: o papel `authenticated` não tem insert, update nem delete nessa tabela
+  (migração `20261109400001`).
 
 **Prestadores** (`03_providers.sql`)
 
@@ -184,6 +186,11 @@ Colunas listadas sem `created_at timestamptz default now()`, que toda tabela tem
   no `audit_log` por ocupação (`document`, `step`, `cause` = `document_rejected` ou
   `document_removed`). Aceitar o documento de novo não devolve a aprovação: ela volta só por
   `admin_set_occupation_approval`. A ocupação sai da busca e da página pública na hora.
+  **Rejeitar o registro também retira a aprovação:** quando `registry_status` passa a `rejected`,
+  por qualquer escritor, o trigger `provider_occupations_rejection_revokes_approval` (migração
+  `20261109400002`) põe `approved = false`. Não grava `occupation.approval_revoked`: a rejeição
+  já fica em `registry.status`. Para aprovar de novo, `admin_set_occupation_approval` recusa
+  enquanto o registro estiver `rejected`.
   **Sem política, sem aprovação (falha fechada):** uma ocupação sem linha em `occupation_policies`
   não pode ser incluída (`become_provider` e a inclusão pelo prestador falham no trigger de
   registro, com qualquer escritor), nem aprovada: `admin_set_occupation_approval(…, true)` recusa
@@ -198,9 +205,15 @@ Colunas listadas sem `created_at timestamptz default now()`, que toda tabela tem
   `reviewed_at`, `expires_at date`, `rejection_reason`). Arquivos no bucket
   privado `provider-documents/<provider_id>/...` (RLS de storage: dono e admin leem; só
   quem já é prestador envia; **não há UPDATE**, então todo envio é um arquivo novo e um
-  documento novo; o dono só apaga arquivo que ainda não foi revisado, ou seja, sem
-  documento `accepted`/`rejected` apontando para ele; admin apaga qualquer um).
-  `admin_review_document(accept)` exige que o arquivo exista no bucket.
+  documento novo; o dono só apaga o arquivo de um documento enquanto o prestador está em `draft` e
+  o documento está `submitted` (migração `20261109400003`, que vale também para o objeto no
+  Storage). Depois de `submit_provider_for_review` ou de qualquer revisão, o arquivo fica travado
+  para o dono. Arquivo sem linha em `provider_documents` (envio que falhou) segue removível pelo
+  dono; admin apaga qualquer um).
+  `admin_review_document(accept)` exige que o arquivo exista no bucket. A foto é preparada no
+  navegador antes do envio (`lib/imageMetadata.ts`): metadados saem, há limite de 10 MB, HEIC vira
+  JPEG, WebP vira JPEG quando o navegador não grava WebP, e o tipo vem dos bytes. PDF vai sem
+  tratamento. Upload direto pela API de Storage não passa por essa etapa.
 - `services` (`id`, `provider_id`, `occupation_slug`, `title`, `description`,
   `price_min_cents`, `price_max_cents`, `unit price_unit`, `duration_minutes`,
   `active bool`). Trigger: `unit` deve estar em `price_units` da política.
@@ -297,6 +310,8 @@ Colunas listadas sem `created_at timestamptz default now()`, que toda tabela tem
   qualquer status exceto `canceled` (e, em `shifts`, `assigned`/`checked_in`/`completed`):
   concluir um atendimento não libera um terceiro dia. Mais de
   `labor_lock_days_per_week` → `raise exception using errcode = 'P0001', message = 'labor_lock'`.
+  O limite é `platform_settings.labor_lock_days_per_week` (padrão 2; `admin_set_setting` aceita 1 a 7;
+  a tela de configurações pede parecer jurídico para mudar).
   Vale para `book_direct`, `accept_proposal`, `create_own_booking`, `accept_shift_offer` e
   para a troca de `period`.
 - **Comissão:** `compute_platform_fee(p_booking uuid) returns int`:
@@ -447,7 +462,9 @@ Colunas listadas sem `created_at timestamptz default now()`, que toda tabela tem
   `accept_shift_offer(p_shift)` (cuidador; primeiro que aceita leva, demais
   `expired`; passa pela trava trabalhista e pela exclusão de sobreposição),
   `check_in(p_shift, p_kind, p_lat, p_lng)` (cuidador designado, dentro de ±2 h do
-  início/fim, senão `checkin_window`; check-out antes do check-in → `invalid_transition`),
+  início/fim, senão `checkin_window`; check-out antes do check-in → `invalid_transition`; coordenadas
+  só com consentimento `location` vigente no histórico de `consents` (migração `20261109400004`),
+  senão o registro entra sem `lat` e `lng`, sem erro),
   `submit_daily_report(...)` (um relatório por plantão; reenviar substitui),
   `cancel_shift(p_shift, p_reason)` (cuidador: volta a `open` e reoferece, a oferta dele
   vira `declined` e as outras voltam a `offered` com nova notificação; família: `canceled`),
@@ -505,7 +522,8 @@ Colunas listadas sem `created_at timestamptz default now()`, que toda tabela tem
   `admin_set_setting(p_key, p_value jsonb)` (as chaves editadas pela tela têm tipo e faixa checados
   no banco, erro `23514`/`invalid_setting`: `commission_enabled` e `escrow_enabled` booleanos;
   `commission_bps` 0 a 5000, `pro_price_cents` 100 a 100000, `proposal_limit` 1 a 10,
-  `labor_lock_days_per_week` 1 a 7, todos inteiros; outras chaves passam),
+  `labor_lock_days_per_week` 1 a 7, `commission_cap_cents` 0 a 1000000, `free_proposals_per_month` 0 a 100,
+  `pro_trial_days` 0 a 90, todos inteiros; outras chaves passam),
   `admin_resolve_dispute(p_booking, p_to, p_reason)`,
   `admin_set_occupation_approval(p_provider, p_occupation, p_approved bool, p_reason)` (aprovar
   exige política da ocupação, documento `accepted` em cada passo dela e registro não `rejected`;
@@ -575,8 +593,8 @@ usuário (exceto webhook e cron), responde JSON `{ ok, data | error }` e grava
 | `subscriptions-manage` | prestador | assina ou cancela o Pro (`POST /subscriptions`, ciclo mensal) e atualiza `subscriptions`/`providers.plan` |
 | `notify-dispatch` | agendador (`CRON_SECRET`) | consome `claim_notifications` e envia por WhatsApp Cloud API (template) ou Resend; sem credencial → `skipped` |
 | `account-export` | usuário | devolve JSON com os dados do próprio usuário |
-| `account-delete` | usuário | recusa (409 `active_bookings`) se há atendimento `accepted`, `paid`, `in_progress` ou `disputed`; cancela a assinatura Pro e as cobranças `pending` no Asaas; registra `data_requests`, chama `anonymize_user` e apaga o usuário do Auth |
-| `request-assist` | cliente (fase 3) | transforma texto livre em pedido estruturado (ocupação, urgência, resumo) com Claude Haiku 5.5 no servidor; limite por usuário por hora (429); responde 503 sem chave |
+| `account-delete` | usuário | recusa (409 `active_bookings`) se há atendimento `accepted`, `paid`, `in_progress` ou `disputed` (plantões de `shifts` não entram nessa checagem: o bloqueio por plantão não foi integrado `[decisão do dono]`); cancela a assinatura Pro e as cobranças `pending` no Asaas; registra `data_requests`, chama `anonymize_user` e apaga o usuário do Auth |
+| `request-assist` | cliente (fase 3) | transforma texto livre em pedido estruturado (ocupação, urgência, resumo) com Claude Haiku 5.5 no servidor; limite por usuário por hora, compartilhado com `quote-assist` e `care-summary` (padrão 10; 429); responde 503 sem `ANTHROPIC_API_KEY`; nenhuma tela chama a função hoje |
 
 Asaas: autenticação pelo cabeçalho `access_token`; valores em reais com duas
 casas (converter de centavos); conferir a documentação oficial
@@ -589,6 +607,13 @@ cartão, e o que o Asaas devolve é gravado sem `creditCard*` (nem o
 
 O que o código faz além (ou diferente) da tabela acima, e o que ele espera do
 banco. Mudou aqui, muda `supabase/functions` no mesmo commit.
+
+**Corpo da requisição**
+
+- Limite: 64 KB para JSON (`readJson`, padrão de todas as funções que leem corpo) e 256 KB para o
+  webhook do Asaas (`WEBHOOK_BODY_LIMIT`). Acima disso a função responde 413 `payload_too_large`.
+  O `Content-Length` declarado é conferido antes da leitura, e os bytes também são contados
+  enquanto chegam, então um corpo sem tamanho declarado é cortado do mesmo jeito.
 
 **Webhook (`asaas-webhook`)**
 
@@ -643,6 +668,11 @@ banco. Mudou aqui, muda `supabase/functions` no mesmo commit.
   marca `canceled` e cria outra. Se o Asaas recusa remover (já paga), devolve a
   existente. Se o `insert` falha, a cobrança criada no Asaas é removida, para não
   restar cobrança sem linha em `payments`.
+- Descrição na fatura do Asaas: `payments-create` manda sempre `WorkEasy: atendimento`.
+  `charges-create` manda o campo opcional "Descrição na fatura" do prestador (até 300 caracteres,
+  em `/pro/cobrancas`) quando ele vem preenchido; vazio, manda `WorkEasy: atendimento` (cobrança de
+  atendimento) ou `WorkEasy: orçamento` (cobrança de orçamento). [decisão do dono]: manter o campo livre ou só o texto genérico (o
+  comentário do código diz "genérico de propósito").
 - Item já pago não é cobrável: `payments-create` e `charges-create` respondem 409
   `already_paid` quando já existe pagamento `confirmed`, `received`, `held` ou `released` para o
   mesmo `booking_id` (ou `quote_id`), antes de qualquer chamada ao Asaas. A tela de cobranças do
@@ -751,11 +781,14 @@ banco. Mudou aqui, muda `supabase/functions` no mesmo commit.
 
 **Assistente (`request-assist`)**
 
+- Nenhuma tela chama `request-assist` hoje: o cliente só chama `quote-assist` e `care-summary`
+  (`services/aiAssist.ts`).
 - Modelo `claude-haiku-5-5` (classificação curta), sem raciocínio, esforço
   baixo, `max_tokens` 700, saída estruturada (`output_config.format`). O Haiku
   5.5 não tem fallback de recusa no servidor: recusa vira "preencha
   manualmente" (422).
-- Limite de `ASSIST_HOURLY_LIMIT` chamadas por usuário por hora (429
+- Limite de `ASSIST_HOURLY_LIMIT` chamadas por usuário por hora, somadas entre os três assistentes
+  (padrão 10; 429
   `assist_rate_limited`; limite 0 desliga o assistente sem consultar o banco). A cota é
   consumida **antes** da chamada ao modelo por `take_assist_quota(p_user uuid, p_limit int)
   returns boolean` (`04_marketplace.sql`, só `service_role`, `security definer`,
@@ -804,7 +837,7 @@ banco. Mudou aqui, muda `supabase/functions` no mesmo commit.
 | `/agendar/:slug` | cliente | agendamento direto em horário livre |
 | `/orcamento/:token` | público | orçamento para o cliente aceitar ou recusar; versão para imprimir/salvar PDF |
 | `/pro` | prestador | painel: hoje, próximos atendimentos, pedidos abertos, pendências do cadastro |
-| `/pro/cadastro` | prestador | onboarding: ocupação, registro, bairros, documentos exigidos pela política |
+| `/pro/cadastro` | prestador | onboarding: ocupação, registro, bairros, documentos exigidos pela política; a autorização de antecedentes grava `background_check` antes do primeiro envio dessa certidão |
 | `/pro/servicos`, `/pro/agenda`, `/pro/pedidos`, `/pro/orcamentos`, `/pro/clientes`, `/pro/cobrancas`, `/pro/assinatura` | prestador | ferramenta Pro |
 | `/pro/plantoes` | cuidador | plantões oferecidos, check-in/out, relatório do dia |
 | `/cuidado` | família | casa, assistido, plantões, relatórios |

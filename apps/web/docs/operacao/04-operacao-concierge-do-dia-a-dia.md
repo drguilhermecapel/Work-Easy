@@ -102,10 +102,10 @@ Conferidos no código em 08/11/2026. Se o código mudar, esta tabela muda junto.
 | Fila de prestadores | `admin_provider_queue`: cadastros em `pending_review` e aprovados com ocupação ainda a aprovar; ordem de chegada | `pages/admin/Prestadores.tsx`; `services/admin.ts` |
 | Documento | Aceito só se o arquivo estiver no bucket (`file missing` caso contrário). Rejeição exige motivo, que o prestador vê | `admin_review_document` (`migrations/20261019000011_admin.sql`) |
 | Aprovação do prestador | Na primeira aprovação, o banco aprova sozinho as ocupações com todos os passos aceitos e registro não rejeitado, e grava quais | `admin_set_provider_status` (mesmo arquivo) |
-| Registro profissional | "Confirmar registro" exige escrever como você conferiu; "Rejeitar registro" tira a ocupação da busca | `components/admin/OccupationCard.tsx`; O02, §8.3 |
+| Registro profissional | "Confirmar registro" exige escrever como você conferiu; "Rejeitar registro" tira a ocupação da busca e retira a aprovação | `components/admin/OccupationCard.tsx`; O02, §8.3 |
 | Pagamentos que pedem atenção | `payment.refund_failed` e `payment.received_after_cancel` ficam na lista até um `payment.refunded_after_cancel` ou um `payment.reviewed` | `admin_payments_attention` (mesmo arquivo) |
 | Contestação no admin | Duas saídas: "Liberar a favor do profissional" (`released`) ou "Cancelar a favor do cliente" (`canceled`), ambas com motivo obrigatório | `components/admin/DisputeCard.tsx` |
-| Limite de trava | Mais de `labor_lock_days_per_week` (padrão 2) dias distintos na semana ISO com o mesmo profissional e o mesmo cliente, em ocupação com `labor_lock` (ex.: doméstica). Erro `labor_lock` | ARQUITETURA, "Agenda e atendimentos" |
+| Limite de trava | Mais de `labor_lock_days_per_week` (padrão 2) dias distintos na semana ISO com o mesmo profissional e o mesmo cliente, em ocupação com `labor_lock` (ex.: doméstica). Erro `labor_lock`. Editável em `/admin/configuracoes` (1 a 7; a tela pede parecer jurídico) | ARQUITETURA, "Agenda e atendimentos" |
 
 ---
 
@@ -273,10 +273,10 @@ A ordem é a da fila: a mais antiga primeiro (`Prestadores.tsx`). Meta de primei
    - "Aceitar documento" (observação opcional). O banco recusa se o arquivo não estiver no armazenamento (`file missing`).
    - "Rejeitar documento" (motivo obrigatório; o prestador vê). Use MS-12.
    - Nunca baixe, copie ou tire print de documento (O01, §11.3, item 4).
-4. **Registro profissional (quando a ocupação exige).** Abra a consulta pública do conselho pelo link que a tela oferece (busca com o nome do conselho; o app não envia o número ao site). Digite o número você mesmo. O app não envia o número ao site `[incerto: não conferido nesta revisão]`. Depois:
+4. **Registro profissional (quando a ocupação exige).** Abra a consulta pública do conselho pelo link que a tela oferece. O link é uma busca com o nome do registro e do conselho, sem o número (`services/admin.ts`, `registryLookupUrl`). Digite o número você mesmo na consulta do conselho. O que o site do conselho faz com a consulta não foi conferido aqui. Depois:
    - "Confirmar registro": o app exige que você escreva como conferiu (data da consulta, por exemplo).
-   - "Rejeitar registro": divergência de nome, número ou situação. A ocupação sai da busca e deixa de receber pedidos.
-5. **Aprovar a ocupação.** "Aprovar ocupação" fica visível mas desabilitado, com a dica do que falta, até que todos os passos da política tenham documento aceito e o registro não esteja rejeitado. Sem política no catálogo, o banco recusa (`policy missing`). "Retirar aprovação" desfaz, com motivo.
+   - "Rejeitar registro": divergência de nome, número ou situação. A ocupação sai da busca, deixa de receber pedidos e perde a aprovação. Para voltar, o registro precisa sair de `rejected` e a ocupação ser aprovada de novo.
+5. **Aprovar a ocupação.** "Aprovar ocupação" aparece enquanto a ocupação não está aprovada. Fica desabilitado, com a dica do que falta, até que todos os passos da política tenham documento **aceito** (não só enviado), o registro não esteja rejeitado e, se a política pede registro, o número esteja informado. Sem política no catálogo, o banco recusa (`policy missing`). Com a ocupação aprovada, o botão vira "Retirar aprovação", que desfaz com motivo.
 6. **Aprovar o prestador.** "Aprovar prestador" (motivo obrigatório). Use só quando a situação for "Em análise" (L5). Na primeira aprovação, o banco aprova sozinho as ocupações que já cumprem a regra, e grava quais no histórico. As demais você aprova uma a uma (L6: aprove só depois de ao menos uma).
 7. **Avisar.** MS-13 (aprovado) ou MS-12 (documento rejeitado). Registre no log.
 8. **Suspender ou reativar** (motivo obrigatório). Suspenso, o prestador não aparece na busca nem recebe pedido. Ao suspender, as propostas `sent` são retiradas, os pedidos diretos `requested` são cancelados e os orçamentos `sent` voltam a rascunho. Atendimentos já aceitos não mudam e ficam para sua decisão (migration `20261109000005`). Reativar não aprova ocupação nova. Só com decisão registrada: `[DECISÃO DO DONO]` sobre os motivos (seção 10).

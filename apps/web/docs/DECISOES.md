@@ -14,7 +14,7 @@ Marcas: **[fonte]** vem de fonte citada no plano estratégico privado; **[estima
 | D4 | Plano grátis com 5 propostas novas por mês; Pro sem limite (`free_proposals_per_month`) | **implementado** |
 | D5 | Comissão de 12% só no primeiro serviço com cliente novo da plataforma, com teto de R$ 150,00 (`commission_cap_cents`) | **teto implementado**; comissão segue desligada |
 | D6 | Profissões reguladas: só assinatura, sem comissão e sem ranking por nota onde o conselho veda | mantido (política por ocupação) |
-| D7 | Exclusão de conta anonimiza e **não** apaga em cascata | mantido, decisão fechada |
+| D7 | Exclusão de conta anonimiza e **não** apaga o registro financeiro em cascata (pagamentos e atendimentos ficam anonimizados) | mantido, decisão fechada |
 | D8 | Avaliações: sem piso de valor; risco aceito no lançamento, com moderação e gatilho de revisão | decisão fechada |
 | D9 | Sem limite de orçamentos no grátis por enquanto | adiado com gatilho |
 | D10 | Sem plano anual por enquanto | adiado com gatilho |

@@ -528,7 +528,7 @@ CONTATO: [E-MAIL DE SUPORTE] | Política de privacidade: [URL]
 **Caminho:** Conta > "Excluir minha conta" > digitar `EXCLUIR` > confirmar. A função `account-delete`:
 
 1. Exige a confirmação `EXCLUIR` (400 `confirmation_required` se faltar). [F11]
-2. Recusa com 409 `active_bookings` se houver atendimento `accepted`, `paid`, `in_progress` ou `disputed`. A mensagem manda concluir ou cancelar esses atendimentos. [F11]
+2. Recusa com 409 `active_bookings` se houver atendimento `accepted`, `paid`, `in_progress` ou `disputed`. A mensagem manda concluir ou cancelar esses atendimentos, sem listá-los. Plantões de cuidado não entram nessa checagem (o bloqueio por plantão não foi integrado `[decisão do dono]`). [F11]
 3. Cancela a assinatura Pro e as cobranças pendentes no Asaas.
 4. Esvazia a pasta de documentos no Storage, anonimiza a conta (`anonymize_user`) e apaga o usuário do Auth. Mantém registros fiscais anonimizados. [`docs/ARQUITETURA.md`, "LGPD e auditoria"]
 
@@ -538,7 +538,7 @@ CONTATO: [E-MAIL DE SUPORTE] | Política de privacidade: [URL]
 - A retenção de registros fiscais anonimizados precisa de parecer (`docs/juridico/03`, Q11 e a seção 7.5). Nas notas, explicar: "A conta é apagada do sistema de login e os dados pessoais são apagados; registros fiscais de pagamentos são mantidos sem identificação, por obrigação legal." [CONDICIONAL: depende de parecer]
 - O caminho principal é dentro do app. Pedido só por e-mail ou telefone não basta em apps fora de setor regulado [A9]. O WorkEasy trata informação sensível (seção 2): a exceção de 5.1.1(ix) permite fluxo extra de atendimento, sem substituir o caminho no app.
 
-**Texto para o revisor:** "Excluir a conta: Conta > Excluir minha conta > digite EXCLUIR. Se houver atendimento em andamento, a exclusão é recusada e o app lista o que precisa ser concluído ou cancelado."
+**Texto para o revisor:** "Excluir a conta: Conta > Excluir minha conta > digite EXCLUIR. Se houver atendimento em andamento, a exclusão é recusada e o app pede para concluir ou cancelar esses atendimentos."
 
 ---
 
