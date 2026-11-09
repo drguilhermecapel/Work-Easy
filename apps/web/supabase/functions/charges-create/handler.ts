@@ -129,7 +129,8 @@ export function handler(req: Request, deps: ChargesCreateDeps): Promise<Response
       requireApprovedProvider(provider, booking.occupation_slug);
       amount = booking.price_cents ?? 0;
       linkedClient = booking.provider_client_id;
-      description = input.description ?? `Atendimento ${booking.occupation_slug}`;
+      // Generic on purpose, as in payments-create: the processor and the payer's statement see this text
+      description = input.description ?? 'WorkEasy: atendimento';
     } else {
       const quote = await session.getQuote(input.quote_id!);
       if (!quote || quote.provider_id !== provider.id) throw errors.notFound('Orçamento');
