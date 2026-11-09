@@ -1,9 +1,10 @@
--- Labor lock by verified identity: two accounts are one employer only through contact data
--- confirmed in auth.users, the same confirmed phone or the same confirmed e-mail on both sides.
--- Unconfirmed contact data never joins accounts, and the phone a user types in the profile
--- does not either. Each scenario uses its own week, so the counts do not mix.
+-- Labor lock by identity: two accounts are one employer only through contact data confirmed in
+-- auth.users, the same confirmed phone or the same confirmed e-mail on both sides. Unconfirmed
+-- contact data never joins accounts, and the phone a user types in the profile does not either.
+-- CRM entries that share a phone or an e-mail are one employer, as before. Each scenario uses its
+-- own week, so the counts do not mix.
 begin;
-select plan(26);
+select plan(36);
 select has_function('tests', 'setup_fixture', 'test helpers are installed (run 00_helpers first)');
 select tests.setup_fixture();
 
@@ -99,6 +100,51 @@ select lives_ok($$select tests.make_booking('provider_a', 'emp_c1', 't-domestica
                 'the first account, Tuesday: two days with the shift');
 select throws_ok($$select tests.make_booking('provider_a', 'emp_c1', 't-domestica', tests.sp_period(tests.at(86, 2, '09:00')))$$,
                  'P0001', 'labor_lock', 'the shift of the peer counts towards the same limit');
+
+-- ================================================================ CRM entries without an account
+-- Two entries of one provider with the same phone are one employer, whatever the formatting.
+select tests.authenticate_as('provider_a');
+insert into public.provider_clients (provider_id, name, phone) values
+  (auth.uid(), 'Teresa (cadastro um)', '(11) 97777-1234'),
+  (auth.uid(), 'Teresa (cadastro dois)', '+55 11 97777-1234');
+insert into ids select 'tere1', id from public.provider_clients where name = 'Teresa (cadastro um)';
+insert into ids select 'tere2', id from public.provider_clients where name = 'Teresa (cadastro dois)';
+select lives_ok($$select public.create_own_booking((select id from ids where name = 'tere1'), 't-domestica', tests.sp_period(tests.at(87, 0, '09:00')), 100, null)$$,
+                'CRM entry with a phone: first day');
+select lives_ok($$select public.create_own_booking((select id from ids where name = 'tere1'), 't-domestica', tests.sp_period(tests.at(87, 1, '09:00')), 100, null)$$,
+                'CRM entry with a phone: second day');
+select throws_ok($$select public.create_own_booking((select id from ids where name = 'tere2'), 't-domestica', tests.sp_period(tests.at(87, 2, '09:00')), 100, null)$$,
+                 'P0001', 'labor_lock', 'a second CRM entry with the same phone is the same employer');
+select tests.clear_authentication();
+
+-- ================================================================ unconfirmed account
+-- An account whose phone is not confirmed does not join the confirmed account with the same number:
+-- each counts only its own days (two each, so a shared count would refuse the fourth booking).
+select tests.create_user('emp_x1', 'Titular X1', '5511900990001');
+select tests.create_user('emp_x2', 'Titular X2', '11900990001');
+update auth.users set phone_confirmed_at = null where email = 'emp_x2@test.local';
+select lives_ok($$select tests.make_booking('provider_a', 'emp_x1', 't-domestica', tests.sp_period(tests.at(90, 0, '09:00')))$$,
+                'confirmed account, Monday');
+select lives_ok($$select tests.make_booking('provider_a', 'emp_x2', 't-domestica', tests.sp_period(tests.at(90, 1, '09:00')))$$,
+                'unconfirmed account with the same number, Tuesday');
+select lives_ok($$select tests.make_booking('provider_a', 'emp_x2', 't-domestica', tests.sp_period(tests.at(90, 2, '09:00')))$$,
+                'the unconfirmed account counts only its own days: Tuesday and Wednesday');
+select lives_ok($$select tests.make_booking('provider_a', 'emp_x1', 't-domestica', tests.sp_period(tests.at(90, 3, '09:00')))$$,
+                'the confirmed account counts only its own days: Monday and Thursday');
+
+-- ================================================================ CRM entry linked to an account
+-- An entry the platform linked to a confirmed account counts with the confirmed peers of that account.
+select tests.authenticate_as('provider_a');
+insert into public.provider_clients (provider_id, name) values (auth.uid(), 'Cliente com conta vinculada');
+insert into ids select 'linked', id from public.provider_clients where name = 'Cliente com conta vinculada';
+select lives_ok($$select public.create_own_booking((select id from ids where name = 'linked'), 't-domestica', tests.sp_period(tests.at(91, 0, '09:00')), 100, null)$$,
+                'entry without an account yet: first day');
+select lives_ok($$select public.create_own_booking((select id from ids where name = 'linked'), 't-domestica', tests.sp_period(tests.at(91, 1, '09:00')), 100, null)$$,
+                'entry without an account yet: second day');
+select tests.clear_authentication();
+update public.provider_clients set client_id = tests.uid('emp_c1') where id = (select id from ids where name = 'linked');
+select throws_ok($$select tests.make_booking('provider_a', 'emp_c2', 't-domestica', tests.sp_period(tests.at(91, 2, '09:00')))$$,
+                 'P0001', 'labor_lock', 'once linked to the first account, the entry counts with its confirmed peer');
 
 select * from finish();
 rollback;
