@@ -6,7 +6,7 @@
 -- saved another value in the shared local database. Every other file starts from the
 -- pinned values of tests.setup_fixture().
 begin;
-select plan(28);
+select plan(29);
 select has_function('tests', 'setup_fixture', 'test helpers are installed (run 00_helpers first)');
 create temp table saved_settings as select key, value from public.platform_settings;
 select tests.setup_fixture();
@@ -47,7 +47,8 @@ select throws_ok($$insert into public.areas (slug, name) values ('x-client', 'X'
                  'clients cannot insert areas (RLS)');
 select throws_ok($$insert into public.neighborhoods (name, slug) values ('X', 'x-client')$$, '42501', null,
                  'clients cannot insert neighborhoods (RLS)');
-update public.platform_settings set value = 'true' where key = 'commission_enabled';
+select throws_ok($$update public.platform_settings set value = 'true' where key = 'commission_enabled'$$, '42501', null,
+                 'a client cannot update settings');
 update public.occupation_policies set labor_lock = false where occupation_slug = 't-domestica';
 delete from public.occupations where slug = 't-reparo';
 
