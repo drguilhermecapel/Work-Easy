@@ -245,7 +245,7 @@ const randomPart = (): string => globalThis.crypto?.randomUUID?.().slice(0, 8) ?
 const TOO_LARGE = 'O arquivo precisa ter até 10 MB.';
 
 /** Files a provider keeps in the bucket, reviewed or not (private.provider_document_slot_free). */
-const DOCUMENT_LIMIT = 30;
+const DOCUMENT_LIMIT = 60;
 const DOCUMENT_LIMIT_MESSAGE =
   `Você já enviou o máximo de ${DOCUMENT_LIMIT} documentos. Enquanto o cadastro estiver em rascunho, ` +
   'remova os que ainda não foram analisados antes de enviar outro.';
