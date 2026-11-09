@@ -76,11 +76,14 @@ describe('account-delete', () => {
     shiftsFail?: boolean;
     acceptedBookings?: number;
     acceptedFail?: boolean;
+    supportTaskFails?: boolean;
   } = {}) {
     const steps: string[] = [];
     const audits: Array<{ data?: Record<string, unknown> }> = [];
     const shiftCalls: string[] = [];
     const acceptedCalls: string[] = [];
+    const supportTasks: Array<{ kind: string; payload: Record<string, string | null> }> = [];
+    const logged: unknown[] = [];
     const { client, calls } = asaasWith(over.routes ?? {
       [`DELETE /v3/subscriptions/${SUB_ID}`]: { body: { deleted: true, id: SUB_ID } },
       'DELETE /v3/payments/pay_p': { body: { deleted: true, id: 'pay_p' } },
@@ -88,6 +91,7 @@ describe('account-delete', () => {
     });
     const deps: DeleteDeps = {
       ...baseDeps,
+      logError: error => void logged.push(error),
       asaas: over.noAsaas ? null : client,
       session: async () => ({ user: USER }),
       admin: {
@@ -114,6 +118,11 @@ describe('account-delete', () => {
           steps.push('accepted-cancelled');
           return over.acceptedBookings ?? 0;
         },
+        openSupportTask: async (kind, payload) => {
+          supportTasks.push({ kind, payload });
+          if (over.supportTaskFails) throw new Error('database unavailable');
+          steps.push('support-task');
+        },
         createRequest: async () => {
           steps.push('request');
           return 'dr-1';
@@ -133,7 +142,7 @@ describe('account-delete', () => {
         },
       },
     };
-    return { deps, steps, calls, audits, shiftCalls, acceptedCalls };
+    return { deps, steps, calls, audits, shiftCalls, acceptedCalls, supportTasks, logged };
   }
 
   const confirm = () => post('account-delete', { confirm: 'EXCLUIR' });
@@ -283,6 +292,32 @@ describe('account-delete', () => {
     const { deps, steps } = deleteDeps({ acceptedFail: true });
     expect((await read(await accountDelete(confirm(), deps))).status).toBe(500);
     expect(steps).toEqual(['request', 'shifts-cancelled', 'status:failed']);
+  });
+
+  it('does not block on a charge with no subaccount key: it opens a support task with identifiers only', async () => {
+    const { deps, steps, calls, audits, supportTasks } = deleteDeps({ subKey: null, charges: CHARGES });
+    const res = await read(await accountDelete(confirm(), deps));
+    expect(res.status).toBe(200);
+    // The platform charge is cancelled in Asaas; the provider's own charge is out of reach without its key
+    expect(calls.map(c => `${c.method} ${new URL(c.url).pathname}`)).toEqual(['DELETE /v3/payments/pay_p']);
+    expect(supportTasks).toEqual([
+      { kind: 'asaas_charge_without_key', payload: { payment_id: 'pay-row-2', provider_id: USER.id } },
+    ]);
+    expect(Object.keys(supportTasks[0].payload).sort()).toEqual(['payment_id', 'provider_id']);
+    expect(steps.indexOf('support-task')).toBeGreaterThan(-1);
+    expect(steps.indexOf('support-task')).toBeLessThan(steps.indexOf('anonymize'));
+    expect(audits[0].data).toMatchObject({ charges_canceled: 1 });
+  });
+
+  it('finishes the deletion when the support task cannot be opened, and logs the failure', async () => {
+    const { deps, steps, supportTasks, logged } = deleteDeps({ subKey: null, charges: CHARGES, supportTaskFails: true });
+    const res = await read(await accountDelete(confirm(), deps));
+    expect(res.status).toBe(200);
+    expect(supportTasks).toHaveLength(1);
+    expect(steps).toContain('anonymize');
+    expect(steps).toContain('auth-delete');
+    expect(logged).toHaveLength(1);
+    expect((logged[0] as Error).message).toContain('pay-row-2');
   });
 
   it('explains a partial failure when the Auth delete fails', async () => {

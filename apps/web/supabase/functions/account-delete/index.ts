@@ -94,6 +94,9 @@ const deps: DeleteDeps = {
     async cancelUnpaidAcceptedBookings(userId) {
       return must(await serviceClient().rpc('cancel_unpaid_accepted_bookings_for_user', { p_user: userId })) as number;
     },
+    async openSupportTask(kind, payload) {
+      must(await serviceClient().rpc('open_support_task', { p_kind: kind, p_payload: payload }));
+    },
     async createRequest(userId) {
       const row = must(
         await serviceClient()

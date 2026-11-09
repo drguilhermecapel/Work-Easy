@@ -1,9 +1,10 @@
 // account-delete (usuário): requires {"confirm":"EXCLUIR"}. Refuses while the
 // user has a booking paid, in progress or disputed. Otherwise it stops the
-// money first (cancels the Pro subscription and the open charges in Asaas),
-// cancels the user's assigned shifts (shifts never block the deletion: the
-// right to erasure prevails) and the accepted bookings that are not paid,
-// empties the user's folder in the provider-documents bucket (anonymize_user
+// money first (cancels the Pro subscription and the open charges in Asaas; a
+// charge whose subaccount key is missing opens a support task instead and does
+// not block), cancels the user's assigned shifts (shifts never block the
+// deletion: the right to erasure prevails) and the accepted bookings that are
+// not paid, empties the user's folder in the provider-documents bucket (anonymize_user
 // refuses to run while it has files: storage_not_empty), records the request in
 // data_requests, calls anonymize_user (payments and bookings stay,
 // anonymized, for tax obligations) and deletes the user from Supabase Auth.
@@ -46,6 +47,8 @@ export interface DeleteDeps extends BaseDeps {
     listOpenCharges(userId: string): Promise<OpenCharge[]>;
     markPaymentCanceled(id: string): Promise<void>;
     getSubaccountApiKey(providerId: string): Promise<string | null>;
+    /** Opens a support task (open_support_task); the payload carries identifiers only, never personal data. */
+    openSupportTask(kind: string, payload: Record<string, string | null>): Promise<void>;
     /** Removes every object under provider-documents/<userId>/ (any depth); returns how many. */
     removeDocuments(userId: string): Promise<number>;
     /** Cancels the shifts the user is assigned to (cancel_shifts_for_user_deletion); returns how many. */
@@ -67,7 +70,8 @@ const isStatus = (error: unknown, ...statuses: number[]) => error instanceof Asa
 /**
  * Cancels the Pro subscription and the open charges in Asaas so nothing keeps
  * billing a user who no longer exists. Safe to repeat: what Asaas no longer
- * has (404) counts as done.
+ * has (404) counts as done. A charge whose subaccount key is missing cannot be
+ * reached from here: it opens a support task and does not block the deletion.
  */
 async function stopMoney(deps: DeleteDeps, userId: string, now: Date): Promise<{ subscription: boolean; charges: number }> {
   const subscriptionId = await deps.admin.getActiveSubscriptionId(userId);
@@ -91,8 +95,10 @@ async function stopMoney(deps: DeleteDeps, userId: string, now: Date): Promise<{
     if (charge.account === 'provider') {
       const key = charge.provider_id ? await deps.admin.getSubaccountApiKey(charge.provider_id) : null;
       if (!key) {
-        // Nothing can reach that charge: leave it for the support to void in the Asaas panel
-        deps.logError(new Error(`account-delete: no subaccount key to cancel charge ${charge.asaas_payment_id}`));
+        // Nothing can reach that charge: support voids it in the Asaas panel. Identifiers only.
+        await deps.admin
+          .openSupportTask('asaas_charge_without_key', { payment_id: charge.id, provider_id: charge.provider_id })
+          .catch(() => deps.logError(new Error(`account-delete: support task not opened for charge ${charge.id}`)));
         continue;
       }
       client = root.withApiKey(key);
