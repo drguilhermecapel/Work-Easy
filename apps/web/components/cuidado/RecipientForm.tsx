@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { LIMITS, type CareRecipient, type RecipientInput } from '../../services/care';
+import { AppError } from '../../lib/errors';
+import { ADULT_DECLARATION_REQUIRED, LIMITS, type CareRecipient, type RecipientInput } from '../../services/care';
 import ErrorAlert from '../ErrorAlert';
 import HealthDataNotice from './HealthDataNotice';
 import { inputClass, primaryButton, secondaryButton } from './styles';
@@ -19,20 +20,27 @@ const RecipientForm: React.FC<Props> = ({ idPrefix, initial, submitLabel, onSubm
   const [birthYear, setBirthYear] = useState(initial?.birth_year ? String(initial.birth_year) : '');
   const [preferences, setPreferences] = useState(initial?.preferences ?? '');
   const [emergencyContact, setEmergencyContact] = useState(initial?.emergency_contact ?? '');
+  const [adultDeclared, setAdultDeclared] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
+    // A new person is sent only with the declaration of adulthood; the screen says so before any call
+    if (!initial && !adultDeclared) {
+      setError(new AppError('invalid_input', { message: ADULT_DECLARATION_REQUIRED }));
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
-      await onSubmit({ firstName, birthYear, preferences, emergencyContact });
+      await onSubmit({ firstName, birthYear, preferences, emergencyContact, adultDeclared });
       if (!initial) {
         setFirstName('');
         setBirthYear('');
         setPreferences('');
         setEmergencyContact('');
+        setAdultDeclared(false);
       }
     } catch (err) {
       setError(err);
@@ -96,6 +104,12 @@ const RecipientForm: React.FC<Props> = ({ idPrefix, initial, submitLabel, onSubm
           autoComplete="off"
         />
       </Field>
+      {!initial && (
+        <label className="flex items-start gap-2 text-sm text-gray-700">
+          <input type="checkbox" className="mt-1" checked={adultDeclared} onChange={e => setAdultDeclared(e.target.checked)} />
+          <span>Declaro que a pessoa cuidada tem 18 anos completos.</span>
+        </label>
+      )}
       <ErrorAlert error={error} />
       <div className="flex flex-wrap gap-2">
         <button type="submit" className={primaryButton} disabled={busy}>

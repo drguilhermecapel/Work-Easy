@@ -168,7 +168,7 @@ describe('family screens of the care line', () => {
       expect(screen.getByRole('heading', { name: /Casa da vó/ })).toBeInTheDocument();
     });
 
-    it('adds a care recipient with first name, birth year, preferences and emergency contact only', async () => {
+    it('adds a care recipient with first name, birth year, preferences, emergency contact and the adulthood declaration', async () => {
       world.households = [household()];
       renderCare('/cuidado');
       await userEvent.click(await screen.findByRole('button', { name: /Cadastrar pessoa cuidada/ }));
@@ -177,16 +177,39 @@ describe('family screens of the care line', () => {
       await userEvent.type(within(form).getByLabelText(/Ano de nascimento/), '1940');
       await userEvent.type(within(form).getByLabelText(/Preferências/), 'Gosta de rádio de manhã');
       await userEvent.type(within(form).getByLabelText(/Contato de emergência/), 'Filho, 11 90000-0000');
+      await userEvent.click(within(form).getByRole('checkbox', { name: 'Declaro que a pessoa cuidada tem 18 anos completos.' }));
+      const before = Date.now();
       await userEvent.click(within(form).getByRole('button', { name: 'Cadastrar pessoa' }));
 
       expect(await screen.findByText(/nascido\(a\) em 1940/)).toBeInTheDocument();
-      expect(callsOn('care_recipients', 'insert')[0].payload).toEqual({
+      const payload = callsOn('care_recipients', 'insert')[0].payload as Record<string, unknown>;
+      expect(payload).toEqual({
         household_id: 'house-1',
         first_name: 'Lúcia',
         birth_year: 1940,
         preferences: 'Gosta de rádio de manhã',
         emergency_contact: 'Filho, 11 90000-0000',
+        adult_declared_at: expect.any(String),
       });
+      // The time of the declaration is the time of sending
+      const declared = Date.parse(String(payload.adult_declared_at));
+      expect(declared).toBeGreaterThanOrEqual(before);
+      expect(declared).toBeLessThanOrEqual(Date.now());
+    });
+
+    it('does not send a new care recipient without the adulthood declaration, and says why', async () => {
+      world.households = [household()];
+      renderCare('/cuidado');
+      await userEvent.click(await screen.findByRole('button', { name: /Cadastrar pessoa cuidada/ }));
+      const form = screen.getByRole('form', { name: 'Novo assistido' });
+      await userEvent.type(within(form).getByLabelText('Primeiro nome'), 'Lúcia');
+      await userEvent.click(within(form).getByRole('button', { name: 'Cadastrar pessoa' }));
+
+      expect(await within(form).findByRole('alert')).toHaveTextContent(
+        'Confirme que a pessoa cuidada tem 18 anos completos para cadastrá-la. Sem essa declaração, o cadastro não é enviado.',
+      );
+      expect(within(form).getByRole('checkbox', { name: 'Declaro que a pessoa cuidada tem 18 anos completos.' })).not.toBeChecked();
+      expect(callsOn('care_recipients', 'insert')).toHaveLength(0);
     });
 
     it('refuses health information in any text, and a surname', async () => {
@@ -195,6 +218,7 @@ describe('family screens of the care line', () => {
       await userEvent.click(await screen.findByRole('button', { name: /Cadastrar pessoa cuidada/ }));
       const form = screen.getByRole('form', { name: 'Novo assistido' });
       await userEvent.type(within(form).getByLabelText('Primeiro nome'), 'Lúcia Souza');
+      await userEvent.click(within(form).getByRole('checkbox', { name: 'Declaro que a pessoa cuidada tem 18 anos completos.' }));
       await userEvent.click(within(form).getByRole('button', { name: 'Cadastrar pessoa' }));
       expect(await within(form).findByRole('alert')).toHaveTextContent(/só o primeiro nome/);
 

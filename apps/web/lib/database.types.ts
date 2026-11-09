@@ -213,14 +213,14 @@ isOneToOne: false
                   ]
                 },"care_recipients": {
                   Row: {
-                    "birth_year": number | null,"created_at": string,"emergency_contact": string | null,"first_name": string,"household_id": string,"id": string,"preferences": string | null
+                    "adult_declared_at": string | null,"birth_year": number | null,"created_at": string,"emergency_contact": string | null,"first_name": string,"household_id": string,"id": string,"preferences": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "birth_year"?: number | null,"created_at"?: string,"emergency_contact"?: string | null,"first_name": string,"household_id": string,"id"?: string,"preferences"?: string | null
+                    "adult_declared_at": string,"birth_year"?: number | null,"created_at"?: string,"emergency_contact"?: string | null,"first_name": string,"household_id": string,"id"?: string,"preferences"?: string | null
                   }
                   Update: {
-                    "birth_year"?: number | null,"created_at"?: string,"emergency_contact"?: string | null,"first_name"?: string,"household_id"?: string,"id"?: string,"preferences"?: string | null
+                    "adult_declared_at"?: string | null,"birth_year"?: number | null,"created_at"?: string,"emergency_contact"?: string | null,"first_name"?: string,"household_id"?: string,"id"?: string,"preferences"?: string | null
                   }
                   Relationships: [
                     {

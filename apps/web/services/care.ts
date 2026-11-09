@@ -271,7 +271,13 @@ export interface RecipientInput {
   birthYear: string;
   preferences: string | null;
   emergencyContact: string | null;
+  /** The declaration that the person cared for has 18 years or more: required to add a person, not asked on edit. */
+  adultDeclared?: boolean;
 }
+
+/** Shown when a person is added without the declaration of adulthood. */
+export const ADULT_DECLARATION_REQUIRED =
+  'Confirme que a pessoa cuidada tem 18 anos completos para cadastrá-la. Sem essa declaração, o cadastro não é enviado.';
 
 const recipientRow = (input: RecipientInput) => {
   const firstName = input.firstName.trim();
@@ -302,16 +308,18 @@ export const listRecipients = (householdIds: string[]): Promise<CareRecipient[]>
     );
   });
 
+/** A new person, with the time of the adulthood declaration (the database asks for it on new rows). */
 export const createRecipient = (householdId: string, input: RecipientInput): Promise<CareRecipient> =>
-  guard(async () =>
-    unwrap<CareRecipient>(
+  guard(async () => {
+    if (input.adultDeclared !== true) throw new AppError('invalid_input', { message: ADULT_DECLARATION_REQUIRED });
+    return unwrap<CareRecipient>(
       await db()
         .from('care_recipients')
-        .insert({ household_id: householdId, ...recipientRow(input) })
+        .insert({ household_id: householdId, ...recipientRow(input), adult_declared_at: new Date().toISOString() })
         .select(RECIPIENT_COLUMNS)
         .single(),
-    ),
-  );
+    );
+  });
 
 export const updateRecipient = (id: string, input: RecipientInput): Promise<CareRecipient> =>
   guard(async () =>
