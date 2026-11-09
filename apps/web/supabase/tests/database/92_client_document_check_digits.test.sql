@@ -1,12 +1,19 @@
 -- CPF and CNPJ of a CRM entry: check digits are checked by the database (migration 20261110100003),
 -- and the provider cannot change the document of an entry linked to a platform account.
 begin;
-select plan(24);
+select plan(25);
 select has_function('tests', 'setup_fixture', 'test helpers are installed (run 00_helpers first)');
 select tests.setup_fixture();
 
 create temp table ids (name text primary key, id uuid);
 grant all on ids to authenticated, anon, service_role;
+
+-- The trigger function is run by its trigger only: no API role can call it (migration 20261110100007)
+select is(
+  (select count(*)::int from pg_proc p cross join lateral aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a
+    where p.oid = 'private.guard_client_document()'::regprocedure and a.privilege_type = 'EXECUTE'
+      and a.grantee in (0, (select oid from pg_roles where rolname = 'anon'), (select oid from pg_roles where rolname = 'authenticated'))),
+  0, 'the document trigger function is not executable by PUBLIC, anon or authenticated');
 
 -- The pure check functions: right digits, wrong digits, a repeated digit, a non-digit
 select is(private.is_valid_cpf('12345678909'), true, 'a CPF with correct check digits is valid');
