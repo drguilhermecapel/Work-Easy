@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { ERROR_MESSAGES } from '../../lib/errors';
 import {
   CAREGIVER_ID,
   FAMILY_ID,
@@ -9,6 +10,7 @@ import {
   newWorld,
   pgRange,
   recipient,
+  ruleError,
   shiftRow,
   useWorld,
   type CareWorld,
@@ -117,43 +119,53 @@ describe('family screens of the care line', () => {
       renderCare('/cuidado');
       await userEvent.click(await screen.findByRole('button', { name: 'Apagar casa' }));
       const group = screen.getByRole('group', { name: /Apagar “Casa da vó”\?/ });
-      expect(group).toHaveTextContent(/assistidos, plantões, registros de entrada e saída e relatórios/);
+      expect(group).toHaveTextContent('Os assistidos desta casa também serão apagados.');
+      // The text of the old promise (shifts go with the house) is gone
+      expect(group).not.toHaveTextContent(/plantões|registros de entrada|relatórios/);
       expect(callsOn('households', 'delete')).toHaveLength(0);
       await userEvent.click(within(group).getByRole('button', { name: 'Apagar casa e tudo dela' }));
       expect(await screen.findByText(/Você ainda não cadastrou uma casa/)).toBeInTheDocument();
       expect(callsOn('households', 'delete')).toHaveLength(1);
     });
 
-    it('warns before deleting a house that has a caregiver confirmed for a shift that has not ended', async () => {
+    it('does not offer to delete a house that has shifts, whatever their status, and says why', async () => {
       world.households = [household()];
       world.recipients = [recipient()];
       world.shifts = [
         shiftRow({ id: 'shift-a', status: 'assigned', provider_id: CAREGIVER_ID }),
-        shiftRow({ id: 'shift-b', status: 'checked_in', provider_id: CAREGIVER_ID }),
-        // Not counted: no caregiver yet, already over, and canceled
-        shiftRow({ id: 'shift-c', status: 'offered' }),
+        shiftRow({ id: 'shift-b', status: 'offered' }),
         shiftRow({
-          id: 'shift-d',
+          id: 'shift-c',
           status: 'completed',
           provider_id: CAREGIVER_ID,
           period: pgRange(new Date('2020-01-15T11:00:00Z'), new Date('2020-01-15T23:00:00Z')),
         }),
-        shiftRow({ id: 'shift-e', status: 'canceled', provider_id: null }),
       ];
       renderCare('/cuidado');
-      await userEvent.click(await screen.findByRole('button', { name: 'Apagar casa' }));
-      const group = screen.getByRole('group', { name: /Apagar “Casa da vó”\?/ });
-      expect(group).toHaveTextContent('Há 2 plantões com cuidador confirmado que ainda não terminaram');
-      expect(group).toHaveTextContent(/o app não avisa o cuidador/);
-      expect(group).toHaveTextContent(/Cancele antes/);
+      expect(await screen.findByText(ERROR_MESSAGES.household_has_shifts)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Apagar casa' })).not.toBeInTheDocument();
+      // The old warning about caregivers, and its advice to cancel first, are gone
+      expect(screen.queryByText(/cuidador confirmado|Cancele antes|o app não avisa o cuidador/)).not.toBeInTheDocument();
+      expect(callsOn('households', 'delete')).toHaveLength(0);
     });
 
-    it('does not warn about caregivers when the house has none confirmed', async () => {
+    it('offers the delete of a house that has never had a shift', async () => {
       world.households = [household()];
-      world.shifts = [shiftRow({ status: 'offered' })];
+      world.shifts = [];
       renderCare('/cuidado');
       await userEvent.click(await screen.findByRole('button', { name: 'Apagar casa' }));
-      expect(screen.getByRole('group', { name: /Apagar “Casa da vó”\?/ })).not.toHaveTextContent(/cuidador confirmado/);
+      expect(screen.getByRole('group', { name: /Apagar “Casa da vó”\?/ })).toBeInTheDocument();
+    });
+
+    it('shows the database refusal when a shift was booked after the screen loaded', async () => {
+      world.households = [household()];
+      renderCare('/cuidado');
+      const original = fake.tables.households;
+      fake.tables.households = call => (call.op === 'delete' ? ruleError('household_has_shifts') : original(call));
+      await userEvent.click(await screen.findByRole('button', { name: 'Apagar casa' }));
+      await userEvent.click(within(screen.getByRole('group', { name: /Apagar “Casa da vó”\?/ })).getByRole('button', { name: 'Apagar casa e tudo dela' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent('Esta casa tem plantões e não pode ser apagada.');
+      expect(screen.getByRole('heading', { name: /Casa da vó/ })).toBeInTheDocument();
     });
 
     it('adds a care recipient with first name, birth year, preferences and emergency contact only', async () => {
@@ -429,7 +441,15 @@ describe('family screens of the care line', () => {
       renderCare('/cuidado/plantoes/shift-1');
       await userEvent.click(await screen.findByRole('checkbox', { name: /Ana Cuidadora/ }));
       await userEvent.click(screen.getByRole('button', { name: 'Oferecer a 1 cuidador' }));
-      expect(await screen.findByRole('alert')).toHaveTextContent(/Limite de ofertas atingido: no máximo 10 cuidadores por plantão e 30 ofertas novas por dia/);
+      expect(await screen.findByRole('alert')).toHaveTextContent(/Limite de ofertas atingido: no máximo 10 cuidadores por plantão e 30 ofertas em 24 horas/);
+    });
+
+    it('says why a caregiver who declined the shift cannot be invited again', async () => {
+      world.rpcErrors.offer_shift = 'offer_declined';
+      renderCare('/cuidado/plantoes/shift-1');
+      await userEvent.click(await screen.findByRole('checkbox', { name: /Ana Cuidadora/ }));
+      await userEvent.click(screen.getByRole('button', { name: 'Oferecer a 1 cuidador' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent('Este cuidador recusou este plantão e não pode ser convidado de novo.');
     });
 
     it('explains the labor lock, with the direct hiring path, if the database ever refuses an offer for it', async () => {
