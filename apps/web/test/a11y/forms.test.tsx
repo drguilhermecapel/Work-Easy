@@ -57,6 +57,7 @@ describe('/entrar', () => {
 
     await user.type(phone, '98765');
     await user.click(screen.getByRole('checkbox', { name: /Li e aceito/ }));
+    await user.click(screen.getByRole('checkbox', { name: /18 anos/ }));
     await user.click(screen.getByRole('button', { name: 'Enviar código' }));
 
     const alert = await screen.findByRole('alert');
@@ -72,6 +73,7 @@ describe('/entrar', () => {
     renderAt('/entrar');
     await user.type(await screen.findByLabelText('Seu e-mail'), 'maria@example.com');
     await user.click(screen.getByRole('checkbox', { name: /Li e aceito/ }));
+    await user.click(screen.getByRole('checkbox', { name: /18 anos/ }));
     await user.click(screen.getByRole('button', { name: 'Enviar código' }));
     const code = await screen.findByLabelText('Código');
     expect(code).toHaveFocus();

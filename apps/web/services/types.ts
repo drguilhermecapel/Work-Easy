@@ -7,7 +7,7 @@ export type ProviderStatus = 'draft' | 'pending_review' | 'approved' | 'suspende
 export type PlanCode = 'free' | 'pro';
 export type RequestStatus = 'open' | 'matched' | 'closed' | 'canceled';
 export type ProposalStatus = 'sent' | 'accepted' | 'declined' | 'withdrawn';
-export type ConsentPurpose = 'terms' | 'privacy' | 'marketing' | 'background_check' | 'location';
+export type ConsentPurpose = 'terms' | 'privacy' | 'marketing' | 'background_check' | 'location' | 'age_declaration';
 export type DataRequestKind = 'export' | 'delete';
 
 /** profiles */

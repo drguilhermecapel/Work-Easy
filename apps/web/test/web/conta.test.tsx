@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { CONSENT_VERSIONS } from '../../config/legal';
 import { profileRow, type FakeSupabase, type TableCall } from './fakeSupabase';
 
 vi.mock('../../lib/supabase', async () => {
@@ -130,6 +131,34 @@ describe('/conta with a backend (simulated Supabase client)', () => {
     expect(screen.getByRole('button', { name: /Baixar meus dados/ })).toBeInTheDocument();
   });
 
+  it('keeps an account without the declaration of 18 years at the gate until it makes it', async () => {
+    fake.session = { access_token: 't', user: { id: USER_ID, email: 'maria@example.com' } };
+    // Terms and privacy were accepted in their current versions; the declaration of age was never made
+    const history: Array<Record<string, unknown>> = [
+      { id: 'c-terms', user_id: USER_ID, purpose: 'terms', version: CONSENT_VERSIONS.terms, granted: true, at: '2030-01-01T10:00:00Z' },
+      { id: 'c-privacy', user_id: USER_ID, purpose: 'privacy', version: CONSENT_VERSIONS.privacy, granted: true, at: '2030-01-01T10:00:00Z' },
+    ];
+    fake.tables.consents = (call: TableCall) => {
+      if (call.op !== 'insert') return { data: history, error: null };
+      const row = { id: 'c-new', at: '2030-01-02T10:00:00Z', ...(call.payload as object) };
+      history.unshift(row);
+      return { data: row, error: null };
+    };
+    const user = userEvent.setup();
+    renderAt('/conta');
+    expect(await screen.findByText(/confirme a declaração abaixo/)).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: /Li e aceito/ })).not.toBeInTheDocument();
+    const accept = screen.getByRole('button', { name: 'Aceitar e continuar' });
+    expect(accept).toBeDisabled();
+    await user.click(screen.getByRole('checkbox', { name: 'Declaro que tenho 18 anos completos.' }));
+    await user.click(accept);
+
+    expect(await screen.findByRole('heading', { name: 'Minha conta' })).toBeInTheDocument();
+    const inserts = fake.tableCalls.filter(c => c.table === 'consents' && c.op === 'insert');
+    expect(inserts).toHaveLength(1);
+    expect(inserts[0].payload).toMatchObject({ purpose: 'age_declaration', granted: true, version: CONSENT_VERSIONS.age_declaration });
+  });
+
   it('clears the request draft on sign-out', async () => {
     fake.session = { access_token: 't', user: { id: USER_ID, email: 'maria@example.com' } };
     sessionStorage.setItem('workeasy:pedido-rascunho', JSON.stringify({ description: 'Faxina na casa da Maria' }));
@@ -232,13 +261,23 @@ describe('/entrar with a backend', () => {
     };
   });
 
-  it('signs in with an e-mail code and records terms and privacy acceptance', async () => {
+  /** Both boxes of the sign-in screen: the terms and the declaration of 18 years or more. */
+  const acceptBoxes = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByRole('checkbox', { name: /Li e aceito/ }));
+    await user.click(screen.getByRole('checkbox', { name: 'Declaro que tenho 18 anos completos.' }));
+  };
+
+  it('signs in with an e-mail code and records terms, privacy and the declaration of 18 years', async () => {
     const user = userEvent.setup();
     renderAt('/entrar?next=%2Fconta');
     await user.type(await screen.findByLabelText('Seu e-mail'), ' Maria@Example.com ');
     const send = screen.getByRole('button', { name: 'Enviar código' });
-    expect(send).toBeDisabled(); // terms not accepted yet
-    await user.click(screen.getByRole('checkbox'));
+    expect(send).toBeDisabled(); // no box checked yet
+    await user.click(screen.getByRole('checkbox', { name: /Li e aceito/ }));
+    expect(send).toBeDisabled(); // the declaration of 18 years is still missing
+    await user.click(send);
+    expect(fake.authCalls).toEqual([]);
+    await user.click(screen.getByRole('checkbox', { name: 'Declaro que tenho 18 anos completos.' }));
     await user.click(send);
     expect(fake.authCalls[0]).toMatchObject({ method: 'signInWithOtp', args: { email: 'maria@example.com' } });
 
@@ -247,7 +286,9 @@ describe('/entrar with a backend', () => {
     expect(await screen.findByRole('heading', { name: 'Minha conta' })).toBeInTheDocument();
     expect(fake.authCalls[1]).toMatchObject({ method: 'verifyOtp', args: { email: 'maria@example.com', token: '123456', type: 'email' } });
     const purposes = fake.tableCalls.filter(c => c.table === 'consents' && c.op === 'insert').map(c => (c.payload as { purpose: string }).purpose);
-    expect(purposes).toEqual(['terms', 'privacy']);
+    expect(purposes).toEqual(['terms', 'privacy', 'age_declaration']);
+    const age = fake.tableCalls.find(c => c.table === 'consents' && c.op === 'insert' && (c.payload as { purpose: string }).purpose === 'age_declaration');
+    expect(age?.payload).toMatchObject({ granted: true, version: CONSENT_VERSIONS.age_declaration });
   });
 
   it('rejects an invalid phone or a landline before calling Supabase', async () => {
@@ -256,7 +297,7 @@ describe('/entrar with a backend', () => {
     await user.click(await screen.findByRole('button', { name: /Celular/ }));
     const input = screen.getByLabelText('Seu celular com DDD');
     await user.type(input, '98765');
-    await user.click(screen.getByRole('checkbox'));
+    await acceptBoxes(user);
     await user.click(screen.getByRole('button', { name: 'Enviar código' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Confira o número de telefone informado');
 
@@ -277,7 +318,7 @@ describe('/entrar with a backend', () => {
     const user = userEvent.setup();
     renderAt('/entrar?next=%2Fconta');
     await user.type(await screen.findByLabelText('Seu e-mail'), 'maria@example.com');
-    await user.click(screen.getByRole('checkbox'));
+    await acceptBoxes(user);
     await user.click(screen.getByRole('button', { name: 'Enviar código' }));
     await user.type(await screen.findByLabelText('Código'), '123456');
     await user.click(screen.getByRole('button', { name: 'Entrar' }));

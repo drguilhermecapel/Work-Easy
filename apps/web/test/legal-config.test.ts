@@ -108,7 +108,7 @@ describe('CONSENT_VERSIONS', () => {
   });
 
   it('has a version for every purpose', () => {
-    const purposes: ConsentPurpose[] = ['terms', 'privacy', 'marketing', 'background_check', 'location'];
+    const purposes: ConsentPurpose[] = ['terms', 'privacy', 'marketing', 'background_check', 'location', 'age_declaration'];
     for (const purpose of purposes) expect(CONSENT_VERSIONS[purpose]).toMatch(/^\d{4}-\d{2}/);
   });
 });

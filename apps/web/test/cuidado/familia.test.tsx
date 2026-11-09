@@ -168,7 +168,7 @@ describe('family screens of the care line', () => {
       expect(screen.getByRole('heading', { name: /Casa da vó/ })).toBeInTheDocument();
     });
 
-    it('adds a care recipient with first name, birth year, preferences and emergency contact only', async () => {
+    it('adds a care recipient with first name, birth year, preferences, emergency contact and the adulthood declaration', async () => {
       world.households = [household()];
       renderCare('/cuidado');
       await userEvent.click(await screen.findByRole('button', { name: /Cadastrar pessoa cuidada/ }));
@@ -177,16 +177,39 @@ describe('family screens of the care line', () => {
       await userEvent.type(within(form).getByLabelText(/Ano de nascimento/), '1940');
       await userEvent.type(within(form).getByLabelText(/Preferências/), 'Gosta de rádio de manhã');
       await userEvent.type(within(form).getByLabelText(/Contato de emergência/), 'Filho, 11 90000-0000');
+      await userEvent.click(within(form).getByRole('checkbox', { name: 'Declaro que a pessoa cuidada tem 18 anos completos.' }));
+      const before = Date.now();
       await userEvent.click(within(form).getByRole('button', { name: 'Cadastrar pessoa' }));
 
       expect(await screen.findByText(/nascido\(a\) em 1940/)).toBeInTheDocument();
-      expect(callsOn('care_recipients', 'insert')[0].payload).toEqual({
+      const payload = callsOn('care_recipients', 'insert')[0].payload as Record<string, unknown>;
+      expect(payload).toEqual({
         household_id: 'house-1',
         first_name: 'Lúcia',
         birth_year: 1940,
         preferences: 'Gosta de rádio de manhã',
         emergency_contact: 'Filho, 11 90000-0000',
+        adult_declared_at: expect.any(String),
       });
+      // The time of the declaration is the time of sending
+      const declared = Date.parse(String(payload.adult_declared_at));
+      expect(declared).toBeGreaterThanOrEqual(before);
+      expect(declared).toBeLessThanOrEqual(Date.now());
+    });
+
+    it('does not send a new care recipient without the adulthood declaration, and says why', async () => {
+      world.households = [household()];
+      renderCare('/cuidado');
+      await userEvent.click(await screen.findByRole('button', { name: /Cadastrar pessoa cuidada/ }));
+      const form = screen.getByRole('form', { name: 'Novo assistido' });
+      await userEvent.type(within(form).getByLabelText('Primeiro nome'), 'Lúcia');
+      await userEvent.click(within(form).getByRole('button', { name: 'Cadastrar pessoa' }));
+
+      expect(await within(form).findByRole('alert')).toHaveTextContent(
+        'Confirme que a pessoa cuidada tem 18 anos completos para cadastrá-la. Sem essa declaração, o cadastro não é enviado.',
+      );
+      expect(within(form).getByRole('checkbox', { name: 'Declaro que a pessoa cuidada tem 18 anos completos.' })).not.toBeChecked();
+      expect(callsOn('care_recipients', 'insert')).toHaveLength(0);
     });
 
     it('refuses health information in any text, and a surname', async () => {
@@ -195,6 +218,7 @@ describe('family screens of the care line', () => {
       await userEvent.click(await screen.findByRole('button', { name: /Cadastrar pessoa cuidada/ }));
       const form = screen.getByRole('form', { name: 'Novo assistido' });
       await userEvent.type(within(form).getByLabelText('Primeiro nome'), 'Lúcia Souza');
+      await userEvent.click(within(form).getByRole('checkbox', { name: 'Declaro que a pessoa cuidada tem 18 anos completos.' }));
       await userEvent.click(within(form).getByRole('button', { name: 'Cadastrar pessoa' }));
       expect(await within(form).findByRole('alert')).toHaveTextContent(/só o primeiro nome/);
 
@@ -207,6 +231,27 @@ describe('family screens of the care line', () => {
       expect(within(form).getByRole('alert')).toHaveTextContent(/O WorkEasy não pede dados de saúde/);
       expect(within(form).getByRole('alert')).not.toHaveTextContent(/não guarda/);
       expect(callsOn('care_recipients', 'insert')).toHaveLength(0);
+    });
+
+    it('gives a tip under the notes of a house', async () => {
+      renderCare('/cuidado');
+      const form = await screen.findByRole('form', { name: 'Nova casa' });
+      expect(within(form).getByLabelText(/Observações sobre a casa/)).toHaveAccessibleDescription(
+        /^O que o cuidador precisa saber para o trabalho, como acesso e combinados\./,
+      );
+    });
+
+    it('gives a tip under the preferences and the emergency contact of a person', async () => {
+      world.households = [household()];
+      renderCare('/cuidado');
+      await userEvent.click(await screen.findByRole('button', { name: /Cadastrar pessoa cuidada/ }));
+      const form = screen.getByRole('form', { name: 'Novo assistido' });
+      expect(within(form).getByLabelText(/Preferências/)).toHaveAccessibleDescription(
+        /^Descreva rotina e gostos gerais: horários, comidas de que gosta, o que a acalma\. Não escreva diagnósticos/,
+      );
+      expect(within(form).getByLabelText(/Contato de emergência/)).toHaveAccessibleDescription(
+        /^Nome e telefone de uma pessoa que pode ser avisada em caso de urgência\. Antes de informar, confirme que ela concorda\./,
+      );
     });
 
     it('edits and removes a care recipient', async () => {
@@ -293,12 +338,20 @@ describe('family screens of the care line', () => {
       expect(callsOn('shifts', 'insert')).toHaveLength(0);
     });
 
-    it('says that the notes reach the caregiver only after he accepts the shift', async () => {
+    it('gives the tip of the notes of a shift under the field', async () => {
       renderCare('/cuidado/plantoes');
       const form = await screen.findByRole('form', { name: 'Novo plantão' });
       expect(within(form).getByLabelText(/Observações para o cuidador/)).toHaveAccessibleDescription(
-        /^Estas observações aparecem para o cuidador só depois que ele aceitar o plantão\./,
+        /^O que o cuidador precisa saber para o trabalho, como acesso e combinados\. Não escreva diagnósticos, remédios, doses, exames nem sintomas\./,
       );
+    });
+
+    it('says in the form that a shift lasts up to 24 hours, and what to do for a longer period', async () => {
+      renderCare('/cuidado/plantoes');
+      const form = await screen.findByRole('form', { name: 'Novo plantão' });
+      expect(
+        within(form).getByText('Cada plantão dura até 24 horas. Para um período maior, crie um plantão para cada trecho.'),
+      ).toBeInTheDocument();
     });
 
     it('refuses health information in the notes of a shift', async () => {
@@ -337,12 +390,13 @@ describe('family screens of the care line', () => {
       expect(within(past).getByText('Cancelado')).toBeInTheDocument();
     });
 
-    it('explains the weekly limit and the direct hiring path to the family', async () => {
+    it('explains the weekly limit for this family, with the ways out inside the app and no direct hiring', async () => {
       renderCare('/cuidado/plantoes');
       const note = await screen.findByRole('note', { name: /Por que o limite de 2 dias por semana/ });
       expect(note).toHaveTextContent(/LC 150\/2015/);
-      expect(note).toHaveTextContent(/contrate diretamente/);
-      expect(note).toHaveTextContent(/fora do WorkEasy/);
+      expect(note).toHaveTextContent(/para esta família/);
+      expect(note).toHaveTextContent(/ofereça o plantão a outro cuidador ou escolha outra semana/);
+      expect(note).not.toHaveTextContent(/contrat|fora do WorkEasy|mesma casa/i);
     });
 
     it('asks for a house first when there is none', async () => {
@@ -460,15 +514,17 @@ describe('family screens of the care line', () => {
       expect(await screen.findByRole('alert')).toHaveTextContent('Este cuidador recusou este plantão e não pode ser convidado de novo.');
     });
 
-    it('explains the labor lock, with the direct hiring path, if the database ever refuses an offer for it', async () => {
+    it('tells the family that the caregiver reached the limit for this family, if the database ever refuses an offer for it', async () => {
       world.rpcErrors.offer_shift = 'labor_lock';
       renderCare('/cuidado/plantoes/shift-1');
       await userEvent.click(await screen.findByRole('checkbox', { name: /Ana Cuidadora/ }));
       await userEvent.click(screen.getByRole('button', { name: 'Oferecer a 1 cuidador' }));
       const alert = await screen.findByRole('alert');
       expect(alert).toHaveTextContent('Limite de 2 dias por semana com o mesmo cuidador');
-      expect(alert).toHaveTextContent(/com o mesmo cuidador nesta casa/);
-      expect(alert).toHaveTextContent(/contrate diretamente/);
+      expect(alert).toHaveTextContent(
+        'Este cuidador já atingiu o limite de 2 dias por semana para esta família. Você pode escolher outro cuidador ou falar com a equipe do WorkEasy.',
+      );
+      expect(alert).not.toHaveTextContent(/contrat|mesma casa/i);
     });
 
     it('says when nobody serves the neighborhood', async () => {

@@ -28,6 +28,7 @@ const Entrar: React.FC = () => {
   const [channel, setChannel] = useState<Channel>('email');
   const [contact, setContact] = useState('');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [declaredAge, setDeclaredAge] = useState(false);
   const [target, setTarget] = useState<OtpTarget | null>(null);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
@@ -99,12 +100,12 @@ const Entrar: React.FC = () => {
     else navigate(next, { replace: true });
   };
 
-  /** The box was checked before sending the code; the acceptance is recorded once the session exists. */
+  /** The boxes were checked before sending the code; the acceptance is recorded once the session exists. */
   const recordTerms = async (userId: string) => {
     setError(null);
     setBusy(true);
     try {
-      await acceptCurrentTerms(userId);
+      await acceptCurrentTerms(userId, { ageDeclared: declaredAge });
       setConsentUserId(null);
       navigate(next, { replace: true });
     } catch (err) {
@@ -226,9 +227,18 @@ const Entrar: React.FC = () => {
               </span>
             </label>
 
+            <label className="flex items-start gap-2 text-sm text-gray-700">
+              <input type="checkbox" className="mt-1" checked={declaredAge} onChange={e => setDeclaredAge(e.target.checked)} />
+              <span>Declaro que tenho 18 anos completos.</span>
+            </label>
+
             <ErrorAlert id="entrar-erro" error={error} />
 
-            <button type="submit" className={primaryButton} disabled={busy || !acceptedTerms || contact.trim() === ''}>
+            <button
+              type="submit"
+              className={primaryButton}
+              disabled={busy || !acceptedTerms || !declaredAge || contact.trim() === ''}
+            >
               {busy ? 'Enviando…' : 'Enviar código'}
             </button>
           </form>

@@ -189,7 +189,8 @@ describe('/pro/agenda: own booking', () => {
     await fillBooking(user);
     await user.click(screen.getByRole('button', { name: 'Criar atendimento' }));
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('passaria do limite semanal de dias com o mesmo profissional na mesma casa');
+    expect(alert).toHaveTextContent('passaria do limite semanal de dias com o mesmo profissional para esta família');
+    expect(alert).not.toHaveTextContent(/contrate diretamente|mesma casa/);
     expect(alert).toHaveTextContent('LC 150/2015');
     expect(screen.queryByText('Atendimento criado.')).not.toBeInTheDocument();
   });
