@@ -33,7 +33,8 @@ export interface StoredPayment {
   id: string;
   status: PaymentStatus;
   booking_id: string | null;
-  provider_id: string;
+  /** Null once the provider row is gone (payments.provider_id is `on delete set null`). */
+  provider_id: string | null;
   escrow: boolean;
 }
 
@@ -196,7 +197,8 @@ async function applyEvent(
   }
 
   const local = await deps.store.findPayment(event.payment.id);
-  if (local && source && local.provider_id.toLowerCase() !== source) {
+  // A payment with no provider cannot belong to the subaccount the event came from
+  if (local && source && local.provider_id?.toLowerCase() !== source) {
     result.ignored = 'account_mismatch';
     return null;
   }

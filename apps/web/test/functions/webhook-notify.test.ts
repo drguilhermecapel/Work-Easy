@@ -374,6 +374,28 @@ describe('asaas-webhook: provider subaccount', () => {
     expect(calls).toEqual([]);
   });
 
+  it('acknowledges a subaccount event for a payment whose provider is gone, without touching it', async () => {
+    const providerToken = await deriveSubaccountToken(TOKEN, PROVIDER.id);
+    const { deps, log, calls } = webhookDeps({
+      payment: { id: 'payrow-2', status: 'pending', booking_id: BOOKING_ID, provider_id: null, escrow: false },
+    });
+    const res = await read(await webhook(hook(received, providerToken, PROVIDER.id), deps));
+    expect(res.status).toBe(200);
+    expect(res.body.data.ignored).toBe('account_mismatch');
+    expect(log.paymentUpdates).toEqual([]);
+    expect(calls).toEqual([]);
+  });
+
+  it('still applies a root-account event to a payment whose provider is gone', async () => {
+    const { deps, log } = webhookDeps({
+      payment: { id: 'payrow-2', status: 'pending', booking_id: BOOKING_ID, provider_id: null, escrow: false },
+    });
+    const res = await read(await webhook(hook(received), deps));
+    expect(res.status).toBe(200);
+    expect(res.body.data.payment_status).toBe('received');
+    expect(log.paymentUpdates).toHaveLength(1);
+  });
+
   it('never lets a subaccount event grant Pro: subscription charges live in the root account', async () => {
     const providerToken = await deriveSubaccountToken(TOKEN, PROVIDER.id);
     const { deps, log } = webhookDeps({
