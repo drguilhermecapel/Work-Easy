@@ -171,16 +171,15 @@ describe('/pro/plantoes (caregiver)', () => {
       expect(screen.queryByRole('button', { name: 'Aceitar plantão' })).not.toBeInTheDocument();
     });
 
-    it('explains the labor lock when the database refuses the acceptance', async () => {
+    it('refuses the acceptance under a labor lock with the plain sentence, revealing no contact or record', async () => {
       offeredShift();
-      world.rpcErrors.accept_shift_offer = 'labor_lock';
+      // Even if the database gives the detail of the rule, the screen does not show it
+      world.rpcErrors.accept_shift_offer = 'labor_lock: o telefone confere com uma entrada do prestador';
       renderCare('/pro/plantoes');
       await userEvent.click(await screen.findByRole('button', { name: 'Aceitar plantão' }));
       const alert = await screen.findByRole('alert');
-      expect(alert).toHaveTextContent('Limite de 2 dias por semana com o mesmo cuidador');
-      expect(alert).toHaveTextContent(/passaria de 2 dias diferentes na mesma semana/);
-      expect(alert).toHaveTextContent(/LC 150\/2015/);
-      expect(alert).toHaveTextContent(/a família pode contratar você diretamente, fora do WorkEasy/);
+      expect(alert).toHaveTextContent('Não é possível aceitar este pedido agora. Fale com a equipe do WorkEasy.');
+      expect(alert).not.toHaveTextContent(/telefone|entrada|cadastro|LC 150|contrat|Limite/i);
       // The offer stays: the caregiver may try another shift or wait for the family
       expect(screen.getByRole('button', { name: 'Aceitar plantão' })).toBeInTheDocument();
     });

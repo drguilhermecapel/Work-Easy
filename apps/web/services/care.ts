@@ -1,5 +1,5 @@
 import { loadPolicies } from '../catalog';
-import { AppError, toAppError } from '../lib/errors';
+import { ACCEPT_REFUSED_MESSAGE, AppError, toAppError } from '../lib/errors';
 import { formatTstzRange, parseTstzRange, type Period } from '../lib/tstzrange';
 import type { Coordinates } from '../platform/geolocation';
 import { db, unwrap, unwrapMaybe } from './client';
@@ -564,9 +564,11 @@ const ACCEPT_OVERRIDES: Overrides = {
   not_allowed: TOO_LATE_MESSAGE,
   invalid_transition: TOO_LATE_MESSAGE,
   slot_unavailable: 'Você já tem outro plantão neste horário.',
+  // The labor lock is still an AppError of its code, but the acceptance does not explain it (no contact, no record)
+  labor_lock: ACCEPT_REFUSED_MESSAGE,
 };
 
-/** First caregiver to accept takes the shift. labor_lock comes through as an AppError of that code. */
+/** First caregiver to accept takes the shift. labor_lock comes through as an AppError of that code, with the acceptance sentence. */
 export const acceptShiftOffer = (shiftId: string): Promise<ShiftStatus> =>
   guard(async () => unwrap<ShiftStatus>(await db().rpc('accept_shift_offer', { p_shift: shiftId })), ACCEPT_OVERRIDES);
 

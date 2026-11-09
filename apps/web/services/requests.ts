@@ -1,4 +1,4 @@
-import { AppError } from '../lib/errors';
+import { ACCEPT_REFUSED_MESSAGE, AppError, toAppError } from '../lib/errors';
 import { formatTstzRange, type Period } from '../lib/tstzrange';
 import { db, unwrap, unwrapMaybe } from './client';
 import type { ProposalRow, RequestInsert, RequestRow } from './types';
@@ -81,6 +81,13 @@ export const acceptProposal = async (proposalId: string, period: Period): Promis
   } catch {
     throw new AppError('invalid_input');
   }
-  const data = unwrapMaybe<unknown>(await db().rpc('accept_proposal', { p_proposal: proposalId, p_period: range }));
-  return typeof data === 'string' ? data : null;
+  try {
+    const data = unwrapMaybe<unknown>(await db().rpc('accept_proposal', { p_proposal: proposalId, p_period: range }));
+    return typeof data === 'string' ? data : null;
+  } catch (err) {
+    // The labor lock is refused with the same sentence as any acceptance: it does not reveal what it compared
+    const error = toAppError(err);
+    if (error.code === 'labor_lock') throw new AppError('labor_lock', { cause: err, detail: error.detail, message: ACCEPT_REFUSED_MESSAGE });
+    throw error;
+  }
 };

@@ -178,6 +178,12 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   unknown: 'Algo deu errado. Tente de novo.',
 };
 
+/**
+ * The sentence for a refused acceptance (a proposal, a shift offer), whatever the rule behind the refusal. It does not
+ * say which rule it was or what was compared, so no contact or record of the other side is revealed.
+ */
+export const ACCEPT_REFUSED_MESSAGE = 'Não é possível aceitar este pedido agora. Fale com a equipe do WorkEasy.';
+
 const KNOWN_CODES = new Set<string>(Object.keys(ERROR_MESSAGES));
 
 export const isErrorCode = (value: unknown): value is ErrorCode =>
