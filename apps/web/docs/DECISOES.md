@@ -115,3 +115,40 @@ Comissão (quando abrir): a R$ 200 de ticket, 12% rendem R$ 24; com o teto, um s
 5. Termos de uso e política de privacidade: o que precisa constar sobre dados sensíveis (saúde, biometria, antecedentes), encarregado, RIPD e plano de incidente?
 6. Exclusão de conta com anonimização e retenção do registro financeiro: o prazo e o conteúdo mantidos atendem à LGPD e à guarda fiscal?
 7. Teste grátis de 30 dias com cobrança automática ao fim: que aviso e que forma de cancelamento o CDC exige?
+
+---
+
+## Decisões delegadas (2026-11-09)
+
+Registro das decisões tomadas por delegação do dono em 2026-11-09. Cada linha traz o que foi decidido, o motivo, quem valida e o estado no código desta branch (base `49cef45`). O estado foi conferido lendo o código e as migrações; nenhum teste de execução foi rodado para esta seção. **Pendente de implementação** quer dizer que a decisão existe e o código ainda não a reflete. Nada aqui é parecer jurídico ou contábil.
+
+| id | tema | decisão | motivo | quem valida | status |
+|---|---|---|---|---|---|
+| DD01 | Casa com plantão | Casa com plantão não pode ser apagada enquanto houver turno. A tela mostra a recusa, sem botão | Preservar o histórico de atendimentos | nenhum | implementada (banco e tela) |
+| DD02 | Duração de plantão | A tela limita cada plantão a 24 horas. O banco tem teto de 60 dias corridos como segurança. Período maior é quebrado em plantões | Cada plantão tem duração conferível; o teto do banco é só salvaguarda | nenhum | parcial (limite de 24 horas e teto de 60 dias feitos; quebra de período não encontrada no código) |
+| DD03 | Limite de documentos do prestador | 60 arquivos, era 30. Documento analisado segue travado | Documento rejeitado não pode ser removido pelo prestador, e 30 arquivos travavam o cadastro | dono | pendente de implementação (banco e código ainda com 30) |
+| DD04 | Histórico de CRM copiado | Não há apagamento em massa | Não dá para separar o copiado do digitado, e a operação é irreversível | dono | implementada (nenhum apagamento em massa no código) |
+| DD05 | Governança do catálogo | O repositório é a fonte da verdade. Cada publicação sobrescreve o catálogo de produção; edições pelo painel são revertidas | Uma fonte única evita divergência entre repositório e produção | dono | parcial (workflow existe; primeira execução pendente) |
+| DD06 | Credenciais expostas | Rotação obrigatória nas contas do provedor (Asaas, banco de produção, segredo do webhook). Reescrita do histórico do repositório não é feita | Trocar a credencial é o que a torna inválida; reescrever o histórico não a torna secreta | dono | pendente de ação do dono |
+| DD07 | Repositório público | Recomendação de deixá-lo privado antes de publicar | O repositório expõe o catálogo e os documentos internos, que são ativos do projeto | dono | pendente de ação do dono (não há como fazer pelo agente) |
+| DD08 | Android, câmera | Captura de foto com a pasta restrita precisa ser testada em aparelho antes da publicação | A restrição de pasta mudou o caminho de captura; só o aparelho confirma que a câmera funciona | nenhum | pendente de teste em aparelho |
+| DD09 | HEIC em navegador que não decodifica | Recusa com sugestão de enviar PDF. Conversão no servidor fica para depois | Sem decodificação no navegador não há como preparar a foto; PDF evita a conversão | nenhum | implementada |
+| DD10 | Taxa de cobrança de orçamento e descrição genérica | Título do orçamento e nome do serviço não aparecem no extrato de quem paga. Reversível | Texto livre no extrato | dono | parcial (padrão genérico no servidor; campo livre digitado pelo prestador ainda vai ao extrato) |
+| DD11 | Webhook do pagamento | Notificação acima de 256 KB recebe 413 | Evento real tem poucos KB | nenhum | implementada |
+| DD12 | Exclusão de conta | Não é bloqueada por plantão. Plantão atribuído é cancelado com aviso. Reserva aceita e não paga é cancelada com aviso. Só paga, em andamento ou em disputa bloqueia | O direito de exclusão prevalece sobre bloqueio operacional; dinheiro em andamento precisa de resolução | advogado | pendente de implementação (código ainda bloqueia reserva aceita) |
+| DD13 | Cobrança sem chave da subconta na exclusão | Não bloqueia a exclusão. Abre registro para o suporte | Sem a chave da subconta a API não alcança a cobrança; o suporte resolve no painel do Asaas | dono e contador | parcial (não bloqueia; hoje só há registro em log) |
+| DD14 | Cadastro no Asaas após a exclusão | Mantido pelo prazo fiscal | Prazo fiscal | contador | implementada (a exclusão não remove a subconta) |
+| DD15 | Trava trabalhista | O limite conta por cuidador e soma todas as casas do mesmo contratante. Entradas de CRM vinculadas a conta usam o telefone confirmado da conta; entradas sem conta usam o telefone da própria entrada | O empregador é a família | advogado | implementada (migrações de 2026-11-10) |
+| DD16 | Aviso da trava | Não orienta contratação direta | A plataforma não registra o vínculo nem calcula encargos; não cabe orientar a contratação fora dela | advogado | pendente de implementação (texto atual ainda orienta a contratação direta) |
+| DD17 | Aceite com trava | A recusa não revela que o telefone bate com uma entrada do prestador | Não expor dado de terceiro a quem recusa | nenhum | implementada |
+| DD18 | Contato do cliente no CRM do prestador | Só no aceite. Entrada de pedido nasce com rótulo neutro | Dado do cliente não circula antes de haver vínculo | nenhum | implementada (migração de 2026-11-10) |
+| DD19 | Idade da pessoa cuidada | 18 anos completos, com declaração obrigatória no cadastro | Evitar tratar dado de menor sem regra de responsável (ponto aberto no T1) | advogado | pendente de implementação (cadastro aceita qualquer ano de 1900 a 2100) |
+| DD20 | Idade de quem aceita os termos | Declaração de 18 anos em caixa separada, pedida também a contas existentes na próxima entrada | Prova da idade fica distinta do aceite dos Termos | advogado | pendente de implementação (caixa atual só tem o aceite) |
+| DD21 | Campos de saúde da linha de cuidado | Aviso e dica por campo. Campos mantidos | Campo livre pode receber dado de saúde; o aviso reduz o envio sem remover o campo | advogado | implementada (aviso nos formulários de plantão e relatório) |
+| DD22 | Registro de acesso às contas | Data, hora e tipo do evento de login por 6 meses, com acesso restrito a administrador. IP não é gravado pelo app; depende dos registros do provedor | Registro mínimo de acesso sem coleta de IP pelo app; a aplicação do art. 15 do Marco Civil fica com o advogado | advogado | pendente de ação do dono (ativar o hook no painel) |
+| DD23 | Prova de consentimento após a exclusão | Pseudonimizada, por 5 anos | O prazo é o padrão de prescrição do CDC e precisa de validação | advogado | pendente de implementação (sem registro pseudonimizado nem rotina de apagamento) |
+| DD24 | CNPJ e CPF de cliente do CRM | Validação de dígito verificador no banco | Evita cadastro com número inválido | nenhum | implementada |
+| DD25 | Matriz de conselhos | O item do CFN 856 (revogada ou prorrogada) permanece não verificado. Usa-se o texto do DOU quando disponível | Sem o texto oficial, a matriz não afirma qual código vale | advogado | parcial (texto oficial não conferido) |
+| DD26 | Teste de hidratação | A espera é pelo efeito (título da página) | Não é regressão de produto | nenhum | implementada (commit 6ad19d6) |
+
+Os motivos que o pedido não trazia foram redigidos a partir do texto de cada decisão: DD02, DD05, DD07, DD08, DD09, DD13, DD16 a DD21, DD24 e DD25. Também não vieram com o pedido o validador de DD01 (nenhum), DD07 (dono) e DD08 (nenhum). O dono confere antes de usar esses campos.
