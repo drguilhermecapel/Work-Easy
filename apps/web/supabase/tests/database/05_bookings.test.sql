@@ -90,16 +90,16 @@ select lives_ok($$select public.create_own_booking((select id from ids where nam
                 'own client: second day');
 select throws_ok($$select public.create_own_booking((select id from ids where name = 'rosa1'), 't-domestica', tests.sp_period('2030-03-06 09:00'), 100, null)$$,
                  'P0001', 'labor_lock', 'own clients are counted through provider_client_id');
-select lives_ok($$select public.create_own_booking((select id from ids where name = 'rosa2'), 't-domestica', tests.sp_period('2030-03-06 09:00'), 100, null)$$,
-                'a second CRM entry with the same phone is not the same employer: CRM data never joins entries');
-select lives_ok($$select public.create_own_booking((select id from ids where name = 'rosa3'), 't-domestica', tests.sp_period('2030-03-06 13:00'), 100, null)$$,
+select throws_ok($$select public.create_own_booking((select id from ids where name = 'rosa2'), 't-domestica', tests.sp_period('2030-03-06 09:00'), 100, null)$$,
+                 'P0001', 'labor_lock', 'a second CRM entry with the same phone (other formatting) is the same employer');
+select lives_ok($$select public.create_own_booking((select id from ids where name = 'rosa3'), 't-domestica', tests.sp_period('2030-03-06 09:00'), 100, null)$$,
                 'an entry with another phone is another person');
 select lives_ok($$select public.create_own_booking((select id from ids where name = 'mario1'), 't-domestica', tests.sp_period('2030-03-11 09:00'), 100, null)$$,
                 'e-mail: first day');
 select lives_ok($$select public.create_own_booking((select id from ids where name = 'mario1'), 't-domestica', tests.sp_period('2030-03-12 09:00'), 100, null)$$,
                 'e-mail: second day');
-select lives_ok($$select public.create_own_booking((select id from ids where name = 'mario2'), 't-domestica', tests.sp_period('2030-03-13 09:00'), 100, null)$$,
-                'a second CRM entry with the same e-mail is not the same employer: CRM data never joins entries');
+select throws_ok($$select public.create_own_booking((select id from ids where name = 'mario2'), 't-domestica', tests.sp_period('2030-03-13 09:00'), 100, null)$$,
+                 'P0001', 'labor_lock', 'a second CRM entry with the same e-mail is the same employer');
 select tests.clear_authentication();
 
 -- The lock also runs on the real client paths: book_direct and accept_proposal.
