@@ -333,7 +333,7 @@ Em 17/06/2026, o STF concluiu o julgamento dos embargos de declaração e fixou 
 
 ### F. Consistência com outros documentos
 
-20. **Números do catálogo.** Este documento usa a contagem do arquivo `catalog/policies.json` em 2026-11-08 (462 sem nota). Os documentos 01 (Termos de Uso, pontos de pendência e tabela de números) e 02 (Anexo II) ainda usam 272 sem nota e 1.057 / 653 para a base, e o PREAMBLE do projeto cita 1.057 "a confirmar". O arquivo hoje tem 1.102 "a_confirmar" e 608 "conferido". Sincronizar quando a matriz da Frente A fechar. [DECISÃO DO DONO]
+20. **Números do catálogo.** Este documento usa a contagem do arquivo `catalog/policies.json` em 2026-11-08 (462 sem nota). Os documentos 01 (Termos de Uso, pontos de pendência e tabela de números) e 02 (Anexo II) ainda usam 272 sem nota e 1.057 / 653 para a base, e o PREAMBLE do projeto cita 1.057 "a confirmar". Em 2026-11-09, após a rodada 2: 1.382 "a_confirmar" e 328 "conferido" (antes, 1.102 e 608). A queda vem de 307 políticas que estavam "conferido" sem nenhuma fonte e foram rebaixadas. Sincronizar quando a matriz da Frente A fechar. [DECISÃO DO DONO]
 21. **Prazo de resposta à contestação.** A seção 8.4 propõe 5 dias corridos, a mesma base do SAC (documento 10, seção 4.1). O playbook de suporte (documento 07, prazo 14) ainda diz 5 dias úteis. Decidir um só prazo e alinhar os três. [DECISÃO DO DONO]
 22. **Lista de condutas.** A seção 4.2 não coincide com a cláusula 10.1 dos Termos de Uso. Os itens b (dado de saúde), h e i não estão nela, e o item e só em parte. Incluir nos Termos de Uso, ou nos Termos do Prestador (cláusula 16), antes de valer. [CONDICIONAL: depende de parecer]
 

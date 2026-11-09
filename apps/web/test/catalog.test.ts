@@ -99,6 +99,9 @@ describe('occupation policies', async () => {
     // An unchecked legal basis cannot be marked as checked
     if (p.regulated && p.legalBasis === '') expect(p.confidence).toBe('a_confirmar');
 
+    // "conferido" means a source was checked: a policy with no source cannot claim it
+    if (p.confidence === 'conferido') expect(p.sources.length).toBeGreaterThan(0);
+
     expect(p.priceUnits.length).toBeGreaterThan(0);
     expect(p.locations.length).toBeGreaterThan(0);
     expect(p.notes.length).toBeLessThanOrEqual(240);
