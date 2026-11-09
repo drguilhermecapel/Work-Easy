@@ -384,6 +384,22 @@ describe('charges-create', () => {
     expect(inserted[0]).toMatchObject({ quote_id: QUOTE_ID, platform_fee_cents: 0, amount_cents: 250050 });
   });
 
+  it('describes a quote charge and an own booking charge without the quote title or the service category', async () => {
+    const quote = chargesDeps();
+    const quoted = await read(await chargesCreate(post('charges-create', body), quote.deps));
+    expect(quoted.status).toBe(201);
+    const quoteDescription = (quote.calls.find(c => c.url.endsWith('/payments'))!.body as { description: string }).description;
+    expect(quoteDescription).toBe('WorkEasy: orçamento');
+    expect(quoteDescription).not.toContain('Pintura');
+
+    const own = ownBooking({ occupation: 'diarista' });
+    const owned = await read(await chargesCreate(post('charges-create', { booking_id: BOOKING_ID, method: 'pix' }), own.deps));
+    expect(owned.status).toBe(201);
+    const ownDescription = (own.calls.find(c => c.url.endsWith('/payments'))!.body as { description: string }).description;
+    expect(ownDescription).toBe('WorkEasy: atendimento');
+    expect(ownDescription).not.toContain('diarista');
+  });
+
   it('reuses an open charge of the same method and replaces it (in the subaccount) when the method changes', async () => {
     const open: PaymentRecord = {
       id: 'p0', asaas_payment_id: 'pay_0', method: 'boleto', status: 'pending', amount_cents: 250050,

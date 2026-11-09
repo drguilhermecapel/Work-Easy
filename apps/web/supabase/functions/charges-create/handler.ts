@@ -137,7 +137,8 @@ export function handler(req: Request, deps: ChargesCreateDeps): Promise<Response
       if (quote.status !== 'accepted') throw errors.conflict('quote_not_accepted', 'Só orçamentos aceitos podem ser cobrados.');
       amount = quote.total_cents ?? 0;
       linkedClient = quote.provider_client_id;
-      description = input.description ?? `Orçamento: ${quote.title}`;
+      // Generic on purpose: the quote title is free text the provider typed, and the payer's statement shows it
+      description = input.description ?? 'WorkEasy: orçamento';
     }
     const target = input.booking_id ? { bookingId: input.booking_id } : { quoteId: input.quote_id };
     if (await deps.admin.hasPaidCharge(target)) throw errors.conflict(ALREADY_PAID, ALREADY_PAID_MESSAGE);
