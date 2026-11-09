@@ -233,6 +233,27 @@ describe('family screens of the care line', () => {
       expect(callsOn('care_recipients', 'insert')).toHaveLength(0);
     });
 
+    it('gives a tip under the notes of a house', async () => {
+      renderCare('/cuidado');
+      const form = await screen.findByRole('form', { name: 'Nova casa' });
+      expect(within(form).getByLabelText(/Observações sobre a casa/)).toHaveAccessibleDescription(
+        /^O que o cuidador precisa saber para o trabalho, como acesso e combinados\./,
+      );
+    });
+
+    it('gives a tip under the preferences and the emergency contact of a person', async () => {
+      world.households = [household()];
+      renderCare('/cuidado');
+      await userEvent.click(await screen.findByRole('button', { name: /Cadastrar pessoa cuidada/ }));
+      const form = screen.getByRole('form', { name: 'Novo assistido' });
+      expect(within(form).getByLabelText(/Preferências/)).toHaveAccessibleDescription(
+        /^Descreva rotina e gostos gerais: horários, comidas de que gosta, o que a acalma\. Não escreva diagnósticos/,
+      );
+      expect(within(form).getByLabelText(/Contato de emergência/)).toHaveAccessibleDescription(
+        /^Nome e telefone de uma pessoa que pode ser avisada em caso de urgência\. Antes de informar, confirme que ela concorda\./,
+      );
+    });
+
     it('edits and removes a care recipient', async () => {
       world.households = [household()];
       world.recipients = [recipient()];
@@ -317,11 +338,11 @@ describe('family screens of the care line', () => {
       expect(callsOn('shifts', 'insert')).toHaveLength(0);
     });
 
-    it('says that the notes reach the caregiver only after he accepts the shift', async () => {
+    it('gives the tip of the notes of a shift under the field', async () => {
       renderCare('/cuidado/plantoes');
       const form = await screen.findByRole('form', { name: 'Novo plantão' });
       expect(within(form).getByLabelText(/Observações para o cuidador/)).toHaveAccessibleDescription(
-        /^Estas observações aparecem para o cuidador só depois que ele aceitar o plantão\./,
+        /^O que o cuidador precisa saber para o trabalho, como acesso e combinados\. Não escreva diagnósticos, remédios, doses, exames nem sintomas\./,
       );
     });
 

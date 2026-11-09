@@ -3,6 +3,7 @@ import { LIMITS, submitDailyReport, type DailyReport } from '../../services/care
 import CareError from './CareError';
 import HealthDataNotice from './HealthDataNotice';
 import { inputClass, primaryButton } from './styles';
+import { HINT_RELATORIO } from './textHints';
 import { Field } from './ui';
 
 interface Props {
@@ -45,10 +46,10 @@ const ReportForm: React.FC<Props> = ({ shiftId, existing, onSent }) => {
         Conte como foi o dia em texto simples: refeições, atividades e humor. Não registre remédios, doses, sintomas nem diagnósticos; se
         algo preocupar, avise a família por telefone e, se for urgente, chame o SAMU (192).
       </HealthDataNotice>
-      <Field id={`${id}-refeicoes`} label="Refeições">
+      <Field id={`${id}-refeicoes`} label="Refeições" hint={HINT_RELATORIO}>
         <textarea id={`${id}-refeicoes`} className={inputClass} rows={2} value={meals} maxLength={LIMITS.meals} onChange={e => setMeals(e.target.value)} />
       </Field>
-      <Field id={`${id}-atividades`} label="Atividades">
+      <Field id={`${id}-atividades`} label="Atividades" hint={HINT_RELATORIO}>
         <textarea
           id={`${id}-atividades`}
           className={inputClass}
@@ -58,10 +59,10 @@ const ReportForm: React.FC<Props> = ({ shiftId, existing, onSent }) => {
           onChange={e => setActivities(e.target.value)}
         />
       </Field>
-      <Field id={`${id}-humor`} label="Humor">
+      <Field id={`${id}-humor`} label="Humor" hint={HINT_RELATORIO}>
         <input id={`${id}-humor`} className={inputClass} value={mood} maxLength={LIMITS.mood} onChange={e => setMood(e.target.value)} autoComplete="off" />
       </Field>
-      <Field id={`${id}-observacoes`} label="Observações">
+      <Field id={`${id}-observacoes`} label="Observações" hint={HINT_RELATORIO}>
         <textarea
           id={`${id}-observacoes`}
           className={inputClass}

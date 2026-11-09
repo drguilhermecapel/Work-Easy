@@ -6,6 +6,7 @@ import ErrorAlert from '../ErrorAlert';
 import HealthDataNotice from './HealthDataNotice';
 import { formatShiftPeriod, parseReaisToCents, toShiftPeriod } from './format';
 import { inputClass, primaryButton } from './styles';
+import { HINT_OBSERVACOES_CASA_PLANTAO } from './textHints';
 import { Field } from './ui';
 
 interface Props {
@@ -117,7 +118,7 @@ const ShiftForm: React.FC<Props> = ({ households, recipients, initialHouseholdId
       <Field
         id="plantao-notas"
         label="Observações para o cuidador (opcional)"
-        hint="Estas observações aparecem para o cuidador só depois que ele aceitar o plantão. Por exemplo: “levar documento na portaria”, “almoço já fica pronto”."
+        hint={HINT_OBSERVACOES_CASA_PLANTAO}
       >
         <textarea
           id="plantao-notas"

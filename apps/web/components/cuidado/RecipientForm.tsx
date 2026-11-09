@@ -4,6 +4,7 @@ import { ADULT_DECLARATION_REQUIRED, LIMITS, type CareRecipient, type RecipientI
 import ErrorAlert from '../ErrorAlert';
 import HealthDataNotice from './HealthDataNotice';
 import { inputClass, primaryButton, secondaryButton } from './styles';
+import { HINT_CONTATO_EMERGENCIA, HINT_PREFERENCIAS } from './textHints';
 import { Field } from './ui';
 
 interface Props {
@@ -79,7 +80,7 @@ const RecipientForm: React.FC<Props> = ({ idPrefix, initial, submitLabel, onSubm
       <Field
         id={`${idPrefix}-preferencias`}
         label="Preferências (opcional)"
-        hint="Rotina e gostos, por exemplo: “gosta de rádio de manhã”, “prefere chá a café”. Fica só com a família."
+        hint={HINT_PREFERENCIAS}
       >
         <textarea
           id={`${idPrefix}-preferencias`}
@@ -93,7 +94,7 @@ const RecipientForm: React.FC<Props> = ({ idPrefix, initial, submitLabel, onSubm
       <Field
         id={`${idPrefix}-emergencia`}
         label="Contato de emergência (opcional)"
-        hint="Nome e telefone de quem chamar numa emergência. Fica só com a família."
+        hint={HINT_CONTATO_EMERGENCIA}
       >
         <input
           id={`${idPrefix}-emergencia`}
