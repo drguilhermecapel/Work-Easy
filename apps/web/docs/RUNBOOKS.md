@@ -775,7 +775,7 @@ select id, user_id, kind, status, created_at, completed_at
 
 **Exclusão, passo a passo.**
 
-1. **Pré-checagem.** Atendimentos em `accepted`, `paid`, `in_progress` ou `disputed` bloqueiam a exclusão (`active_bookings`, 409). Resolva antes:
+1. **Pré-checagem.** Atendimentos em `accepted`, `paid`, `in_progress` ou `disputed` bloqueiam a exclusão (`active_bookings`, 409). Plantões (`shifts`) não entram nessa checagem: o bloqueio por plantão não foi integrado `[decisão do dono]`. Resolva antes:
 
 ```sql
 select count(*) as blocking_bookings
@@ -938,7 +938,7 @@ select d.id, d.provider_id, d.step, d.status, d.storage_path, o.id as object_id
 **Correção.**
 
 1. **Contenha.** Remova o arquivo pela API de Storage, como `account-delete` faz (`bucket.remove`), ou pelo painel do Storage **[incerto: caminho no painel não aberto]**. Não apague só a linha de `storage.objects`: o comentário de `anonymize_user` (`20261019000010_privacy_audit.sql`) diz que o SQL não consegue apagar objetos do Storage, então a linha sozinha deixa o conteúdo para trás.
-2. **Trate o documento no banco pela tela do admin**, não por SQL. Em `/admin/prestadores/:id`, use a revisão de documentos (ARQUITETURA lista "revisar documentos"; o texto exato do botão não foi conferido no código) e recuse com motivo ("arquivo removido por incidente"). Isso muda o status para `rejected`, e o trigger `provider_documents_revoke_approvals` retira a aprovação das ocupações que dependiam do documento (`occupation.approval_revoked`, causa `document_rejected`). Se o registro deve sumir, a exclusão também revoga (causa `document_removed`).
+2. **Trate o documento no banco pela tela do admin**, não por SQL. Em `/admin/prestadores/:id`, use "Rejeitar documento" (`components/admin/DocumentCard.tsx`) e recuse com motivo ("arquivo removido por incidente"). Isso muda o status para `rejected`, e o trigger `provider_documents_revoke_approvals` retira a aprovação das ocupações que dependiam do documento (`occupation.approval_revoked`, causa `document_rejected`). Se o registro deve sumir, a exclusão também revoga (causa `document_removed`).
 3. **Peça novo envio** ao prestador. O registro novo passa pela análise normal.
 4. **Avaliação de incidente.** Se o documento é de identidade de pessoa, trate como incidente de dados pessoais: `docs/juridico/08-plano-de-resposta-a-incidentes.md` (consultado só em trecho). Comunicações a titular e à autoridade **[CONDICIONAL: depende de parecer]**.
 
@@ -978,7 +978,7 @@ select key, value, updated_at
  order by key;
 ```
 
-Ajuste de `pro_trial_days` sem sessão de admin (use só se a tela de admin estiver indisponível; grava o mesmo `audit_log` com a origem de serviço):
+Ajuste de `pro_trial_days` sem sessão de admin (use só se a tela de admin estiver indisponível; grava o mesmo `audit_log` com a origem de serviço). **Este bloco não passa por `admin_set_setting`**: não tem a checagem de faixa, e o papel `authenticated` não tem mais escrita em `platform_settings` (migração `20261109400001`), então o bloco só roda com a service role ou no SQL editor. `[decisão do dono]`: manter este procedimento ou retirá-lo.
 
 ```sql
 begin;

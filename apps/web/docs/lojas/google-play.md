@@ -504,7 +504,7 @@ Entrar (código por e-mail ou SMS) > no celular, menu de três linhas no topo > 
 
 ### 10.2 Regras da função `account-delete`
 
-- Recusa com erro 409 `active_bookings` se há atendimento `accepted`, `paid`, `in_progress` ou `disputed`. A página web precisa dizer isso (G02: "etapas antes de excluir" devem estar descritas).
+- Recusa com erro 409 `active_bookings` se há atendimento `accepted`, `paid`, `in_progress` ou `disputed`. Plantões de cuidado não entram nessa checagem (o bloqueio por plantão não foi integrado `[decisão do dono]`). A página web precisa dizer isso (G02: "etapas antes de excluir" devem estar descritas).
 - Cancela a assinatura Pro e as cobranças `pending` no Asaas. Se uma cobrança é paga nesse intervalo, responde 409 `payment_in_progress`. Sem Asaas configurado e com cobrança ou assinatura, responde 503 `payments_not_configured`. Se faltar a chave da subconta para cancelar uma cobrança do profissional, o erro é registrado, a exclusão segue e a cobrança fica para o suporte cancelar no painel do Asaas.
 - Esvazia a pasta `provider-documents/<user_id>/` no Storage, chama `anonymize_user` e apaga o usuário do Auth. A exclusão corre no ato da confirmação, sem fila de análise.
 
