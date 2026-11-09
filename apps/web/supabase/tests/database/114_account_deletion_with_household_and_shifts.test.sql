@@ -13,7 +13,7 @@ grant all on ids to authenticated, anon, service_role;
 -- ================================================================ family account with a household and shifts
 insert into public.households (owner_id, name) values (tests.uid('client_a'), 'Casa da família A');
 insert into ids select 'house_a', id from public.households where name = 'Casa da família A';
-insert into public.care_recipients (household_id, first_name) values ((select id from ids where name = 'house_a'), 'Vó Lia');
+insert into public.care_recipients (household_id, first_name, adult_declared_at) values ((select id from ids where name = 'house_a'), 'Vó Lia', now());
 insert into public.shifts (id, household_id, period, rate_cents, status, provider_id) values
   (md5('open-a')::uuid, (select id from ids where name = 'house_a'), tests.sp_period(tests.at(110, 0, '08:00'), 4), 100, 'open', null),
   (md5('assigned-a')::uuid, (select id from ids where name = 'house_a'), tests.sp_period(tests.at(110, 1, '08:00'), 4), 100, 'assigned', tests.uid('provider_c')),

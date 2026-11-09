@@ -23,7 +23,21 @@ export type Database = {
           }
         },"public": {
           Tables: {
-            "admins": {
+            "access_events": {
+                  Row: {
+                    "id": string,"method": string | null,"occurred_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id"?: string,"method"?: string | null,"occurred_at"?: string,"user_id": string
+                  }
+                  Update: {
+                    "id"?: string,"method"?: string | null,"occurred_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"admins": {
                   Row: {
                     "created_at": string,"user_id": string
                   }
@@ -217,7 +231,7 @@ isOneToOne: false
                   }
                   ComputedFields: never
                   Insert: {
-                    "adult_declared_at": string,"birth_year"?: number | null,"created_at"?: string,"emergency_contact"?: string | null,"first_name": string,"household_id": string,"id"?: string,"preferences"?: string | null
+                    "adult_declared_at"?: string | null,"birth_year"?: number | null,"created_at"?: string,"emergency_contact"?: string | null,"first_name": string,"household_id": string,"id"?: string,"preferences"?: string | null
                   }
                   Update: {
                     "adult_declared_at"?: string | null,"birth_year"?: number | null,"created_at"?: string,"emergency_contact"?: string | null,"first_name"?: string,"household_id"?: string,"id"?: string,"preferences"?: string | null
@@ -262,6 +276,34 @@ isOneToOne: false
       referencedRelation: "shifts"
       referencedColumns: ["id"]
     }
+                  ]
+                },"consent_proof_links": {
+                  Row: {
+                    "proof_owner": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "proof_owner": string,"user_id": string
+                  }
+                  Update: {
+                    "proof_owner"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"consent_proofs": {
+                  Row: {
+                    "at": string,"granted": boolean,"id": string,"proof_owner": string,"purpose": Database["public"]['Enums']["consent_purpose"],"retain_until": string,"version": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "at": string,"granted": boolean,"id"?: string,"proof_owner": string,"purpose": Database["public"]['Enums']["consent_purpose"],"retain_until": string,"version": string
+                  }
+                  Update: {
+                    "at"?: string,"granted"?: boolean,"id"?: string,"proof_owner"?: string,"purpose"?: Database["public"]['Enums']["consent_purpose"],"retain_until"?: string,"version"?: string
+                  }
+                  Relationships: [
+                    
                   ]
                 },"consents": {
                   Row: {
@@ -1009,6 +1051,26 @@ isOneToOne: true
       referencedColumns: ["id"]
     }
                   ]
+                },"support_tasks": {
+                  Row: {
+                    "created_at": string,"id": string,"kind": string,"payload": NonNullable<Json>,"resolved_at": string | null,"resolved_by": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"id"?: string,"kind": string,"payload"?: NonNullable<Json>,"resolved_at"?: string | null,"resolved_by"?: string | null
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: string,"kind"?: string,"payload"?: NonNullable<Json>,"resolved_at"?: string | null,"resolved_by"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "support_tasks_resolved_by_fkey"
+      columns: ["resolved_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"time_off": {
                   Row: {
                     "created_at": string,"id": string,"period": unknown,"provider_id": string
@@ -1223,6 +1285,9 @@ isOneToOne: true
 "create_own_booking":
 { Args: { "p_notes"?: string,"p_occupation": string,"p_period": unknown,"p_price_cents": number,"p_provider_client": string }; Returns: string
                            },
+"custom_access_token_hook":
+{ Args: { "event": Json }; Returns: Json
+                           },
 "get_provider_page":
 { Args: { "p_slug": string }; Returns: Json
                            },
@@ -1248,6 +1313,9 @@ isOneToOne: true
 { Args: Record<PropertyKey, never>; Returns: {
               "created_at": string,"description": string,"expires_at": string,"id": string,"my_proposal_id": string,"my_proposal_status": Database["public"]['Enums']["proposal_status"],"neighborhood_id": string,"neighborhood_name": string,"occupation_slug": string,"preferred_dates": string,"proposal_count": number,"urgent": boolean
             }[]
+                           },
+"open_support_task":
+{ Args: { "p_kind": string,"p_payload": Json }; Returns: string
                            },
 "respond_quote":
 { Args: { "p_accept": boolean,"p_expected_total_cents"?: number,"p_token": string }; Returns: Database["public"]['Enums']["quote_status"]
