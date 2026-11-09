@@ -775,7 +775,7 @@ select id, user_id, kind, status, created_at, completed_at
 
 **Exclusão, passo a passo.**
 
-1. **Pré-checagem.** Atendimentos em `accepted`, `paid`, `in_progress` ou `disputed` bloqueiam a exclusão (`active_bookings`, 409). Plantões (`shifts`) não entram nessa checagem: o bloqueio por plantão não foi integrado `[decisão do dono]`. Resolva antes:
+1. **Pré-checagem.** Atendimentos em `paid`, `in_progress` ou `disputed` bloqueiam a exclusão (`active_bookings`, 409). Atendimentos `accepted` sem pagamento e plantões atribuídos ou ofertados são cancelados com aviso à outra parte, sem bloquear. Resolva antes os que bloqueiam:
 
 ```sql
 select count(*) as blocking_bookings

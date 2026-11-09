@@ -215,7 +215,7 @@ Só o banco de dados muda o estado de um atendimento. Cada mudança entra no his
 
 ## 11. Conta e atendimentos abertos
 
-11.1 Não é possível excluir a conta enquanto houver atendimento "Aceito", "Pago", "Em andamento" ou "Em contestação". Para excluir, conclua ou cancele o atendimento, quando o app permitir, ou aguarde a decisão da equipe. A regra está em ARQUITETURA.md, seção da função `account-delete`.
+11.1 Não é possível excluir a conta enquanto houver atendimento "Pago", "Em andamento" ou "Em contestação". Atendimento "Aceito" sem pagamento é cancelado na exclusão, com aviso à outra parte. Para excluir, conclua ou cancele os atendimentos pagos ou em andamento, ou aguarde a decisão da equipe. A regra está em ARQUITETURA.md, seção da função `account-delete`.
 
 11.2 Consequência: um atendimento "Pago" que não pode ser cancelado pelo app pode impedir a exclusão da conta até a equipe agir. [PLANEJADO: caminho de cancelamento para atendimento pago, cláusula 5.5.]
 

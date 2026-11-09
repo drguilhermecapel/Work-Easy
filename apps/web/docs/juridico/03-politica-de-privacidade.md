@@ -165,7 +165,7 @@ Art. 7º (dados comuns) e art. 11 (dados sensíveis), da Lei 13.709/2018 (LGPD).
 
 7.1. **Como excluir.** Em "Excluir minha conta", na página Conta, digite EXCLUIR e confirme.
 
-7.2. **Quando a exclusão é recusada.** Se você tem atendimento aceito, pago, em andamento ou em contestação, a exclusão é recusada. Conclua ou cancele esses atendimentos e tente de novo.
+7.2. **Quando a exclusão é recusada.** Se você tem atendimento pago, em andamento ou em contestação, a exclusão é recusada. Atendimento aceito e ainda não pago é cancelado, com aviso à outra parte, e plantões ainda não iniciados também são cancelados. Conclua ou cancele os atendimentos pagos e tente de novo.
 
 7.3. **O que o app faz**, nesta ordem:
 1. Cancela sua assinatura Pro e as cobranças em aberto no Asaas.

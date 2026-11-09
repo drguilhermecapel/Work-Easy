@@ -386,7 +386,7 @@ Estes Termos do Prestador ("Termos") são um contrato entre você e [RAZÃO SOCI
 
 **20.1 Sair.** Você pode cancelar a assinatura a qualquer momento (cláusula 10) e excluir a conta em "Minha conta" > "Excluir minha conta", digitando EXCLUIR. Antes, baixe seus dados em "Baixar meus dados".
 
-**20.2 Quando não dá para excluir.** A exclusão é recusada enquanto houver atendimento aceito, pago, em andamento ou em contestação. Conclua ou cancele antes.
+**20.2 Quando não dá para excluir.** A exclusão é recusada enquanto houver atendimento pago, em andamento ou em contestação. Atendimento aceito e ainda não pago é cancelado, com aviso à outra parte. Conclua ou cancele antes os atendimentos pagos ou em andamento.
 
 **20.3 O que a exclusão faz.** O app: (a) cancela a assinatura Pro e as cobranças em aberto no Asaas; (b) apaga os seus documentos e os arquivos enviados; (c) apaga o seu nome, telefone, bairros, agenda e apresentação, e tira a sua página do ar; (d) apaga os dados dos seus clientes no CRM e nos orçamentos (nome, telefone, e-mail e anotações); e (e) remove o seu acesso. Os seus orçamentos, o estado da assinatura, as notificações e o histórico dos seus aceites são apagados junto com a conta. *(G10)*
 
