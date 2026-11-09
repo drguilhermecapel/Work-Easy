@@ -416,7 +416,7 @@ Nomes que a tela usa: "Documento com foto e selfie", "CPF ou CNPJ (MEI, Simples 
 - [ ] **Certificado de curso** (eletricista): legível, entidade e carga horária compatíveis com o que a política exige `[critério sugerido]`.
 - [ ] **Aceitar documento** (observação opcional) ou **Rejeitar documento** (motivo obrigatório, visível à pessoa).
 - [ ] **Aprovar prestador.** Na primeira aprovação, o banco já aprova as ocupações que cumprem a regra (documento aceito em cada passo e registro não rejeitado) e registra no histórico quais. As demais você aprova uma a uma em **Aprovar ocupação**.
-- [ ] **Atenção ao "Desfazer aceite":** o texto da tela diz que a ocupação continua aprovada, mas o banco retira a aprovação das ocupações que dependiam daquele documento (gatilho `provider_documents_revoke_approvals`, ARQUITETURA, seção Prestadores). Conte com a retirada (lacuna na seção 14).
+- [x] **"Desfazer aceite":** o texto da tela foi corrigido para dizer que o banco retira a aprovação das ocupações que dependiam daquele documento (gatilho `provider_documents_revoke_approvals`, ARQUITETURA, seção Prestadores). Conte com a retirada ao decidir.
 
 ### 8.4 Definições de "pronto"
 
@@ -701,7 +701,7 @@ id;nome;whatsapp;ocupacao_slug;categoria;bairros;canal_origem;indicado_por_id;co
 4. `provider_documents.expires_at` existe e a tela do admin mostra "Validade informada", mas a tela de envio não preenche o campo e `admin_review_document` não recebe validade.
 5. A página pública e o formulário de serviço sempre mostram e exigem preço, para qualquer ocupação.
 6. `payments-create` e `charges-create` não consultam o modelo de cobrança da política: um psicólogo (`so_assinatura`) poderia receber pagamento pela plataforma ou cobrar pelo Pro.
-7. O texto de "Desfazer aceite" (`components/admin/DocumentCard.tsx`) diz que a ocupação continua aprovada, mas o gatilho do banco retira a aprovação.
+7. O texto de "Desfazer aceite" (`components/admin/DocumentCard.tsx`) foi corrigido: diz que a aprovação das ocupações que dependiam do documento é retirada, como faz o gatilho do banco.
 8. Não existe a ocupação `eletricista` no catálogo (é o slug da área); `cuidador-de-idosos` e as ocupações de eletricista estão `a_confirmar`.
 9. `personal-trainer` aparece com comissão no primeiro serviço apesar de ser profissão com conselho; confira com a matriz do CREF.
 10. Não há recurso de indicação, crédito, lista de espera nem origem do prestador no produto: tudo isso é manual (planilha).
