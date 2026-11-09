@@ -174,8 +174,12 @@ describe('/agendar/:slug', () => {
   const originalTz = process.env.TZ;
   beforeAll(() => {
     process.env.TZ = 'Asia/Tokyo';
+    // The days of these tests are in 2030: the clock is fixed so they stay inside the one-year horizon
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2030-01-01T12:00:00-03:00'));
   });
   afterAll(() => {
+    vi.useRealTimers();
     process.env.TZ = originalTz;
   });
 
@@ -250,7 +254,28 @@ describe('/agendar/:slug', () => {
     fake.rpcs.book_direct = () => ({ data: null, error: { code: 'P0001', message: 'booking_limit' } });
     await pickSlot(user);
     await user.click(screen.getByRole('button', { name: 'Pedir este horário' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Você já tem muitos pedidos de agendamento aguardando resposta.');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Você não pode enviar outro pedido agora: há muitos pedidos abertos seus ou deste profissional, e pedidos cancelados com ele contam por 24 horas.',
+    );
+  });
+
+  it('limits the day to one year ahead, in the date field and in the message', async () => {
+    const user = userEvent.setup();
+    renderAt('/agendar/ana-diarista');
+    const day = await screen.findByLabelText('Dia');
+    expect(day).toHaveAttribute('max', '2031-01-01');
+
+    await user.type(day, '2031-01-02');
+    expect(await screen.findByText('Só é possível agendar até 01/01/2031, um ano à frente.')).toBeInTheDocument();
+    expect(fake.rpcCalls.filter(c => c.name === 'available_slots')).toHaveLength(0);
+  });
+
+  it('still looks for the slots of the last day of the horizon', async () => {
+    const user = userEvent.setup();
+    renderAt('/agendar/ana-diarista');
+    await user.type(await screen.findByLabelText('Dia'), '2031-01-01');
+    await waitFor(() => expect(fake.rpcCalls.find(c => c.name === 'available_slots')?.args).toMatchObject({ p_day: '2031-01-01' }));
+    expect(screen.queryByText(/Só é possível agendar até/)).not.toBeInTheDocument();
   });
 
   it('says when the day has no free slot', async () => {
