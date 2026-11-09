@@ -2,7 +2,7 @@
 -- per role, blocked direct status updates, commission, direct and own bookings, free
 -- slots and RLS.
 begin;
-select plan(153);
+select plan(154);
 select has_function('tests', 'setup_fixture', 'test helpers are installed (run 00_helpers first)');
 select tests.setup_fixture();
 
@@ -537,8 +537,8 @@ select throws_ok($$select public.create_own_booking((select id from public.provi
                     't-reparo', tests.sp_period('2030-11-05 12:00', 1), 100, null)$$,
                  'P0001', 'not_allowed', 'an own job needs an entry of origin own');
 
--- Contact is shared with the real counterpart only: the client gets the provider profile
--- (phone) once the provider accepted; the provider sees who asked from the start.
+-- Contact is shared with the real counterpart only, and only once the job is accepted: each side
+-- reads the other's profile (name, phone) from acceptance on, never for a request nobody accepted.
 select tests.clear_authentication();
 select tests.create_user('client_z', 'Cliente Z', '5511900000099');
 select tests.authenticate_as('client_z');
@@ -550,10 +550,12 @@ select is((select count(*)::int from public.profiles where id = tests.uid('provi
 select is((select count(*)::int from public.providers where id = tests.uid('provider_c')), 1,
           'but reads the provider row (the name for the list of jobs)');
 select tests.authenticate_as('provider_c');
-select is((select count(*)::int from public.profiles where id = tests.uid('client_z')), 1,
-          'the provider reads the profile of the client who asked');
+select is((select count(*)::int from public.profiles where id = tests.uid('client_z')), 0,
+          'the provider does not read the profile of a client whose request nobody accepted');
 select is(public.transition_booking((select id from ids where name = 'direct_z'), 'accepted')::text, 'accepted',
           'the provider accepts the direct booking');
+select is((select count(*)::int from public.profiles where id = tests.uid('client_z')), 1,
+          'after the acceptance the provider reads the client');
 select tests.authenticate_as('client_z');
 select is((select count(*)::int from public.profiles where id = tests.uid('provider_c')), 1,
           'after the acceptance the client reads the provider profile');
