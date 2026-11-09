@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from '../../contexts/AuthContext';
 import AppShell from '../../AppShell';
@@ -139,7 +139,8 @@ describe('the DOM after React mounts keeps what the static page said', () => {
       await settled(path);
       const lost = missing(staticFacts(page!), factsOf(document.body));
       expect(lost, `${path} lost after the mount:\n${lost.join('\n')}`).toEqual([]);
-      expect(document.title, path).toBe(page!.title);
+      // The title is set by useDocumentTitle in an effect, which can run after the heading is already in the DOM
+      await waitFor(() => expect(document.title, path).toBe(page!.title), { timeout: 5_000 });
     };
 
     it('on /categorias', async () => {

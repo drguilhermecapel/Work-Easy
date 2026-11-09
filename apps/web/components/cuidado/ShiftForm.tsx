@@ -114,7 +114,11 @@ const ShiftForm: React.FC<Props> = ({ households, recipients, initialHouseholdId
           autoComplete="off"
         />
       </Field>
-      <Field id="plantao-notas" label="Observações para o cuidador (opcional)" hint="Por exemplo: “levar documento na portaria”, “almoço já fica pronto”.">
+      <Field
+        id="plantao-notas"
+        label="Observações para o cuidador (opcional)"
+        hint="Estas observações aparecem para o cuidador só depois que ele aceitar o plantão. Por exemplo: “levar documento na portaria”, “almoço já fica pronto”."
+      >
         <textarea
           id="plantao-notas"
           className={inputClass}

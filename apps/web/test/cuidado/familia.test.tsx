@@ -293,6 +293,14 @@ describe('family screens of the care line', () => {
       expect(callsOn('shifts', 'insert')).toHaveLength(0);
     });
 
+    it('says that the notes reach the caregiver only after he accepts the shift', async () => {
+      renderCare('/cuidado/plantoes');
+      const form = await screen.findByRole('form', { name: 'Novo plantão' });
+      expect(within(form).getByLabelText(/Observações para o cuidador/)).toHaveAccessibleDescription(
+        /^Estas observações aparecem para o cuidador só depois que ele aceitar o plantão\./,
+      );
+    });
+
     it('refuses health information in the notes of a shift', async () => {
       renderCare('/cuidado/plantoes');
       const form = await screen.findByRole('form', { name: 'Novo plantão' });
