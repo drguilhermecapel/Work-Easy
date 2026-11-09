@@ -8,7 +8,7 @@ export const APP_ORIGINS = [
   'tauri://localhost',
 ] as const;
 
-/** Vite dev server; allowed only with the Asaas sandbox or ALLOW_DEV_ORIGINS=true. */
+/** Vite dev server; allowed only outside production, with the Asaas sandbox or ALLOW_DEV_ORIGINS=true. */
 export const DEV_ORIGINS = ['http://localhost:3000', 'http://127.0.0.1:3000'] as const;
 
 export class HttpError extends Error {

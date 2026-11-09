@@ -137,7 +137,8 @@ export interface AsaasSubscription {
 
 export interface AsaasClientOptions {
   apiKey: string;
-  baseUrl?: string;
+  /** Required, with no default: the environment is chosen by the caller (asaasBaseUrl in _shared/config.ts). */
+  baseUrl: string;
   fetch: FetchLike;
   timeoutMs?: number;
   userAgent?: string;
@@ -148,7 +149,8 @@ export class AsaasClient {
 
   constructor(private readonly options: AsaasClientOptions) {
     if (!options.apiKey) throw new Error('Asaas API key is required');
-    this.baseUrl = (options.baseUrl || ASAAS_SANDBOX_URL).replace(/\/+$/, '');
+    if (!options.baseUrl) throw new Error('Asaas base URL is required');
+    this.baseUrl = options.baseUrl.replace(/\/+$/, '');
     if (!/^https:\/\//.test(this.baseUrl)) throw new Error('ASAAS_BASE_URL must use https');
   }
 
