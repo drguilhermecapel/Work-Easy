@@ -19,6 +19,9 @@ export const DATABASE_ERROR_CODES = [
   'slug_taken',
   'checkin_window',
   'booking_limit',
+  'request_limit',
+  'availability_limit',
+  'availability_overlap',
   'offer_limit',
   'free_proposal_limit',
 ] as const;
@@ -98,6 +101,12 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   checkin_window: 'Fora do horário de registro. O registro vale de 2 horas antes a 2 horas depois do horário previsto.',
   booking_limit:
     'Você já tem muitos pedidos de agendamento aguardando resposta. Espere o profissional responder ou cancele algum.',
+  request_limit:
+    'Você já tem o número máximo de pedidos abertos. Cancele um deles ou aguarde o vencimento de algum para criar outro.',
+  availability_limit:
+    'Você já cadastrou o número máximo de horários semanais. Remova algum horário antes de adicionar outro.',
+  availability_overlap:
+    'Este horário se sobrepõe a outro do mesmo dia da semana. Ajuste o início ou o término.',
   offer_limit: 'Limite de ofertas atingido para este plantão ou para hoje. Tente de novo mais tarde.',
   // The monthly allowance comes from platform_settings, so the sentence does not state a number
   free_proposal_limit:

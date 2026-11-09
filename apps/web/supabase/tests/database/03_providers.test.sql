@@ -358,6 +358,10 @@ select is(jsonb_array_length(public.get_provider_page('t-davi') -> 'reviews'), 3
 select tests.clear_authentication();
 insert into public.provider_occupations (provider_id, occupation_slug, registry_number, registry_uf, approved)
 values (tests.uid('provider_e'), 't-medico', '777', 'SP', true);
+-- Provider B changed its registry number after the confirmation, so the approval went away. The draw
+-- needs both providers offered: the test session sets it back, as the fixture does (no documents here).
+update public.provider_occupations set approved = true
+ where provider_id = tests.uid('provider_b') and occupation_slug = 't-medico';
 create temp table expected_draw as
   select po.provider_id, row_number() over (order by md5(po.provider_id::text || (now() at time zone 'America/Sao_Paulo')::date::text), po.provider_id) as rn
     from public.provider_occupations po
