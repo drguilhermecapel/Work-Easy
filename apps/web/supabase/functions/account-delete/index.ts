@@ -88,6 +88,9 @@ const deps: DeleteDeps = {
     markPaymentCanceled,
     getSubaccountApiKey: readSecret,
     removeDocuments: userId => emptyFolder(userId, { passes: 0 }),
+    async cancelShifts(userId) {
+      return must(await serviceClient().rpc('cancel_shifts_for_user_deletion', { p_user: userId })) as number;
+    },
     async createRequest(userId) {
       const row = must(
         await serviceClient()

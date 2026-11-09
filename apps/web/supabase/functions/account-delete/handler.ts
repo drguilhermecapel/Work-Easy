@@ -1,11 +1,12 @@
 // account-delete (usuário): requires {"confirm":"EXCLUIR"}. Refuses while the
 // user has a booking in progress (accepted, paid, in progress or disputed).
 // Otherwise it stops the money first (cancels the Pro subscription and the
-// open charges in Asaas), empties the user's folder in the provider-documents
-// bucket (anonymize_user refuses to run while it has files: storage_not_empty),
-// records the request in data_requests, calls anonymize_user (payments and
-// bookings stay, anonymized, for tax obligations) and deletes the user from
-// Supabase Auth.
+// open charges in Asaas), cancels the user's assigned shifts (shifts never
+// block the deletion: the right to erasure prevails), empties the user's
+// folder in the provider-documents bucket (anonymize_user refuses to run
+// while it has files: storage_not_empty), records the request in
+// data_requests, calls anonymize_user (payments and bookings stay,
+// anonymized, for tax obligations) and deletes the user from Supabase Auth.
 //
 // data_requests.status stays `processing` until the whole flow ends:
 // `completed`, or `failed` when something stops it before anonymization.
@@ -44,6 +45,8 @@ export interface DeleteDeps extends BaseDeps {
     getSubaccountApiKey(providerId: string): Promise<string | null>;
     /** Removes every object under provider-documents/<userId>/ (any depth); returns how many. */
     removeDocuments(userId: string): Promise<number>;
+    /** Cancels the shifts the user is assigned to (cancel_shifts_for_user_deletion); returns how many. */
+    cancelShifts(userId: string): Promise<number>;
     createRequest(userId: string): Promise<string>;
     updateRequest(id: string, patch: { status: string; completed_at?: string }): Promise<void>;
     anonymizeUser(userId: string): Promise<void>;
@@ -130,9 +133,12 @@ export function handler(req: Request, deps: DeleteDeps): Promise<Response> {
 
     const requestId = await deps.admin.createRequest(user.id);
     let stopped = { subscription: false, charges: 0 };
+    let shiftsCanceled = 0;
     let documents = 0;
     try {
       stopped = await stopMoney(deps, user.id, deps.now());
+      // Cancelled before anonymize_user; shifts do not block the deletion
+      shiftsCanceled = await deps.admin.cancelShifts(user.id);
       // Order required by anonymize_user: Storage, then anonymize, then Auth
       documents = await deps.admin.removeDocuments(user.id);
       await deps.admin.anonymizeUser(user.id);
@@ -146,7 +152,13 @@ export function handler(req: Request, deps: DeleteDeps): Promise<Response> {
       action: 'account.delete',
       entity: 'profiles',
       entity_id: user.id,
-      data: { data_request_id: requestId, subscription_canceled: stopped.subscription, charges_canceled: stopped.charges, documents_removed: documents },
+      data: {
+        data_request_id: requestId,
+        subscription_canceled: stopped.subscription,
+        charges_canceled: stopped.charges,
+        shifts_canceled: shiftsCanceled,
+        documents_removed: documents,
+      },
     });
     try {
       await deps.admin.deleteAuthUser(user.id);

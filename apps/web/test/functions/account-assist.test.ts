@@ -70,9 +70,12 @@ describe('account-delete', () => {
     routes?: Parameters<typeof asaasWith>[0];
     subKey?: string | null;
     documentsFail?: boolean;
+    shifts?: number;
+    shiftsFail?: boolean;
   } = {}) {
     const steps: string[] = [];
     const audits: Array<{ data?: Record<string, unknown> }> = [];
+    const shiftCalls: string[] = [];
     const { client, calls } = asaasWith(over.routes ?? {
       [`DELETE /v3/subscriptions/${SUB_ID}`]: { body: { deleted: true, id: SUB_ID } },
       'DELETE /v3/payments/pay_p': { body: { deleted: true, id: 'pay_p' } },
@@ -94,6 +97,12 @@ describe('account-delete', () => {
           steps.push('documents');
           return 3;
         },
+        cancelShifts: async userId => {
+          shiftCalls.push(userId);
+          if (over.shiftsFail) throw new Error('database unavailable');
+          steps.push('shifts-cancelled');
+          return over.shifts ?? 0;
+        },
         createRequest: async () => {
           steps.push('request');
           return 'dr-1';
@@ -113,7 +122,7 @@ describe('account-delete', () => {
         },
       },
     };
-    return { deps, steps, calls, audits };
+    return { deps, steps, calls, audits, shiftCalls };
   }
 
   const confirm = () => post('account-delete', { confirm: 'EXCLUIR' });
@@ -134,7 +143,8 @@ describe('account-delete', () => {
     expect(res.status).toBe(200);
     expect(res.body.data).toEqual({ deleted: true, data_request_id: 'dr-1', completed_at: '2026-10-19T15:00:00.000Z' });
     // data_requests.status is pending|processing|completed|failed: no "anonymized"
-    expect(steps).toEqual(['request', 'documents', 'anonymize', 'audit', 'auth-delete', 'status:completed']);
+    // Asserção alterada: 'shifts-cancelled' entra antes de 'documents' (cancelamento de plantões, antes da anonimização).
+    expect(steps).toEqual(['request', 'shifts-cancelled', 'documents', 'anonymize', 'audit', 'auth-delete', 'status:completed']);
   });
 
   it('refuses while a booking is in progress, before touching anything', async () => {
@@ -156,8 +166,9 @@ describe('account-delete', () => {
       'DELETE /v3/payments/pay_p root-key',
       'DELETE /v3/payments/pay_q sub-key', // the provider's own charge, in the subaccount
     ]);
+    // Asserção alterada: 'shifts-cancelled' após as cobranças e antes de 'documents'.
     expect(steps).toEqual([
-      'request', 'sub-local', 'pay-local:pay-row-1', 'pay-local:pay-row-2', 'documents', 'anonymize', 'audit', 'auth-delete', 'status:completed',
+      'request', 'sub-local', 'pay-local:pay-row-1', 'pay-local:pay-row-2', 'shifts-cancelled', 'documents', 'anonymize', 'audit', 'auth-delete', 'status:completed',
     ]);
     expect(audits[0].data).toMatchObject({ subscription_canceled: true, charges_canceled: 2 });
   });
@@ -209,13 +220,31 @@ describe('account-delete', () => {
 
     const down = deleteDeps({ documentsFail: true });
     expect((await read(await accountDelete(confirm(), down.deps))).status).toBe(500);
-    expect(down.steps).toEqual(['request', 'status:failed']);
+    // Asserção alterada: os plantões já foram cancelados quando a remoção dos documentos falha.
+    expect(down.steps).toEqual(['request', 'shifts-cancelled', 'status:failed']);
   });
 
   it('marks the request failed when anonymization fails, and never deletes the login', async () => {
     const { deps, steps } = deleteDeps({ anonymizeFails: true });
     expect((await read(await accountDelete(confirm(), deps))).status).toBe(500);
-    expect(steps).toEqual(['request', 'documents', 'status:failed']);
+    // Asserção alterada: os plantões são cancelados antes de 'documents' e de 'anonymize'.
+    expect(steps).toEqual(['request', 'shifts-cancelled', 'documents', 'status:failed']);
+  });
+
+  it('cancels the shifts before anonymizing, and shifts never block the deletion', async () => {
+    const { deps, steps, audits, shiftCalls } = deleteDeps({ shifts: 2 });
+    const res = await read(await accountDelete(confirm(), deps));
+    expect(res.status).toBe(200);
+    expect(shiftCalls).toEqual([USER.id]);
+    expect(steps.indexOf('shifts-cancelled')).toBeGreaterThan(-1);
+    expect(steps.indexOf('shifts-cancelled')).toBeLessThan(steps.indexOf('anonymize'));
+    expect(audits[0].data).toMatchObject({ shifts_canceled: 2 });
+  });
+
+  it('stops without anonymizing when the shifts cannot be cancelled', async () => {
+    const { deps, steps } = deleteDeps({ shiftsFail: true });
+    expect((await read(await accountDelete(confirm(), deps))).status).toBe(500);
+    expect(steps).toEqual(['request', 'status:failed']);
   });
 
   it('explains a partial failure when the Auth delete fails', async () => {
