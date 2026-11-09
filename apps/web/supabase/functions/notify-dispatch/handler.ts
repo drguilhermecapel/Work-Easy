@@ -82,7 +82,10 @@ async function paramsFor(row: NotificationRow, template: TemplateName, deps: Not
 }
 
 export async function deliver(row: NotificationRow, deps: NotifyDeps, timeoutMs = REQUEST_TIMEOUT_MS): Promise<SendOutcome> {
+  // Only approved templates reach a recipient, and only from a row that names a user: the
+  // triggers queue each message for a confirmed contact of that user. Neither case is retried.
   if (!isTemplateName(row.template)) return { kind: 'error', reason: `unknown_template: ${row.template}`, retryable: false };
+  if (!row.user_id) return { kind: 'skipped', reason: 'unlinked_recipient' };
   try {
     if (row.channel === 'whatsapp') {
       const { token, phoneNumberId, graphVersion } = deps.whatsapp;

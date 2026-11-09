@@ -601,8 +601,9 @@ describe('notify-dispatch', () => {
   const call = (headers: Record<string, string> = { 'x-cron-secret': CRON }, body: unknown = {}) =>
     new Request('http://localhost/functions/v1/notify-dispatch', { method: 'POST', headers, body: JSON.stringify(body) });
 
+  // As private.notify writes it: every row names the user whose confirmed contact it targets
   const row = (over: Partial<NotificationRow>): NotificationRow => ({
-    id: 'n1', user_id: null, phone: '11987654321', email: 'a@example.com', channel: 'whatsapp',
+    id: 'n1', user_id: '7a1b2c3d-0000-4000-8000-000000000001', phone: '11987654321', email: 'a@example.com', channel: 'whatsapp',
     template: 'pagamento_recebido', params: { amount_cents: 15000, client_name: 'Ana' }, attempts: 1, ...over, // attempts as the claim returns it (already counted)
   });
 

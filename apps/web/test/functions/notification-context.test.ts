@@ -126,6 +126,18 @@ describe('notify-dispatch with the parameters the database triggers write', () =
     expect(updates[0][1].error).toMatch(/^invalid_params: missing param neighborhood_name/);
   });
 
+  it('sends only approved templates, and only to a row that names a user', async () => {
+    const { updates, calls } = await run([
+      row({ id: 'sem-usuario', user_id: null, template: 'pagamento_recebido', params: { payment_id: 'p1', amount_cents: 15000 } }),
+      row({ id: 'fora-da-lista', template: 'texto_livre', params: { texto: 'Clique no link' } }),
+    ]);
+    expect(calls).toHaveLength(0);
+    expect(updates.map(([id, u]) => [id, u.status, u.error])).toEqual([
+      ['sem-usuario', 'skipped', 'unlinked_recipient'],
+      ['fora-da-lista', 'failed', 'unknown_template: texto_livre'],
+    ]);
+  });
+
   it('retries when the lookup itself fails (database unavailable)', async () => {
     const updates: Array<[string, NotificationUpdate]> = [];
     const { fetch } = fakeFetch({});
