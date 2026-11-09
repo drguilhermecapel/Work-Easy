@@ -338,6 +338,42 @@ describe('/pro/cadastro: steps of a draft provider', () => {
     await waitFor(() => expect(fake.removed).toEqual([{ bucket: 'provider-documents', paths: ['prov-1/documento_selfie-a.pdf'] }]));
   });
 
+  it('offers to remove an unreviewed document while the registration is a draft', async () => {
+    draft();
+    documents = [
+      { id: 'doc-1', step: 'documento_selfie', storage_path: 'prov-1/documento_selfie-a.pdf', status: 'submitted', rejection_reason: null, expires_at: null, created_at: '2026-10-20T12:00:00Z' },
+    ];
+    renderPro('/pro/cadastro');
+    expect(await screen.findByRole('button', { name: 'Remover' })).toBeInTheDocument();
+    expect(screen.queryByText('Documento em análise: não pode ser removido agora.')).not.toBeInTheDocument();
+  });
+
+  it.each(['pending_review', 'approved', 'suspended'] as const)(
+    'hides the removal of an unreviewed document once the registration is %s, and says why',
+    async status => {
+      draft();
+      provider = providerRow({ status });
+      documents = [
+        { id: 'doc-1', step: 'documento_selfie', storage_path: 'prov-1/documento_selfie-a.pdf', status: 'submitted', rejection_reason: null, expires_at: null, created_at: '2026-10-20T12:00:00Z' },
+      ];
+      renderPro('/pro/cadastro');
+      expect(await screen.findByText('Documento em análise: não pode ser removido agora.')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Remover' })).not.toBeInTheDocument();
+    },
+  );
+
+  it('offers no removal for a reviewed document, and no review text for it', async () => {
+    draft();
+    documents = [
+      { id: 'doc-2', step: 'cadastro_fiscal', storage_path: 'prov-1/cadastro_fiscal-a.pdf', status: 'accepted', rejection_reason: null, expires_at: null, created_at: '2026-10-20T12:00:00Z' },
+      { id: 'doc-3', step: 'documento_selfie', storage_path: 'prov-1/documento_selfie-a.pdf', status: 'rejected', rejection_reason: 'Foto escura', expires_at: null, created_at: '2026-10-20T12:00:00Z' },
+    ];
+    renderPro('/pro/cadastro');
+    expect(await screen.findByText('Motivo da recusa: Foto escura')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Remover' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Documento em análise: não pode ser removido agora.')).not.toBeInTheDocument();
+  });
+
   it('records the consent before the certificate of criminal record is sent', async () => {
     draft('diarista');
     fake.tables.consents = (call: TableCall) =>
@@ -370,7 +406,8 @@ describe('/pro/cadastro: steps of a draft provider', () => {
 
     const checkbox = await screen.findByRole('checkbox', { name: /Autorizo o WorkEasy a usar a certidão/ });
     expect(checkbox).toHaveAccessibleName(/A retirada fica registrada, mas não apaga a certidão já enviada nem muda quem pode vê-la/);
-    expect(checkbox).toHaveAccessibleName(/depois da análise, só posso apagá-la excluindo a minha conta/);
+    expect(checkbox).toHaveAccessibleName(/Enquanto o cadastro estiver em rascunho e a certidão não tiver sido analisada, posso removê-la aqui/);
+    expect(checkbox).toHaveAccessibleName(/depois do envio para análise, não consigo removê-la, e a exclusão da minha conta também apaga a certidão/);
   });
 
   it('shows documents_missing translated, with the steps lacking, then the status after the review request', async () => {

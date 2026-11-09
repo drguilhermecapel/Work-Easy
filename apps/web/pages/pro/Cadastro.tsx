@@ -40,7 +40,7 @@ import {
   PROVIDER_STATUS_STYLES,
   REGISTRY_STATUS_LABELS,
 } from '../../components/pro/labels';
-import { requiredSteps, summarizeSteps } from '../../components/pro/pendencies';
+import { canRemoveDocument, requiredSteps, summarizeSteps } from '../../components/pro/pendencies';
 import { inputClass, primaryButton, secondaryButton } from '../../components/pro/styles';
 
 const UFS = [
@@ -451,28 +451,35 @@ const DocumentsStep: React.FC<{ provider: ProviderRow; userId: string }> = ({ pr
                   <span>
                     Autorizo o WorkEasy a usar a certidão de antecedentes para analisar o meu cadastro. Posso retirar a autorização em{' '}
                     <Link to="/conta" className="text-primary underline">Minha conta</Link>. A retirada fica registrada, mas não apaga a
-                    certidão já enviada nem muda quem pode vê-la. Enquanto a certidão não for analisada, posso removê-la aqui; depois da análise,
-                    só posso apagá-la excluindo a minha conta.
+                    certidão já enviada nem muda quem pode vê-la. Enquanto o cadastro estiver em rascunho e a certidão não tiver sido analisada,
+                    posso removê-la aqui; depois do envio para análise, não consigo removê-la, e a exclusão da minha conta também apaga a
+                    certidão.
                   </span>
                 </label>
               )}
               {docs.length > 0 && (
                 <ul className="text-sm text-gray-600 space-y-1">
-                  {docs.map(doc => (
-                    <li key={doc.id} className="flex flex-wrap items-center gap-2">
-                      <span>
-                        Enviado em {formatDateBR(doc.created_at)} · {DOCUMENT_STATUS_LABELS[doc.status]}
-                      </span>
-                      {doc.status === 'submitted' && (
-                        <ConfirmButton
-                          label="Remover"
-                          question="Remover este arquivo?"
-                          confirmLabel="Sim, remover"
-                          onConfirm={() => remove(doc)}
-                        />
-                      )}
-                    </li>
-                  ))}
+                  {docs.map(doc => {
+                    const removable = canRemoveDocument(provider, doc);
+                    return (
+                      <li key={doc.id} className="flex flex-wrap items-center gap-2">
+                        <span>
+                          Enviado em {formatDateBR(doc.created_at)} · {DOCUMENT_STATUS_LABELS[doc.status]}
+                        </span>
+                        {removable && (
+                          <ConfirmButton
+                            label="Remover"
+                            question="Remover este arquivo?"
+                            confirmLabel="Sim, remover"
+                            onConfirm={() => remove(doc)}
+                          />
+                        )}
+                        {!removable && doc.status === 'submitted' && (
+                          <span className="text-xs text-gray-500">Documento em análise: não pode ser removido agora.</span>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
               <div>

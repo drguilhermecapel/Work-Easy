@@ -18,7 +18,7 @@ import { centsToReais, clientsCsv, paymentsCsv, toCsv } from '../../services/pro
 import { proposalAllowance } from '../../services/proMarketplace';
 import { NFSE_HELP, NFSE_ISSUER_URL } from '../../services/proNfse';
 import { slugify } from '../../services/providers';
-import { computePendencies, requiredSteps, summarizeSteps } from '../../components/pro/pendencies';
+import { canRemoveDocument, computePendencies, requiredSteps, summarizeSteps } from '../../components/pro/pendencies';
 import { AppError } from '../../lib/errors';
 import type { VerificationStep } from '../../catalog/types';
 
@@ -194,6 +194,15 @@ describe('registration pendencies', () => {
     expect(text).toContain('serviço');
     expect(text).toContain('dias e horários');
     expect(text).not.toContain('Envie o cadastro para análise');
+  });
+
+  it('allows removing a document only while the registration is a draft and the document is unreviewed', () => {
+    expect(canRemoveDocument(provider, doc('documento_selfie', 'submitted'))).toBe(true);
+    for (const status of ['pending_review', 'approved', 'suspended'] as const) {
+      expect(canRemoveDocument({ status }, doc('documento_selfie', 'submitted'))).toBe(false);
+    }
+    expect(canRemoveDocument(provider, doc('documento_selfie', 'accepted'))).toBe(false);
+    expect(canRemoveDocument(provider, doc('documento_selfie', 'rejected', 'Ilegível'))).toBe(false);
   });
 
   it('asks to submit once every document is in, and has nothing left when approved and complete', () => {
