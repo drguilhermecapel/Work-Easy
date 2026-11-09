@@ -455,6 +455,15 @@ describe('charges-create', () => {
     }
   });
 
+  it('refuses to charge an approved account that has no approved occupation, without calling Asaas', async () => {
+    const { deps, calls, inserted } = chargesDeps({ provider: { ...APPROVED, occupations: [] } });
+    const res = await read(await chargesCreate(post('charges-create', body), deps));
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('provider_not_approved');
+    expect(calls).toEqual([]);
+    expect(inserted).toEqual([]);
+  });
+
   it('refuses an own booking whose occupation the admin has not approved', async () => {
     const provider = { ...APPROVED, occupations: [{ occupation_slug: 'eletricista', approved: true, registry_status: 'not_required' }] };
     const { deps, calls } = ownBooking({ provider, occupation: 'diarista' });
@@ -661,6 +670,15 @@ describe('asaas-onboard', () => {
     }
   });
 
+  it('refuses the receiving account to an approved account that has no approved occupation', async () => {
+    const { deps, calls, saved } = onboardDeps({ provider: { ...APPROVED, occupations: [] } });
+    const res = await read(await onboard(post('asaas-onboard', fiscal), deps));
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('provider_not_approved');
+    expect(calls).toEqual([]);
+    expect(saved).toEqual([]);
+  });
+
   it('requires birth date for CPF, company type for CNPJ, and refuses a second onboarding', async () => {
     const noBirth = await read(await onboard(post('asaas-onboard', { ...fiscal, birth_date: undefined }), onboardDeps().deps));
     expect(noBirth.body.error.details).toEqual(['birth_date: obrigatório para CPF']);
@@ -722,6 +740,16 @@ describe('subscriptions-manage', () => {
       expect(saved, status).toEqual([]);
       expect(plans, status).toEqual([]);
     }
+  });
+
+  it('does not start the subscription or the free trial for an approved account with no approved occupation', async () => {
+    const { deps, calls, saved, plans } = subsDeps(null, {}, true, 30, { ...APPROVED, occupations: [] });
+    const res = await read(await subscriptions(post('subscriptions-manage', { action: 'subscribe', method: 'pix' }), deps));
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('provider_not_approved');
+    expect(calls).toEqual([]);
+    expect(saved).toEqual([]);
+    expect(plans).toEqual([]);
   });
 
   it('lets a suspended provider cancel a subscription that is still billing', async () => {
