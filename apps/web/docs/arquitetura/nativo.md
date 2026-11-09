@@ -37,8 +37,10 @@ Decisões dos adaptadores:
 
 - `allowBackup="false"`: o app não entra em backup automático.
 - `dataExtractionRules="@xml/data_extraction_rules"`: regras de Android 12+ que excluem
-  todos os domínios de backup em nuvem e de transferência entre aparelhos. Hoje não
-  copiam nada; as regras ficam válidas caso o backup seja ligado no futuro.
+  todos os domínios de backup em nuvem e de transferência entre aparelhos: `root`, `file`,
+  `database`, `sharedpref`, `external` e os `device_*` (armazenamento protegido por
+  dispositivo). Hoje não copiam nada; as regras ficam válidas caso o backup seja ligado no
+  futuro. Teste de contrato: `test/platform/android-backup.test.ts`.
 - `usesCleartextTraffic="false"` e `networkSecurityConfig="@xml/network_security_config"`:
   tráfego `http://` é recusado; só a loja de certificados do sistema é confiável. O
   Capacitor serve o app em `https://localhost` (ver `capacitor.config.ts`), então nenhuma
@@ -155,19 +157,31 @@ Política de release (`app.security.csp`):
 - `default-src 'self'`, `script-src 'self'`, `object-src 'none'`, `base-uri 'self'`,
   `form-action 'self'`: só o próprio app executa código e envia formulários.
 - `style-src 'self' 'unsafe-inline'`: mantido, porque o React e o Tailwind aplicam estilos
-  inline.
-- `connect-src 'self' ipc: http://ipc.localhost https://*.supabase.co wss://*.supabase.co`:
-  a API do Supabase (REST, Auth, Storage, Edge Functions e Realtime) no projeto. O padrão
-  cobre qualquer projeto, porque a URL vem de `VITE_SUPABASE_URL` no build e não pode ser
-  escrita no arquivo.
+  inline. Trocar por hashes, como no site (`public/_headers`), exige testar a janela
+  desktop antes. **A verificar.**
+- `connect-src`, host por host:
+  - `'self'`: a própria página (`tauri://localhost`, e `http://tauri.localhost` no Windows).
+  - `ipc:` e `http://ipc.localhost`: canal interno do Tauri (macOS e Linux, e Windows). A
+    página não chama comandos: `src-tauri/src/lib.rs` não registra nenhum, o `package.json`
+    não tem `@tauri-apps/api` e as capabilities estão vazias. Mantido como canal do runtime;
+    remover só depois de testar a janela desktop. **A verificar.**
+  - `https://*.supabase.co`: a API do projeto (Auth, REST, Storage e Edge Functions). O padrão
+    cobre qualquer projeto, porque a URL vem de `VITE_SUPABASE_URL` no build e não pode ser
+    escrita no arquivo.
+  - `https://*.ingest.sentry.io` e `https://*.ingest.us.sentry.io` (EUA), e
+    `https://*.ingest.de.sentry.io` (UE): ingestão de erros do Sentry. Só são usados com
+    `VITE_SENTRY_DSN` no build; sem DSN, nada é enviado.
+  - Não há `wss://`: o app não abre canal Realtime do Supabase. Se um canal for criado,
+    acrescente `wss://*.supabase.co` aqui e na política de desenvolvimento.
 - `img-src 'self' data: blob:`: sem Supabase. Os links para documentos assinados (`DocumentCard`)
   abrem em `<a target="_blank">`, não em imagem.
 - `media-src ... mediastream:`: mantido porque a prévia de câmera da verificação pode usar
   `mediastream:` no WebKit (macOS e Linux). **A verificar.**
 
 Política de desenvolvimento (`app.security.devCsp`): acrescenta `'unsafe-inline'` em
-`script-src` (o plugin React do Vite injeta um script inline) e `ws://localhost:3000`
-para o HMR. Sem ela, o `tauri dev` seria bloqueado pela política de release.
+`script-src` (o plugin React do Vite injeta um script inline), `ws://localhost:3000` e
+`http://localhost:3000` para o HMR. Os hosts de `connect-src` são os da política de release.
+Sem ela, o `tauri dev` seria bloqueado pela política de release.
 
 Sem `frame-ancestors`: em `<meta>` a diretiva é ignorada pelo navegador.
 

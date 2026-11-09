@@ -4,6 +4,10 @@ on:
   # Actions tab (Run workflow) when needed; no push or pull request starts it.
   workflow_dispatch:
 
+# The job only reads the repository: no token write scope.
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
