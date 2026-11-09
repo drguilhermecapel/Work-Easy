@@ -112,8 +112,8 @@ values ((select id from ids where name = 'booking'), tests.uid('provider_a'), te
 insert into public.provider_clients (provider_id, client_id, name, phone, origin)
 values (tests.uid('provider_c'), tests.uid('client_a'), 'Cliente A', '5511900000001', 'platform');
 insert into public.households (owner_id, name, notes) values (tests.uid('client_a'), 'Casa da vó', 'Portão verde');
-insert into public.care_recipients (household_id, first_name, birth_year, preferences, emergency_contact)
-values ((select id from public.households where name = 'Casa da vó'), 'Lúcia', 1940, 'Gosta de rádio', 'Filho 11 90000-0000');
+insert into public.care_recipients (household_id, first_name, birth_year, preferences, emergency_contact, adult_declared_at)
+values ((select id from public.households where name = 'Casa da vó'), 'Lúcia', 1940, 'Gosta de rádio', 'Filho 11 90000-0000', now());
 insert into public.shifts (household_id, period, rate_cents) values
   ((select id from public.households where name = 'Casa da vó'), tests.sp_period('2029-03-05 08:00', 8), 30000);
 insert into public.quotes (provider_id, title, items, client_name, client_phone, status, valid_until)
