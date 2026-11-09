@@ -20,6 +20,12 @@ vi.mock('../../lib/supabase', async () => {
   return { supabase: createProFake(), backendEnabled: true };
 });
 
+// jsdom has no canvas, so photos pass through here; the re-encoding has its own tests in test/web/image-metadata.test.ts
+vi.mock('../../lib/imageMetadata', async importOriginal => ({
+  ...(await importOriginal<typeof import('../../lib/imageMetadata')>()),
+  stripImageMetadata: async (file: File) => file,
+}));
+
 const { supabase } = await import('../../lib/supabase');
 const { renderPro } = await import('./render');
 const fake = supabase as unknown as ProFake;
