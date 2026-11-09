@@ -124,10 +124,10 @@ const LimitDetail: React.FC<{ laborLockDays: number | null; loading: boolean }> 
           <strong>
             {laborLockDays} {laborLockDays === 1 ? 'dia diferente' : 'dias diferentes'}
           </strong>{' '}
-          por semana, de segunda a domingo, com o mesmo cuidador na mesma casa.
+          por semana, de segunda a domingo, com o mesmo cuidador para esta família.
         </>
       ) : (
-        'O limite de dias diferentes por semana, de segunda a domingo, com o mesmo cuidador na mesma casa é definido pela plataforma.'
+        'O limite de dias diferentes por semana, de segunda a domingo, com o mesmo cuidador para esta família é definido pela plataforma.'
       )}{' '}
       Plantões cancelados não contam.
     </p>

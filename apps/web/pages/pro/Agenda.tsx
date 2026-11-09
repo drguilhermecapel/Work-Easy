@@ -85,7 +85,7 @@ const LaborLockNotice: React.FC<{ data: Data }> = ({ data }) => {
         <Scale size={16} className="text-amber-700" aria-hidden="true" /> Limite de {limit} dias por semana com o mesmo cliente
       </h2>
       <p>
-        {names}: a lei pode tratar o trabalho doméstico em mais de {limit} dias por semana na mesma casa como relação de emprego (LC 150/2015).
+        {names}: a lei pode tratar o trabalho doméstico em mais de {limit} dias por semana para esta família como relação de emprego (LC 150/2015).
         Por isso o WorkEasy não deixa marcar mais de {limit} dias diferentes na mesma semana (de segunda a domingo) com o mesmo cliente.
         Atendimentos cancelados não contam. Quando o limite é atingido, a tela avisa e o atendimento não é criado.
       </p>

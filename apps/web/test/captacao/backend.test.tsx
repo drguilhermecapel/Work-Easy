@@ -90,7 +90,7 @@ describe('acquisition pages with a backend', () => {
   it('prints the weekly limit of the care line', async () => {
     renderCaptacao('/para-familias');
     const limit = await screen.findByText(/Hoje, o limite é de/);
-    expect(limit).toHaveTextContent(/Hoje, o limite é de 3 dias diferentes por semana, de segunda a domingo, com o mesmo cuidador na mesma casa/);
+    expect(limit).toHaveTextContent(/Hoje, o limite é de 3 dias diferentes por semana, de segunda a domingo, com o mesmo cuidador para esta família/);
   });
 
   it('only reads: platform_settings is the one table the pages touch', async () => {

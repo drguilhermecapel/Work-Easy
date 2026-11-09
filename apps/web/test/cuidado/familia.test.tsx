@@ -382,12 +382,13 @@ describe('family screens of the care line', () => {
       expect(within(past).getByText('Cancelado')).toBeInTheDocument();
     });
 
-    it('explains the weekly limit and the direct hiring path to the family', async () => {
+    it('explains the weekly limit for this family, with the ways out inside the app and no direct hiring', async () => {
       renderCare('/cuidado/plantoes');
       const note = await screen.findByRole('note', { name: /Por que o limite de 2 dias por semana/ });
       expect(note).toHaveTextContent(/LC 150\/2015/);
-      expect(note).toHaveTextContent(/contrate diretamente/);
-      expect(note).toHaveTextContent(/fora do WorkEasy/);
+      expect(note).toHaveTextContent(/para esta família/);
+      expect(note).toHaveTextContent(/ofereça o plantão a outro cuidador ou escolha outra semana/);
+      expect(note).not.toHaveTextContent(/contrat|fora do WorkEasy|mesma casa/i);
     });
 
     it('asks for a house first when there is none', async () => {
@@ -505,15 +506,17 @@ describe('family screens of the care line', () => {
       expect(await screen.findByRole('alert')).toHaveTextContent('Este cuidador recusou este plantão e não pode ser convidado de novo.');
     });
 
-    it('explains the labor lock, with the direct hiring path, if the database ever refuses an offer for it', async () => {
+    it('tells the family that the caregiver reached the limit for this family, if the database ever refuses an offer for it', async () => {
       world.rpcErrors.offer_shift = 'labor_lock';
       renderCare('/cuidado/plantoes/shift-1');
       await userEvent.click(await screen.findByRole('checkbox', { name: /Ana Cuidadora/ }));
       await userEvent.click(screen.getByRole('button', { name: 'Oferecer a 1 cuidador' }));
       const alert = await screen.findByRole('alert');
       expect(alert).toHaveTextContent('Limite de 2 dias por semana com o mesmo cuidador');
-      expect(alert).toHaveTextContent(/com o mesmo cuidador nesta casa/);
-      expect(alert).toHaveTextContent(/contrate diretamente/);
+      expect(alert).toHaveTextContent(
+        'Este cuidador já atingiu o limite de 2 dias por semana para esta família. Você pode escolher outro cuidador ou falar com a equipe do WorkEasy.',
+      );
+      expect(alert).not.toHaveTextContent(/contrat|mesma casa/i);
     });
 
     it('says when nobody serves the neighborhood', async () => {

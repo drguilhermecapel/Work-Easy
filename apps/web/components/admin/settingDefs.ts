@@ -71,7 +71,7 @@ export const NUMBER_DEFS: NumberDef[] = [
   },
   {
     key: 'labor_lock_days_per_week',
-    title: 'Dias por semana com o mesmo profissional na mesma casa',
+    title: 'Dias por semana com o mesmo profissional para esta família',
     label: 'Dias por semana',
     hint: 'Na ocupação com trava trabalhista. A regra de empregados domésticos (LC 150/2015) fala em mais de 2 dias por semana; mude só com parecer jurídico.',
     show: value => `${value} ${value === 1 ? 'dia' : 'dias'}`,

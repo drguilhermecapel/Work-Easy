@@ -90,7 +90,7 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   // Database rules
   // The weekly limit comes from platform_settings, so the sentence does not state a number
   labor_lock:
-    'Este atendimento passaria do limite semanal de dias com o mesmo profissional na mesma casa. A plataforma aplica esse limite porque a lei pode tratar a relação como emprego doméstico (LC 150/2015). Escolha outra semana ou contrate diretamente.',
+    'Este atendimento passaria do limite semanal de dias com o mesmo profissional para esta família. A plataforma aplica esse limite porque a lei pode tratar a relação como emprego doméstico (LC 150/2015). Escolha outra semana ou outro profissional.',
   proposal_limit: 'Este pedido já recebeu o número máximo de propostas.',
   request_not_open: 'Este pedido não está mais aberto.',
   not_allowed: 'Você não tem permissão para fazer isso.',
