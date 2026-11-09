@@ -6,6 +6,13 @@
 // hour (429 above it). The quota is taken atomically in the database
 // (take_assist_quota: one counter per user and clock hour) before the model is
 // called, so a burst of simultaneous requests cannot pass the limit.
+//
+// Off by default: the text leaves the platform for a third-party model, so the
+// function answers 503 feature_disabled until platform_settings holds
+// `request_assist_enabled` as JSON true (an admin sets it with admin_set_setting).
+// A missing key or any other value keeps it off. While on, the text reaches the
+// model only after redactPersonalData (redact.ts): no CPF, CNPJ, phone, e-mail,
+// link or CEP.
 
 import {
   ASSIST_SYSTEM_PROMPT, AssistOutputError, assistSchema, buildAssistUserMessage, type OccupationCandidate,
@@ -14,6 +21,10 @@ import {
 import { type AuthUser, type BaseDeps, corsOf, validated } from '../_shared/handler-kit.ts';
 import { errors, HttpError, readJson, route } from '../_shared/http.ts';
 import { object, string } from '../_shared/validate.ts';
+import { redactPersonalData } from './redact.ts';
+
+/** platform_settings.request_assist_enabled: only the JSON boolean true turns the assistant on. */
+export const requestAssistSwitchOn = (value: unknown): boolean => value === true;
 
 export interface ClassifyRequest {
   system: string;
@@ -36,6 +47,8 @@ export interface AssistUsage {
 }
 
 export interface AssistDeps extends BaseDeps {
+  /** platform_settings.request_assist_enabled is true (see requestAssistSwitchOn). A read failure rejects: nothing is sent. */
+  featureEnabled(): Promise<boolean>;
   /** Null when ANTHROPIC_API_KEY is not set. */
   classify: ((request: ClassifyRequest) => Promise<ClassifyResult>) | null;
   /** Calls per user per hour (ASSIST_HOURLY_LIMIT). */
@@ -48,13 +61,18 @@ const Body = object({ text: string({ min: TEXT_MIN, max: TEXT_MAX }) });
 
 export function handler(req: Request, deps: AssistDeps): Promise<Response> {
   return route(req, { methods: ['POST'], ...corsOf(deps), onError: deps.logError }, async () => {
+    // Checked first: while the switch is off, no session, quota or model call happens
+    if (!(await deps.featureEnabled())) {
+      throw new HttpError(503, 'feature_disabled', 'O assistente de pedidos está desligado nesta plataforma. Preencha o pedido manualmente.');
+    }
     const session = await deps.session(req);
     if (!session) throw errors.unauthorized();
     const classify = deps.classify;
     if (!classify) {
       throw new HttpError(503, 'assist_not_configured', 'O assistente de pedidos depende de configuração no servidor (ANTHROPIC_API_KEY).');
     }
-    const { text } = validated(Body, await readJson(req));
+    // What the model receives: the text without contact and document numbers
+    const text = redactPersonalData(validated(Body, await readJson(req)).text);
 
     if (deps.hourlyLimit < 1 || !(await deps.usage.take(session.user.id, deps.hourlyLimit))) {
       throw errors.tooMany(

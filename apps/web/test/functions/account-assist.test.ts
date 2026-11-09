@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { type DeleteDeps, handler as accountDelete, type OpenCharge } from '../../supabase/functions/account-delete/handler.ts';
 import { type ExportDeps, handler as accountExport } from '../../supabase/functions/account-export/handler.ts';
 import {
-  type AssistDeps, type ClassifyRequest, type ClassifyResult, handler as assist,
+  type AssistDeps, type ClassifyRequest, type ClassifyResult, handler as assist, requestAssistSwitchOn,
 } from '../../supabase/functions/request-assist/handler.ts';
 import { asaasWith, baseDeps, post, PROVIDER, read, USER } from './helpers.ts';
 
@@ -235,11 +235,19 @@ describe('request-assist', () => {
 
   // `used` calls were already made this hour; take() is atomic like take_assist_quota:
   // it grants while used < limit and counts the grant, and refuses without counting.
-  function assistDeps(result: ClassifyResult | null, over: { used?: number; limit?: number; failTake?: boolean } = {}) {
+  // `enabled` is the platform switch (request_assist_enabled); on unless a test turns it off.
+  function assistDeps(
+    result: ClassifyResult | null,
+    over: { used?: number; limit?: number; failTake?: boolean; enabled?: boolean; failSwitch?: boolean } = {},
+  ) {
     const requests: ClassifyRequest[] = [];
     const usage = { takes: [] as { userId: string; limit: number }[], used: over.used ?? 0 };
     const deps: AssistDeps = {
       ...baseDeps,
+      featureEnabled: async () => {
+        if (over.failSwitch) throw new Error('database unavailable');
+        return over.enabled ?? true;
+      },
       hourlyLimit: over.limit ?? 10,
       usage: {
         take: async (userId, limit) => {
@@ -353,5 +361,52 @@ describe('request-assist', () => {
     expect(refused.body.error.message).toContain('manualmente');
     const cut = await read(await assist(post('request-assist', text), assistDeps({ kind: 'incomplete', reason: 'max_tokens' }).deps));
     expect(cut.status).toBe(502);
+  });
+
+  const OK: ClassifyResult = { kind: 'ok', text: '{"occupation_slug":"encanador","urgent":false,"summary":"Vazamento."}' };
+
+  it('is off by default: 503 feature_disabled before any session, quota or model call', async () => {
+    const off = assistDeps(OK, { enabled: false });
+    const res = await read(await assist(post('request-assist', text), off.deps));
+    expect(res.status).toBe(503);
+    expect(res.body.error.code).toBe('feature_disabled');
+    expect(off.usage.takes).toEqual([]);
+    expect(off.requests).toEqual([]);
+  });
+
+  it('answers as before once the switch is on', async () => {
+    const on = assistDeps(OK, { enabled: true });
+    const res = await read(await assist(post('request-assist', text), on.deps));
+    expect(res.status).toBe(200);
+    expect(on.requests).toHaveLength(1);
+  });
+
+  it('fails closed when the switch cannot be read: no quota, no model call', async () => {
+    const broken = assistDeps(OK, { failSwitch: true });
+    const res = await read(await assist(post('request-assist', text), broken.deps));
+    expect(res.status).toBe(500);
+    expect(broken.usage.takes).toEqual([]);
+    expect(broken.requests).toEqual([]);
+  });
+
+  it('turns the switch on only for the JSON boolean true', () => {
+    expect(requestAssistSwitchOn(true)).toBe(true);
+    for (const value of [undefined, null, false, 'true', 1, {}]) {
+      expect(requestAssistSwitchOn(value), String(value)).toBe(false);
+    }
+  });
+
+  it('sends the model the text without contact or document numbers, and keeps the rest', async () => {
+    const { deps, requests } = assistDeps(OK);
+    const typed = 'Vazamento na pia. Me liga no (11) 98765-4321 ou ana@exemplo.com.br, CPF 529.982.247-25, CEP 01310-100.';
+    const res = await read(await assist(post('request-assist', { text: typed }), deps));
+    expect(res.status).toBe(200);
+    const sent = requests[0].user;
+    expect(sent).not.toMatch(/98765|exemplo\.com|529\.982|01310/);
+    expect(sent).toContain('[telefone omitido]');
+    expect(sent).toContain('[e-mail omitido]');
+    expect(sent).toContain('[documento omitido]');
+    expect(sent).toContain('[cep omitido]');
+    expect(sent).toContain('Vazamento na pia');
   });
 });
