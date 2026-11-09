@@ -1,6 +1,7 @@
 import { loadPolicies } from '../catalog';
 import type { OccupationPolicy, PriceUnit, VerificationStep } from '../catalog/types';
 import { AppError } from '../lib/errors';
+import { stripImageMetadata } from '../lib/imageMetadata';
 import type { Tables } from '../lib/database.types';
 import { db, unwrap, unwrapMaybe } from './client';
 import { guard } from './proErrors';
@@ -241,23 +242,27 @@ export const listMyDocuments = (providerId: string): Promise<ProviderDocumentRow
 
 const randomPart = (): string => globalThis.crypto?.randomUUID?.().slice(0, 8) ?? Math.random().toString(36).slice(2, 10);
 
+const TOO_LARGE = 'O arquivo precisa ter até 10 MB.';
+
 /**
  * Sends the file to the private bucket (provider-documents/<provider_id>/...) and
- * records it for the review. A failed record removes the file again.
+ * records it for the review. A failed record removes the file again. A photo is
+ * stored without its metadata (GPS position, device model); a PDF is stored as it is.
  */
 export const uploadProviderDocument = (input: { providerId: string; step: VerificationStep; file: File }): Promise<ProviderDocumentRow> =>
   guard(async () => {
     const { providerId, step, file } = input;
-    const extension = DOCUMENT_TYPES[file.type];
-    if (!extension) {
+    if (!DOCUMENT_TYPES[file.type]) {
       throw new AppError('invalid_input', { message: 'Envie uma foto (JPG, PNG, WebP ou HEIC) ou um PDF.' });
     }
-    if (file.size === 0 || file.size > DOCUMENT_MAX_BYTES) {
-      throw new AppError('invalid_input', { message: 'O arquivo precisa ter até 10 MB.' });
-    }
+    if (file.size === 0 || file.size > DOCUMENT_MAX_BYTES) throw new AppError('invalid_input', { message: TOO_LARGE });
+    // Before storage: the bucket only ever receives the copy returned here
+    const prepared = await stripImageMetadata(file);
+    if (prepared.size > DOCUMENT_MAX_BYTES) throw new AppError('invalid_input', { message: TOO_LARGE });
+    const extension = DOCUMENT_TYPES[prepared.type];
     const path = `${providerId}/${step}-${Date.now().toString(36)}-${randomPart()}.${extension}`;
     const bucket = db().storage.from(DOCUMENT_BUCKET);
-    const { error: uploadError } = await bucket.upload(path, file, { contentType: file.type, upsert: false });
+    const { error: uploadError } = await bucket.upload(path, prepared, { contentType: prepared.type, upsert: false });
     if (uploadError) throw uploadError;
     try {
       return unwrap<ProviderDocumentRow>(
