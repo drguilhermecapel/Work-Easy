@@ -138,6 +138,12 @@ Intenção do desenho:
 5. Verifique, em um ambiente de teste, que um erro provocado aparece no projeto e que o evento
    não contém e-mail, telefone ou URL com query string.
 
+A política de conteúdo já libera os hosts de ingestão do Sentry da UE
+(`*.ingest.de.sentry.io`) e dos EUA (`*.ingest.sentry.io` e `*.ingest.us.sentry.io`), no site
+(`public/_headers`) e no desktop (`src-tauri/tauri.conf.json`). Outra região exige acrescentar
+o host nas duas políticas e em `SENTRY_INGEST` de `scripts/check-headers.mjs`. Sem essa
+alteração, o navegador bloqueia o envio em silêncio.
+
 Sem `VITE_SENTRY_DSN`, o comportamento é o de sempre: nenhuma chamada ao Sentry, nenhum
 carregamento do SDK.
 

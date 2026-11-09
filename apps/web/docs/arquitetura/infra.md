@@ -39,9 +39,9 @@ Política de conteúdo (`Content-Security-Policy`, valor em todas as rotas):
 | --- | --- | --- |
 | `default-src` | `'self'` | Base restrita à própria origem |
 | `script-src` | `'self'` | Sem `unsafe-inline` nem `unsafe-eval`. O HTML gerado não tem script inline executável: o único bloco inline é JSON-LD, que o navegador não executa |
-| `style-src` | `'self'` | O CSS sai em arquivo próprio (Tailwind); o React define estilos por CSSOM, que a CSP não bloqueia |
-| `img-src` | `'self' data: blob: https://*.supabase.co` | Ícones locais, miniaturas inline, imagens do Storage |
-| `connect-src` | `'self' https://*.supabase.co wss://*.supabase.co` | Auth, API REST e Realtime do Supabase |
+| `style-src` | `'self' 'sha256-ezHv…' 'sha256-bT1t…'` | O CSS sai em arquivo próprio (Tailwind); o React define estilos por CSSOM, que a CSP não bloqueia. As duas folhas de impressão (`<style>` em `components/pro/QuoteDocument.tsx` e `pages/publico/Orcamento.tsx`) entram por hash do texto exato, sem `unsafe-inline`. Se o texto mudar, o hash muda: o teste `test/platform/web-headers.test.ts` avisa |
+| `img-src` | `'self' data: blob:` | Ícones locais; QR do Pix em `data:`; anexo da sala de teleconsulta (demonstração) em `blob:`. Sem Supabase: os documentos assinados abrem em link (`DocumentCard`), não em imagem. Se uma tela passar a mostrar imagem do Storage, inclua o host aqui e no verificador |
+| `connect-src` | `'self' https://*.supabase.co` e os hosts de ingestão do Sentry | API do Supabase (Auth, REST, Storage, Edge Functions). Sem Realtime: o app não abre canal, então não há websocket; se um canal for criado, acrescente `wss://*.supabase.co` aqui e no verificador. Os hosts do Sentry (`*.ingest.sentry.io`, `*.ingest.de.sentry.io` para a UE e `*.ingest.us.sentry.io`) só são usados com `VITE_SENTRY_DSN`; sem DSN o app não os contata |
 | `font-src`, `manifest-src`, `worker-src` | `'self'` | Fontes locais, manifest e service worker do PWA |
 | `frame-src`, `frame-ancestors` | `'none'` | Nenhum iframe; o site não pode ser emoldurado |
 | `object-src`, `base-uri`, `form-action` | `'none'`, `'self'`, `'self'` | Sem plugins, sem troca de base, formulários só para a própria origem |
@@ -80,7 +80,9 @@ node scripts/check-headers.mjs --dist dist   # confere também o HTML gerado
 
 O verificador recusa: linha com mais de 2.000 caracteres, mais de 100 regras,
 CRLF, asterisco duplo, `unsafe-inline` ou `unsafe-eval` em `script-src`, HSTS
-com `preload`, cabeçalho combinado de duas regras, e no HTML gerado: `<script>`
+com `preload`, cabeçalho combinado de duas regras, `connect-src` ou `img-src`
+com hosts além dos listados acima, `style-src` com qualquer valor além de
+`'self'` e hashes `sha256`, e no HTML gerado: `<script>`
 inline executável, `<style>`, atributo `style`, script ou link externo.
 
 Resultado da validação local (8 de novembro de 2026): zero violações de CSP
@@ -89,6 +91,12 @@ incluindo rotas de categoria, serviço e bairro, `/entrar`, `/pedido` e uma
 rota inexistente) e para o build com backend. O service worker registra em
 todos os casos. O teste de controle com `script-src 'none'` acusou seis
 violações, então a medição detecta falhas.
+
+Essa medição é anterior às alterações de 9 de novembro de 2026 (hosts do
+`connect-src` e `img-src`, hashes de `style-src`) e cobre só as rotas
+pré-renderizadas. As telas de orçamento e de impressão montam o `<style>` no
+navegador, então não entraram na medição: por isso as folhas de impressão
+têm hash e o teste de cabeçalhos confere o hash contra o código.
 
 Limites desta validação:
 

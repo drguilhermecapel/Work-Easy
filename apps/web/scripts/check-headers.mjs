@@ -14,8 +14,13 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const MAX_RULES = 100;
 const MAX_LINE_LENGTH = 2000;
 const ONE_YEAR = 31536000;
+// Hosts the app contacts. Supabase: the project URL comes from VITE_SUPABASE_URL at build time,
+// so the pattern covers any project. Sentry: ingestion only, and only when VITE_SENTRY_DSN is set
+// (EU, US and the older US host). No Realtime: the app opens no channel, so no wss:// host.
 const SUPABASE_HTTPS = 'https://*.supabase.co';
-const SUPABASE_WSS = 'wss://*.supabase.co';
+const SENTRY_INGEST = ['https://*.ingest.sentry.io', 'https://*.ingest.de.sentry.io', 'https://*.ingest.us.sentry.io'];
+// Hashes of the two print stylesheets (<style> elements rendered by QuoteDocument and Orcamento).
+const SHA256_SOURCE = /^'sha256-[A-Za-z0-9+/]+=*'$/;
 
 /** Paths whose effective headers are checked. Each must be covered by the rules below. */
 export const SAMPLE_PATHS = [
@@ -112,8 +117,6 @@ export const parseCsp = value => {
 const sameValues = (actual, expected) =>
   actual !== undefined && actual.length === expected.length && expected.every(item => actual.includes(item));
 
-const hasAll = (actual, expected) => actual !== undefined && expected.every(item => actual.includes(item));
-
 /** Policy checks on the rules alone. Returns a list of failure messages (empty when clean). */
 export const checkRules = rules => {
   const failures = [];
@@ -138,11 +141,15 @@ export const checkRules = rules => {
       if (!sameValues(d.get('base-uri'), ["'self'"])) failures.push(`${path}: base-uri deve ser 'self'`);
       if (!sameValues(d.get('form-action'), ["'self'"])) failures.push(`${path}: form-action deve ser 'self'`);
       if (!sameValues(d.get('frame-ancestors'), ["'none'"])) failures.push(`${path}: frame-ancestors deve ser 'none'`);
-      if (!hasAll(d.get('connect-src'), ["'self'", SUPABASE_HTTPS, SUPABASE_WSS])) {
-        failures.push(`${path}: connect-src precisa de 'self', ${SUPABASE_HTTPS} e ${SUPABASE_WSS}`);
+      if (!sameValues(d.get('connect-src'), ["'self'", SUPABASE_HTTPS, ...SENTRY_INGEST])) {
+        failures.push(`${path}: connect-src deve ser exatamente 'self', ${SUPABASE_HTTPS} e os hosts de ingestão do Sentry`);
       }
-      if (!hasAll(d.get('img-src'), ["'self'", 'data:', 'blob:', SUPABASE_HTTPS])) {
-        failures.push(`${path}: img-src precisa de 'self', data:, blob: e ${SUPABASE_HTTPS}`);
+      if (!sameValues(d.get('img-src'), ["'self'", 'data:', 'blob:'])) {
+        failures.push(`${path}: img-src deve ser exatamente 'self', data: e blob:`);
+      }
+      const styleSources = d.get('style-src') ?? [];
+      if (!styleSources.includes("'self'") || styleSources.some(v => v !== "'self'" && !SHA256_SOURCE.test(v))) {
+        failures.push(`${path}: style-src aceita só 'self' e hashes sha256 (sem 'unsafe-inline')`);
       }
       for (const [name, values] of d) {
         if (values.includes("'unsafe-eval'")) failures.push(`${path}: 'unsafe-eval' em ${name}`);
