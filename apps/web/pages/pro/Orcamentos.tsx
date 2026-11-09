@@ -10,6 +10,7 @@ import { suggestionDrafts, withIntro, type QuoteSuggestion } from '../../service
 import { listClients, type ClientRow } from '../../services/proClients';
 import { centsToInput, parseReaisToCents } from '../../services/proFormat';
 import {
+  ITEM_DESCRIPTION_MAX,
   deleteQuote,
   effectiveQuoteStatus,
   listQuotes,
@@ -246,7 +247,7 @@ const Editor: React.FC<{
               {items.map((item, index) => (
                 <div key={item.key} className="grid grid-cols-6 gap-2 items-end border border-gray-100 rounded-xl p-3">
                   <Field id={`orc-item-${item.key}-desc`} label={`Item ${index + 1}: descrição`} className="col-span-6">
-                    <input id={`orc-item-${item.key}-desc`} className={inputClass} value={item.description} onChange={e => setItem(item.key, { description: e.target.value })} />
+                    <input id={`orc-item-${item.key}-desc`} className={inputClass} maxLength={ITEM_DESCRIPTION_MAX} value={item.description} onChange={e => setItem(item.key, { description: e.target.value })} />
                   </Field>
                   <Field id={`orc-item-${item.key}-qtd`} label={`Item ${index + 1}: quantidade`} className="col-span-2">
                     <input id={`orc-item-${item.key}-qtd`} className={inputClass} inputMode="decimal" value={item.quantity} onChange={e => setItem(item.key, { quantity: e.target.value })} />

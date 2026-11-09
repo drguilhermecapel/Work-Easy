@@ -67,6 +67,8 @@ export interface QuoteInput {
 }
 
 export const MAX_ITEMS = 200;
+/** The database refuses longer descriptions (migration 20261110100005); the form stops at the same length. */
+export const ITEM_DESCRIPTION_MAX = 500;
 
 const validate = (input: QuoteInput): void => {
   const title = input.title.trim();
@@ -77,6 +79,9 @@ const validate = (input: QuoteInput): void => {
   if (input.items.length > MAX_ITEMS) throw new AppError('invalid_input', { message: `Um orçamento pode ter até ${MAX_ITEMS} itens.` });
   for (const item of input.items) {
     if (!item.description.trim()) throw new AppError('invalid_input', { message: 'Todos os itens precisam de descrição.' });
+    if (item.description.trim().length > ITEM_DESCRIPTION_MAX) {
+      throw new AppError('invalid_input', { message: `A descrição de cada item pode ter até ${ITEM_DESCRIPTION_MAX} caracteres.` });
+    }
     if (!(item.quantity > 0) || !Number.isFinite(item.quantity)) {
       throw new AppError('invalid_input', { message: 'A quantidade de cada item precisa ser maior que zero.' });
     }

@@ -170,6 +170,20 @@ describe('/pro/orcamentos', () => {
     expect(fake.tableCalls.filter(call => call.table === 'quotes' && call.op === 'insert')).toHaveLength(1);
   });
 
+  it('limits each item description to 500 characters, the same limit the database keeps', async () => {
+    const user = userEvent.setup();
+    renderPro('/pro/orcamentos');
+    await user.click(await screen.findByRole('button', { name: /Novo orçamento/ }));
+    await user.type(await screen.findByLabelText('Título'), 'Pintura');
+    const description = screen.getByLabelText('Item 1: descrição');
+    expect(description).toHaveAttribute('maxlength', '500');
+    fireEvent.change(description, { target: { value: 'a'.repeat(501) } });
+    await user.type(screen.getByLabelText('Item 1: preço unitário (R$)'), '80');
+    await user.click(screen.getByRole('button', { name: 'Salvar rascunho' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('A descrição de cada item pode ter até 500 caracteres.');
+    expect(quotes).toEqual([]);
+  });
+
   it('refuses quantities that are not plain decimals and totals the database cannot hold', async () => {
     const user = userEvent.setup();
     renderPro('/pro/orcamentos');
