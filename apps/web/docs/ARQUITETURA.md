@@ -30,13 +30,14 @@ Princípios:
 supabase/
   config.toml                 configuração do projeto local
   migrations/                 SQL versionado (um arquivo por domínio, em ordem)
-  seed.sql                    gerado: catálogo + bairros (não editar à mão)
+  seed.sql                    gerado: catálogo + bairros, para desenvolvimento (não editar à mão)
+  catalog.sql                 gerado: o mesmo catálogo, aplicado em produção pelo deploy-supabase.yml
   tests/database/*.test.sql   pgTAP: RLS, triggers, funções
   functions/
     _shared/                  lógica pura (sem APIs do Deno), testada com Vitest
     <nome>/index.ts           handler fino de cada Edge Function
 scripts/
-  generate-seed.mjs           catalog/*.json + data/neighborhoods.json → supabase/seed.sql
+  generate-seed.mjs           catalog/*.json + data/neighborhoods.json → supabase/seed.sql e supabase/catalog.sql
   prerender.mjs               páginas estáticas de SEO + sitemap (fase 3)
 lib/
   supabase.ts                 cliente único (ou null no modo demonstração)

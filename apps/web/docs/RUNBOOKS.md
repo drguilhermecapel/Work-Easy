@@ -695,7 +695,7 @@ select a.provider_id, a.status
 
 **Sintoma.** O workflow "Publicar Supabase" falhou no passo de migrações ou o banco ficou em estado que o código não espera.
 
-**Como o deploy funciona** (`.github/workflows/deploy-supabase.yml`): execução manual, dry run por padrão. Aplica com `supabase db push --linked --skip-vault --yes`. Não aplica seed. Publica funções em outro passo; `asaas-webhook` e `notify-dispatch` com `--no-verify-jwt`. Grupo de concorrência único, sem cancelar execução em andamento.
+**Como o deploy funciona** (`.github/workflows/deploy-supabase.yml`): execução manual, dry run por padrão. Aplica com `supabase db push --linked --skip-vault --yes` e, depois, o catálogo de produção (`supabase/catalog.sql`, com `supabase db query --linked -f`, em uma transação). `supabase/seed.sql` (desenvolvimento) nunca é aplicado. O catálogo sobrescreve áreas, ocupações, políticas e bairros com os valores do repositório: altere o catálogo só no repositório. Publica funções em outro passo; `asaas-webhook` e `notify-dispatch` com `--no-verify-jwt`. Grupo de concorrência único, sem cancelar execução em andamento.
 
 **Diagnóstico.**
 
