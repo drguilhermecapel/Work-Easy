@@ -91,6 +91,9 @@ const deps: DeleteDeps = {
     async cancelShifts(userId) {
       return must(await serviceClient().rpc('cancel_shifts_for_user_deletion', { p_user: userId })) as number;
     },
+    async cancelUnpaidAcceptedBookings(userId) {
+      return must(await serviceClient().rpc('cancel_unpaid_accepted_bookings_for_user', { p_user: userId })) as number;
+    },
     async createRequest(userId) {
       const row = must(
         await serviceClient()

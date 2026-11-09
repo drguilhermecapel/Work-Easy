@@ -1,10 +1,10 @@
 // account-delete (usuário): requires {"confirm":"EXCLUIR"}. Refuses while the
-// user has a booking in progress (accepted, paid, in progress or disputed).
-// Otherwise it stops the money first (cancels the Pro subscription and the
-// open charges in Asaas), cancels the user's assigned shifts (shifts never
-// block the deletion: the right to erasure prevails), empties the user's
-// folder in the provider-documents bucket (anonymize_user refuses to run
-// while it has files: storage_not_empty), records the request in
+// user has a booking paid, in progress or disputed. Otherwise it stops the
+// money first (cancels the Pro subscription and the open charges in Asaas),
+// cancels the user's assigned shifts (shifts never block the deletion: the
+// right to erasure prevails) and the accepted bookings that are not paid,
+// empties the user's folder in the provider-documents bucket (anonymize_user
+// refuses to run while it has files: storage_not_empty), records the request in
 // data_requests, calls anonymize_user (payments and bookings stay,
 // anonymized, for tax obligations) and deletes the user from Supabase Auth.
 //
@@ -20,8 +20,11 @@ import { object, string } from '../_shared/validate.ts';
 
 export const CONFIRMATION = 'EXCLUIR';
 
-/** Booking statuses where the other party or the money still depends on this user. */
-export const BLOCKING_BOOKING_STATUSES = ['accepted', 'paid', 'in_progress', 'disputed'] as const;
+/**
+ * Booking statuses where the other party or the money still depends on this user.
+ * An accepted booking without payment does not block: it is cancelled on deletion.
+ */
+export const BLOCKING_BOOKING_STATUSES = ['paid', 'in_progress', 'disputed'] as const;
 
 export interface OpenCharge {
   id: string;
@@ -47,6 +50,8 @@ export interface DeleteDeps extends BaseDeps {
     removeDocuments(userId: string): Promise<number>;
     /** Cancels the shifts the user is assigned to (cancel_shifts_for_user_deletion); returns how many. */
     cancelShifts(userId: string): Promise<number>;
+    /** Cancels the user's accepted bookings with no paid charge (cancel_unpaid_accepted_bookings_for_user); returns how many. */
+    cancelUnpaidAcceptedBookings(userId: string): Promise<number>;
     createRequest(userId: string): Promise<string>;
     updateRequest(id: string, patch: { status: string; completed_at?: string }): Promise<void>;
     anonymizeUser(userId: string): Promise<void>;
@@ -134,11 +139,14 @@ export function handler(req: Request, deps: DeleteDeps): Promise<Response> {
     const requestId = await deps.admin.createRequest(user.id);
     let stopped = { subscription: false, charges: 0 };
     let shiftsCanceled = 0;
+    let bookingsCanceled = 0;
     let documents = 0;
     try {
       stopped = await stopMoney(deps, user.id, deps.now());
       // Cancelled before anonymize_user; shifts do not block the deletion
       shiftsCanceled = await deps.admin.cancelShifts(user.id);
+      // After stopMoney, so the open charges are stopped before their bookings are cancelled
+      bookingsCanceled = await deps.admin.cancelUnpaidAcceptedBookings(user.id);
       // Order required by anonymize_user: Storage, then anonymize, then Auth
       documents = await deps.admin.removeDocuments(user.id);
       await deps.admin.anonymizeUser(user.id);
@@ -157,6 +165,7 @@ export function handler(req: Request, deps: DeleteDeps): Promise<Response> {
         subscription_canceled: stopped.subscription,
         charges_canceled: stopped.charges,
         shifts_canceled: shiftsCanceled,
+        bookings_canceled: bookingsCanceled,
         documents_removed: documents,
       },
     });
