@@ -915,14 +915,14 @@ isOneToOne: false
                   ]
                 },"shift_offers": {
                   Row: {
-                    "created_at": string,"provider_id": string,"shift_id": string,"status": string
+                    "created_at": string,"offered_at": string,"provider_id": string,"shift_id": string,"status": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"provider_id": string,"shift_id": string,"status"?: string
+                    "created_at"?: string,"offered_at"?: string,"provider_id": string,"shift_id": string,"status"?: string
                   }
                   Update: {
-                    "created_at"?: string,"provider_id"?: string,"shift_id"?: string,"status"?: string
+                    "created_at"?: string,"offered_at"?: string,"provider_id"?: string,"shift_id"?: string,"status"?: string
                   }
                   Relationships: [
                     {
@@ -1179,6 +1179,12 @@ isOneToOne: true
                            },
 "cancel_shift":
 { Args: { "p_reason"?: string,"p_shift": string }; Returns: Database["public"]['Enums']["shift_status"]
+                           },
+"cancel_shifts_for_user_deletion":
+{ Args: { "p_user": string }; Returns: number
+                           },
+"cancel_unpaid_accepted_bookings_for_user":
+{ Args: { "p_user": string }; Returns: number
                            },
 "caregiver_shifts":
 { Args: Record<PropertyKey, never>; Returns: {
