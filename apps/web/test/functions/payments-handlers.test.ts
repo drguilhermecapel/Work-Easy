@@ -153,7 +153,7 @@ describe('payments-create', () => {
     expect(calls[0].body).toMatchObject({ name: 'Ana Cliente', cpfCnpj: VALID_CPF, email: USER.email, notificationDisabled: true });
     expect(calls[1].body).toEqual({
       customer: 'cus_1', billingType: 'PIX', value: 150, dueDate: '2026-10-20',
-      description: 'WorkEasy: atendimento eletricista', externalReference: `booking:${BOOKING_ID}`,
+      description: 'WorkEasy: atendimento', externalReference: `booking:${BOOKING_ID}`,
       split: [{ walletId: 'wal_provider', percentualValue: 100, externalReference: `booking:${BOOKING_ID}` }],
     });
     expect(savedCustomers).toEqual(['cus_1']);
@@ -166,6 +166,17 @@ describe('payments-create', () => {
       payment_id: 'payment-row-1', invoice_url: 'https://sandbox.asaas.com/i/1',
       pix: { payload: '000201pix', qr_code_base64: 'iVBOR' }, reused: false,
     });
+  });
+
+  it('keeps the occupation out of the charge description the processor and the payer see', async () => {
+    for (const slug of ['eletricista', 'diarista']) {
+      const { deps, calls } = paymentsDeps({ booking: { ...BOOKING, occupation_slug: slug }, customerId: 'cus_9' });
+      const res = await read(await paymentsCreate(post('payments-create', { booking_id: BOOKING_ID, method: 'pix' }), deps));
+      expect(res.status).toBe(201);
+      const { description } = calls.find(c => c.url.endsWith('/payments'))!.body as { description: string };
+      expect(description).toBe('WorkEasy: atendimento');
+      expect(description).not.toContain(slug);
+    }
   });
 
   it('splits amount minus fee as a percentage of the net value when there is a platform fee', async () => {
