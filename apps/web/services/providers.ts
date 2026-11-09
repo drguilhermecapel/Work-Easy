@@ -246,8 +246,13 @@ const TOO_LARGE = 'O arquivo precisa ter até 10 MB.';
 
 /**
  * Sends the file to the private bucket (provider-documents/<provider_id>/...) and
- * records it for the review. A failed record removes the file again. A photo is
- * stored without its metadata (GPS position, device model); a PDF is stored as it is.
+ * records it for the review. A failed record removes the file again.
+ *
+ * The app re-encodes a photo in the browser before sending it, which is meant to drop
+ * its metadata (GPS position, device model), and refuses a photo that is still over
+ * the limit. A PDF is sent as it is. The server does not inspect the file contents, so
+ * a direct upload through the storage API is not covered by this step. That is a
+ * known residual risk.
  */
 export const uploadProviderDocument = (input: { providerId: string; step: VerificationStep; file: File }): Promise<ProviderDocumentRow> =>
   guard(async () => {
@@ -256,8 +261,10 @@ export const uploadProviderDocument = (input: { providerId: string; step: Verifi
       throw new AppError('invalid_input', { message: 'Envie uma foto (JPG, PNG, WebP ou HEIC) ou um PDF.' });
     }
     if (file.size === 0 || file.size > DOCUMENT_MAX_BYTES) throw new AppError('invalid_input', { message: TOO_LARGE });
-    // Before storage: the bucket only ever receives the copy returned here
-    const prepared = await stripImageMetadata(file);
+    // Prepared in the browser before sending. Direct storage API uploads bypass this (known residual risk).
+    // undefined selects the browser codec; the limit lets lossy output shrink until it fits.
+    const prepared = await stripImageMetadata(file, undefined, DOCUMENT_MAX_BYTES);
+    // The stripper already keeps the copy within the limit; this check is a guard.
     if (prepared.size > DOCUMENT_MAX_BYTES) throw new AppError('invalid_input', { message: TOO_LARGE });
     const extension = DOCUMENT_TYPES[prepared.type];
     const path = `${providerId}/${step}-${Date.now().toString(36)}-${randomPart()}.${extension}`;
