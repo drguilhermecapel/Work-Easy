@@ -616,6 +616,14 @@ describe('detalhe do prestador', () => {
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Desfazer aceite' })).not.toBeInTheDocument());
   });
 
+  it('says that the occupations that needed the document lose their approval with the undo', async () => {
+    await open();
+    await user.click(screen.getByRole('button', { name: 'Desfazer aceite' }));
+    const form = screen.getByRole('form', { name: 'Desfazer o aceite: CPF ou CNPJ (MEI, Simples ou empresa)' });
+    expect(within(form).getByText(/perdem a aprovação automaticamente, a menos que outro documento aceito cubra a mesma etapa/)).toBeInTheDocument();
+    expect(within(form).queryByText(/continua aprovada/)).not.toBeInTheDocument();
+  });
+
   it('reactivates a suspended provider, with a reason, and says it approves nothing added later', async () => {
     const world = (await import('./fake')).current.world;
     world.tables.providers[0].status = 'suspended';

@@ -92,7 +92,10 @@ const DocumentCard: React.FC<{ document: AdminDocument; onChanged: () => void }>
             description={
               <>
                 <p>Use se o documento foi aceito por engano ou perdeu a validade. Ele passa a rejeitado e o prestador vê o motivo.</p>
-                <p>Uma ocupação que já foi aprovada com este documento continua aprovada: retire a aprovação dela se for o caso.</p>
+                <p>
+                  As ocupações aprovadas que precisavam deste documento perdem a aprovação automaticamente, a menos que outro documento aceito
+                  cubra a mesma etapa. Para voltar a aprovar, use Aprovar ocupação.
+                </p>
               </>
             }
             reason="required"
