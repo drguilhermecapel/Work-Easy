@@ -30,7 +30,7 @@ export const pgRange = (start: Date, end: Date): string => {
 export const HOUR = 3_600_000;
 
 export const acceptedTerms = (userId: string): Row[] =>
-  (['terms', 'privacy'] as const).map(purpose => ({
+  (['terms', 'privacy', 'age_declaration'] as const).map(purpose => ({
     id: `c-${purpose}`,
     user_id: userId,
     purpose,

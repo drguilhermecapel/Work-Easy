@@ -64,7 +64,7 @@ const tables = (): FakeSupabase['tables'] => ({
       : { data: ACCEPTED_TERMS, error: null },
 });
 
-const ACCEPTED_TERMS = (['terms', 'privacy'] as const).map(purpose => ({
+const ACCEPTED_TERMS = (['terms', 'privacy', 'age_declaration'] as const).map(purpose => ({
   id: `c-${purpose}`,
   user_id: USER_ID,
   purpose,
@@ -201,12 +201,14 @@ describe('/pedido with a backend (simulated Supabase client)', () => {
     expect(screen.queryByRole('button', { name: /Enviar pedido/ })).not.toBeInTheDocument();
     const accept = screen.getByRole('button', { name: 'Aceitar e continuar' });
     expect(accept).toBeDisabled();
-    await user.click(screen.getByRole('checkbox'));
+    await user.click(screen.getByRole('checkbox', { name: /Li e aceito/ }));
+    expect(accept).toBeDisabled(); // the declaration of 18 years is missing too
+    await user.click(screen.getByRole('checkbox', { name: /18 anos/ }));
     await user.click(accept);
 
     expect(await screen.findByRole('button', { name: /Enviar pedido/ })).toBeInTheDocument();
     const purposes = fake.tableCalls.filter(c => c.table === 'consents' && c.op === 'insert').map(c => (c.payload as { purpose: string }).purpose);
-    expect(purposes).toEqual(['terms', 'privacy']);
+    expect(purposes).toEqual(['terms', 'privacy', 'age_declaration']);
     expect(fake.tableCalls.some(c => c.table === 'requests' && c.op === 'insert')).toBe(false);
   });
 

@@ -83,8 +83,11 @@ export const latestConsents = (history: ConsentRow[]): Partial<Record<ConsentPur
   return latest;
 };
 
-/** Consents every account needs, in their current version, before using the platform. */
-export const REQUIRED_CONSENTS = ['terms', 'privacy'] as const satisfies readonly ConsentPurpose[];
+/**
+ * Consents every account needs, in their current version, before using the platform. The age declaration is one of
+ * them: an account that never made it is asked for it on its next sign-in (TermsGate).
+ */
+export const REQUIRED_CONSENTS = ['terms', 'privacy', 'age_declaration'] as const satisfies readonly ConsentPurpose[];
 
 /** Required purposes not accepted in their current version (empty = all accepted). */
 export const missingRequiredConsents = (
@@ -98,9 +101,13 @@ export const missingRequiredConsents = (
 /** Reads the history and tells which required consents are missing. */
 export const fetchMissingRequiredConsents = async (userId: string) => missingRequiredConsents(latestConsents(await listConsents(userId)));
 
-/** Records acceptance of the current terms and privacy texts, unless already accepted. */
-export const acceptCurrentTerms = async (userId: string): Promise<void> => {
+/**
+ * Records acceptance of the current texts of the missing required consents. The age declaration is recorded only
+ * when the person makes it (`ageDeclared`): it is never assumed for them.
+ */
+export const acceptCurrentTerms = async (userId: string, options: { ageDeclared?: boolean } = {}): Promise<void> => {
   for (const purpose of await fetchMissingRequiredConsents(userId)) {
+    if (purpose === 'age_declaration' && options.ageDeclared !== true) continue;
     await recordConsent(userId, purpose, true);
   }
 };

@@ -82,6 +82,8 @@ export const CONSENT_VERSIONS: Record<ConsentPurpose, string> = {
   marketing: '2026-10',
   background_check: '2026-10',
   location: '2026-10',
+  // The declaration that the person is 18 or over: its own text, asked of every account that lacks it
+  age_declaration: '2026-11',
 };
 
 export interface CompanyInfo {

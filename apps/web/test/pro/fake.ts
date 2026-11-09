@@ -103,7 +103,7 @@ export const providerRow = (overrides: Record<string, unknown> = {}) => ({
 });
 
 export const acceptedConsents = (userId = USER_ID) =>
-  (['terms', 'privacy'] as const).map(purpose => ({
+  (['terms', 'privacy', 'age_declaration'] as const).map(purpose => ({
     id: `c-${purpose}`,
     user_id: userId,
     purpose,
