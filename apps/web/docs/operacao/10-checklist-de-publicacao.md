@@ -255,6 +255,11 @@ Configuração de Auth (o que o `config.toml` descreve x o que deve existir no p
 | 21 | Chave do Gemini: confirmar se algum build público a usou e rotacionar, se for o caso | Segurança | Dono e Técnico | **Pendente** | `DECISOES.md`, seção 8, item 2 |
 | 22 | IA de terceiros: aviso que nomeie o provedor e aceite registrado | Jurídico e produto | Dono e advogado | **Pendente** | `app-store.md`, B8 |
 | 23 | Destino da API em `services/`: `render.yaml` e `cloudbuild.yaml` apontam para `services/api/Dockerfile`. O arquivo não declara deploy automático; conferir no painel se há publicação a cada push [incerto] | Técnico e decisão | Técnico e Dono | **Pendente** | `render.yaml`; `cloudbuild.yaml`; `services/api/` |
+| 24 | Rotação das credenciais nas contas do provedor: chave de API do Asaas, senha do banco de produção e segredo do webhook. A troca é obrigatória; reescrever o histórico do repositório não a substitui. Ver também o bloqueio 1 e a lacuna de rotação do token do webhook (seção 3) | Segurança | Dono e Técnico | **Pendente** | `DECISOES.md`, seção "Decisões delegadas (2026-11-09)", DD06; seção 7 ("Segredo comprometido") |
+| 25 | Ativar o hook de autenticação no painel, para o registro de data, hora e tipo de evento de login. O único bloco de hook de autenticação no `config.toml` está comentado | Configuração | Dono e Técnico | **Pendente** | `supabase/config.toml`, linha 312; `DECISOES.md`, DD22 |
+| 26 | Implementar e agendar (pg_cron) o purge da prova de consentimento pseudonimizada (5 anos) e dos eventos de login (6 meses). O repositório só tem purge para `product_events` e para as contagens de notificação | Retenção | Técnico e Dono | **Pendente** | `DECISOES.md`, DD22 e DD23; seção 6 ("Retenção") |
+| 27 | Teste em aparelho Android da captura de foto com a pasta restrita (FileProvider), antes da publicação | Teste | Técnico | **Pendente** | Commit `49cef45`; seção 5 ("Permissões Android" e "Verificação em aparelho"); `DECISOES.md`, DD08 |
+| 28 | Tornar o repositório privado antes da publicação. É a recomendação registrada; a decisão de publicar fica com o dono (ver pendência 20) | Ação | Dono | **Pendente** | `DECISOES.md`, DD07; pendência 20 acima |
 
 ---
 

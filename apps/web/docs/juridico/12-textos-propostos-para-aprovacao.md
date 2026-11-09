@@ -2,6 +2,21 @@
 
 > **Rascunho para advogado e dono. Não é parecer jurídico.** Cada texto abaixo precisa de aprovação antes de ir para o app ou para a Política. Nenhum item conclui como uma norma se aplica a um caso concreto: isso é do advogado.
 
+## Decisões adotadas por delegação (2026-11-09)
+
+O dono adotou, por delegação, uma opção para cada tema de T1 a T6. Cada escolha é um **padrão de produto**, não parecer jurídico. **O advogado precisa confirmar cada uma antes de publicar** os textos deste documento ou qualquer alteração nos Termos, na Política ou no app. Os textos propostos e as perguntas abaixo continuam valendo; o que muda é a opção a seguir. Registro completo: `apps/web/docs/DECISOES.md`, seção "Decisões delegadas (2026-11-09)".
+
+| Tema | Opção adotada | Pendência antes de publicar |
+|---|---|---|
+| T1. Pessoa cuidada sem idade mínima | **A.** Exigir 18 anos completos, com declaração obrigatória no cadastro (DD19) | O código ainda aceita qualquer ano de nascimento entre 1900 e 2100. Ajustar `03` (10.3), `11` (4.4 e Q6) e o aviso da linha Cuidado |
+| T2. Aceite dos Termos: declaração de 18 anos | **B.** Caixa separada só para a declaração de 18 anos, pedida também a contas existentes na próxima entrada (DD20) | A caixa atual só tem "Li e aceito". Ajustar 3.3 dos Termos e 10.1 da Política |
+| T3. Aviso nos campos de texto livre | **A.** Aviso e dica por campo; campos mantidos (DD21) | O aviso já aparece nos formulários de plantão e de relatório. Sem reforço da trava por palavras |
+| T4. Registro de acesso às contas | **C**, com prazo de 6 meses e acesso restrito a administrador: data, hora e tipo do evento de login. O app não grava IP; o IP fica nos registros do provedor, como complemento da **D** (DD22) | Ativar o hook no painel do provedor. O texto da opção A, que cita IP, não é adotado. A suficiência da opção C segue como pergunta ao advogado |
+| T5. Prova do consentimento depois da exclusão | **A.** Registro pseudonimizado, por 5 anos (DD23). O prazo segue o padrão de prescrição do CDC e precisa de validação | Não há registro pseudonimizado nem rotina de apagamento. A chave de ligação precisa ficar com acesso restrito |
+| T6. Exclusão com atendimento em andamento | **B.** Bloqueia só atendimento pago, em andamento ou em disputa. Atendimento aceito e não pago (inclui plantão atribuído e reserva aceita) é cancelado com aviso à outra parte (DD12) | O código ainda bloqueia atendimento aceito e não cancela nem avisa. Ajustar o item 3.7 dos Termos depois da confirmação |
+
+As divergências 1 a 5 continuam abertas. Esta seção não corrige nenhuma delas.
+
 - **Data:** 2026-11-09.
 - **Número deste documento:** 12. É o primeiro número livre em `apps/web/docs/juridico/` (a pasta vai do 01 ao 11).
 - **Base lida:** `00-pacote-para-advogado.md` (A05, A07, A09, A10, A22, A23, A24, B05, B13 e Seção D); `01-termos-de-uso.md` (cláusulas 3 e 7, pontos P5, P6, P8 e P15); `03-politica-de-privacidade.md` (seções 6, 7 e 10; Q1, Q2, Q5, Q7, Q12, Q13, Q18 e Q19); `11-textos-de-consentimento-e-avisos.md` (seções 4.4, 4.5 e 4.8; Q2, Q5, Q6, Q7 e Q16; conflitos C1 a C4); `docs/DECISOES.md` (D7, seção 5 e pergunta 6 da seção 8). Também conferi no código de `apps/web` os pontos citados em cada seção.
