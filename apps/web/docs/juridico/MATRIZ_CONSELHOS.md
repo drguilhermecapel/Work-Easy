@@ -4,6 +4,23 @@
 
 Versão: 2026-10-rascunho. Gerada em 2026-11-09 a partir de pesquisa em fontes primárias feita por agentes e conferida por verificadores independentes. Cada regra traz a norma, o artigo e o endereço consultado. **Itens sem verificação independente ou contestados estão marcados.** A matriz alimenta as políticas do catálogo (`catalog/policies.json`): cobrança (`so_assinatura`, `comissao_primeiro_servico`, `sob_consulta_juridica`), ranking por nota e exigências de cadastro.
 
+## Correções de verificação (2026-11-09)
+
+Esta seção vale sobre o restante da matriz, que é gerada por script e não foi editada linha a linha. Cada correção foi conferida em fonte primária ou marcada como não conferida. Para revisão de advogado: nenhum item abaixo é parecer.
+
+| Conselho | O que a matriz diz | O que a verificação achou | Redação sugerida (para revisão de advogado) |
+|---|---|---|---|
+| CFM | Res. CFM 2.380/2024 é a lista vigente de especialidades (55) e áreas de atuação (62), base legal do RQE (linhas 2757, 2759 e 4897 da versão gerada). | **Revogada.** O cabeçalho do PDF da própria resolução diz "Revogada pela Resolução CFM nº 2.472/2026". A Res. 2.472/2026, art. 3º, revoga a 2.380/2024. Publicada no DOU em 28/10/2026. | "Res. CFM 2.472/2026 (homologa a Portaria CME 1/2026, com a relação atualizada de especialidades e áreas de atuação para fins de RQE), que revogou a Res. CFM 2.380/2024." Conferir a contagem no anexo antes de citá-la. |
+| CFN | Prorrogação da vacância do Código do CFN pela "Res. CFN 858/2026" (linhas 3229-3230). | **Contraditada quanto ao número.** A fonte secundária consultada indica "Resolução CFN nº 156, de 20/07/2026". A data 23/01/2027 confere. Texto oficial não aberto. | "A vacância da Res. CFN 856/2026 foi prorrogada pela Resolução CFN nº [número a confirmar no DOU; a fonte secundária indica nº 156, de 20/07/2026], para 23/01/2027 (texto oficial não conferido)." |
+
+**Não verificado, com impacto alto (CFN).** Uma fonte secundária marca a Res. CFN 856/2026 como "revogado pela Resolução 156", mas a mesma página diz que a 156 prorroga a vacância. Não é possível saber se o Código de 2026 foi revogado ou só prorrogado. A matriz trata a Res. 599/2018 como vigente até 23/01/2027. Esse ponto muda qual código vale e precisa do texto oficial do DOU ou do SisNormas do CFN antes de qualquer uso.
+
+**Outros pontos para o advogado (escopo, não erro de número):**
+- A Res. CFM 2.178/2017, art. 2º, "g", trata de aplicativos de atendimento domiciliar. A matriz a aplica às ocupações do CFM. Confirmar o alcance.
+- A Nota Técnica CFP 1/2022 usa linguagem de orientação. A matriz a trata como norma. Confirmar o peso.
+- O termo do prestador (item 13.3) cita o Provimento OAB 205/2021, art. 3º, I, sem a qualificação "como forma de captação de clientes". Conferir o texto.
+- Não verificados em fonte oficial: Res. CFM 2.336/2023 (alterações de 2025-2026, conferir acervo oficial), Provimento OAB 205/2021 (proposta de atualização de out/2025), Res. CFN 760/2023 (cadastro no e-Nutricionista, revogações das Res. 666/2020 e 751/2023), Res. CFN 702/2021 (registro de pessoa jurídica) e Res. COFFITO 627/2025 (contagem de especialidades no anexo).
+
 ## 1. Resumo
 
 | Órgão | Grupo | Publicidade | Comissão/captação | Plataformas | Online | Nota/ranking | Cobrança sugerida | Ranking sugerido |
