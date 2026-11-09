@@ -2,6 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { DbError } from '../../supabase/functions/_shared/handler-kit.ts';
 import type { NotificationRow, NotificationUpdate } from '../../supabase/functions/_shared/notifications.ts';
+import { JSON_BODY_LIMIT, WEBHOOK_BODY_LIMIT } from '../../supabase/functions/_shared/http.ts';
 import { deriveSubaccountToken } from '../../supabase/functions/_shared/secrets.ts';
 import type { BookingStatus, PaymentStatus } from '../../supabase/functions/_shared/types.ts';
 import {
@@ -129,6 +130,24 @@ describe('asaas-webhook: access', () => {
     expect((await read(await webhook(hook(received, providerToken, other), webhookDeps().deps))).status).toBe(401);
     expect((await read(await webhook(hook(received, providerToken, 'not-a-uuid'), webhookDeps().deps))).status).toBe(401);
     expect((await read(await webhook(hook(received, providerToken, PROVIDER.id), webhookDeps().deps))).status).toBe(200);
+  });
+});
+
+describe('asaas-webhook: body size', () => {
+  it('refuses a body over the webhook cap with 413, before anything is stored', async () => {
+    const { deps, log, calls } = webhookDeps();
+    const res = await read(await webhook(hook({ ...received, pad: 'x'.repeat(WEBHOOK_BODY_LIMIT) }), deps));
+    expect(res.status).toBe(413);
+    expect(res.body.error.code).toBe('payload_too_large');
+    expect(log.events).toEqual([]);
+    expect(calls).toEqual([]);
+  });
+
+  it('accepts an event larger than the JSON limit, since the webhook has its own cap', async () => {
+    const { deps, log } = webhookDeps();
+    const res = await read(await webhook(hook({ ...received, pad: 'x'.repeat(JSON_BODY_LIMIT * 2) }), deps));
+    expect(res.status).toBe(200);
+    expect(log.events).toHaveLength(1);
   });
 });
 

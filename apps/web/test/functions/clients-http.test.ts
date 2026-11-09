@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest';
 import { AsaasClient, AsaasError, describeAsaasError } from '../../supabase/functions/_shared/asaas-client.ts';
 import { keyFromDictionary, readConfig } from '../../supabase/functions/_shared/config.ts';
 import { dbRuleError } from '../../supabase/functions/_shared/handler-kit.ts';
-import { allowedOrigins, corsHeaders, errors, HttpError, route } from '../../supabase/functions/_shared/http.ts';
-import { asaasWith, fakeFetch } from './helpers.ts';
+import {
+  allowedOrigins, corsHeaders, errors, HttpError, JSON_BODY_LIMIT, readJson, route,
+} from '../../supabase/functions/_shared/http.ts';
+import { asaasWith, fakeFetch, post } from './helpers.ts';
 
 describe('AsaasClient', () => {
   it('sends access_token, JSON body and parses the response', async () => {
@@ -165,5 +167,83 @@ describe('readConfig', () => {
     expect(readConfig(n => ({ SUPABASE_ANON_KEY: 'anon', SUPABASE_PUBLISHABLE_KEYS: '{bad' })[n]).publishableKey).toBe('anon');
     expect(keyFromDictionary('{"other":"x"}')).toBeUndefined();
     expect(readConfig(n => ({ SUPABASE_SECRET_KEYS: '{"default":"sb_secret_y"}' })[n]).serviceKey).toBe('sb_secret_y');
+  });
+});
+
+describe('readJson body limit', () => {
+  /** The HttpError a refused body leaves behind; fails the test when the body was accepted. */
+  const refusal = (promise: Promise<unknown>): Promise<HttpError> =>
+    promise.then(() => {
+      throw new Error('readJson accepted the body');
+    }, (error: HttpError) => error);
+
+  // A body that arrives as a stream, so the request carries no Content-Length
+  const streamed = (chunks: Uint8Array[]) =>
+    new Request('http://x/f', {
+      method: 'POST',
+      body: new ReadableStream<Uint8Array>({
+        start(controller) {
+          for (const chunk of chunks) controller.enqueue(chunk);
+          controller.close();
+        },
+      }),
+      duplex: 'half',
+    } as RequestInit);
+
+  it('reads a body within the limit and accepts one of exactly the limit', async () => {
+    expect(await readJson(post('x', { a: 1 }))).toEqual({ a: 1 });
+    const padded = `${' '.repeat(JSON_BODY_LIMIT - 2)}{}`;
+    expect(new TextEncoder().encode(padded).byteLength).toBe(JSON_BODY_LIMIT);
+    expect(await readJson(new Request('http://x/f', { method: 'POST', body: padded }))).toEqual({});
+  });
+
+  it('still answers 400 for text that is not JSON', async () => {
+    const error = await refusal(readJson(new Request('http://x/f', { method: 'POST', body: 'não é json' })));
+    expect(error).toBeInstanceOf(HttpError);
+    expect(error.status).toBe(400);
+    expect(error.code).toBe('invalid_json');
+  });
+
+  it('refuses a Content-Length over the limit before reading the body', async () => {
+    const req = new Request('http://x/f', {
+      method: 'POST', headers: { 'Content-Length': String(JSON_BODY_LIMIT + 1) }, body: '{}',
+    });
+    const error = await refusal(readJson(req));
+    expect(error).toBeInstanceOf(HttpError);
+    expect(error.status).toBe(413);
+    expect(req.bodyUsed).toBe(false);
+  });
+
+  it('refuses a streamed body without Content-Length once it passes the limit', async () => {
+    const half = new Uint8Array(JSON_BODY_LIMIT / 2 + 1).fill(0x20);
+    const req = streamed([half, half]);
+    expect(req.headers.get('content-length')).toBeNull();
+    const error = await refusal(readJson(req));
+    expect(error).toBeInstanceOf(HttpError);
+    expect(error.status).toBe(413);
+  });
+
+  it('stops reading an endless stream at the limit', async () => {
+    let pulls = 0;
+    const endless = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulls++;
+        controller.enqueue(new Uint8Array(1024).fill(0x20));
+      },
+    });
+    const error = await refusal(readJson(new Request('http://x/f', { method: 'POST', body: endless, duplex: 'half' } as RequestInit)));
+    expect(error.status).toBe(413);
+    expect(pulls).toBeLessThan(JSON_BODY_LIMIT / 1024 + 10);
+  });
+
+  it('answers 413 with the error envelope through route', async () => {
+    const req = new Request('http://x/f', {
+      method: 'POST', headers: { 'Content-Length': String(JSON_BODY_LIMIT + 1) }, body: '{}',
+    });
+    const res = await route(req, { methods: ['POST'] }, async () => ({ data: await readJson(req) }));
+    expect(res.status).toBe(413);
+    expect(await res.json()).toEqual({
+      ok: false, error: { code: 'payload_too_large', message: 'O corpo da requisição é grande demais.' },
+    });
   });
 });

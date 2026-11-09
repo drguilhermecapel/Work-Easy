@@ -24,7 +24,7 @@ import { saoPauloDate } from '../_shared/dates.ts';
 import {
   type AuditEntry, type BaseDeps, dbRuleError, isDeterministicDbError,
 } from '../_shared/handler-kit.ts';
-import { HttpError, readJson, route } from '../_shared/http.ts';
+import { HttpError, readJson, route, WEBHOOK_BODY_LIMIT } from '../_shared/http.ts';
 import { deriveSubaccountToken, isUuid, secretMatches } from '../_shared/secrets.ts';
 import { laterPeriodEnd, periodEndFrom, planAfterCancel, planWhileOverdue } from '../_shared/subscriptions.ts';
 import type { BookingStatus, PaymentStatus, PlanCode, SubscriptionStatus } from '../_shared/types.ts';
@@ -97,9 +97,10 @@ export function handler(req: Request, deps: WebhookDeps): Promise<Response> {
 
     let body: unknown;
     try {
-      body = await readJson(req);
+      body = await readJson(req, WEBHOOK_BODY_LIMIT);
     } catch (error) {
-      if (!(error instanceof HttpError)) throw error;
+      // An oversized body is refused with 413, not acknowledged like an unreadable one
+      if (!(error instanceof HttpError) || error.status === 413) throw error;
       deps.logError(new Error('asaas-webhook: invalid JSON payload ignored'));
       return { data: { received: true, ignored: 'invalid_payload' } };
     }
