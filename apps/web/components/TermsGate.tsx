@@ -6,28 +6,34 @@ import { acceptCurrentTerms, fetchMissingRequiredConsents } from '../services/ac
 import ErrorAlert from './ErrorAlert';
 
 /**
- * Renders its children only after the signed-in user has accepted the current
- * Terms of Use and Privacy Policy; otherwise asks for the acceptance and records
- * it in `consents`. Covers whoever signed in without passing through /entrar
- * (e.g. the link in the login e-mail) or when recording the acceptance failed there.
+ * Renders its children only after the signed-in user has accepted the current Terms of Use and
+ * Privacy Policy and made the declaration of 18 years or more; otherwise asks for them and records
+ * them in `consents`. Covers whoever signed in without passing through /entrar (e.g. the link in the
+ * login e-mail), accounts made before the declaration existed, and a recording that failed there.
  */
 const TermsGate: React.FC<{ userId: string; children?: ReactNode; onAccepted?: () => void }> = ({ userId, children, onAccepted }) => {
   const missing = useAsync(() => fetchMissingRequiredConsents(userId), userId);
-  const [checked, setChecked] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [declaredAge, setDeclaredAge] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
   if (missing.loading && !missing.data) {
-    return <p role="status" className="text-sm text-gray-400">Conferindo seus consentimentos…</p>;
+    return <p role="status" className="text-sm text-gray-500">Conferindo seus consentimentos…</p>;
   }
   if (missing.data && missing.data.length === 0) return <>{children}</>;
+
+  // Without the answer, both boxes are asked: nothing is let through on a guess
+  const needsTerms = !missing.data || missing.data.includes('terms') || missing.data.includes('privacy');
+  const needsAge = !missing.data || missing.data.includes('age_declaration');
+  const ready = (!needsTerms || acceptedTerms) && (!needsAge || declaredAge);
 
   const accept = async (event: React.FormEvent) => {
     event.preventDefault();
     setBusy(true);
     setError(null);
     try {
-      await acceptCurrentTerms(userId);
+      await acceptCurrentTerms(userId, { ageDeclared: declaredAge });
       missing.reload();
       onAccepted?.();
     } catch (err) {
@@ -38,35 +44,39 @@ const TermsGate: React.FC<{ userId: string; children?: ReactNode; onAccepted?: (
   };
 
   return (
-    <form
-      onSubmit={accept}
-      className="space-y-3 bg-amber-50 border border-amber-100 rounded-2xl p-4"
-      aria-labelledby={`termos-${userId}`}
-    >
+    <form onSubmit={accept} className="space-y-3 bg-amber-50 border border-amber-100 rounded-2xl p-4" aria-labelledby={`termos-${userId}`}>
       <p id={`termos-${userId}`} className="text-sm font-semibold text-gray-800 flex items-center gap-2">
         <FileCheck2 size={16} className="text-primary shrink-0" aria-hidden="true" />
-        Para continuar, aceite a versão atual dos termos
+        {needsTerms ? 'Para continuar, aceite a versão atual dos termos' : 'Para continuar, confirme a declaração abaixo'}
       </p>
       {/* Without the answer we do not know: ask again instead of letting the user through */}
       <ErrorAlert error={missing.data ? null : missing.error} />
-      <label className="flex items-start gap-2 text-sm text-gray-700">
-        <input type="checkbox" className="mt-1" checked={checked} onChange={e => setChecked(e.target.checked)} />
-        <span>
-          Li e aceito os{' '}
-          <Link to="/legal" className="text-primary underline">
-            Termos de Uso
-          </Link>{' '}
-          e a{' '}
-          <Link to="/legal" className="text-primary underline">
-            Política de Privacidade
-          </Link>
-          .
-        </span>
-      </label>
+      {needsTerms && (
+        <label className="flex items-start gap-2 text-sm text-gray-700">
+          <input type="checkbox" className="mt-1" checked={acceptedTerms} onChange={e => setAcceptedTerms(e.target.checked)} />
+          <span>
+            Li e aceito os{' '}
+            <Link to="/legal" className="text-primary underline">
+              Termos de Uso
+            </Link>{' '}
+            e a{' '}
+            <Link to="/legal" className="text-primary underline">
+              Política de Privacidade
+            </Link>
+            .
+          </span>
+        </label>
+      )}
+      {needsAge && (
+        <label className="flex items-start gap-2 text-sm text-gray-700">
+          <input type="checkbox" className="mt-1" checked={declaredAge} onChange={e => setDeclaredAge(e.target.checked)} />
+          <span>Declaro que tenho 18 anos completos.</span>
+        </label>
+      )}
       <ErrorAlert error={error} />
       <button
         type="submit"
-        disabled={!checked || busy}
+        disabled={!ready || busy}
         className="inline-flex items-center justify-center gap-2 bg-primary text-white text-sm font-semibold rounded-xl px-4 py-2.5 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {busy ? 'Registrando…' : 'Aceitar e continuar'}

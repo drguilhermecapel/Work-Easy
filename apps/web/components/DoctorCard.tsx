@@ -25,7 +25,7 @@ const DoctorCard: React.FC<DoctorCardProps> = ({ provider }) => {
              <h3 className="text-xl font-bold text-gray-900">{provider.name}</h3>
           </Link>
           <p className="text-gray-600 font-medium">{provider.title}</p>
-          <p className="text-xs text-gray-400 mb-2">CRM: {provider.medicalInfo.crm} · informado, não verificado</p>
+          <p className="text-xs text-gray-500 mb-2">CRM: {provider.medicalInfo.crm} · informado, não verificado</p>
           
           <div className="flex items-center justify-center sm:justify-start gap-1 mb-3">
              <div className="flex text-yellow-400">
@@ -38,11 +38,11 @@ const DoctorCard: React.FC<DoctorCardProps> = ({ provider }) => {
 
           <div className="space-y-1">
              <div className="flex items-center justify-center sm:justify-start gap-2 text-sm text-gray-600">
-                <MapPin size={16} className="text-gray-400" />
+                <MapPin size={16} className="text-gray-500" />
                 <span className="line-clamp-1">{provider.medicalInfo.address.city} - {provider.medicalInfo.address.neighborhood}</span>
              </div>
              <div className="flex items-center justify-center sm:justify-start gap-2 text-sm text-gray-600">
-                <Video size={16} className="text-gray-400" />
+                <Video size={16} className="text-gray-500" />
                 <span>Teleconsulta: funcionalidade futura</span>
              </div>
           </div>
@@ -67,7 +67,7 @@ const DoctorCard: React.FC<DoctorCardProps> = ({ provider }) => {
                   <Link
                     to={`/doctor/${provider.id}?slot=${encodeURIComponent(slot)}`}
                     key={idx}
-                    className="text-center bg-teal-600 text-white text-sm font-medium py-1.5 rounded-lg hover:bg-teal-700 transition-colors"
+                    className="text-center bg-teal-700 text-white text-sm font-medium py-1.5 rounded-lg hover:bg-teal-800 transition-colors"
                   >
                     {relativeDayLabel(new Date(slot))} <br/>
                     <span className="font-bold">{formatTime(new Date(slot))}</span>
@@ -77,7 +77,7 @@ const DoctorCard: React.FC<DoctorCardProps> = ({ provider }) => {
            </div>
            
            <div className="text-center mb-4">
-             <Link to={`/doctor/${provider.id}`} className="text-xs text-teal-600 font-bold hover:underline">
+             <Link to={`/doctor/${provider.id}`} className="text-xs text-teal-700 font-bold hover:underline">
                Ver mais horários
              </Link>
            </div>

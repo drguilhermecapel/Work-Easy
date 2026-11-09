@@ -15,6 +15,7 @@ import {
 } from '../_shared/handler-kit.ts';
 import { errors, readJson, route } from '../_shared/http.ts';
 import { centsToReais } from '../_shared/money.ts';
+import { type ProviderApproval, requireApprovedProvider } from '../_shared/provider-approval.ts';
 import { deriveSubaccountToken } from '../_shared/secrets.ts';
 import { email, int, isoDate, object, oneOf, optional, phoneBR, postalCode, string, cpfCnpj } from '../_shared/validate.ts';
 
@@ -31,7 +32,10 @@ export interface OnboardDeps extends BaseDeps {
   /** `${SUPABASE_URL}/functions/v1/asaas-webhook`, to register the subaccount webhook. */
   webhookUrl: string | null;
   webhookToken?: string;
-  session(req: Request): Promise<{ user: AuthUser; getProvider(): Promise<{ id: string; display_name: string | null } | null> } | null>;
+  session(req: Request): Promise<{
+    user: AuthUser;
+    getProvider(): Promise<(ProviderApproval & { id: string; plan: string }) | null>;
+  } | null>;
   /** Pause between Vault attempts; defaults to setTimeout (tests pass a no-op). */
   sleep?(ms: number): Promise<void>;
   admin: {
@@ -119,6 +123,8 @@ export function handler(req: Request, deps: OnboardDeps): Promise<Response> {
 
     const provider = await session.getProvider();
     if (!provider || provider.id !== session.user.id) throw errors.notAllowed('Cadastre-se como prestador antes de ativar o recebimento.');
+    // The receiving account (and the card, Pix and boleto charges on it) waits for the admin's approval
+    requireApprovedProvider(provider);
 
     const isPerson = input.cpf_cnpj.length === 11;
     if (isPerson && !input.birth_date) throw errors.invalidInput(['birth_date: obrigatório para CPF']);

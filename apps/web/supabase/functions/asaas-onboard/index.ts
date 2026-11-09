@@ -1,5 +1,5 @@
 import {
-  asaasClient, audit, authenticate, config, DbError, logError, must, now, serve, serviceClient, storeSecret,
+  asaasClient, audit, authenticate, config, DbError, logError, must, now, readProviderAccount, serve, serviceClient, storeSecret,
 } from '../_runtime/supabase.ts';
 import { isUniqueViolation } from '../_shared/handler-kit.ts';
 import { handler, type OnboardDeps, type PaymentAccount } from './handler.ts';
@@ -20,10 +20,8 @@ const deps: OnboardDeps = {
     if (!caller) return null;
     return {
       user: caller.user,
-      async getProvider() {
-        return must(
-          await caller.db.from('providers').select('id, display_name').eq('id', caller.user.id).maybeSingle(),
-        ) as { id: string; display_name: string | null } | null;
+      getProvider() {
+        return readProviderAccount(caller.db, caller.user.id);
       },
     };
   },

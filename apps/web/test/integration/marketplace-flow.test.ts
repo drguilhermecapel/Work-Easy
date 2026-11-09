@@ -802,7 +802,7 @@ describe('fluxo do produto contra o Supabase real', () => {
     });
 
     it('anônimo aceita uma vez, e o prestador vê o novo status', async () => {
-      expect(must(await world.anon.rpc('respond_quote', { p_token: token, p_accept: true }), 'respond_quote')).toBe('accepted');
+      expect(must(await world.anon.rpc('respond_quote', { p_token: token, p_accept: true, p_expected_total_cents: 34990 }), 'respond_quote')).toBe('accepted');
       await expectRule(world.anon.rpc('respond_quote', { p_token: token, p_accept: false }), 'invalid_transition');
 
       const seen = must(await provider.client.from('quotes').select('status').eq('id', quoteId).single(), 'orçamento');

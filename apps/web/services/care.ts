@@ -1,5 +1,5 @@
 import { loadPolicies } from '../catalog';
-import { AppError, toAppError } from '../lib/errors';
+import { ACCEPT_REFUSED_MESSAGE, AppError, toAppError } from '../lib/errors';
 import { formatTstzRange, parseTstzRange, type Period } from '../lib/tstzrange';
 import type { Coordinates } from '../platform/geolocation';
 import { db, unwrap, unwrapMaybe } from './client';
@@ -113,8 +113,10 @@ export const LIMITS = {
   reportNotes: 2000,
   birthYearMin: 1900,
   birthYearMax: 2100,
-  /** offer_shift: offers per shift. */
+  /** offer_shift: caregivers per shift, expired and declined offers included. */
   offersPerShift: 10,
+  /** offer_shift: offers per family in a rolling 24 hours; a repeated offer counts again. */
+  offersPerDay: 30,
 } as const;
 
 // ---- Health data guard ----------------------------------------------------------
@@ -155,7 +157,7 @@ export const findHealthTerm = (...texts: Array<string | null | undefined>): stri
 };
 
 export const HEALTH_DATA_NOTICE =
-  'O WorkEasy não guarda dados de saúde. Não escreva doenças, diagnósticos, remédios, doses, exames ou sintomas: combine esses cuidados direto com o cuidador, fora do app.';
+  'O WorkEasy não pede dados de saúde. Não escreva doenças, diagnósticos, remédios, doses, exames ou sintomas: combine esses cuidados direto com o cuidador, fora do app.';
 
 const assertNoHealthData = (...texts: Array<string | null | undefined>): void => {
   const term = findHealthTerm(...texts);
@@ -173,7 +175,7 @@ type Overrides = Partial<Record<string, string>>;
 const SHARED_MESSAGES: Overrides = {
   checkin_window:
     'Fora do horário de registro. A entrada vale de 2 horas antes a 2 horas depois do início do plantão, e a saída de 2 horas antes a 2 horas depois do fim.',
-  offer_limit: `Limite de ofertas atingido: no máximo ${LIMITS.offersPerShift} cuidadores por plantão e 30 ofertas novas por dia.`,
+  offer_limit: `Limite de ofertas atingido: no máximo ${LIMITS.offersPerShift} cuidadores por plantão e ${LIMITS.offersPerDay} ofertas em 24 horas.`,
 };
 
 /** The rule the database raised (it puts the code in the message), or null. */
@@ -269,7 +271,13 @@ export interface RecipientInput {
   birthYear: string;
   preferences: string | null;
   emergencyContact: string | null;
+  /** The declaration that the person cared for has 18 years or more: required to add a person, not asked on edit. */
+  adultDeclared?: boolean;
 }
+
+/** Shown when a person is added without the declaration of adulthood. */
+export const ADULT_DECLARATION_REQUIRED =
+  'Confirme que a pessoa cuidada tem 18 anos completos para cadastrá-la. Sem essa declaração, o cadastro não é enviado.';
 
 const recipientRow = (input: RecipientInput) => {
   const firstName = input.firstName.trim();
@@ -300,16 +308,18 @@ export const listRecipients = (householdIds: string[]): Promise<CareRecipient[]>
     );
   });
 
+/** A new person, with the time of the adulthood declaration (the database asks for it on new rows). */
 export const createRecipient = (householdId: string, input: RecipientInput): Promise<CareRecipient> =>
-  guard(async () =>
-    unwrap<CareRecipient>(
+  guard(async () => {
+    if (input.adultDeclared !== true) throw new AppError('invalid_input', { message: ADULT_DECLARATION_REQUIRED });
+    return unwrap<CareRecipient>(
       await db()
         .from('care_recipients')
-        .insert({ household_id: householdId, ...recipientRow(input) })
+        .insert({ household_id: householdId, ...recipientRow(input), adult_declared_at: new Date().toISOString() })
         .select(RECIPIENT_COLUMNS)
         .single(),
-    ),
-  );
+    );
+  });
 
 export const updateRecipient = (id: string, input: RecipientInput): Promise<CareRecipient> =>
   guard(async () =>
@@ -554,9 +564,11 @@ const ACCEPT_OVERRIDES: Overrides = {
   not_allowed: TOO_LATE_MESSAGE,
   invalid_transition: TOO_LATE_MESSAGE,
   slot_unavailable: 'Você já tem outro plantão neste horário.',
+  // The labor lock is still an AppError of its code, but the acceptance does not explain it (no contact, no record)
+  labor_lock: ACCEPT_REFUSED_MESSAGE,
 };
 
-/** First caregiver to accept takes the shift. labor_lock comes through as an AppError of that code. */
+/** First caregiver to accept takes the shift. labor_lock comes through as an AppError of that code, with the acceptance sentence. */
 export const acceptShiftOffer = (shiftId: string): Promise<ShiftStatus> =>
   guard(async () => unwrap<ShiftStatus>(await db().rpc('accept_shift_offer', { p_shift: shiftId })), ACCEPT_OVERRIDES);
 

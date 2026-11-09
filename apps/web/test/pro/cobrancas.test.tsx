@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { PAYMENT_METHOD_LABELS, PAYMENT_STATUS_LABELS } from '../../components/pro/labels';
+import { blobHead, blobText, captureDownloads } from './download';
 import { baseTables, functionData, functionError, ok, providerRow, signInProvider, type ProFake, type Result } from './fake';
 
 vi.mock('../../lib/supabase', async () => {
@@ -257,5 +259,54 @@ describe('/pro/cobrancas: charging', () => {
     expect(await screen.findByText(/Nada a cobrar por aqui ainda/)).toBeInTheDocument();
     expect(await screen.findByText(/Nenhuma cobrança ainda/)).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByRole('form', { name: 'Nova cobrança' })).not.toBeInTheDocument());
+  });
+});
+
+describe('/pro/cobrancas: invoice shortcut and CSV export', () => {
+  it('links a received payment to the national NFS-e issuer and says the app does not issue invoices', async () => {
+    setup(providerRow({ plan: 'pro' }));
+    renderPro('/pro/cobrancas');
+    const links = await screen.findAllByRole('link', { name: 'Emitir nota fiscal (NFS-e)' });
+    expect(links).toHaveLength(1);
+    expect(links[0]).toHaveAttribute('href', 'https://www.nfse.gov.br/EmissorNacional');
+    expect(links[0]).toHaveAttribute('target', '_blank');
+    expect(links[0]).toHaveAttribute('rel', expect.stringContaining('noopener'));
+    expect(links[0].closest('li')).toHaveTextContent(/R\$\s300,00/);
+    expect(screen.getByText(/O WorkEasy não emite nota fiscal/)).toBeInTheDocument();
+  });
+
+  it('offers no invoice shortcut while nothing was received', async () => {
+    setup(providerRow({ plan: 'pro' }));
+    fake.tables.payments = () => ok([PAYMENT]);
+    renderPro('/pro/cobrancas');
+    expect((await screen.findAllByText('Aguardando pagamento')).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('link', { name: /NFS-e/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/O WorkEasy não emite nota fiscal/)).not.toBeInTheDocument();
+  });
+
+  it('exports the charges as a CSV file that opens in Excel', async () => {
+    const downloads = captureDownloads();
+    const user = userEvent.setup();
+    setup(providerRow({ plan: 'pro' }));
+    renderPro('/pro/cobrancas');
+    await user.click(await screen.findByRole('button', { name: 'Exportar CSV' }));
+
+    expect(downloads).toHaveLength(1);
+    expect(downloads[0].filename).toMatch(/^cobrancas-workeasy-\d{4}-\d{2}-\d{2}\.csv$/);
+    expect(downloads[0].blob.type).toBe('text/csv;charset=utf-8');
+    expect(await blobHead(downloads[0].blob)).toEqual([0xef, 0xbb, 0xbf]);
+    const lines = (await blobText(downloads[0].blob)).split('\r\n');
+    expect(lines[0]).toBe('Criada em;Origem;Forma de pagamento;Valor (R$);Situação;Vencimento;Taxa da plataforma (R$)');
+    expect(lines).toContain(`05/01/2030;Atendimento;${PAYMENT_METHOD_LABELS.pix};90,00;${PAYMENT_STATUS_LABELS.pending};10/01/2030;0,00`);
+    expect(lines).toContain(`05/01/2030;Orçamento;${PAYMENT_METHOD_LABELS.pix};300,00;${PAYMENT_STATUS_LABELS.received};10/01/2030;12,00`);
+    expect(lines).toHaveLength(4); // header, two charges, the empty piece after the last line break
+  });
+
+  it('has nothing to export without charges', async () => {
+    setup(providerRow({ plan: 'pro' }));
+    fake.tables.payments = () => ok([]);
+    renderPro('/pro/cobrancas');
+    expect(await screen.findByText(/Nenhuma cobrança ainda/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Exportar CSV' })).not.toBeInTheDocument();
   });
 });

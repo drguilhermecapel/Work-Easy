@@ -1,6 +1,7 @@
 // charges-create (prestador Pro): charges the provider's own client (own
 // booking) or an accepted quote, in the provider's Asaas subaccount, with no
-// platform fee and no split.
+// platform fee and no split. The payer is a client of the provider's CRM: name,
+// e-mail, phone and CPF/CNPJ come from that stored record, never from the request.
 
 import type { AsaasClient } from '../_shared/asaas-client.ts';
 import { addDays, saoPauloDate } from '../_shared/dates.ts';
@@ -10,8 +11,9 @@ import {
 } from '../_shared/handler-kit.ts';
 import { errors, HttpError, readJson, route } from '../_shared/http.ts';
 import { centsToReais } from '../_shared/money.ts';
+import { type ProviderApproval, requireApprovedProvider } from '../_shared/provider-approval.ts';
 import { BILLING_TYPE, PAYMENT_METHODS } from '../_shared/types.ts';
-import { cpfCnpj, email, isoDate, object, oneOf, optional, phoneBR, string, uuid } from '../_shared/validate.ts';
+import { isoDate, object, oneOf, optional, string, uuid } from '../_shared/validate.ts';
 import {
   ALREADY_PAID, ALREADY_PAID_MESSAGE, type NewPayment, type PaymentRecord, paymentView, reuseOrRetire, saveCharge,
 } from '../payments-create/handler.ts';
@@ -31,17 +33,18 @@ export interface ProviderQuote {
   id: string;
   provider_id: string;
   provider_client_id: string | null;
-  client_name: string | null;
-  client_phone: string | null;
   title: string;
   total_cents: number | null;
   status: string;
 }
 
+/** A client of the provider's CRM: the only source of the payer's data. */
 export interface ProviderClient {
-  name: string | null;
+  provider_id: string;
+  name: string;
   phone: string | null;
   email: string | null;
+  cpf_cnpj: string | null;
   client_id: string | null;
 }
 
@@ -50,7 +53,7 @@ export interface ChargesCreateDeps extends BaseDeps {
   asaas: AsaasClient | null;
   session(req: Request): Promise<{
     user: AuthUser;
-    getProvider(): Promise<{ id: string; plan: string } | null>;
+    getProvider(): Promise<(ProviderApproval & { id: string; plan: string }) | null>;
     getBooking(id: string): Promise<OwnBooking | null>;
     getQuote(id: string): Promise<ProviderQuote | null>;
     getProviderClient(id: string): Promise<ProviderClient | null>;
@@ -71,18 +74,22 @@ export interface ChargesCreateDeps extends BaseDeps {
 const Body = object({
   booking_id: optional(uuid()),
   quote_id: optional(uuid()),
+  /** One of the provider's CRM clients; only used when the booking or quote is not linked to one. */
+  provider_client_id: optional(uuid()),
   method: oneOf(PAYMENT_METHODS),
   due_date: optional(isoDate()),
   description: optional(string({ max: 300 })),
-  customer: object({
-    cpf_cnpj: cpfCnpj(),
-    name: optional(string({ min: 2, max: 120 })),
-    email: optional(email()),
-    phone: optional(phoneBR()),
-  }),
 });
 
 const CHARGEABLE_BOOKING = new Set(['accepted', 'in_progress', 'completed']);
+
+/** The client of the charge: the one the booking or quote is linked to, else the one the provider picked. */
+function chooseClient(linked: string | null, picked: string | undefined): string | null {
+  if (linked && picked && linked !== picked) {
+    throw errors.invalidInput(['provider_client_id: este atendimento já está vinculado a outro cliente']);
+  }
+  return linked ?? picked ?? null;
+}
 
 export function handler(req: Request, deps: ChargesCreateDeps): Promise<Response> {
   return route(req, { methods: ['POST'], ...corsOf(deps), onError: deps.logError }, async () => {
@@ -90,7 +97,12 @@ export function handler(req: Request, deps: ChargesCreateDeps): Promise<Response
     if (!session) throw errors.unauthorized();
     const asaas = deps.asaas;
     if (!asaas) throw errors.paymentsNotConfigured();
-    const input = validated(Body, await readJson(req));
+    const raw = await readJson(req);
+    // The payer's data is never taken from the request: the provider picks a CRM client instead
+    if (raw && typeof raw === 'object' && 'customer' in raw) {
+      throw errors.invalidInput(['customer: os dados do cliente vêm do CRM; envie provider_client_id']);
+    }
+    const input = validated(Body, raw);
     if (Boolean(input.booking_id) === Boolean(input.quote_id)) {
       throw errors.invalidInput(['Informe booking_id ou quote_id (apenas um).']);
     }
@@ -98,13 +110,11 @@ export function handler(req: Request, deps: ChargesCreateDeps): Promise<Response
     const provider = await session.getProvider();
     if (!provider || provider.id !== session.user.id) throw errors.notAllowed('Disponível apenas para prestadores.');
     if (provider.plan !== 'pro') throw new HttpError(403, 'pro_required', 'Cobranças de clientes próprios fazem parte do plano Pro.');
+    // Money moves only for an account the admin approved (checked again for the booking's occupation)
+    requireApprovedProvider(provider);
 
     let amount: number;
-    let payerId: string | null = null;
-    let clientRef: string | null = null;
-    let fallbackName: string | null = null;
-    let fallbackPhone: string | null = null;
-    let fallbackEmail: string | null = null;
+    let linkedClient: string | null;
     let description: string;
 
     if (input.booking_id) {
@@ -116,35 +126,31 @@ export function handler(req: Request, deps: ChargesCreateDeps): Promise<Response
       if (!CHARGEABLE_BOOKING.has(booking.status)) {
         throw errors.conflict('booking_not_chargeable', 'Este atendimento não pode ser cobrado no status atual.');
       }
+      requireApprovedProvider(provider, booking.occupation_slug);
       amount = booking.price_cents ?? 0;
-      payerId = booking.client_id;
-      clientRef = booking.provider_client_id;
-      description = input.description ?? `Atendimento ${booking.occupation_slug}`;
+      linkedClient = booking.provider_client_id;
+      // Generic on purpose, as in payments-create: the processor and the payer's statement see this text
+      description = input.description ?? 'WorkEasy: atendimento';
     } else {
       const quote = await session.getQuote(input.quote_id!);
       if (!quote || quote.provider_id !== provider.id) throw errors.notFound('Orçamento');
       if (quote.status !== 'accepted') throw errors.conflict('quote_not_accepted', 'Só orçamentos aceitos podem ser cobrados.');
       amount = quote.total_cents ?? 0;
-      clientRef = quote.provider_client_id;
-      fallbackName = quote.client_name;
-      fallbackPhone = quote.client_phone;
-      description = input.description ?? `Orçamento: ${quote.title}`;
+      linkedClient = quote.provider_client_id;
+      // Generic on purpose: the quote title is free text the provider typed, and the payer's statement shows it
+      description = input.description ?? 'WorkEasy: orçamento';
     }
     const target = input.booking_id ? { bookingId: input.booking_id } : { quoteId: input.quote_id };
     if (await deps.admin.hasPaidCharge(target)) throw errors.conflict(ALREADY_PAID, ALREADY_PAID_MESSAGE);
     if (amount <= 0) throw errors.conflict('price_missing', 'O valor da cobrança não está definido.');
 
-    if (clientRef) {
-      const client = await session.getProviderClient(clientRef);
-      if (client) {
-        fallbackName = client.name ?? fallbackName;
-        fallbackPhone = client.phone ?? fallbackPhone;
-        fallbackEmail = client.email;
-        payerId = payerId ?? client.client_id;
-      }
+    const clientId = chooseClient(linkedClient, input.provider_client_id);
+    if (!clientId) throw errors.invalidInput(['provider_client_id: escolha um cliente do seu CRM para cobrar']);
+    const client = await session.getProviderClient(clientId);
+    if (!client || client.provider_id !== provider.id) throw errors.notFound('Cliente');
+    if (!client.cpf_cnpj) {
+      throw errors.conflict('customer_document_missing', 'Cadastre o CPF ou CNPJ do cliente no CRM antes de cobrar.');
     }
-    const name = input.customer.name ?? fallbackName?.trim();
-    if (!name) throw errors.invalidInput(['customer.name: nome do cliente obrigatório']);
 
     const apiKey = await deps.admin.getSubaccountApiKey(provider.id);
     if (!apiKey) {
@@ -164,11 +170,12 @@ export function handler(req: Request, deps: ChargesCreateDeps): Promise<Response
 
     const customer = await callAsaas(() =>
       sub.createCustomer({
-        name,
-        cpfCnpj: input.customer.cpf_cnpj,
-        email: input.customer.email ?? fallbackEmail ?? undefined,
-        mobilePhone: input.customer.phone ?? fallbackPhone ?? undefined,
-        externalReference: clientRef ? `provider_client:${clientRef}` : undefined,
+        name: client.name,
+        cpfCnpj: client.cpf_cnpj!,
+        email: client.email ?? undefined,
+        mobilePhone: client.phone ?? undefined,
+        externalReference: `provider_client:${clientId}`,
+        notificationDisabled: true,
       }),
     );
     const reference = input.booking_id ? `booking:${input.booking_id}` : `quote:${input.quote_id}`;
@@ -196,7 +203,7 @@ export function handler(req: Request, deps: ChargesCreateDeps): Promise<Response
       booking_id: input.booking_id ?? null,
       quote_id: input.quote_id ?? null,
       provider_id: provider.id,
-      payer_id: payerId,
+      payer_id: client.client_id,
       asaas_payment_id: payment.id,
       method: input.method,
       amount_cents: amount,

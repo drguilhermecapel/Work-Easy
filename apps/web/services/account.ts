@@ -51,20 +51,30 @@ export const listConsents = async (userId: string): Promise<ConsentRow[]> =>
  * Appends a consent decision (the table is insert-only: history, never update).
  * user_id is not sent: the table grants insert only on (purpose, version, granted)
  * and fills user_id with auth.uid(), so sending it fails with permission denied.
+ * A decision equal to the latest one of that purpose and version adds no row (the database
+ * skips it, migration 20261110100006): the call still succeeds and returns null.
  */
 export const recordConsent = async (
   _userId: string,
   purpose: ConsentPurpose,
   granted: boolean,
   version: string = CONSENT_VERSIONS[purpose],
-): Promise<ConsentRow> =>
-  unwrap<ConsentRow>(
+): Promise<ConsentRow | null> =>
+  unwrapMaybe<ConsentRow>(
     await db()
       .from('consents')
       .insert({ purpose, granted, version })
       .select('id, user_id, purpose, version, granted, at')
-      .single(),
+      .maybeSingle(),
   );
+
+/**
+ * Withdraws the background-check consent in one call: the decision is recorded and the
+ * provider's background-check files are marked for deletion (withdraw_background_check).
+ * Returns how many files were marked.
+ */
+export const withdrawBackgroundCheck = async (version: string = CONSENT_VERSIONS.background_check): Promise<number> =>
+  unwrap<number>(await db().rpc('withdraw_background_check', { p_version: version }));
 
 /** Latest decision per purpose, from a newest-first history. */
 export const latestConsents = (history: ConsentRow[]): Partial<Record<ConsentPurpose, ConsentRow>> => {
@@ -73,8 +83,11 @@ export const latestConsents = (history: ConsentRow[]): Partial<Record<ConsentPur
   return latest;
 };
 
-/** Consents every account needs, in their current version, before using the platform. */
-export const REQUIRED_CONSENTS = ['terms', 'privacy'] as const satisfies readonly ConsentPurpose[];
+/**
+ * Consents every account needs, in their current version, before using the platform. The age declaration is one of
+ * them: an account that never made it is asked for it on its next sign-in (TermsGate).
+ */
+export const REQUIRED_CONSENTS = ['terms', 'privacy', 'age_declaration'] as const satisfies readonly ConsentPurpose[];
 
 /** Required purposes not accepted in their current version (empty = all accepted). */
 export const missingRequiredConsents = (
@@ -88,9 +101,13 @@ export const missingRequiredConsents = (
 /** Reads the history and tells which required consents are missing. */
 export const fetchMissingRequiredConsents = async (userId: string) => missingRequiredConsents(latestConsents(await listConsents(userId)));
 
-/** Records acceptance of the current terms and privacy texts, unless already accepted. */
-export const acceptCurrentTerms = async (userId: string): Promise<void> => {
+/**
+ * Records acceptance of the current texts of the missing required consents. The age declaration is recorded only
+ * when the person makes it (`ageDeclared`): it is never assumed for them.
+ */
+export const acceptCurrentTerms = async (userId: string, options: { ageDeclared?: boolean } = {}): Promise<void> => {
   for (const purpose of await fetchMissingRequiredConsents(userId)) {
+    if (purpose === 'age_declaration' && options.ageDeclared !== true) continue;
     await recordConsent(userId, purpose, true);
   }
 };

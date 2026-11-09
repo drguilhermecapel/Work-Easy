@@ -20,10 +20,13 @@ export interface ProFake extends FakeSupabase {
   removed: Array<{ bucket: string; paths: string[] }>;
   /** Set to make the next uploads fail. */
   uploadError: unknown;
+  /** Object names in the folder that the storage list answers with. */
+  folder: string[];
   storage: {
     from: (bucket: string) => {
       upload: (path: string, file: unknown, options?: unknown) => Promise<{ data: unknown; error: unknown }>;
       remove: (paths: string[]) => Promise<{ data: unknown; error: unknown }>;
+      list: (folder: string, options?: unknown) => Promise<{ data: Array<{ name: string }> | null; error: unknown }>;
     };
   };
 }
@@ -34,6 +37,7 @@ export const createProFake = (): ProFake => {
   fake.uploads = [];
   fake.removed = [];
   fake.uploadError = null;
+  fake.folder = [];
   fake.storage = {
     from: bucket => ({
       async upload(path, file, options) {
@@ -45,6 +49,9 @@ export const createProFake = (): ProFake => {
         fake.removed.push({ bucket, paths });
         return { data: [], error: null };
       },
+      async list() {
+        return { data: fake.folder.map(name => ({ name })), error: null };
+      },
     }),
   };
   const baseReset = base.reset;
@@ -53,6 +60,7 @@ export const createProFake = (): ProFake => {
     fake.uploads = [];
     fake.removed = [];
     fake.uploadError = null;
+    fake.folder = [];
   };
   return fake;
 };
@@ -95,7 +103,7 @@ export const providerRow = (overrides: Record<string, unknown> = {}) => ({
 });
 
 export const acceptedConsents = (userId = USER_ID) =>
-  (['terms', 'privacy'] as const).map(purpose => ({
+  (['terms', 'privacy', 'age_declaration'] as const).map(purpose => ({
     id: `c-${purpose}`,
     user_id: userId,
     purpose,

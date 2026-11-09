@@ -15,8 +15,8 @@ import {
   updateRecipient,
   type CareRecipient,
   type Household,
-  type Shift,
 } from '../../services/care';
+import { ERROR_MESSAGES } from '../../lib/errors';
 import ErrorAlert from '../../components/ErrorAlert';
 import PageStatus from '../../components/PageStatus';
 import CuidadoPage from '../../components/cuidado/CuidadoPage';
@@ -35,7 +35,7 @@ const load = async () => {
     listNeighborhoods().catch((): NeighborhoodRow[] => []),
     listShifts(households.map(h => h.id)),
   ]);
-  return { households, recipients, neighborhoods, shifts, now: Date.now() };
+  return { households, recipients, neighborhoods, shifts };
 };
 
 type Data = Awaited<ReturnType<typeof load>>;
@@ -44,19 +44,13 @@ interface CardProps {
   household: Household;
   recipients: CareRecipient[];
   neighborhoods: NeighborhoodRow[];
-  /** Shifts of this house that have not ended and have a caregiver who accepted (or is working). */
-  upcoming: Shift[];
+  /** Any shift of this house, whatever its status: the database keeps the record and refuses the delete. */
+  hasShifts: boolean;
   onChanged: () => void;
   onError: (error: unknown) => void;
 }
 
-/** Plural of the warning shown before a house with a confirmed caregiver is deleted. */
-const caregiverWarning = (count: number): string =>
-  count === 0
-    ? ''
-    : ` Há ${count} ${count === 1 ? 'plantão' : 'plantões'} com cuidador confirmado que ainda ${count === 1 ? 'não terminou' : 'não terminaram'}: o app não avisa o cuidador, ele deixa de ver ${count === 1 ? 'o plantão' : 'os plantões'}. Cancele antes, para ele ser liberado, e avise-o por fora.`;
-
-const HouseholdCard: React.FC<CardProps> = ({ household, recipients, neighborhoods, upcoming, onChanged, onError }) => {
+const HouseholdCard: React.FC<CardProps> = ({ household, recipients, neighborhoods, hasShifts, onChanged, onError }) => {
   const [editing, setEditing] = useState(false);
   const [adding, setAdding] = useState(false);
   const [editingRecipient, setEditingRecipient] = useState<string | null>(null);
@@ -108,12 +102,16 @@ const HouseholdCard: React.FC<CardProps> = ({ household, recipients, neighborhoo
                 </Link>
               </div>
             </div>
-            <ConfirmButton
-              label="Apagar casa"
-              confirmLabel="Apagar casa e tudo dela"
-              question={`Apagar “${household.name}”? Os assistidos, plantões, registros de entrada e saída e relatórios desta casa também serão apagados.${caregiverWarning(upcoming.length)}`}
-              onConfirm={() => run(() => deleteHousehold(household.id))}
-            />
+            {hasShifts ? (
+              <p className="text-sm text-gray-600">{ERROR_MESSAGES.household_has_shifts}</p>
+            ) : (
+              <ConfirmButton
+                label="Apagar casa"
+                confirmLabel="Apagar casa e tudo dela"
+                question={`Apagar “${household.name}”? Os assistidos desta casa também serão apagados.`}
+                onConfirm={() => run(() => deleteHousehold(household.id))}
+              />
+            )}
           </>
         )}
       </section>
@@ -220,9 +218,7 @@ const Content: React.FC<{ userId: string }> = ({ userId }) => {
               key={household.id}
               household={household}
               recipients={data.recipients.filter(r => r.household_id === household.id)}
-              upcoming={data.shifts.filter(
-                s => s.household_id === household.id && s.provider_id && (s.status === 'assigned' || s.status === 'checked_in') && s.period.end.getTime() > data.now,
-              )}
+              hasShifts={data.shifts.some(s => s.household_id === household.id)}
               neighborhoods={data.neighborhoods}
               onChanged={result.reload}
               onError={setActionError}

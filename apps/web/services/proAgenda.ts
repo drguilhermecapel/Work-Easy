@@ -1,3 +1,4 @@
+import { features } from '../config/features';
 import { AppError } from '../lib/errors';
 import { formatTstzRange, parseTstzRange, type Period } from '../lib/tstzrange';
 import { saoPauloDateTime } from '../lib/timezone';
@@ -178,3 +179,40 @@ export const transitionBooking = (bookingId: string, to: BookingStatus, reason?:
     unwrapMaybe<unknown>(await db().rpc('transition_booking', { p_booking: bookingId, p_to: to, p_reason: reason?.trim() || null }));
     return to === 'canceled' && from !== 'requested' ? voidOpenCharges(bookingId) : null;
   });
+
+// ---- Review link ----------------------------------------------------------------
+
+/** Statuses of a finished job: the client's review form opens for these (and only once the job was paid in the app). */
+export const FINISHED_STATUSES: BookingStatus[] = ['completed', 'released'];
+
+/**
+ * Page where the client finds the review form of a booking (/atendimentos/:id). It is behind login and
+ * the database shows a booking only to its two parties, so the link is useless to anyone else.
+ */
+export const reviewUrl = (bookingId: string): string => {
+  const base = features.siteUrl ?? (typeof window !== 'undefined' ? window.location.origin : '');
+  return `${base}/atendimentos/${bookingId}`;
+};
+
+export const reviewShareText = (clientName: string | null, url: string): string =>
+  `${clientName ? `Olá, ${clientName}!` : 'Olá!'} Foi um prazer atender você. Se puder, conte como foi no WorkEasy: ${url}`;
+
+/** wa.me link with the text ready and no number (the provider picks the chat); the platform sends nothing. */
+export const reviewWhatsAppUrl = (bookingId: string, clientName: string | null): string =>
+  `https://wa.me/?text=${encodeURIComponent(reviewShareText(clientName, reviewUrl(bookingId)))}`;
+
+/** Slugs whose policy allows public ratings (occupation_policies.rating_ranking). Unknown or unreadable counts as not allowed. */
+export const listRatingAllowedSlugs = async (slugs: string[]): Promise<Set<string>> => {
+  const wanted = [...new Set(slugs)];
+  const allowed = new Set<string>();
+  if (wanted.length === 0) return allowed;
+  try {
+    const { data } = await db().from('occupation_policies').select('occupation_slug, rating_ranking').in('occupation_slug', wanted);
+    for (const row of (data ?? []) as Array<{ occupation_slug: string; rating_ranking: boolean | null }>) {
+      if (row.rating_ranking === true) allowed.add(row.occupation_slug);
+    }
+  } catch {
+    // Without the policy no review link is offered
+  }
+  return allowed;
+};

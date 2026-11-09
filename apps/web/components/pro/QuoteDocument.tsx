@@ -58,7 +58,7 @@ const QuoteDocument: React.FC<Props> = ({ quote, providerName }) => (
     <p className="text-right text-lg font-bold">Total: {formatCents(quote.total_cents)}</p>
     {quote.valid_until && <p className="text-sm text-gray-600">Válido até {formatDateBR(quote.valid_until)}.</p>}
     {quote.notes && <p className="text-sm text-gray-700 whitespace-pre-line break-words">{quote.notes}</p>}
-    <p className="text-xs text-gray-400">Este documento é um orçamento e não substitui nota fiscal.</p>
+    <p className="text-xs text-gray-500">Este documento é um orçamento e não substitui nota fiscal.</p>
   </article>
 );
 

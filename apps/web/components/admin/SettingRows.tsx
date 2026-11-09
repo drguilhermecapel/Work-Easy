@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { DEFAULT_SETTINGS } from '../../config/features';
 import {
   ENABLE_PHRASES,
+  MONEY_SETTINGS,
   NUMBER_LIMITS,
   parseNumberSetting,
   setSetting,
@@ -106,7 +107,7 @@ export const NumberSetting: React.FC<{ def: NumberDef; rows: SettingRow[]; onSav
           <input
             id={inputId}
             type="text"
-            inputMode={def.key === 'pro_price_cents' ? 'decimal' : 'numeric'}
+            inputMode={(MONEY_SETTINGS as readonly string[]).includes(def.key) ? 'decimal' : 'numeric'}
             autoComplete="off"
             value={text}
             onChange={e => {

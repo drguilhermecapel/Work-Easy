@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { formatTstzRange, parseTstzRange } from '../../lib/tstzrange';
 import { formatPhoneBR, toE164BR, toE164MobileBR } from '../../lib/phone';
-import { formatDateBR, saoPauloDateTime, todayInSaoPaulo, validityEnd } from '../../lib/timezone';
+import { formatDateBR, lastBookableDayInSaoPaulo, saoPauloDateTime, todayInSaoPaulo, validityEnd } from '../../lib/timezone';
 import { useAsync } from '../../lib/useAsync';
 import { clearRequestDraft, readRequestDraft, saveRequestDraft } from '../../lib/requestDraft';
 import { isExpired } from '../../pages/cliente/labels';
@@ -62,6 +62,26 @@ describe('web helpers', () => {
     expect(settings.commissionBps).toBe(DEFAULT_SETTINGS.commissionBps);
   });
 
+  it('reads the commission ceiling, the free proposals and the Pro trial, and promises nothing by default', () => {
+    // What the rules apply when the key is missing: no ceiling, 5 free proposals, no trial
+    expect(DEFAULT_SETTINGS).toMatchObject({ commissionCapCents: 0, freeProposalsPerMonth: 5, proTrialDays: 0 });
+    const settings = parseSettings([
+      { key: 'commission_cap_cents', value: 20000 },
+      { key: 'free_proposals_per_month', value: 8 },
+      { key: 'pro_trial_days', value: 14 },
+    ]);
+    expect(settings).toMatchObject({ commissionCapCents: 20000, freeProposalsPerMonth: 8, proTrialDays: 14 });
+    // A zero is a value (no ceiling, no limit, no trial), not a missing one
+    expect(parseSettings([{ key: 'free_proposals_per_month', value: 0 }, { key: 'pro_trial_days', value: 0 }])).toMatchObject({
+      freeProposalsPerMonth: 0,
+      proTrialDays: 0,
+    });
+    // A value of the wrong type falls back instead of being read as a number
+    expect(parseSettings([{ key: 'pro_trial_days', value: '30' }, { key: 'commission_cap_cents', value: null }, { key: 'free_proposals_per_month', value: NaN }])).toEqual(
+      DEFAULT_SETTINGS,
+    );
+  });
+
   it('builds the concierge WhatsApp link', () => {
     const message = buildConciergeMessage({
       occupationName: 'Diarista',
@@ -105,6 +125,15 @@ describe('São Paulo time', () => {
     // 02:00 UTC is 23:00 of the day before in São Paulo (and 11:00 in Tokyo)
     expect(todayInSaoPaulo(new Date('2030-01-15T02:00:00Z'))).toBe('2030-01-14');
     expect(todayInSaoPaulo(new Date('2030-01-15T03:00:00Z'))).toBe('2030-01-15');
+  });
+
+  it('ends the booking horizon one year after today in São Paulo, across the day boundary', () => {
+    // 02:30 UTC on 2030-01-01 is still 2029-12-31 in São Paulo: the horizon follows the São Paulo day
+    expect(lastBookableDayInSaoPaulo(new Date('2029-12-31T23:00:00-03:00'))).toBe('2030-12-31');
+    expect(lastBookableDayInSaoPaulo(new Date('2030-01-01T02:30:00Z'))).toBe('2030-12-31');
+    expect(lastBookableDayInSaoPaulo(new Date('2030-01-01T03:00:00Z'))).toBe('2031-01-01');
+    // A leap year is counted in days, not in years
+    expect(lastBookableDayInSaoPaulo(new Date('2028-02-28T12:00:00-03:00'))).toBe('2029-02-27');
   });
 
   it('treats a plain valid_until date as valid through the whole day in São Paulo', () => {

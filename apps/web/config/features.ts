@@ -34,9 +34,20 @@ export interface PublicSettings {
   proPriceCents: number;
   proposalLimit: number;
   laborLockDaysPerWeek: number;
+  /** Most the commission of one service can be, in cents; 0 = no ceiling. */
+  commissionCapCents: number;
+  /** Proposals a provider on the free plan sends per calendar month; 0 = no limit. */
+  freeProposalsPerMonth: number;
+  /** Free days of Pro on the first subscription of an account; 0 = no trial. */
+  proTrialDays: number;
 }
 
-/** Same defaults as the database seed: money features off. */
+/**
+ * Money features off, and the other keys as the database seed has them. The three revenue settings
+ * (ceiling, free proposals, trial) are the exception: here they hold what the rules apply when the
+ * key is missing or unreadable (no ceiling, 5 free proposals, no trial), so nothing is promised that
+ * the database did not say. A screen that wants to promise a number reads it (services/proBilling).
+ */
 export const DEFAULT_SETTINGS: PublicSettings = {
   commissionEnabled: false,
   commissionBps: 1200,
@@ -44,6 +55,9 @@ export const DEFAULT_SETTINGS: PublicSettings = {
   proPriceCents: 4900,
   proposalLimit: 3,
   laborLockDaysPerWeek: 2,
+  commissionCapCents: 0,
+  freeProposalsPerMonth: 5,
+  proTrialDays: 0,
 };
 
 const SETTING_KEYS: Record<string, keyof PublicSettings> = {
@@ -53,6 +67,9 @@ const SETTING_KEYS: Record<string, keyof PublicSettings> = {
   pro_price_cents: 'proPriceCents',
   proposal_limit: 'proposalLimit',
   labor_lock_days_per_week: 'laborLockDaysPerWeek',
+  commission_cap_cents: 'commissionCapCents',
+  free_proposals_per_month: 'freeProposalsPerMonth',
+  pro_trial_days: 'proTrialDays',
 };
 
 /** Turns platform_settings rows into typed settings, ignoring unknown keys and wrong types. */

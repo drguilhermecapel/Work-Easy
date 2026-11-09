@@ -1,0 +1,130 @@
+name: Publicar Supabase (migrations e Edge Functions)
+
+# Applies pending migrations, then the production catalog (supabase/catalog.sql),
+# and publishes the Edge Functions of apps/web to the production Supabase project.
+# Runs only on demand: there is no push or pull_request trigger. The default input
+# is a dry run that only lists the pending migrations. Secrets of the Edge
+# Functions (ASAAS_BASE_URL, APP_ENV, ...) are NOT set here: that is a manual step
+# (apps/web/docs/arquitetura/infra.md).
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Só listar as migrations pendentes, sem aplicar'
+        required: true
+        type: boolean
+        default: true
+      deploy_functions:
+        description: 'Publicar as Edge Functions'
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-supabase-production
+  cancel-in-progress: false
+
+jobs:
+  supabase:
+    name: Migrations e Edge Functions
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment:
+      name: production
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_ID: ${{ vars.SUPABASE_PROJECT_ID }}
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      # Checkout first: the steps run in apps/web, which exists only after it.
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Confirmar a branch
+        run: |
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::O banco de produção só é alterado a partir da branch main."
+            exit 1
+          fi
+
+      - name: Conferir variáveis obrigatórias
+        run: |
+          for name in SUPABASE_ACCESS_TOKEN SUPABASE_DB_PASSWORD SUPABASE_PROJECT_ID; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Falta $name no ambiente production."
+              exit 1
+            fi
+          done
+
+      # Same CLI version as the devDependency in apps/web/package.json.
+      - uses: supabase/setup-cli@v3.0.1
+        with:
+          version: 2.121.0
+
+      - name: Conferir que a CLI é a do package.json
+        run: |
+          expected="$(node -p "require('./package.json').devDependencies.supabase")"
+          actual="$(supabase --version)"
+          if [ "$expected" != "$actual" ]; then
+            echo "::error::CLI do Supabase ($actual) difere da do package.json ($expected)."
+            exit 1
+          fi
+
+      - name: Vincular o projeto
+        run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
+
+      # Migrations come first, then the catalog. supabase/seed.sql is the development
+      # seed and is never applied here (db push does not include it without
+      # --include-seed). supabase/catalog.sql is the production catalog, generated from
+      # the same source and holding nothing but the four catalog tables.
+      # --skip-vault keeps config.toml from touching vault secrets.
+      - name: Listar migrations pendentes
+        run: supabase db push --linked --skip-vault --dry-run
+
+      - name: Conferir que o catálogo só toca tabelas de catálogo
+        run: |
+          test -s supabase/catalog.sql
+          grep -m1 -E '^-- [0-9]+ areas' supabase/catalog.sql
+          # Lines allowed at column 0: comments, begin/commit, the catalog inserts and the
+          # on conflict clause. Indented lines are the rows and the do-update set.
+          if grep -vE -e '^--' -e '^begin;$' -e '^commit;$' -e '^$' -e '^  ' -e '^on conflict ' \
+              -e '^insert into public\.(areas|occupations|occupation_policies|neighborhoods) \(' supabase/catalog.sql; then
+            echo "::error::supabase/catalog.sql tem instruções fora do catálogo."
+            exit 1
+          fi
+
+      - name: Aplicar migrations pendentes
+        if: ${{ !inputs.dry_run }}
+        run: supabase db push --linked --skip-vault --yes
+
+      # One transaction, idempotent (insert ... on conflict do update). Catalog rows are
+      # overwritten with the repository's values: change them only in the repository.
+      - name: Aplicar o catálogo
+        if: ${{ !inputs.dry_run }}
+        run: supabase db query --linked -f supabase/catalog.sql
+
+      - name: Publicar Edge Functions
+        if: ${{ inputs.deploy_functions }}
+        run: |
+          # asaas-webhook (Asaas) and notify-dispatch (scheduled job) receive no
+          # user JWT, so they are published with --no-verify-jwt. Every other
+          # function keeps JWT verification. config.toml has no [functions]
+          # entries for this, so the flag is passed on every deploy.
+          for fn in asaas-webhook notify-dispatch; do
+            supabase functions deploy "$fn" --project-ref "$SUPABASE_PROJECT_ID" --no-verify-jwt
+          done
+          for dir in supabase/functions/*/; do
+            fn="$(basename "$dir")"
+            case "$fn" in
+              _*|asaas-webhook|notify-dispatch) continue ;; # _shared and _runtime are libraries
+            esac
+            supabase functions deploy "$fn" --project-ref "$SUPABASE_PROJECT_ID"
+          done

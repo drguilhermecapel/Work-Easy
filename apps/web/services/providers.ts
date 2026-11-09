@@ -1,6 +1,7 @@
 import { loadPolicies } from '../catalog';
 import type { OccupationPolicy, PriceUnit, VerificationStep } from '../catalog/types';
 import { AppError } from '../lib/errors';
+import { stripImageMetadata } from '../lib/imageMetadata';
 import type { Tables } from '../lib/database.types';
 import { db, unwrap, unwrapMaybe } from './client';
 import { guard } from './proErrors';
@@ -241,24 +242,58 @@ export const listMyDocuments = (providerId: string): Promise<ProviderDocumentRow
 
 const randomPart = (): string => globalThis.crypto?.randomUUID?.().slice(0, 8) ?? Math.random().toString(36).slice(2, 10);
 
+const TOO_LARGE = 'O arquivo precisa ter até 10 MB.';
+
+/** Files a provider keeps in the bucket, reviewed or not (private.provider_document_slot_free). */
+const DOCUMENT_LIMIT = 60;
+const DOCUMENT_LIMIT_MESSAGE =
+  `Você já enviou o máximo de ${DOCUMENT_LIMIT} documentos. Enquanto o cadastro estiver em rascunho, ` +
+  'remova os que ainda não foram analisados antes de enviar outro.';
+
+/**
+ * The database refuses an upload over the limit with the row policy (HTTP 403), the same answer as a
+ * refused permission. The folder is counted again: when it is full, the answer is the limit; otherwise
+ * the refusal stays as it is.
+ */
+const refusedUpload = async (error: unknown, providerId: string): Promise<unknown> => {
+  const refusal = error as { status?: unknown; message?: unknown } | null;
+  const denied = refusal?.status === 403 || (typeof refusal?.message === 'string' && /row-level security/i.test(refusal.message));
+  if (!denied) return error;
+  try {
+    const { data } = await db().storage.from(DOCUMENT_BUCKET).list(providerId, { limit: DOCUMENT_LIMIT });
+    return (data?.length ?? 0) >= DOCUMENT_LIMIT ? new AppError('invalid_input', { message: DOCUMENT_LIMIT_MESSAGE }) : error;
+  } catch {
+    return error;
+  }
+};
+
 /**
  * Sends the file to the private bucket (provider-documents/<provider_id>/...) and
  * records it for the review. A failed record removes the file again.
+ *
+ * The app re-encodes a photo in the browser before sending it, which is meant to drop
+ * its metadata (GPS position, device model), and refuses a photo that is still over
+ * the limit. A PDF is sent as it is. The server does not inspect the file contents, so
+ * a direct upload through the storage API is not covered by this step. That is a
+ * known residual risk.
  */
 export const uploadProviderDocument = (input: { providerId: string; step: VerificationStep; file: File }): Promise<ProviderDocumentRow> =>
   guard(async () => {
     const { providerId, step, file } = input;
-    const extension = DOCUMENT_TYPES[file.type];
-    if (!extension) {
+    if (!DOCUMENT_TYPES[file.type]) {
       throw new AppError('invalid_input', { message: 'Envie uma foto (JPG, PNG, WebP ou HEIC) ou um PDF.' });
     }
-    if (file.size === 0 || file.size > DOCUMENT_MAX_BYTES) {
-      throw new AppError('invalid_input', { message: 'O arquivo precisa ter até 10 MB.' });
-    }
+    if (file.size === 0 || file.size > DOCUMENT_MAX_BYTES) throw new AppError('invalid_input', { message: TOO_LARGE });
+    // Prepared in the browser before sending. Direct storage API uploads bypass this (known residual risk).
+    // undefined selects the browser codec; the limit lets lossy output shrink until it fits.
+    const prepared = await stripImageMetadata(file, undefined, DOCUMENT_MAX_BYTES);
+    // The stripper already keeps the copy within the limit; this check is a guard.
+    if (prepared.size > DOCUMENT_MAX_BYTES) throw new AppError('invalid_input', { message: TOO_LARGE });
+    const extension = DOCUMENT_TYPES[prepared.type];
     const path = `${providerId}/${step}-${Date.now().toString(36)}-${randomPart()}.${extension}`;
     const bucket = db().storage.from(DOCUMENT_BUCKET);
-    const { error: uploadError } = await bucket.upload(path, file, { contentType: file.type, upsert: false });
-    if (uploadError) throw uploadError;
+    const { error: uploadError } = await bucket.upload(path, prepared, { contentType: prepared.type, upsert: false });
+    if (uploadError) throw await refusedUpload(uploadError, providerId);
     try {
       return unwrap<ProviderDocumentRow>(
         await db().from('provider_documents').insert({ provider_id: providerId, step, storage_path: path }).select(DOCUMENT_COLUMNS).single(),

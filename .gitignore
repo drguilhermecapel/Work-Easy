@@ -12,3 +12,6 @@ node_modules/
 *.aab
 *.ipa
 *.keystore
+
+# Worktrees isoladas dos agentes (checkouts locais, não conteúdo do repositório)
+.claude/worktrees/

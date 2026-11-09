@@ -8,7 +8,7 @@ export const APP_ORIGINS = [
   'tauri://localhost',
 ] as const;
 
-/** Vite dev server; allowed only with the Asaas sandbox or ALLOW_DEV_ORIGINS=true. */
+/** Vite dev server; allowed only outside production, with the Asaas sandbox or ALLOW_DEV_ORIGINS=true. */
 export const DEV_ORIGINS = ['http://localhost:3000', 'http://127.0.0.1:3000'] as const;
 
 export class HttpError extends Error {
@@ -67,8 +67,46 @@ export const okResponse = (data: unknown, status = 200, headers: Record<string, 
 export const errorResponse = (status: number, error: ErrorBody, headers: Record<string, string> = {}) =>
   json(status, { ok: false, error }, headers);
 
-export async function readJson(req: Request): Promise<unknown> {
-  const text = await req.text();
+/** Largest JSON request body the functions read, in bytes. The biggest app request is a few kilobytes. */
+export const JSON_BODY_LIMIT = 64 * 1024;
+/** Largest webhook body, in bytes. An Asaas event is a few kilobytes. */
+export const WEBHOOK_BODY_LIMIT = 256 * 1024;
+
+const payloadTooLarge = () => new HttpError(413, 'payload_too_large', 'O corpo da requisição é grande demais.');
+
+/**
+ * Reads the whole body as text and refuses more than `limit` bytes with 413.
+ * A declared Content-Length is checked before reading. The bytes are also
+ * counted as they arrive, so a streamed body without a length is cut off too.
+ */
+async function readBodyText(req: Request, limit: number): Promise<string> {
+  const declared = req.headers.get('content-length');
+  if (declared !== null && Number(declared) > limit) throw payloadTooLarge();
+  if (!req.body) return '';
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+  for (;;) {
+    const next = await reader.read();
+    if (next.done) break;
+    received += next.value.byteLength;
+    if (received > limit) {
+      await reader.cancel().catch(() => undefined);
+      throw payloadTooLarge();
+    }
+    chunks.push(next.value);
+  }
+  const bytes = new Uint8Array(received);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
+}
+
+export async function readJson(req: Request, limit = JSON_BODY_LIMIT): Promise<unknown> {
+  const text = await readBodyText(req, limit);
   if (!text.trim()) return {};
   try {
     return JSON.parse(text);

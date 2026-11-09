@@ -23,7 +23,21 @@ export type Database = {
           }
         },"public": {
           Tables: {
-            "admins": {
+            "access_events": {
+                  Row: {
+                    "id": string,"method": string | null,"occurred_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id"?: string,"method"?: string | null,"occurred_at"?: string,"user_id": string
+                  }
+                  Update: {
+                    "id"?: string,"method"?: string | null,"occurred_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"admins": {
                   Row: {
                     "created_at": string,"user_id": string
                   }
@@ -213,14 +227,14 @@ isOneToOne: false
                   ]
                 },"care_recipients": {
                   Row: {
-                    "birth_year": number | null,"created_at": string,"emergency_contact": string | null,"first_name": string,"household_id": string,"id": string,"preferences": string | null
+                    "adult_declared_at": string | null,"birth_year": number | null,"created_at": string,"emergency_contact": string | null,"first_name": string,"household_id": string,"id": string,"preferences": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "birth_year"?: number | null,"created_at"?: string,"emergency_contact"?: string | null,"first_name": string,"household_id": string,"id"?: string,"preferences"?: string | null
+                    "adult_declared_at"?: string | null,"birth_year"?: number | null,"created_at"?: string,"emergency_contact"?: string | null,"first_name": string,"household_id": string,"id"?: string,"preferences"?: string | null
                   }
                   Update: {
-                    "birth_year"?: number | null,"created_at"?: string,"emergency_contact"?: string | null,"first_name"?: string,"household_id"?: string,"id"?: string,"preferences"?: string | null
+                    "adult_declared_at"?: string | null,"birth_year"?: number | null,"created_at"?: string,"emergency_contact"?: string | null,"first_name"?: string,"household_id"?: string,"id"?: string,"preferences"?: string | null
                   }
                   Relationships: [
                     {
@@ -262,6 +276,34 @@ isOneToOne: false
       referencedRelation: "shifts"
       referencedColumns: ["id"]
     }
+                  ]
+                },"consent_proof_links": {
+                  Row: {
+                    "proof_owner": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "proof_owner": string,"user_id": string
+                  }
+                  Update: {
+                    "proof_owner"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"consent_proofs": {
+                  Row: {
+                    "at": string,"granted": boolean,"id": string,"proof_owner": string,"purpose": Database["public"]['Enums']["consent_purpose"],"retain_until": string,"version": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "at": string,"granted": boolean,"id"?: string,"proof_owner": string,"purpose": Database["public"]['Enums']["consent_purpose"],"retain_until": string,"version": string
+                  }
+                  Update: {
+                    "at"?: string,"granted"?: boolean,"id"?: string,"proof_owner"?: string,"purpose"?: Database["public"]['Enums']["consent_purpose"],"retain_until"?: string,"version"?: string
+                  }
+                  Relationships: [
+                    
                   ]
                 },"consents": {
                   Row: {
@@ -545,6 +587,20 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"product_events": {
+                  Row: {
+                    "day": string | null,"event": string,"id": string,"occurred_at": string,"props": NonNullable<Json>,"subject_id": string | null,"user_id": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "day"?: never,"event": string,"id"?: string,"occurred_at"?: string,"props"?: NonNullable<Json>,"subject_id"?: string | null,"user_id"?: string | null
+                  }
+                  Update: {
+                    "day"?: never,"event"?: string,"id"?: string,"occurred_at"?: string,"props"?: NonNullable<Json>,"subject_id"?: string | null,"user_id"?: string | null
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"profiles": {
                   Row: {
                     "city": string | null,"created_at": string,"deleted_at": string | null,"full_name": string | null,"id": string,"phone": string | null,"role": Database["public"]['Enums']["user_role"]
@@ -593,14 +649,14 @@ isOneToOne: false
                   ]
                 },"provider_clients": {
                   Row: {
-                    "client_id": string | null,"created_at": string,"email": string | null,"id": string,"name": string,"notes": string | null,"origin": Database["public"]['Enums']["booking_origin"],"phone": string | null,"provider_id": string
+                    "client_id": string | null,"cpf_cnpj": string | null,"created_at": string,"email": string | null,"id": string,"name": string,"notes": string | null,"origin": Database["public"]['Enums']["booking_origin"],"phone": string | null,"provider_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "client_id"?: string | null,"created_at"?: string,"email"?: string | null,"id"?: string,"name": string,"notes"?: string | null,"origin"?: Database["public"]['Enums']["booking_origin"],"phone"?: string | null,"provider_id": string
+                    "client_id"?: string | null,"cpf_cnpj"?: string | null,"created_at"?: string,"email"?: string | null,"id"?: string,"name": string,"notes"?: string | null,"origin"?: Database["public"]['Enums']["booking_origin"],"phone"?: string | null,"provider_id": string
                   }
                   Update: {
-                    "client_id"?: string | null,"created_at"?: string,"email"?: string | null,"id"?: string,"name"?: string,"notes"?: string | null,"origin"?: Database["public"]['Enums']["booking_origin"],"phone"?: string | null,"provider_id"?: string
+                    "client_id"?: string | null,"cpf_cnpj"?: string | null,"created_at"?: string,"email"?: string | null,"id"?: string,"name"?: string,"notes"?: string | null,"origin"?: Database["public"]['Enums']["booking_origin"],"phone"?: string | null,"provider_id"?: string
                   }
                   Relationships: [
                     {
@@ -625,14 +681,14 @@ isOneToOne: false
                   ]
                 },"provider_documents": {
                   Row: {
-                    "created_at": string,"expires_at": string | null,"id": string,"provider_id": string,"rejection_reason": string | null,"reviewed_at": string | null,"reviewed_by": string | null,"status": Database["public"]['Enums']["document_status"],"step": Database["public"]['Enums']["verification_step"],"storage_path": string
+                    "created_at": string,"deletion_requested_at": string | null,"expires_at": string | null,"id": string,"provider_id": string,"rejection_reason": string | null,"reviewed_at": string | null,"reviewed_by": string | null,"status": Database["public"]['Enums']["document_status"],"step": Database["public"]['Enums']["verification_step"],"storage_path": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"expires_at"?: string | null,"id"?: string,"provider_id": string,"rejection_reason"?: string | null,"reviewed_at"?: string | null,"reviewed_by"?: string | null,"status"?: Database["public"]['Enums']["document_status"],"step": Database["public"]['Enums']["verification_step"],"storage_path": string
+                    "created_at"?: string,"deletion_requested_at"?: string | null,"expires_at"?: string | null,"id"?: string,"provider_id": string,"rejection_reason"?: string | null,"reviewed_at"?: string | null,"reviewed_by"?: string | null,"status"?: Database["public"]['Enums']["document_status"],"step": Database["public"]['Enums']["verification_step"],"storage_path": string
                   }
                   Update: {
-                    "created_at"?: string,"expires_at"?: string | null,"id"?: string,"provider_id"?: string,"rejection_reason"?: string | null,"reviewed_at"?: string | null,"reviewed_by"?: string | null,"status"?: Database["public"]['Enums']["document_status"],"step"?: Database["public"]['Enums']["verification_step"],"storage_path"?: string
+                    "created_at"?: string,"deletion_requested_at"?: string | null,"expires_at"?: string | null,"id"?: string,"provider_id"?: string,"rejection_reason"?: string | null,"reviewed_at"?: string | null,"reviewed_by"?: string | null,"status"?: Database["public"]['Enums']["document_status"],"step"?: Database["public"]['Enums']["verification_step"],"storage_path"?: string
                   }
                   Relationships: [
                     {
@@ -901,14 +957,14 @@ isOneToOne: false
                   ]
                 },"shift_offers": {
                   Row: {
-                    "created_at": string,"provider_id": string,"shift_id": string,"status": string
+                    "created_at": string,"offered_at": string,"provider_id": string,"shift_id": string,"status": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"provider_id": string,"shift_id": string,"status"?: string
+                    "created_at"?: string,"offered_at"?: string,"provider_id": string,"shift_id": string,"status"?: string
                   }
                   Update: {
-                    "created_at"?: string,"provider_id"?: string,"shift_id"?: string,"status"?: string
+                    "created_at"?: string,"offered_at"?: string,"provider_id"?: string,"shift_id"?: string,"status"?: string
                   }
                   Relationships: [
                     {
@@ -995,6 +1051,26 @@ isOneToOne: true
       referencedColumns: ["id"]
     }
                   ]
+                },"support_tasks": {
+                  Row: {
+                    "created_at": string,"id": string,"kind": string,"payload": NonNullable<Json>,"resolved_at": string | null,"resolved_by": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"id"?: string,"kind": string,"payload"?: NonNullable<Json>,"resolved_at"?: string | null,"resolved_by"?: string | null
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: string,"kind"?: string,"payload"?: NonNullable<Json>,"resolved_at"?: string | null,"resolved_by"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "support_tasks_resolved_by_fkey"
+      columns: ["resolved_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"time_off": {
                   Row: {
                     "created_at": string,"id": string,"period": unknown,"provider_id": string
@@ -1026,7 +1102,7 @@ isOneToOne: false
           Views: {
             "admin_metrics": {
                   Row: {
-                    "entity": string | null,"status": string | null,"this_month": number | null,"this_week": number | null,"total": number | null
+                    "amount_cents": number | null,"entity": string | null,"last_30_days": number | null,"last_7_days": number | null,"month_amount_cents": number | null,"status": string | null,"this_month": number | null,"this_week": number | null,"total": number | null
                   }
                   ComputedFields: never
                   Relationships: [
@@ -1119,8 +1195,16 @@ isOneToOne: true
 "accept_shift_offer":
 { Args: { "p_shift": string }; Returns: Database["public"]['Enums']["shift_status"]
                            },
+"admin_funnel_daily":
+{ Args: { "p_from": string,"p_to": string }; Returns: {
+              "day": string,"event": string,"events": number
+            }[]
+                           },
 "admin_get_payment_raw":
 { Args: { "p_payment": string }; Returns: Json
+                           },
+"admin_log_document_view":
+{ Args: { "p_storage_path": string }; Returns: undefined
                            },
 "admin_resolve_dispute":
 { Args: { "p_booking": string,"p_reason": string,"p_to": Database["public"]['Enums']["booking_status"] }; Returns: Database["public"]['Enums']["booking_status"]
@@ -1157,6 +1241,12 @@ isOneToOne: true
                            },
 "cancel_shift":
 { Args: { "p_reason"?: string,"p_shift": string }; Returns: Database["public"]['Enums']["shift_status"]
+                           },
+"cancel_shifts_for_user_deletion":
+{ Args: { "p_user": string }; Returns: number
+                           },
+"cancel_unpaid_accepted_bookings_for_user":
+{ Args: { "p_user": string }; Returns: number
                            },
 "caregiver_shifts":
 { Args: Record<PropertyKey, never>; Returns: {
@@ -1195,6 +1285,9 @@ isOneToOne: true
 "create_own_booking":
 { Args: { "p_notes"?: string,"p_occupation": string,"p_period": unknown,"p_price_cents": number,"p_provider_client": string }; Returns: string
                            },
+"custom_access_token_hook":
+{ Args: { "event": Json }; Returns: Json
+                           },
 "get_provider_page":
 { Args: { "p_slug": string }; Returns: Json
                            },
@@ -1221,8 +1314,11 @@ isOneToOne: true
               "created_at": string,"description": string,"expires_at": string,"id": string,"my_proposal_id": string,"my_proposal_status": Database["public"]['Enums']["proposal_status"],"neighborhood_id": string,"neighborhood_name": string,"occupation_slug": string,"preferred_dates": string,"proposal_count": number,"urgent": boolean
             }[]
                            },
+"open_support_task":
+{ Args: { "p_kind": string,"p_payload": Json }; Returns: string
+                           },
 "respond_quote":
-{ Args: { "p_accept": boolean,"p_token": string }; Returns: Database["public"]['Enums']["quote_status"]
+{ Args: { "p_accept": boolean,"p_expected_total_cents"?: number,"p_token": string }; Returns: Database["public"]['Enums']["quote_status"]
                            },
 "search_providers":
 { Args: { "p_limit"?: number,"p_neighborhood"?: string,"p_occupation": string,"p_offset"?: number }; Returns: {
@@ -1246,10 +1342,13 @@ isOneToOne: true
                            },
 "transition_booking":
 { Args: { "p_booking": string,"p_reason"?: string,"p_to": Database["public"]['Enums']["booking_status"] }; Returns: Database["public"]['Enums']["booking_status"]
+                           },
+"withdraw_background_check":
+{ Args: { "p_version": string }; Returns: number
                            }
           }
           Enums: {
-            "billing_model": "comissao_primeiro_servico"|"so_assinatura"|"sob_consulta_juridica","booking_origin": "platform"|"own","booking_status": "requested"|"accepted"|"paid"|"in_progress"|"completed"|"released"|"canceled"|"disputed","consent_purpose": "terms"|"privacy"|"marketing"|"background_check"|"location","data_request_kind": "export"|"delete","document_status": "submitted"|"accepted"|"rejected","notification_channel": "whatsapp"|"email","notification_status": "queued"|"sending"|"sent"|"failed"|"skipped","payment_method": "pix"|"credit_card"|"boleto"|"undefined","payment_status": "pending"|"confirmed"|"received"|"held"|"released"|"refunded"|"failed"|"canceled","plan_code": "free"|"pro","price_unit": "hora"|"dia"|"servico"|"m2"|"sessao"|"plantao"|"mes"|"projeto"|"km"|"pacote"|"pagina"|"palavra"|"aula"|"evento"|"visita","proposal_status": "sent"|"accepted"|"declined"|"withdrawn","provider_kind": "autonomo"|"autonomo_ou_empresa"|"somente_empresa_licenciada","provider_status": "draft"|"pending_review"|"approved"|"suspended","quote_status": "draft"|"sent"|"accepted"|"declined"|"expired","registry_status": "not_required"|"informed"|"confirmed"|"rejected","request_status": "open"|"matched"|"closed"|"canceled","service_location": "domicilio"|"online"|"estabelecimento"|"empresa_cliente"|"externo","shift_status": "open"|"offered"|"assigned"|"checked_in"|"completed"|"canceled"|"no_show","subscription_status": "pending"|"trialing"|"active"|"past_due"|"canceled","user_role": "client"|"provider","verification_step": "documento_selfie"|"cadastro_fiscal"|"registro_profissional"|"antecedentes"|"certificado_curso"|"cnh"|"licenca_orgao"|"seguro_rc"
+            "billing_model": "comissao_primeiro_servico"|"so_assinatura"|"sob_consulta_juridica","booking_origin": "platform"|"own","booking_status": "requested"|"accepted"|"paid"|"in_progress"|"completed"|"released"|"canceled"|"disputed","consent_purpose": "terms"|"privacy"|"marketing"|"background_check"|"location"|"age_declaration","data_request_kind": "export"|"delete","document_status": "submitted"|"accepted"|"rejected","notification_channel": "whatsapp"|"email","notification_status": "queued"|"sending"|"sent"|"failed"|"skipped","payment_method": "pix"|"credit_card"|"boleto"|"undefined","payment_status": "pending"|"confirmed"|"received"|"held"|"released"|"refunded"|"failed"|"canceled","plan_code": "free"|"pro","price_unit": "hora"|"dia"|"servico"|"m2"|"sessao"|"plantao"|"mes"|"projeto"|"km"|"pacote"|"pagina"|"palavra"|"aula"|"evento"|"visita","proposal_status": "sent"|"accepted"|"declined"|"withdrawn","provider_kind": "autonomo"|"autonomo_ou_empresa"|"somente_empresa_licenciada","provider_status": "draft"|"pending_review"|"approved"|"suspended","quote_status": "draft"|"sent"|"accepted"|"declined"|"expired","registry_status": "not_required"|"informed"|"confirmed"|"rejected","request_status": "open"|"matched"|"closed"|"canceled","service_location": "domicilio"|"online"|"estabelecimento"|"empresa_cliente"|"externo","shift_status": "open"|"offered"|"assigned"|"checked_in"|"completed"|"canceled"|"no_show","subscription_status": "pending"|"trialing"|"active"|"past_due"|"canceled","user_role": "client"|"provider","verification_step": "documento_selfie"|"cadastro_fiscal"|"registro_profissional"|"antecedentes"|"certificado_curso"|"cnh"|"licenca_orgao"|"seguro_rc"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -1369,7 +1468,7 @@ export const Constants = {
           }
         },"public": {
           Enums: {
-            "billing_model": ["comissao_primeiro_servico", "so_assinatura", "sob_consulta_juridica"],"booking_origin": ["platform", "own"],"booking_status": ["requested", "accepted", "paid", "in_progress", "completed", "released", "canceled", "disputed"],"consent_purpose": ["terms", "privacy", "marketing", "background_check", "location"],"data_request_kind": ["export", "delete"],"document_status": ["submitted", "accepted", "rejected"],"notification_channel": ["whatsapp", "email"],"notification_status": ["queued", "sending", "sent", "failed", "skipped"],"payment_method": ["pix", "credit_card", "boleto", "undefined"],"payment_status": ["pending", "confirmed", "received", "held", "released", "refunded", "failed", "canceled"],"plan_code": ["free", "pro"],"price_unit": ["hora", "dia", "servico", "m2", "sessao", "plantao", "mes", "projeto", "km", "pacote", "pagina", "palavra", "aula", "evento", "visita"],"proposal_status": ["sent", "accepted", "declined", "withdrawn"],"provider_kind": ["autonomo", "autonomo_ou_empresa", "somente_empresa_licenciada"],"provider_status": ["draft", "pending_review", "approved", "suspended"],"quote_status": ["draft", "sent", "accepted", "declined", "expired"],"registry_status": ["not_required", "informed", "confirmed", "rejected"],"request_status": ["open", "matched", "closed", "canceled"],"service_location": ["domicilio", "online", "estabelecimento", "empresa_cliente", "externo"],"shift_status": ["open", "offered", "assigned", "checked_in", "completed", "canceled", "no_show"],"subscription_status": ["pending", "trialing", "active", "past_due", "canceled"],"user_role": ["client", "provider"],"verification_step": ["documento_selfie", "cadastro_fiscal", "registro_profissional", "antecedentes", "certificado_curso", "cnh", "licenca_orgao", "seguro_rc"]
+            "billing_model": ["comissao_primeiro_servico", "so_assinatura", "sob_consulta_juridica"],"booking_origin": ["platform", "own"],"booking_status": ["requested", "accepted", "paid", "in_progress", "completed", "released", "canceled", "disputed"],"consent_purpose": ["terms", "privacy", "marketing", "background_check", "location", "age_declaration"],"data_request_kind": ["export", "delete"],"document_status": ["submitted", "accepted", "rejected"],"notification_channel": ["whatsapp", "email"],"notification_status": ["queued", "sending", "sent", "failed", "skipped"],"payment_method": ["pix", "credit_card", "boleto", "undefined"],"payment_status": ["pending", "confirmed", "received", "held", "released", "refunded", "failed", "canceled"],"plan_code": ["free", "pro"],"price_unit": ["hora", "dia", "servico", "m2", "sessao", "plantao", "mes", "projeto", "km", "pacote", "pagina", "palavra", "aula", "evento", "visita"],"proposal_status": ["sent", "accepted", "declined", "withdrawn"],"provider_kind": ["autonomo", "autonomo_ou_empresa", "somente_empresa_licenciada"],"provider_status": ["draft", "pending_review", "approved", "suspended"],"quote_status": ["draft", "sent", "accepted", "declined", "expired"],"registry_status": ["not_required", "informed", "confirmed", "rejected"],"request_status": ["open", "matched", "closed", "canceled"],"service_location": ["domicilio", "online", "estabelecimento", "empresa_cliente", "externo"],"shift_status": ["open", "offered", "assigned", "checked_in", "completed", "canceled", "no_show"],"subscription_status": ["pending", "trialing", "active", "past_due", "canceled"],"user_role": ["client", "provider"],"verification_step": ["documento_selfie", "cadastro_fiscal", "registro_profissional", "antecedentes", "certificado_curso", "cnh", "licenca_orgao", "seguro_rc"]
           }
         }
 } as const

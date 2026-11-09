@@ -1,9 +1,11 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { type DeleteDeps, handler as accountDelete, type OpenCharge } from '../../supabase/functions/account-delete/handler.ts';
+import {
+  BLOCKING_BOOKING_STATUSES, type DeleteDeps, handler as accountDelete, type OpenCharge,
+} from '../../supabase/functions/account-delete/handler.ts';
 import { type ExportDeps, handler as accountExport } from '../../supabase/functions/account-export/handler.ts';
 import {
-  type AssistDeps, type ClassifyRequest, type ClassifyResult, handler as assist,
+  type AssistDeps, type ClassifyRequest, type ClassifyResult, handler as assist, requestAssistSwitchOn,
 } from '../../supabase/functions/request-assist/handler.ts';
 import { asaasWith, baseDeps, post, PROVIDER, read, USER } from './helpers.ts';
 
@@ -70,9 +72,18 @@ describe('account-delete', () => {
     routes?: Parameters<typeof asaasWith>[0];
     subKey?: string | null;
     documentsFail?: boolean;
+    shifts?: number;
+    shiftsFail?: boolean;
+    acceptedBookings?: number;
+    acceptedFail?: boolean;
+    supportTaskFails?: boolean;
   } = {}) {
     const steps: string[] = [];
     const audits: Array<{ data?: Record<string, unknown> }> = [];
+    const shiftCalls: string[] = [];
+    const acceptedCalls: string[] = [];
+    const supportTasks: Array<{ kind: string; payload: Record<string, string | null> }> = [];
+    const logged: unknown[] = [];
     const { client, calls } = asaasWith(over.routes ?? {
       [`DELETE /v3/subscriptions/${SUB_ID}`]: { body: { deleted: true, id: SUB_ID } },
       'DELETE /v3/payments/pay_p': { body: { deleted: true, id: 'pay_p' } },
@@ -80,6 +91,7 @@ describe('account-delete', () => {
     });
     const deps: DeleteDeps = {
       ...baseDeps,
+      logError: error => void logged.push(error),
       asaas: over.noAsaas ? null : client,
       session: async () => ({ user: USER }),
       admin: {
@@ -93,6 +105,23 @@ describe('account-delete', () => {
           if (over.documentsFail) throw new Error('storage down');
           steps.push('documents');
           return 3;
+        },
+        cancelShifts: async userId => {
+          shiftCalls.push(userId);
+          if (over.shiftsFail) throw new Error('database unavailable');
+          steps.push('shifts-cancelled');
+          return over.shifts ?? 0;
+        },
+        cancelUnpaidAcceptedBookings: async userId => {
+          acceptedCalls.push(userId);
+          if (over.acceptedFail) throw new Error('database unavailable');
+          steps.push('accepted-cancelled');
+          return over.acceptedBookings ?? 0;
+        },
+        openSupportTask: async (kind, payload) => {
+          supportTasks.push({ kind, payload });
+          if (over.supportTaskFails) throw new Error('database unavailable');
+          steps.push('support-task');
         },
         createRequest: async () => {
           steps.push('request');
@@ -113,7 +142,7 @@ describe('account-delete', () => {
         },
       },
     };
-    return { deps, steps, calls, audits };
+    return { deps, steps, calls, audits, shiftCalls, acceptedCalls, supportTasks, logged };
   }
 
   const confirm = () => post('account-delete', { confirm: 'EXCLUIR' });
@@ -134,7 +163,10 @@ describe('account-delete', () => {
     expect(res.status).toBe(200);
     expect(res.body.data).toEqual({ deleted: true, data_request_id: 'dr-1', completed_at: '2026-10-19T15:00:00.000Z' });
     // data_requests.status is pending|processing|completed|failed: no "anonymized"
-    expect(steps).toEqual(['request', 'documents', 'anonymize', 'audit', 'auth-delete', 'status:completed']);
+    // Asserção alterada: 'shifts-cancelled' e 'accepted-cancelled' entram antes de 'documents' (antes da anonimização).
+    expect(steps).toEqual([
+      'request', 'shifts-cancelled', 'accepted-cancelled', 'documents', 'anonymize', 'audit', 'auth-delete', 'status:completed',
+    ]);
   });
 
   it('refuses while a booking is in progress, before touching anything', async () => {
@@ -156,8 +188,10 @@ describe('account-delete', () => {
       'DELETE /v3/payments/pay_p root-key',
       'DELETE /v3/payments/pay_q sub-key', // the provider's own charge, in the subaccount
     ]);
+    // Asserção alterada: 'shifts-cancelled' e 'accepted-cancelled' após as cobranças e antes de 'documents'.
     expect(steps).toEqual([
-      'request', 'sub-local', 'pay-local:pay-row-1', 'pay-local:pay-row-2', 'documents', 'anonymize', 'audit', 'auth-delete', 'status:completed',
+      'request', 'sub-local', 'pay-local:pay-row-1', 'pay-local:pay-row-2', 'shifts-cancelled', 'accepted-cancelled',
+      'documents', 'anonymize', 'audit', 'auth-delete', 'status:completed',
     ]);
     expect(audits[0].data).toMatchObject({ subscription_canceled: true, charges_canceled: 2 });
   });
@@ -209,13 +243,81 @@ describe('account-delete', () => {
 
     const down = deleteDeps({ documentsFail: true });
     expect((await read(await accountDelete(confirm(), down.deps))).status).toBe(500);
-    expect(down.steps).toEqual(['request', 'status:failed']);
+    // Asserção alterada: plantões e reservas aceitas já foram cancelados quando a remoção dos documentos falha.
+    expect(down.steps).toEqual(['request', 'shifts-cancelled', 'accepted-cancelled', 'status:failed']);
   });
 
   it('marks the request failed when anonymization fails, and never deletes the login', async () => {
     const { deps, steps } = deleteDeps({ anonymizeFails: true });
     expect((await read(await accountDelete(confirm(), deps))).status).toBe(500);
-    expect(steps).toEqual(['request', 'documents', 'status:failed']);
+    // Asserção alterada: os cancelamentos são feitos antes de 'documents' e de 'anonymize'.
+    expect(steps).toEqual(['request', 'shifts-cancelled', 'accepted-cancelled', 'documents', 'status:failed']);
+  });
+
+  it('cancels the shifts before anonymizing, and shifts never block the deletion', async () => {
+    const { deps, steps, audits, shiftCalls } = deleteDeps({ shifts: 2 });
+    const res = await read(await accountDelete(confirm(), deps));
+    expect(res.status).toBe(200);
+    expect(shiftCalls).toEqual([USER.id]);
+    expect(steps.indexOf('shifts-cancelled')).toBeGreaterThan(-1);
+    expect(steps.indexOf('shifts-cancelled')).toBeLessThan(steps.indexOf('anonymize'));
+    expect(audits[0].data).toMatchObject({ shifts_canceled: 2 });
+  });
+
+  it('stops without anonymizing when the shifts cannot be cancelled', async () => {
+    const { deps, steps } = deleteDeps({ shiftsFail: true });
+    expect((await read(await accountDelete(confirm(), deps))).status).toBe(500);
+    expect(steps).toEqual(['request', 'status:failed']);
+  });
+
+  it('blocks only on paid, in progress or disputed bookings, never on an accepted one', () => {
+    expect(BLOCKING_BOOKING_STATUSES).toEqual(['paid', 'in_progress', 'disputed']);
+  });
+
+  it('cancels the accepted unpaid bookings after the charges and before anonymizing', async () => {
+    const { deps, steps, audits, acceptedCalls } = deleteDeps({
+      acceptedBookings: 3, subscription: SUB_ID, charges: CHARGES.slice(0, 1),
+    });
+    const res = await read(await accountDelete(confirm(), deps));
+    expect(res.status).toBe(200);
+    expect(acceptedCalls).toEqual([USER.id]);
+    const at = (step: string) => steps.indexOf(step);
+    expect(at('pay-local:pay-row-1')).toBeGreaterThan(-1);
+    expect(at('pay-local:pay-row-1')).toBeLessThan(at('accepted-cancelled'));
+    expect(at('accepted-cancelled')).toBeLessThan(at('anonymize'));
+    expect(audits[0].data).toMatchObject({ bookings_canceled: 3 });
+  });
+
+  it('stops without anonymizing when the accepted bookings cannot be cancelled', async () => {
+    const { deps, steps } = deleteDeps({ acceptedFail: true });
+    expect((await read(await accountDelete(confirm(), deps))).status).toBe(500);
+    expect(steps).toEqual(['request', 'shifts-cancelled', 'status:failed']);
+  });
+
+  it('does not block on a charge with no subaccount key: it opens a support task with identifiers only', async () => {
+    const { deps, steps, calls, audits, supportTasks } = deleteDeps({ subKey: null, charges: CHARGES });
+    const res = await read(await accountDelete(confirm(), deps));
+    expect(res.status).toBe(200);
+    // The platform charge is cancelled in Asaas; the provider's own charge is out of reach without its key
+    expect(calls.map(c => `${c.method} ${new URL(c.url).pathname}`)).toEqual(['DELETE /v3/payments/pay_p']);
+    expect(supportTasks).toEqual([
+      { kind: 'asaas_charge_without_key', payload: { payment_id: 'pay-row-2', provider_id: USER.id } },
+    ]);
+    expect(Object.keys(supportTasks[0].payload).sort()).toEqual(['payment_id', 'provider_id']);
+    expect(steps.indexOf('support-task')).toBeGreaterThan(-1);
+    expect(steps.indexOf('support-task')).toBeLessThan(steps.indexOf('anonymize'));
+    expect(audits[0].data).toMatchObject({ charges_canceled: 1 });
+  });
+
+  it('finishes the deletion when the support task cannot be opened, and logs the failure', async () => {
+    const { deps, steps, supportTasks, logged } = deleteDeps({ subKey: null, charges: CHARGES, supportTaskFails: true });
+    const res = await read(await accountDelete(confirm(), deps));
+    expect(res.status).toBe(200);
+    expect(supportTasks).toHaveLength(1);
+    expect(steps).toContain('anonymize');
+    expect(steps).toContain('auth-delete');
+    expect(logged).toHaveLength(1);
+    expect((logged[0] as Error).message).toContain('pay-row-2');
   });
 
   it('explains a partial failure when the Auth delete fails', async () => {
@@ -235,11 +337,19 @@ describe('request-assist', () => {
 
   // `used` calls were already made this hour; take() is atomic like take_assist_quota:
   // it grants while used < limit and counts the grant, and refuses without counting.
-  function assistDeps(result: ClassifyResult | null, over: { used?: number; limit?: number; failTake?: boolean } = {}) {
+  // `enabled` is the platform switch (request_assist_enabled); on unless a test turns it off.
+  function assistDeps(
+    result: ClassifyResult | null,
+    over: { used?: number; limit?: number; failTake?: boolean; enabled?: boolean; failSwitch?: boolean } = {},
+  ) {
     const requests: ClassifyRequest[] = [];
     const usage = { takes: [] as { userId: string; limit: number }[], used: over.used ?? 0 };
     const deps: AssistDeps = {
       ...baseDeps,
+      featureEnabled: async () => {
+        if (over.failSwitch) throw new Error('database unavailable');
+        return over.enabled ?? true;
+      },
       hourlyLimit: over.limit ?? 10,
       usage: {
         take: async (userId, limit) => {
@@ -353,5 +463,52 @@ describe('request-assist', () => {
     expect(refused.body.error.message).toContain('manualmente');
     const cut = await read(await assist(post('request-assist', text), assistDeps({ kind: 'incomplete', reason: 'max_tokens' }).deps));
     expect(cut.status).toBe(502);
+  });
+
+  const OK: ClassifyResult = { kind: 'ok', text: '{"occupation_slug":"encanador","urgent":false,"summary":"Vazamento."}' };
+
+  it('is off by default: 503 feature_disabled before any session, quota or model call', async () => {
+    const off = assistDeps(OK, { enabled: false });
+    const res = await read(await assist(post('request-assist', text), off.deps));
+    expect(res.status).toBe(503);
+    expect(res.body.error.code).toBe('feature_disabled');
+    expect(off.usage.takes).toEqual([]);
+    expect(off.requests).toEqual([]);
+  });
+
+  it('answers as before once the switch is on', async () => {
+    const on = assistDeps(OK, { enabled: true });
+    const res = await read(await assist(post('request-assist', text), on.deps));
+    expect(res.status).toBe(200);
+    expect(on.requests).toHaveLength(1);
+  });
+
+  it('fails closed when the switch cannot be read: no quota, no model call', async () => {
+    const broken = assistDeps(OK, { failSwitch: true });
+    const res = await read(await assist(post('request-assist', text), broken.deps));
+    expect(res.status).toBe(500);
+    expect(broken.usage.takes).toEqual([]);
+    expect(broken.requests).toEqual([]);
+  });
+
+  it('turns the switch on only for the JSON boolean true', () => {
+    expect(requestAssistSwitchOn(true)).toBe(true);
+    for (const value of [undefined, null, false, 'true', 1, {}]) {
+      expect(requestAssistSwitchOn(value), String(value)).toBe(false);
+    }
+  });
+
+  it('sends the model the text without contact or document numbers, and keeps the rest', async () => {
+    const { deps, requests } = assistDeps(OK);
+    const typed = 'Vazamento na pia. Me liga no (11) 98765-4321 ou ana@exemplo.com.br, CPF 529.982.247-25, CEP 01310-100.';
+    const res = await read(await assist(post('request-assist', { text: typed }), deps));
+    expect(res.status).toBe(200);
+    const sent = requests[0].user;
+    expect(sent).not.toMatch(/98765|exemplo\.com|529\.982|01310/);
+    expect(sent).toContain('[telefone omitido]');
+    expect(sent).toContain('[e-mail omitido]');
+    expect(sent).toContain('[documento omitido]');
+    expect(sent).toContain('[cep omitido]');
+    expect(sent).toContain('Vazamento na pia');
   });
 });

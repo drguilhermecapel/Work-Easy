@@ -88,7 +88,10 @@ describe('lib/errors', () => {
   });
 
   it('translates the rules of the database and the conflicts of the Edge Functions that used to read as "duplicate"', async () => {
-    for (const code of ['slug_taken', 'quote_items_invalid', 'checkin_window', 'booking_limit', 'offer_limit', 'free_proposal_limit']) {
+    for (const code of [
+      'slug_taken', 'quote_items_invalid', 'checkin_window', 'booking_limit', 'request_limit',
+      'availability_limit', 'availability_overlap', 'offer_limit', 'free_proposal_limit',
+    ]) {
       const error = toAppError({ code: 'P0001', message: code });
       expect(error.code, code).toBe(code);
       expect(error.message, code).not.toContain(code);
@@ -107,6 +110,35 @@ describe('lib/errors', () => {
     const early = toAppError(functionFailure(409, 'already_paid'));
     expect(early.code).toBe('unknown');
     expect((await toAppErrorAsync(early)).code).toBe('already_paid');
+  });
+
+  it('translates the rules of the limits of November into the sentence the user can act on', () => {
+    const cases: Array<[code: string, sentence: RegExp]> = [
+      ['shift_too_long', /^Um plantão pode durar no máximo 60 dias corridos\./],
+      ['offer_declined', /^Este cuidador recusou este plantão e não pode ser convidado de novo\./],
+      ['household_has_shifts', /^Esta casa tem plantões e não pode ser apagada\. Se não vai mais usar a casa, basta não criar novos plantões nela\./],
+      ['client_has_history', /^Este cliente tem atendimentos ou orçamentos e não pode ser apagado da lista\. O histórico precisa ficar\./],
+      ['cpf_cnpj_invalid', /^CPF ou CNPJ inválido\. Confira os números\./],
+      ['quote_daily_limit', /^Você já criou o máximo de 30 orçamentos hoje\. O limite renova à meia-noite/],
+      ['quote_items_invalid', /descrição de até 500 caracteres/],
+      ['data_request_limit', /^Você já tem solicitações pendentes deste tipo\. Aguarde a resolução antes de pedir outra\./],
+      ['storage_not_empty', /arquivos enviados na sua conta/],
+      ['request_limit', /^Você já tem 5 pedidos abertos\. Aguarde uma resposta ou o vencimento de um deles para criar outro\./],
+      ['booking_limit', /pedidos cancelados com ele contam por 24 horas\./],
+      ['availability_limit', /^Você já tem o máximo de 50 janelas de horário\./],
+      ['availability_overlap', /^Este horário se sobrepõe a outro do mesmo dia da semana\./],
+      ['offer_limit', /Para convidar mais, crie outro plantão/],
+    ];
+    for (const [code, sentence] of cases) {
+      const error = toAppError({ code: 'P0001', message: code, details: null, hint: null });
+      expect(error.code, code).toBe(code);
+      expect(error.message, code).toMatch(sentence);
+      expect(error.message, code).not.toContain(code);
+    }
+  });
+
+  it('does not tell the client to cancel a request, since the client screens have no button for it', () => {
+    expect(ERROR_MESSAGES.request_limit).not.toMatch(/cancele/i);
   });
 
   it('falls back to the HTTP status for unknown codes or bodies that are not JSON', async () => {

@@ -292,20 +292,22 @@ select is((select metadata from storage.objects where name = tests.uid('provider
           'the owner cannot replace an uploaded document (no update policy)');
 select results_eq($$select regexp_replace(name, '^.*/', '') from storage.objects
                      where bucket_id = 'provider-documents' and name like tests.uid('provider_a') || '/%' order by 1$$,
-                  array['accepted.pdf', 'rejected.pdf'],
-                  'the owner deletes unreviewed and unreferenced files only; another provider deletes nothing');
+                  array['accepted.pdf', 'rejected.pdf', 'rg.png', 'submitted.pdf'],
+                  'an approved provider deletes only unreferenced files (its submitted file is locked); another provider deletes nothing');
 select tests.authenticate_as('admin');
 delete from storage.objects where bucket_id = 'provider-documents' and name = tests.uid('provider_a') || '/rejected.pdf';
 select tests.clear_authentication();
 select is((select count(*)::int from storage.objects where bucket_id = 'provider-documents'
             and name = tests.uid('provider_a') || '/rejected.pdf'), 0, 'an admin may delete a reviewed file');
 
--- admin cannot accept a document whose file is missing
+-- admin cannot accept a document whose file is missing (the file goes; its row stays, as in a
+-- lost upload: the owner can no longer remove a document under review)
+select tests.clear_authentication();
+delete from storage.objects where bucket_id = 'provider-documents' and name = tests.uid('provider_a') || '/submitted.pdf';
 select tests.authenticate_as('admin');
 select throws_ok(format($$select public.admin_review_document(%L, true)$$,
                         (select id from public.provider_documents where storage_path = tests.uid('provider_a') || '/submitted.pdf')),
                  'P0001', 'not_allowed', 'an admin cannot accept a document that has no file in the bucket');
--- (the file of submitted.pdf was deleted above)
 
 -- ---------------------------------------------------------------- search and public page
 select tests.clear_authentication();
@@ -356,6 +358,10 @@ select is(jsonb_array_length(public.get_provider_page('t-davi') -> 'reviews'), 3
 select tests.clear_authentication();
 insert into public.provider_occupations (provider_id, occupation_slug, registry_number, registry_uf, approved)
 values (tests.uid('provider_e'), 't-medico', '777', 'SP', true);
+-- Provider B changed its registry number after the confirmation, so the approval went away. The draw
+-- needs both providers offered: the test session sets it back, as the fixture does (no documents here).
+update public.provider_occupations set approved = true
+ where provider_id = tests.uid('provider_b') and occupation_slug = 't-medico';
 create temp table expected_draw as
   select po.provider_id, row_number() over (order by md5(po.provider_id::text || (now() at time zone 'America/Sao_Paulo')::date::text), po.provider_id) as rn
     from public.provider_occupations po

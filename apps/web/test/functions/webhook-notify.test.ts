@@ -2,6 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { DbError } from '../../supabase/functions/_shared/handler-kit.ts';
 import type { NotificationRow, NotificationUpdate } from '../../supabase/functions/_shared/notifications.ts';
+import { JSON_BODY_LIMIT, WEBHOOK_BODY_LIMIT } from '../../supabase/functions/_shared/http.ts';
 import { deriveSubaccountToken } from '../../supabase/functions/_shared/secrets.ts';
 import type { BookingStatus, PaymentStatus } from '../../supabase/functions/_shared/types.ts';
 import {
@@ -129,6 +130,24 @@ describe('asaas-webhook: access', () => {
     expect((await read(await webhook(hook(received, providerToken, other), webhookDeps().deps))).status).toBe(401);
     expect((await read(await webhook(hook(received, providerToken, 'not-a-uuid'), webhookDeps().deps))).status).toBe(401);
     expect((await read(await webhook(hook(received, providerToken, PROVIDER.id), webhookDeps().deps))).status).toBe(200);
+  });
+});
+
+describe('asaas-webhook: body size', () => {
+  it('refuses a body over the webhook cap with 413, before anything is stored', async () => {
+    const { deps, log, calls } = webhookDeps();
+    const res = await read(await webhook(hook({ ...received, pad: 'x'.repeat(WEBHOOK_BODY_LIMIT) }), deps));
+    expect(res.status).toBe(413);
+    expect(res.body.error.code).toBe('payload_too_large');
+    expect(log.events).toEqual([]);
+    expect(calls).toEqual([]);
+  });
+
+  it('accepts an event larger than the JSON limit, since the webhook has its own cap', async () => {
+    const { deps, log } = webhookDeps();
+    const res = await read(await webhook(hook({ ...received, pad: 'x'.repeat(JSON_BODY_LIMIT * 2) }), deps));
+    expect(res.status).toBe(200);
+    expect(log.events).toHaveLength(1);
   });
 });
 
@@ -355,6 +374,28 @@ describe('asaas-webhook: provider subaccount', () => {
     expect(calls).toEqual([]);
   });
 
+  it('acknowledges a subaccount event for a payment whose provider is gone, without touching it', async () => {
+    const providerToken = await deriveSubaccountToken(TOKEN, PROVIDER.id);
+    const { deps, log, calls } = webhookDeps({
+      payment: { id: 'payrow-2', status: 'pending', booking_id: BOOKING_ID, provider_id: null, escrow: false },
+    });
+    const res = await read(await webhook(hook(received, providerToken, PROVIDER.id), deps));
+    expect(res.status).toBe(200);
+    expect(res.body.data.ignored).toBe('account_mismatch');
+    expect(log.paymentUpdates).toEqual([]);
+    expect(calls).toEqual([]);
+  });
+
+  it('still applies a root-account event to a payment whose provider is gone', async () => {
+    const { deps, log } = webhookDeps({
+      payment: { id: 'payrow-2', status: 'pending', booking_id: BOOKING_ID, provider_id: null, escrow: false },
+    });
+    const res = await read(await webhook(hook(received), deps));
+    expect(res.status).toBe(200);
+    expect(res.body.data.payment_status).toBe('received');
+    expect(log.paymentUpdates).toHaveLength(1);
+  });
+
   it('never lets a subaccount event grant Pro: subscription charges live in the root account', async () => {
     const providerToken = await deriveSubaccountToken(TOKEN, PROVIDER.id);
     const { deps, log } = webhookDeps({
@@ -560,8 +601,9 @@ describe('notify-dispatch', () => {
   const call = (headers: Record<string, string> = { 'x-cron-secret': CRON }, body: unknown = {}) =>
     new Request('http://localhost/functions/v1/notify-dispatch', { method: 'POST', headers, body: JSON.stringify(body) });
 
+  // As private.notify writes it: every row names the user whose confirmed contact it targets
   const row = (over: Partial<NotificationRow>): NotificationRow => ({
-    id: 'n1', user_id: null, phone: '11987654321', email: 'a@example.com', channel: 'whatsapp',
+    id: 'n1', user_id: '7a1b2c3d-0000-4000-8000-000000000001', phone: '11987654321', email: 'a@example.com', channel: 'whatsapp',
     template: 'pagamento_recebido', params: { amount_cents: 15000, client_name: 'Ana' }, attempts: 1, ...over, // attempts as the claim returns it (already counted)
   });
 

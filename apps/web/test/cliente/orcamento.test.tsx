@@ -83,7 +83,7 @@ describe('/orcamento/:token (public)', () => {
     fake.rpcs.get_quote_by_token = () => ({ data: quote({ status: 'accepted' }), error: null });
     await user.click(screen.getByRole('button', { name: 'Sim, aceitar' }));
 
-    await waitFor(() => expect(fake.rpcCalls.find(c => c.name === 'respond_quote')?.args).toEqual({ p_token: TOKEN, p_accept: true }));
+    await waitFor(() => expect(fake.rpcCalls.find(c => c.name === 'respond_quote')?.args).toEqual({ p_token: TOKEN, p_accept: true, p_expected_total_cents: 60000 }));
     expect(await screen.findByText(/Orçamento aceito/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Aceitar orçamento' })).not.toBeInTheDocument();
   });
@@ -95,7 +95,7 @@ describe('/orcamento/:token (public)', () => {
     await user.click(await screen.findByRole('button', { name: 'Recusar orçamento' }));
     fake.rpcs.get_quote_by_token = () => ({ data: quote({ status: 'declined' }), error: null });
     await user.click(screen.getByRole('button', { name: 'Sim, recusar' }));
-    await waitFor(() => expect(fake.rpcCalls.find(c => c.name === 'respond_quote')?.args).toEqual({ p_token: TOKEN, p_accept: false }));
+    await waitFor(() => expect(fake.rpcCalls.find(c => c.name === 'respond_quote')?.args).toEqual({ p_token: TOKEN, p_accept: false, p_expected_total_cents: null }));
     expect(await screen.findByText(/Orçamento recusado/)).toBeInTheDocument();
   });
 

@@ -7,6 +7,14 @@ import { DEFAULT_GRAPH_VERSION } from './notifications.ts';
 
 export type EnvGetter = (name: string) => string | undefined;
 
+/** A deployment setting is missing or wrong: the function refuses to act instead of guessing. */
+export class ConfigError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ConfigError';
+  }
+}
+
 export interface FunctionConfig {
   supabaseUrl: string;
   /** Publishable (or legacy anon) key, used with the caller's JWT so RLS applies. */
@@ -14,13 +22,16 @@ export interface FunctionConfig {
   /** Secret (or legacy service role) key, only for writes the contract reserves to the server. */
   serviceKey: string;
   siteUrl?: string;
-  /** Localhost dev origins in CORS: on with the Asaas sandbox or ALLOW_DEV_ORIGINS=true. */
+  /** Production (see isProductionEnv): the Asaas sandbox is refused and localhost is never allowed. */
+  production: boolean;
+  /** Localhost dev origins in CORS: outside production, on with the Asaas sandbox or ALLOW_DEV_ORIGINS=true. */
   allowDevOrigins: boolean;
   /** Days a past-due Pro keeps the plan after the paid period (PRO_GRACE_DAYS, default 0). */
   proGraceDays: number;
-  /** request-assist calls per user per hour (ASSIST_HOURLY_LIMIT, default 10). */
+  /** AI assist calls (request-assist, quote-assist, care-summary) per user per hour, one shared counter (ASSIST_HOURLY_LIMIT, default 10). */
   assistHourlyLimit: number;
-  asaas: { apiKey?: string; baseUrl: string; webhookToken?: string };
+  /** baseUrl is undefined only in production without ASAAS_BASE_URL; asaasBaseUrl() turns that into a ConfigError. */
+  asaas: { apiKey?: string; baseUrl?: string; webhookToken?: string };
   whatsapp: { token?: string; phoneNumberId?: string; graphVersion: string };
   email: { resendApiKey?: string; from?: string };
   anthropicApiKey?: string;
@@ -31,6 +42,27 @@ const clean = (value: string | undefined) => {
   const trimmed = value?.trim();
   return trimmed ? trimmed : undefined;
 };
+
+/** APP_ENV values that are not production. Any other value counts as production (fail closed). */
+const NON_PRODUCTION_ENVS = new Set(['development', 'staging', 'test']);
+const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
+
+/**
+ * Whether this deployment is production. APP_ENV decides when it is set. Without it, a SITE_URL
+ * outside localhost means production, and so does a SITE_URL that does not parse: when in doubt,
+ * production rules apply.
+ */
+export function isProductionEnv(get: EnvGetter): boolean {
+  const declared = clean(get('APP_ENV'))?.toLowerCase();
+  if (declared !== undefined) return !NON_PRODUCTION_ENVS.has(declared);
+  const site = clean(get('SITE_URL'));
+  if (site === undefined) return false;
+  try {
+    return !LOCAL_HOSTS.has(new URL(site).hostname);
+  } catch {
+    return true;
+  }
+}
 
 /** New-style keys come as a JSON dictionary (`{"default": "sb_..."}`). */
 export function keyFromDictionary(json: string | undefined, name = 'default'): string | undefined {
@@ -52,7 +84,9 @@ export function intFromEnv(value: string | undefined, fallback: number, max = 1_
 }
 
 export function readConfig(get: EnvGetter): FunctionConfig {
-  const asaasBaseUrl = clean(get('ASAAS_BASE_URL')) ?? ASAAS_SANDBOX_URL;
+  const production = isProductionEnv(get);
+  // Development falls back to the sandbox. Production has no fallback: asaasBaseUrl() refuses to run without it.
+  const asaasBaseUrl = clean(get('ASAAS_BASE_URL')) ?? (production ? undefined : ASAAS_SANDBOX_URL);
   return {
     supabaseUrl: clean(get('SUPABASE_URL')) ?? '',
     publishableKey:
@@ -60,7 +94,10 @@ export function readConfig(get: EnvGetter): FunctionConfig {
     serviceKey:
       clean(get('SUPABASE_SERVICE_ROLE_KEY')) ?? keyFromDictionary(get('SUPABASE_SECRET_KEYS')) ?? '',
     siteUrl: clean(get('SITE_URL')),
-    allowDevOrigins: clean(get('ALLOW_DEV_ORIGINS')) === 'true' || asaasBaseUrl.replace(/\/+$/, '') === ASAAS_SANDBOX_URL,
+    production,
+    allowDevOrigins:
+      !production &&
+      (clean(get('ALLOW_DEV_ORIGINS')) === 'true' || asaasBaseUrl?.replace(/\/+$/, '') === ASAAS_SANDBOX_URL),
     proGraceDays: intFromEnv(get('PRO_GRACE_DAYS'), 0, 60),
     assistHourlyLimit: intFromEnv(get('ASSIST_HOURLY_LIMIT'), DEFAULT_ASSIST_HOURLY_LIMIT, 1000),
     asaas: {
@@ -77,6 +114,20 @@ export function readConfig(get: EnvGetter): FunctionConfig {
     anthropicApiKey: clean(get('ANTHROPIC_API_KEY')),
     cronSecret: clean(get('CRON_SECRET')),
   };
+}
+
+/**
+ * The Asaas API base URL of this deployment. Production must name it and must not use the sandbox:
+ * a charge sent there looks successful and is fake, so there is no fallback.
+ * @throws ConfigError when ASAAS_BASE_URL is missing, or is the sandbox in production
+ */
+export function asaasBaseUrl(config: FunctionConfig): string {
+  const url = config.asaas.baseUrl?.replace(/\/+$/, '');
+  if (!url) throw new ConfigError('ASAAS_BASE_URL não definida no servidor (obrigatória em produção).');
+  if (config.production && url === ASAAS_SANDBOX_URL) {
+    throw new ConfigError('ASAAS_BASE_URL aponta para o sandbox do Asaas, e este ambiente é produção.');
+  }
+  return url;
 }
 
 export const whatsappConfigured = (c: FunctionConfig) => Boolean(c.whatsapp.token && c.whatsapp.phoneNumberId);

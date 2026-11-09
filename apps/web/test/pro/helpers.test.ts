@@ -5,6 +5,7 @@ import {
   dayRange,
   formatDaysBR,
   formatPeriodBR,
+  monthStartSaoPaulo,
   parseCpfCnpj,
   parseReaisToCents,
   toPeriod,
@@ -12,8 +13,12 @@ import {
   weekdayOf,
 } from '../../services/proFormat';
 import { quoteShareText, quoteShareUrl, quoteTotalCents, quoteWhatsAppUrl } from '../../services/quotes';
+import { reviewUrl, reviewWhatsAppUrl } from '../../services/proAgenda';
+import { centsToReais, clientsCsv, paymentsCsv, toCsv } from '../../services/proExport';
+import { proposalAllowance } from '../../services/proMarketplace';
+import { NFSE_HELP, NFSE_ISSUER_URL } from '../../services/proNfse';
 import { slugify } from '../../services/providers';
-import { computePendencies, requiredSteps, summarizeSteps } from '../../components/pro/pendencies';
+import { canRemoveDocument, computePendencies, requiredSteps, summarizeSteps } from '../../components/pro/pendencies';
 import { AppError } from '../../lib/errors';
 import type { VerificationStep } from '../../catalog/types';
 
@@ -191,10 +196,139 @@ describe('registration pendencies', () => {
     expect(text).not.toContain('Envie o cadastro para análise');
   });
 
+  it('allows removing a document only while the registration is a draft and the document is unreviewed', () => {
+    expect(canRemoveDocument(provider, doc('documento_selfie', 'submitted'))).toBe(true);
+    for (const status of ['pending_review', 'approved', 'suspended'] as const) {
+      expect(canRemoveDocument({ status }, doc('documento_selfie', 'submitted'))).toBe(false);
+    }
+    expect(canRemoveDocument(provider, doc('documento_selfie', 'accepted'))).toBe(false);
+    expect(canRemoveDocument(provider, doc('documento_selfie', 'rejected', 'Ilegível'))).toBe(false);
+  });
+
   it('asks to submit once every document is in, and has nothing left when approved and complete', () => {
     const documents = (['documento_selfie', 'cadastro_fiscal', 'antecedentes'] as const).map(step => doc(step, 'submitted'));
     const base = { occupations, policies, documents, neighborhoodCount: 2, services: [{ active: true }], availabilityCount: 3 };
     expect(computePendencies({ ...base, provider }).map(item => item.id)).toEqual(['submit']);
     expect(computePendencies({ ...base, provider: { ...provider, status: 'approved' } })).toEqual([]);
+  });
+});
+
+describe('the São Paulo month', () => {
+  it('starts at 00:00 of the first day, São Paulo time', () => {
+    expect(monthStartSaoPaulo(new Date('2026-10-22T15:00:00Z')).toISOString()).toBe('2026-10-01T03:00:00.000Z');
+  });
+
+  it('keeps the old month until São Paulo midnight, not UTC midnight', () => {
+    expect(monthStartSaoPaulo(new Date('2026-11-01T02:59:59Z')).toISOString()).toBe('2026-10-01T03:00:00.000Z');
+    expect(monthStartSaoPaulo(new Date('2026-11-01T03:00:00Z')).toISOString()).toBe('2026-11-01T03:00:00.000Z');
+  });
+});
+
+describe('free proposal allowance', () => {
+  const now = new Date('2026-10-22T15:00:00Z');
+  const proposals = [
+    { created_at: '2026-10-01T02:59:59Z' }, // 30/09 23:59:59 in São Paulo: last month
+    { created_at: '2026-10-01T03:00:00Z' }, // 01/10 00:00 in São Paulo: this month
+    { created_at: '2026-10-20T12:00:00Z' },
+  ];
+
+  it('counts the proposals created since the first day of the month in São Paulo', () => {
+    expect(proposalAllowance({ plan: 'free', limit: 5, proposals, now })).toEqual({ kind: 'limited', limit: 5, used: 2 });
+  });
+
+  it('is 0 of N when nothing was sent this month', () => {
+    expect(proposalAllowance({ plan: 'free', limit: 5, proposals: [], now })).toEqual({ kind: 'limited', limit: 5, used: 0 });
+  });
+
+  it('has no limit on the Pro plan, whatever was sent', () => {
+    expect(proposalAllowance({ plan: 'pro', limit: 5, proposals, now })).toEqual({ kind: 'unlimited' });
+    expect(proposalAllowance({ plan: 'pro', limit: null, proposals: [], now })).toEqual({ kind: 'unlimited' });
+  });
+
+  it('says nothing when the limit is unknown: no number is made up', () => {
+    expect(proposalAllowance({ plan: 'free', limit: null, proposals, now })).toBeNull();
+  });
+});
+
+describe('CSV exports', () => {
+  it('starts with a byte order mark and uses ";" and CRLF, as Excel in Brazil expects', () => {
+    expect(toCsv(['Nome', 'Valor (R$)'], [['Ana', '150,00']])).toBe('﻿Nome;Valor (R$)\r\nAna;150,00\r\n');
+    expect(centsToReais(15000)).toBe('150,00');
+    expect(centsToReais(5)).toBe('0,05');
+  });
+
+  it('quotes cells that hold the separator, quotes or line breaks', () => {
+    const csv = toCsv(['A'], [['x;y'], ['diz "oi"'], ['linha\noutra'], [null], [7]]);
+    expect(csv).toContain('\r\n"x;y"\r\n');
+    expect(csv).toContain('\r\n"diz ""oi"""\r\n');
+    expect(csv).toContain('\r\n"linha\noutra"\r\n');
+    expect(csv.endsWith('\r\n\r\n7\r\n')).toBe(true);
+  });
+
+  it('defuses cells a spreadsheet would run as a formula', () => {
+    const csv = toCsv(['A'], [['=HYPERLINK("http://x")'], ['+5511'], ['-1'], ['@soma'], ['normal']]);
+    expect(csv).toContain('\r\n"\'=HYPERLINK(""http://x"")"\r\n');
+    expect(csv).toContain("\r\n'+5511\r\n");
+    expect(csv).toContain("\r\n'-1\r\n");
+    expect(csv).toContain("\r\n'@soma\r\n");
+    expect(csv).toContain('\r\nnormal\r\n');
+  });
+
+  it('writes the charges with the texts of the screen', () => {
+    const csv = paymentsCsv(
+      [
+        {
+          id: 'p1', booking_id: 'b1', quote_id: null, method: 'pix', amount_cents: 15000, platform_fee_cents: 0, status: 'received',
+          invoice_url: null, pix_qr_code: null, pix_payload: null, due_date: '2030-01-16', created_at: '2030-01-15T15:00:00Z',
+        },
+        {
+          id: 'p2', booking_id: null, quote_id: 'q1', method: 'boleto', amount_cents: 123456, platform_fee_cents: 1200, status: 'pending',
+          invoice_url: null, pix_qr_code: null, pix_payload: null, due_date: null, created_at: '2030-01-16T02:30:00Z',
+        },
+      ],
+      { method: { pix: 'Pix', boleto: 'Boleto' }, status: { received: 'Recebido', pending: 'Aguardando pagamento' } },
+    );
+    expect(csv).toBe(
+      '﻿Criada em;Origem;Forma de pagamento;Valor (R$);Situação;Vencimento;Taxa da plataforma (R$)\r\n' +
+        '15/01/2030;Atendimento;Pix;150,00;Recebido;16/01/2030;0,00\r\n' +
+        // 02:30 UTC is still the 15th in São Paulo
+        '15/01/2030;Orçamento;Boleto;1234,56;Aguardando pagamento;;12,00\r\n',
+    );
+  });
+
+  it('writes the clients with contact data only, never the private notes', () => {
+    const csv = clientsCsv([
+      { id: 'c1', client_id: null, name: 'Carlos Dias', phone: '+5511987654321', email: 'carlos@example.com', notes: 'Prefere de manhã', origin: 'own', created_at: '2026-10-01T12:00:00Z' },
+      { id: 'c2', client_id: 'u1', name: '=cmd|calc', phone: null, email: null, notes: null, origin: 'platform', created_at: '2026-10-02T12:00:00Z' },
+    ]);
+    expect(csv).toBe(
+      '﻿Nome;Celular;E-mail;Origem;Cadastrado em\r\n' +
+        'Carlos Dias;(11) 98765-4321;carlos@example.com;Cliente próprio;01/10/2026\r\n' +
+        "'=cmd|calc;;;Veio pelo WorkEasy;02/10/2026\r\n",
+    );
+    expect(csv).not.toContain('Prefere');
+  });
+});
+
+describe('review link', () => {
+  it('sends the client to the booking page, where the review form is', () => {
+    expect(reviewUrl('b-1')).toMatch(/\/atendimentos\/b-1$/);
+  });
+
+  it('opens WhatsApp with the message ready and no number, so the provider picks the chat', () => {
+    const href = reviewWhatsAppUrl('b-1', 'Marta');
+    expect(href).toMatch(/^https:\/\/wa\.me\/\?text=/);
+    const text = decodeURIComponent(href.split('?text=')[1]);
+    expect(text).toContain('Olá, Marta!');
+    expect(text).toContain(reviewUrl('b-1'));
+    expect(decodeURIComponent(reviewWhatsAppUrl('b-1', null).split('?text=')[1])).toMatch(/^Olá! /);
+  });
+});
+
+describe('NFS-e shortcut', () => {
+  it('points to the national issuer and says the app does not issue invoices', () => {
+    expect(NFSE_ISSUER_URL).toBe('https://www.nfse.gov.br/EmissorNacional');
+    expect(NFSE_HELP).toContain('O WorkEasy não emite nota fiscal');
+    expect(NFSE_HELP).toContain('MEI');
   });
 });

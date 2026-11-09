@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { ERROR_MESSAGES } from '../../lib/errors';
 import {
   CAREGIVER_ID,
   FAMILY_ID,
@@ -9,6 +10,7 @@ import {
   newWorld,
   pgRange,
   recipient,
+  ruleError,
   shiftRow,
   useWorld,
   type CareWorld,
@@ -58,10 +60,10 @@ describe('family screens of the care line', () => {
       expect(await screen.findByTestId('where')).toHaveTextContent('/entrar?next=%2Fcuidado');
     });
 
-    it('says in so many words that no health data is kept, and asks for none', async () => {
+    it('says in so many words that the app does not ask for health data, and asks for none', async () => {
       renderCare('/cuidado');
       expect(await screen.findByText(/Você ainda não cadastrou uma casa/)).toBeInTheDocument();
-      expect(screen.getAllByText(/O WorkEasy não guarda dados de saúde/).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/O WorkEasy não pede dados de saúde/).length).toBeGreaterThan(0);
       world.households = [household()];
       renderCare('/cuidado');
       await userEvent.click((await screen.findAllByRole('button', { name: /Cadastrar pessoa cuidada/ }))[0]);
@@ -117,46 +119,56 @@ describe('family screens of the care line', () => {
       renderCare('/cuidado');
       await userEvent.click(await screen.findByRole('button', { name: 'Apagar casa' }));
       const group = screen.getByRole('group', { name: /Apagar “Casa da vó”\?/ });
-      expect(group).toHaveTextContent(/assistidos, plantões, registros de entrada e saída e relatórios/);
+      expect(group).toHaveTextContent('Os assistidos desta casa também serão apagados.');
+      // The text of the old promise (shifts go with the house) is gone
+      expect(group).not.toHaveTextContent(/plantões|registros de entrada|relatórios/);
       expect(callsOn('households', 'delete')).toHaveLength(0);
       await userEvent.click(within(group).getByRole('button', { name: 'Apagar casa e tudo dela' }));
       expect(await screen.findByText(/Você ainda não cadastrou uma casa/)).toBeInTheDocument();
       expect(callsOn('households', 'delete')).toHaveLength(1);
     });
 
-    it('warns before deleting a house that has a caregiver confirmed for a shift that has not ended', async () => {
+    it('does not offer to delete a house that has shifts, whatever their status, and says why', async () => {
       world.households = [household()];
       world.recipients = [recipient()];
       world.shifts = [
         shiftRow({ id: 'shift-a', status: 'assigned', provider_id: CAREGIVER_ID }),
-        shiftRow({ id: 'shift-b', status: 'checked_in', provider_id: CAREGIVER_ID }),
-        // Not counted: no caregiver yet, already over, and canceled
-        shiftRow({ id: 'shift-c', status: 'offered' }),
+        shiftRow({ id: 'shift-b', status: 'offered' }),
         shiftRow({
-          id: 'shift-d',
+          id: 'shift-c',
           status: 'completed',
           provider_id: CAREGIVER_ID,
           period: pgRange(new Date('2020-01-15T11:00:00Z'), new Date('2020-01-15T23:00:00Z')),
         }),
-        shiftRow({ id: 'shift-e', status: 'canceled', provider_id: null }),
       ];
       renderCare('/cuidado');
-      await userEvent.click(await screen.findByRole('button', { name: 'Apagar casa' }));
-      const group = screen.getByRole('group', { name: /Apagar “Casa da vó”\?/ });
-      expect(group).toHaveTextContent('Há 2 plantões com cuidador confirmado que ainda não terminaram');
-      expect(group).toHaveTextContent(/o app não avisa o cuidador/);
-      expect(group).toHaveTextContent(/Cancele antes/);
+      expect(await screen.findByText(ERROR_MESSAGES.household_has_shifts)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Apagar casa' })).not.toBeInTheDocument();
+      // The old warning about caregivers, and its advice to cancel first, are gone
+      expect(screen.queryByText(/cuidador confirmado|Cancele antes|o app não avisa o cuidador/)).not.toBeInTheDocument();
+      expect(callsOn('households', 'delete')).toHaveLength(0);
     });
 
-    it('does not warn about caregivers when the house has none confirmed', async () => {
+    it('offers the delete of a house that has never had a shift', async () => {
       world.households = [household()];
-      world.shifts = [shiftRow({ status: 'offered' })];
+      world.shifts = [];
       renderCare('/cuidado');
       await userEvent.click(await screen.findByRole('button', { name: 'Apagar casa' }));
-      expect(screen.getByRole('group', { name: /Apagar “Casa da vó”\?/ })).not.toHaveTextContent(/cuidador confirmado/);
+      expect(screen.getByRole('group', { name: /Apagar “Casa da vó”\?/ })).toBeInTheDocument();
     });
 
-    it('adds a care recipient with first name, birth year, preferences and emergency contact only', async () => {
+    it('shows the database refusal when a shift was booked after the screen loaded', async () => {
+      world.households = [household()];
+      renderCare('/cuidado');
+      const original = fake.tables.households;
+      fake.tables.households = call => (call.op === 'delete' ? ruleError('household_has_shifts') : original(call));
+      await userEvent.click(await screen.findByRole('button', { name: 'Apagar casa' }));
+      await userEvent.click(within(screen.getByRole('group', { name: /Apagar “Casa da vó”\?/ })).getByRole('button', { name: 'Apagar casa e tudo dela' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent('Esta casa tem plantões e não pode ser apagada.');
+      expect(screen.getByRole('heading', { name: /Casa da vó/ })).toBeInTheDocument();
+    });
+
+    it('adds a care recipient with first name, birth year, preferences, emergency contact and the adulthood declaration', async () => {
       world.households = [household()];
       renderCare('/cuidado');
       await userEvent.click(await screen.findByRole('button', { name: /Cadastrar pessoa cuidada/ }));
@@ -165,16 +177,39 @@ describe('family screens of the care line', () => {
       await userEvent.type(within(form).getByLabelText(/Ano de nascimento/), '1940');
       await userEvent.type(within(form).getByLabelText(/Preferências/), 'Gosta de rádio de manhã');
       await userEvent.type(within(form).getByLabelText(/Contato de emergência/), 'Filho, 11 90000-0000');
+      await userEvent.click(within(form).getByRole('checkbox', { name: 'Declaro que a pessoa cuidada tem 18 anos completos.' }));
+      const before = Date.now();
       await userEvent.click(within(form).getByRole('button', { name: 'Cadastrar pessoa' }));
 
       expect(await screen.findByText(/nascido\(a\) em 1940/)).toBeInTheDocument();
-      expect(callsOn('care_recipients', 'insert')[0].payload).toEqual({
+      const payload = callsOn('care_recipients', 'insert')[0].payload as Record<string, unknown>;
+      expect(payload).toEqual({
         household_id: 'house-1',
         first_name: 'Lúcia',
         birth_year: 1940,
         preferences: 'Gosta de rádio de manhã',
         emergency_contact: 'Filho, 11 90000-0000',
+        adult_declared_at: expect.any(String),
       });
+      // The time of the declaration is the time of sending
+      const declared = Date.parse(String(payload.adult_declared_at));
+      expect(declared).toBeGreaterThanOrEqual(before);
+      expect(declared).toBeLessThanOrEqual(Date.now());
+    });
+
+    it('does not send a new care recipient without the adulthood declaration, and says why', async () => {
+      world.households = [household()];
+      renderCare('/cuidado');
+      await userEvent.click(await screen.findByRole('button', { name: /Cadastrar pessoa cuidada/ }));
+      const form = screen.getByRole('form', { name: 'Novo assistido' });
+      await userEvent.type(within(form).getByLabelText('Primeiro nome'), 'Lúcia');
+      await userEvent.click(within(form).getByRole('button', { name: 'Cadastrar pessoa' }));
+
+      expect(await within(form).findByRole('alert')).toHaveTextContent(
+        'Confirme que a pessoa cuidada tem 18 anos completos para cadastrá-la. Sem essa declaração, o cadastro não é enviado.',
+      );
+      expect(within(form).getByRole('checkbox', { name: 'Declaro que a pessoa cuidada tem 18 anos completos.' })).not.toBeChecked();
+      expect(callsOn('care_recipients', 'insert')).toHaveLength(0);
     });
 
     it('refuses health information in any text, and a surname', async () => {
@@ -183,6 +218,7 @@ describe('family screens of the care line', () => {
       await userEvent.click(await screen.findByRole('button', { name: /Cadastrar pessoa cuidada/ }));
       const form = screen.getByRole('form', { name: 'Novo assistido' });
       await userEvent.type(within(form).getByLabelText('Primeiro nome'), 'Lúcia Souza');
+      await userEvent.click(within(form).getByRole('checkbox', { name: 'Declaro que a pessoa cuidada tem 18 anos completos.' }));
       await userEvent.click(within(form).getByRole('button', { name: 'Cadastrar pessoa' }));
       expect(await within(form).findByRole('alert')).toHaveTextContent(/só o primeiro nome/);
 
@@ -192,8 +228,30 @@ describe('family screens of the care line', () => {
       await userEvent.type(within(form).getByLabelText(/Preferências/), 'Toma remédio para a pressão às 8h');
       await userEvent.click(within(form).getByRole('button', { name: 'Cadastrar pessoa' }));
       await waitFor(() => expect(within(form).getByRole('alert')).toHaveTextContent(/informação de saúde.*remédio/));
-      expect(within(form).getByRole('alert')).toHaveTextContent(/O WorkEasy não guarda dados de saúde/);
+      expect(within(form).getByRole('alert')).toHaveTextContent(/O WorkEasy não pede dados de saúde/);
+      expect(within(form).getByRole('alert')).not.toHaveTextContent(/não guarda/);
       expect(callsOn('care_recipients', 'insert')).toHaveLength(0);
+    });
+
+    it('gives a tip under the notes of a house', async () => {
+      renderCare('/cuidado');
+      const form = await screen.findByRole('form', { name: 'Nova casa' });
+      expect(within(form).getByLabelText(/Observações sobre a casa/)).toHaveAccessibleDescription(
+        /^O que o cuidador precisa saber para o trabalho, como acesso e combinados\./,
+      );
+    });
+
+    it('gives a tip under the preferences and the emergency contact of a person', async () => {
+      world.households = [household()];
+      renderCare('/cuidado');
+      await userEvent.click(await screen.findByRole('button', { name: /Cadastrar pessoa cuidada/ }));
+      const form = screen.getByRole('form', { name: 'Novo assistido' });
+      expect(within(form).getByLabelText(/Preferências/)).toHaveAccessibleDescription(
+        /^Descreva rotina e gostos gerais: horários, comidas de que gosta, o que a acalma\. Não escreva diagnósticos/,
+      );
+      expect(within(form).getByLabelText(/Contato de emergência/)).toHaveAccessibleDescription(
+        /^Nome e telefone de uma pessoa que pode ser avisada em caso de urgência\. Antes de informar, confirme que ela concorda\./,
+      );
     });
 
     it('edits and removes a care recipient', async () => {
@@ -280,6 +338,22 @@ describe('family screens of the care line', () => {
       expect(callsOn('shifts', 'insert')).toHaveLength(0);
     });
 
+    it('gives the tip of the notes of a shift under the field', async () => {
+      renderCare('/cuidado/plantoes');
+      const form = await screen.findByRole('form', { name: 'Novo plantão' });
+      expect(within(form).getByLabelText(/Observações para o cuidador/)).toHaveAccessibleDescription(
+        /^O que o cuidador precisa saber para o trabalho, como acesso e combinados\. Não escreva diagnósticos, remédios, doses, exames nem sintomas\./,
+      );
+    });
+
+    it('says in the form that a shift lasts up to 24 hours, and what to do for a longer period', async () => {
+      renderCare('/cuidado/plantoes');
+      const form = await screen.findByRole('form', { name: 'Novo plantão' });
+      expect(
+        within(form).getByText('Cada plantão dura até 24 horas. Para um período maior, crie um plantão para cada trecho.'),
+      ).toBeInTheDocument();
+    });
+
     it('refuses health information in the notes of a shift', async () => {
       renderCare('/cuidado/plantoes');
       const form = await screen.findByRole('form', { name: 'Novo plantão' });
@@ -316,12 +390,13 @@ describe('family screens of the care line', () => {
       expect(within(past).getByText('Cancelado')).toBeInTheDocument();
     });
 
-    it('explains the weekly limit and the direct hiring path to the family', async () => {
+    it('explains the weekly limit for this family, with the ways out inside the app and no direct hiring', async () => {
       renderCare('/cuidado/plantoes');
       const note = await screen.findByRole('note', { name: /Por que o limite de 2 dias por semana/ });
       expect(note).toHaveTextContent(/LC 150\/2015/);
-      expect(note).toHaveTextContent(/contrate diretamente/);
-      expect(note).toHaveTextContent(/fora do WorkEasy/);
+      expect(note).toHaveTextContent(/para esta família/);
+      expect(note).toHaveTextContent(/ofereça o plantão a outro cuidador ou escolha outra semana/);
+      expect(note).not.toHaveTextContent(/contrat|fora do WorkEasy|mesma casa/i);
     });
 
     it('asks for a house first when there is none', async () => {
@@ -428,18 +503,28 @@ describe('family screens of the care line', () => {
       renderCare('/cuidado/plantoes/shift-1');
       await userEvent.click(await screen.findByRole('checkbox', { name: /Ana Cuidadora/ }));
       await userEvent.click(screen.getByRole('button', { name: 'Oferecer a 1 cuidador' }));
-      expect(await screen.findByRole('alert')).toHaveTextContent(/Limite de ofertas atingido: no máximo 10 cuidadores por plantão e 30 ofertas novas por dia/);
+      expect(await screen.findByRole('alert')).toHaveTextContent(/Limite de ofertas atingido: no máximo 10 cuidadores por plantão e 30 ofertas em 24 horas/);
     });
 
-    it('explains the labor lock, with the direct hiring path, if the database ever refuses an offer for it', async () => {
+    it('says why a caregiver who declined the shift cannot be invited again', async () => {
+      world.rpcErrors.offer_shift = 'offer_declined';
+      renderCare('/cuidado/plantoes/shift-1');
+      await userEvent.click(await screen.findByRole('checkbox', { name: /Ana Cuidadora/ }));
+      await userEvent.click(screen.getByRole('button', { name: 'Oferecer a 1 cuidador' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent('Este cuidador recusou este plantão e não pode ser convidado de novo.');
+    });
+
+    it('tells the family that the caregiver reached the limit for this family, if the database ever refuses an offer for it', async () => {
       world.rpcErrors.offer_shift = 'labor_lock';
       renderCare('/cuidado/plantoes/shift-1');
       await userEvent.click(await screen.findByRole('checkbox', { name: /Ana Cuidadora/ }));
       await userEvent.click(screen.getByRole('button', { name: 'Oferecer a 1 cuidador' }));
       const alert = await screen.findByRole('alert');
       expect(alert).toHaveTextContent('Limite de 2 dias por semana com o mesmo cuidador');
-      expect(alert).toHaveTextContent(/com o mesmo cuidador nesta casa/);
-      expect(alert).toHaveTextContent(/contrate diretamente/);
+      expect(alert).toHaveTextContent(
+        'Este cuidador já atingiu o limite de 2 dias por semana para esta família. Você pode escolher outro cuidador ou falar com a equipe do WorkEasy.',
+      );
+      expect(alert).not.toHaveTextContent(/contrat|mesma casa/i);
     });
 
     it('says when nobody serves the neighborhood', async () => {

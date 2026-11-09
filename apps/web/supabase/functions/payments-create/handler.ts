@@ -240,7 +240,8 @@ export function handler(req: Request, deps: PaymentsCreateDeps): Promise<Respons
         billingType: BILLING_TYPE[input.method],
         value: centsToReais(amount),
         dueDate,
-        description: `WorkEasy: atendimento ${booking.occupation_slug}`,
+        // Generic on purpose: the processor and the payer's statement see this text, not the service category
+        description: 'WorkEasy: atendimento',
         externalReference: `booking:${booking.id}`,
         split: plan.split,
       }),

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle2, FileUp } from 'lucide-react';
+import { Camera, CheckCircle2, FileUp } from 'lucide-react';
 import { AREAS, findOccupation } from '../../catalog';
 import { VERIFICATION_LABELS } from '../../catalog/labels';
 import type { VerificationStep } from '../../catalog/types';
@@ -27,6 +27,7 @@ import {
 } from '../../services/providers';
 import { missingStepsOf } from '../../services/proErrors';
 import type { ProviderRow } from '../../services/types';
+import { captureFile } from '../../platform/files';
 import ErrorAlert from '../../components/ErrorAlert';
 import { Badge, Card, ConfirmButton, Field, SectionTitle } from '../../components/pro/ui';
 import ProPage from '../../components/pro/ProPage';
@@ -39,7 +40,7 @@ import {
   PROVIDER_STATUS_STYLES,
   REGISTRY_STATUS_LABELS,
 } from '../../components/pro/labels';
-import { requiredSteps, summarizeSteps } from '../../components/pro/pendencies';
+import { canRemoveDocument, requiredSteps, summarizeSteps } from '../../components/pro/pendencies';
 import { inputClass, primaryButton, secondaryButton } from '../../components/pro/styles';
 
 const UFS = [
@@ -47,6 +48,8 @@ const UFS = [
 ];
 
 const ACCEPTED_FILES = Object.keys(DOCUMENT_TYPES).join(',');
+// Photos only: the camera takes pictures, not PDFs
+const CAPTURE_FILES = Object.keys(DOCUMENT_TYPES).filter(type => type.startsWith('image/')).join(',');
 
 // ---- Step 1: profile ----------------------------------------------------------
 
@@ -107,6 +110,7 @@ const BecomeProviderForm: React.FC<{ onCreated: () => void }> = ({ onCreated }) 
             autoCapitalize="none"
             autoComplete="off"
             aria-describedby="cad-slug-dica cad-slug-status"
+            aria-invalid={slugCheck === 'taken' ? true : undefined}
             value={slug}
             onChange={e => {
               setSlugTouched(true);
@@ -272,14 +276,25 @@ const ProfileSummary: React.FC<{ provider: ProviderRow; onSaved: () => void }> =
 
 // ---- Step 2: neighborhoods ----------------------------------------------------
 
+const NO_CHANGES: Map<string, boolean> = new Map();
+
 const NeighborhoodsStep: React.FC<{ providerId: string }> = ({ providerId }) => {
   const all = useAsync(() => listNeighborhoods(), 'neighborhoods');
   const mine = useAsync(() => listMyNeighborhoodIds(providerId), providerId);
   const [filter, setFilter] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
+  // Escolha otimista: o checkbox reflete o clique na hora e o servidor confirma depois.
+  // A marca vale só para a lista de origem; quando o servidor devolve outra lista, ela deixa de valer.
+  const [optimistic, setOptimistic] = useState<{ base: unknown; changes: Map<string, boolean> }>({ base: undefined, changes: new Map() });
+  const pendingChanges = optimistic.base === mine.data ? optimistic.changes : NO_CHANGES;
 
-  const selected = useMemo(() => new Set(mine.data ?? []), [mine.data]);
+  const saved = useMemo(() => new Set(mine.data ?? []), [mine.data]);
+  const selected = useMemo(() => {
+    const effective = new Set(saved);
+    pendingChanges.forEach((on, id) => (on ? effective.add(id) : effective.delete(id)));
+    return effective;
+  }, [saved, pendingChanges]);
   const visible = useMemo(() => {
     const term = filter.trim().toLowerCase();
     return (all.data ?? []).filter(item => !term || item.name.toLowerCase().includes(term) || (item.zone ?? '').toLowerCase().includes(term));
@@ -288,11 +303,21 @@ const NeighborhoodsStep: React.FC<{ providerId: string }> = ({ providerId }) => 
   const toggle = async (id: string, on: boolean) => {
     setBusyId(id);
     setError(null);
+    setOptimistic(prev => {
+      const changes = new Map(prev.base === mine.data ? prev.changes : undefined);
+      changes.set(id, on);
+      return { base: mine.data, changes };
+    });
     try {
       if (on) await addMyNeighborhood(providerId, id);
       else await removeMyNeighborhood(providerId, id);
       mine.reload();
     } catch (err) {
+      setOptimistic(prev => {
+        const changes = new Map(prev.changes);
+        changes.delete(id);
+        return { base: prev.base, changes };
+      });
       setError(err);
     } finally {
       setBusyId(null);
@@ -325,7 +350,7 @@ const NeighborhoodsStep: React.FC<{ providerId: string }> = ({ providerId }) => 
               />
               <span>
                 {item.name}
-                {item.zone && <span className="text-gray-400"> · {item.zone}</span>}
+                {item.zone && <span className="text-gray-500"> · {item.zone}</span>}
               </span>
             </label>
           ))}
@@ -372,6 +397,12 @@ const DocumentsStep: React.FC<{ provider: ProviderRow; userId: string }> = ({ pr
     }
   };
 
+  // The camera opens on phones; on a computer the chooser opens instead
+  const photograph = async (step: VerificationStep) => {
+    const file = await captureFile({ accept: CAPTURE_FILES });
+    await upload(step, file ?? undefined);
+  };
+
   const remove = async (doc: { id: string; storage_path: string }) => {
     setError(null);
     try {
@@ -382,7 +413,7 @@ const DocumentsStep: React.FC<{ provider: ProviderRow; userId: string }> = ({ pr
     }
   };
 
-  if (data.loading && !data.data) return <p role="status" className="text-sm text-gray-400">Carregando os documentos…</p>;
+  if (data.loading && !data.data) return <p role="status" className="text-sm text-gray-500">Carregando os documentos…</p>;
 
   return (
     <div className="space-y-4">
@@ -419,27 +450,36 @@ const DocumentsStep: React.FC<{ provider: ProviderRow; userId: string }> = ({ pr
                   <input type="checkbox" className="mt-1" checked={consentChecked} onChange={e => setConsentChecked(e.target.checked)} />
                   <span>
                     Autorizo o WorkEasy a usar a certidão de antecedentes para analisar o meu cadastro. Posso retirar a autorização em{' '}
-                    <Link to="/conta" className="text-primary underline">Minha conta</Link>.
+                    <Link to="/conta" className="text-primary underline">Minha conta</Link>. A retirada fica registrada, mas não apaga a
+                    certidão já enviada nem muda quem pode vê-la. Enquanto o cadastro estiver em rascunho e a certidão não tiver sido analisada,
+                    posso removê-la aqui; depois do envio para análise, não consigo removê-la, e a exclusão da minha conta também apaga a
+                    certidão.
                   </span>
                 </label>
               )}
               {docs.length > 0 && (
                 <ul className="text-sm text-gray-600 space-y-1">
-                  {docs.map(doc => (
-                    <li key={doc.id} className="flex flex-wrap items-center gap-2">
-                      <span>
-                        Enviado em {formatDateBR(doc.created_at)} · {DOCUMENT_STATUS_LABELS[doc.status]}
-                      </span>
-                      {doc.status === 'submitted' && (
-                        <ConfirmButton
-                          label="Remover"
-                          question="Remover este arquivo?"
-                          confirmLabel="Sim, remover"
-                          onConfirm={() => remove(doc)}
-                        />
-                      )}
-                    </li>
-                  ))}
+                  {docs.map(doc => {
+                    const removable = canRemoveDocument(provider, doc);
+                    return (
+                      <li key={doc.id} className="flex flex-wrap items-center gap-2">
+                        <span>
+                          Enviado em {formatDateBR(doc.created_at)} · {DOCUMENT_STATUS_LABELS[doc.status]}
+                        </span>
+                        {removable && (
+                          <ConfirmButton
+                            label="Remover"
+                            question="Remover este arquivo?"
+                            confirmLabel="Sim, remover"
+                            onConfirm={() => remove(doc)}
+                          />
+                        )}
+                        {!removable && doc.status === 'submitted' && (
+                          <span className="text-xs text-gray-500">Documento em análise: não pode ser removido agora.</span>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
               <div>
@@ -460,6 +500,15 @@ const DocumentsStep: React.FC<{ provider: ProviderRow; userId: string }> = ({ pr
                     void upload(item.step, file);
                   }}
                 />
+                <button
+                  type="button"
+                  className={`${secondaryButton} mt-2`}
+                  disabled={busyStep !== null || (needsConsent && !consentChecked)}
+                  onClick={() => void photograph(item.step)}
+                >
+                  <Camera size={16} aria-hidden="true" /> Fotografar
+                  <span className="sr-only"> — {VERIFICATION_LABELS[item.step]}</span>
+                </button>
                 {busyStep === item.step && <p role="status" className="text-xs text-gray-500 mt-1">Enviando…</p>}
               </div>
             </li>

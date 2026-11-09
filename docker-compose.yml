@@ -3,7 +3,8 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: workeasy_admin
-      POSTGRES_PASSWORD: workeasy_secret_2026
+      # A senha vem do arquivo .env (ignorado pelo git). Nunca grave a senha neste arquivo.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no arquivo .env}
       POSTGRES_DB: workeasy_prod
     ports: ["5432:5432"]
     volumes:

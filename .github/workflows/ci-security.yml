@@ -1,9 +1,13 @@
 name: WorkEasy CI
 on:
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main, develop ]
+  # Manual only: GitHub Actions spend is not allowed in this project. Run it from the
+  # Actions tab (Run workflow) when needed; no push or pull request starts it.
+  workflow_dispatch:
+
+# The job only reads the repository: no token write scope.
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest

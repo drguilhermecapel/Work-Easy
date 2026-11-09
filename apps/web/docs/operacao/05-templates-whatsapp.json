@@ -1,0 +1,477 @@
+{
+  "description": "Modelos de mensagem do WhatsApp Business do WorkEasy, no formato do corpo de POST /{WABA_ID}/message_templates da Meta. Rascunho para revisão de advogado. Não é parecer jurídico. Nada foi enviado à Meta.",
+  "document": "05-templates-whatsapp.md",
+  "generated_on": "2026-10-23",
+  "graph_api_version": "v26.0",
+  "create_endpoint": "POST https://graph.facebook.com/v26.0/{WABA_ID}/message_templates",
+  "send_endpoint": "POST https://graph.facebook.com/v26.0/{WHATSAPP_PHONE_NUMBER_ID}/messages",
+  "notes": [
+    "Cada item de templates[] é o corpo de uma requisição de criação. Troque {WABA_ID} pelo ID da conta do WhatsApp Business; o token fica em segredo do servidor, nunca no app.",
+    "Os seis modelos de utilidade usam as mesmas chaves, na mesma ordem, de TEMPLATES em supabase/functions/_shared/notifications.ts. Os valores de example.body_text foram gerados pela função de formatação real do código em 2026-10-23.",
+    "proposta_recebida e lembrete_atendimento têm texto diferente do e-mail porque a Meta rejeita corpo que começa ou termina com variável e exige as variáveis em ordem; orcamento_respondido ganhou uma frase final para não ficar curto demais para duas variáveis.",
+    "Categoria UTILITY é o pedido; a Meta pode aprovar como MARKETING (confira o campo category depois da análise). plantao_oferecido é o que mais corre esse risco.",
+    "message_send_ttl_seconds: utilidade aceita de 30 a 43200 s; autenticação, de 30 a 900 s. Mensagem não entregue nesse prazo é descartada pela Meta.",
+    "codigo_de_verificacao: o texto em pt_BR é fixo e gerado pela Meta; confira a prévia (GET /{WABA_ID}/message_template_previews) antes de registrar. code_expiration_minutes (1 a 90) deve ser igual à validade do código no Supabase.",
+    "send_examples: os seis primeiros são a saída real de buildWhatsAppTemplate (supabase/functions/_shared/notifications.ts) com os exemplos acima. O de codigo_de_verificacao segue a página 'Copy code authentication templates' da Meta e NÃO existe no código atual (PLANEJADO): o código aparece duas vezes, no corpo e no botão de índice 0, com no máximo 15 caracteres.",
+    "O campo to dos exemplos de envio sai como o código monta (55 + DDD + número, sem '+'). A Meta recomenda o '+' e o código do país; teste com e sem '+' no primeiro envio (seção 2.3 do documento; dossiê I02, passo 26).",
+    "planned_templates[] não existe no código nem na migração 08 (a lista de nomes é uma restrição check): não registre antes de implementar.",
+    "O rodapé 'Aviso automático do WorkEasy' não promete nenhum canal de resposta. Troque-o só depois de existir um caminho real para parar os avisos."
+  ],
+  "templates": [
+    {
+      "name": "proposta_recebida",
+      "language": "pt_BR",
+      "category": "UTILITY",
+      "parameter_format": "POSITIONAL",
+      "message_send_ttl_seconds": 43200,
+      "components": [
+        {
+          "type": "BODY",
+          "text": "Olá! {{1}} enviou uma proposta para o seu pedido de {{2}}, no valor de {{3}}. Abra o WorkEasy para ver e responder.",
+          "example": {
+            "body_text": [
+              [
+                "Ana Ferreira",
+                "Eletricista",
+                "R$ 150,00"
+              ]
+            ]
+          }
+        },
+        {
+          "type": "FOOTER",
+          "text": "Aviso automático do WorkEasy"
+        }
+      ]
+    },
+    {
+      "name": "atendimento_confirmado",
+      "language": "pt_BR",
+      "category": "UTILITY",
+      "parameter_format": "POSITIONAL",
+      "message_send_ttl_seconds": 43200,
+      "components": [
+        {
+          "type": "BODY",
+          "text": "O atendimento de {{1}} em {{2}} com {{3}} foi confirmado. Os detalhes estão no WorkEasy.",
+          "example": {
+            "body_text": [
+              [
+                "Eletricista",
+                "28/10/2026 às 14:30",
+                "Carlos Lima"
+              ]
+            ]
+          }
+        },
+        {
+          "type": "FOOTER",
+          "text": "Aviso automático do WorkEasy"
+        }
+      ]
+    },
+    {
+      "name": "lembrete_atendimento",
+      "language": "pt_BR",
+      "category": "UTILITY",
+      "parameter_format": "POSITIONAL",
+      "message_send_ttl_seconds": 43200,
+      "components": [
+        {
+          "type": "BODY",
+          "text": "Lembrete: atendimento de {{1}} em {{2}} com {{3}}. Os detalhes estão no WorkEasy.",
+          "example": {
+            "body_text": [
+              [
+                "Eletricista",
+                "28/10/2026 às 14:30",
+                "Carlos Lima"
+              ]
+            ]
+          }
+        },
+        {
+          "type": "FOOTER",
+          "text": "Aviso automático do WorkEasy"
+        }
+      ]
+    },
+    {
+      "name": "pagamento_recebido",
+      "language": "pt_BR",
+      "category": "UTILITY",
+      "parameter_format": "POSITIONAL",
+      "message_send_ttl_seconds": 43200,
+      "components": [
+        {
+          "type": "BODY",
+          "text": "O pagamento de {{1}} de {{2}} foi recebido pelo Asaas. Os detalhes estão no WorkEasy.",
+          "example": {
+            "body_text": [
+              [
+                "R$ 350,00",
+                "Carlos Lima"
+              ]
+            ]
+          }
+        },
+        {
+          "type": "FOOTER",
+          "text": "Aviso automático do WorkEasy"
+        }
+      ]
+    },
+    {
+      "name": "orcamento_respondido",
+      "language": "pt_BR",
+      "category": "UTILITY",
+      "parameter_format": "POSITIONAL",
+      "message_send_ttl_seconds": 43200,
+      "components": [
+        {
+          "type": "BODY",
+          "text": "O orçamento \"{{1}}\" foi {{2}} pelo cliente. Os detalhes estão no WorkEasy.",
+          "example": {
+            "body_text": [
+              [
+                "Troca da fiação da cozinha",
+                "aceito"
+              ]
+            ]
+          }
+        },
+        {
+          "type": "FOOTER",
+          "text": "Aviso automático do WorkEasy"
+        }
+      ]
+    },
+    {
+      "name": "plantao_oferecido",
+      "language": "pt_BR",
+      "category": "UTILITY",
+      "parameter_format": "POSITIONAL",
+      "message_send_ttl_seconds": 43200,
+      "components": [
+        {
+          "type": "BODY",
+          "text": "Há um plantão oferecido para você em {{1}}, em {{2}}. Abra o WorkEasy para aceitar ou recusar.",
+          "example": {
+            "body_text": [
+              [
+                "30/10/2026 às 07:00",
+                "Vila Mariana"
+              ]
+            ]
+          }
+        },
+        {
+          "type": "FOOTER",
+          "text": "Aviso automático do WorkEasy"
+        }
+      ]
+    },
+    {
+      "name": "codigo_de_verificacao",
+      "language": "pt_BR",
+      "category": "AUTHENTICATION",
+      "message_send_ttl_seconds": 600,
+      "components": [
+        {
+          "type": "BODY",
+          "add_security_recommendation": true
+        },
+        {
+          "type": "FOOTER",
+          "code_expiration_minutes": 10
+        },
+        {
+          "type": "BUTTONS",
+          "buttons": [
+            {
+              "type": "otp",
+              "otp_type": "copy_code",
+              "text": "Copiar código"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "planned_templates": [
+    {
+      "name": "avisos_ativados",
+      "language": "pt_BR",
+      "category": "UTILITY",
+      "message_send_ttl_seconds": 43200,
+      "components": [
+        {
+          "type": "BODY",
+          "text": "Olá! Você ativou os avisos do WorkEasy por WhatsApp neste número, sobre pedidos, propostas, atendimentos e pagamentos. Para parar de receber, responda SAIR."
+        },
+        {
+          "type": "FOOTER",
+          "text": "Aviso automático do WorkEasy"
+        }
+      ]
+    }
+  ],
+  "optional_components": {
+    "note": "Componentes opcionais para acrescentar a um modelo de utilidade antes de registrar. Botões estáticos não exigem componente no envio (o código atual só monta o corpo). O botão de resposta rápida só deve ir junto quando existir o webhook de entrada que trata o toque (PLANEJADO).",
+    "static_url_button": {
+      "type": "BUTTONS",
+      "buttons": [
+        {
+          "type": "URL",
+          "text": "Abrir o WorkEasy",
+          "url": "https://[DOMÍNIO DO WORKEASY]/"
+        }
+      ]
+    },
+    "quick_reply_opt_out_button": {
+      "type": "BUTTONS",
+      "buttons": [
+        {
+          "type": "QUICK_REPLY",
+          "text": "Parar de receber avisos"
+        }
+      ]
+    }
+  },
+  "send_examples": {
+    "proposta_recebida": {
+      "messaging_product": "whatsapp",
+      "recipient_type": "individual",
+      "to": "5511900000000",
+      "type": "template",
+      "template": {
+        "name": "proposta_recebida",
+        "language": {
+          "code": "pt_BR"
+        },
+        "components": [
+          {
+            "type": "body",
+            "parameters": [
+              {
+                "type": "text",
+                "text": "Ana Ferreira"
+              },
+              {
+                "type": "text",
+                "text": "Eletricista"
+              },
+              {
+                "type": "text",
+                "text": "R$ 150,00"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "atendimento_confirmado": {
+      "messaging_product": "whatsapp",
+      "recipient_type": "individual",
+      "to": "5511900000000",
+      "type": "template",
+      "template": {
+        "name": "atendimento_confirmado",
+        "language": {
+          "code": "pt_BR"
+        },
+        "components": [
+          {
+            "type": "body",
+            "parameters": [
+              {
+                "type": "text",
+                "text": "Eletricista"
+              },
+              {
+                "type": "text",
+                "text": "28/10/2026 às 14:30"
+              },
+              {
+                "type": "text",
+                "text": "Carlos Lima"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "lembrete_atendimento": {
+      "messaging_product": "whatsapp",
+      "recipient_type": "individual",
+      "to": "5511900000000",
+      "type": "template",
+      "template": {
+        "name": "lembrete_atendimento",
+        "language": {
+          "code": "pt_BR"
+        },
+        "components": [
+          {
+            "type": "body",
+            "parameters": [
+              {
+                "type": "text",
+                "text": "Eletricista"
+              },
+              {
+                "type": "text",
+                "text": "28/10/2026 às 14:30"
+              },
+              {
+                "type": "text",
+                "text": "Carlos Lima"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "pagamento_recebido": {
+      "messaging_product": "whatsapp",
+      "recipient_type": "individual",
+      "to": "5511900000000",
+      "type": "template",
+      "template": {
+        "name": "pagamento_recebido",
+        "language": {
+          "code": "pt_BR"
+        },
+        "components": [
+          {
+            "type": "body",
+            "parameters": [
+              {
+                "type": "text",
+                "text": "R$ 350,00"
+              },
+              {
+                "type": "text",
+                "text": "Carlos Lima"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "orcamento_respondido": {
+      "messaging_product": "whatsapp",
+      "recipient_type": "individual",
+      "to": "5511900000000",
+      "type": "template",
+      "template": {
+        "name": "orcamento_respondido",
+        "language": {
+          "code": "pt_BR"
+        },
+        "components": [
+          {
+            "type": "body",
+            "parameters": [
+              {
+                "type": "text",
+                "text": "Troca da fiação da cozinha"
+              },
+              {
+                "type": "text",
+                "text": "aceito"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "plantao_oferecido": {
+      "messaging_product": "whatsapp",
+      "recipient_type": "individual",
+      "to": "5511900000000",
+      "type": "template",
+      "template": {
+        "name": "plantao_oferecido",
+        "language": {
+          "code": "pt_BR"
+        },
+        "components": [
+          {
+            "type": "body",
+            "parameters": [
+              {
+                "type": "text",
+                "text": "30/10/2026 às 07:00"
+              },
+              {
+                "type": "text",
+                "text": "Vila Mariana"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "codigo_de_verificacao": {
+      "messaging_product": "whatsapp",
+      "recipient_type": "individual",
+      "to": "5511900000000",
+      "type": "template",
+      "template": {
+        "name": "codigo_de_verificacao",
+        "language": {
+          "code": "pt_BR"
+        },
+        "components": [
+          {
+            "type": "body",
+            "parameters": [
+              {
+                "type": "text",
+                "text": "123456"
+              }
+            ]
+          },
+          {
+            "type": "button",
+            "sub_type": "url",
+            "index": "0",
+            "parameters": [
+              {
+                "type": "text",
+                "text": "123456"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "sources": [
+    {
+      "url": "https://developers.facebook.com/documentation/business-messaging/whatsapp/templates/overview",
+      "opened_on": "2026-10-23"
+    },
+    {
+      "url": "https://developers.facebook.com/documentation/business-messaging/whatsapp/templates/template-categorization",
+      "opened_on": "2026-10-23"
+    },
+    {
+      "url": "https://developers.facebook.com/documentation/business-messaging/whatsapp/templates/template-review",
+      "opened_on": "2026-10-23"
+    },
+    {
+      "url": "https://developers.facebook.com/documentation/business-messaging/whatsapp/templates/components",
+      "opened_on": "2026-10-23"
+    },
+    {
+      "url": "https://developers.facebook.com/documentation/business-messaging/whatsapp/templates/time-to-live",
+      "opened_on": "2026-10-23"
+    },
+    {
+      "url": "https://developers.facebook.com/documentation/business-messaging/whatsapp/templates/authentication-templates/copy-code-button-authentication-templates",
+      "opened_on": "2026-10-23"
+    }
+  ]
+}

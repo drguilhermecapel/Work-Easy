@@ -3,6 +3,29 @@ import { configDefaults, defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import type { Plugin } from 'vite';
+import { pwaOptions } from './pwa.config.ts';
+
+type MiddlewareStack = Array<{
+  route: string;
+  handle: (req: unknown, res: { statusCode: number; end: () => void }) => void;
+}>;
+
+// Vite's /__open-in-editor route opens a file in the developer's editor for any
+// request that reaches the server. The app never uses it: answer 404 before Vite does.
+const blockEditorLauncher: Plugin = {
+  name: 'block-open-in-editor',
+  apply: 'serve',
+  configureServer(server) {
+    (server.middlewares as unknown as { stack: MiddlewareStack }).stack.unshift({
+      route: '/__open-in-editor',
+      handle: (_req, res) => {
+        res.statusCode = 404;
+        res.end();
+      },
+    });
+  },
+};
 
 // No secret may be injected into the client bundle. Server-side keys
 // (e.g. an LLM API key) belong in backend functions, never in `define`
@@ -14,37 +37,17 @@ import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig(({ mode }) => ({
   server: {
     port: 3000,
-    host: '0.0.0.0',
+    // The dev server answers only on localhost. Another address (a phone on the same
+    // network, for example) is opened on purpose: VITE_DEV_HOST=0.0.0.0 npm run dev.
+    host: process.env.VITE_DEV_HOST?.trim() || 'localhost',
     strictPort: true,
   },
   plugins: [
     react(),
     tailwindcss(),
-    VitePWA({
-      disable: mode === 'native' || mode === 'test',
-      registerType: 'autoUpdate',
-      includeAssets: ['favicon.png', 'icons/apple-touch-icon.png', 'icons/icon.svg'],
-      manifest: {
-        name: 'WorkEasy',
-        short_name: 'WorkEasy',
-        description: 'Encontre profissionais e serviços de todas as áreas perto de você.',
-        lang: 'pt-BR',
-        start_url: '/',
-        scope: '/',
-        display: 'standalone',
-        background_color: '#f9fafb',
-        theme_color: '#667eea',
-        icons: [
-          { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
-          { src: '/icons/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
-        ],
-      },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,png,svg}'],
-        navigateFallback: '/index.html',
-      },
-    }),
+    blockEditorLauncher,
+    // Manifest, service worker rules and update flow: pwa.config.ts
+    VitePWA(pwaOptions(mode)),
   ],
   resolve: {
     alias: {

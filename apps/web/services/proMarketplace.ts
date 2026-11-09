@@ -2,8 +2,10 @@ import { AppError } from '../lib/errors';
 import { saoPauloDateTime } from '../lib/timezone';
 import type { Tables } from '../lib/database.types';
 import { db, unwrap, unwrapMaybe } from './client';
+import { getFreeProposalsPerMonth } from './proBilling';
 import { guard } from './proErrors';
-import type { ProposalRow } from './types';
+import { monthStartSaoPaulo } from './proFormat';
+import type { ProposalRow, ProviderRow } from './types';
 
 /** A request the provider may answer (open_requests_for_me): never carries the client's phone or e-mail. */
 export interface OpenRequest {
@@ -75,3 +77,34 @@ export const withdrawProposal = (proposalId: string): Promise<void> =>
   guard(async () => {
     unwrapMaybe<unknown>(await db().from('proposals').update({ status: 'withdrawn' }).eq('id', proposalId));
   });
+
+// ---- Free allowance -------------------------------------------------------------
+
+/** The free plan has a monthly allowance; the Pro plan has none. */
+export type ProposalAllowance = { kind: 'unlimited' } | { kind: 'limited'; limit: number; used: number };
+
+/**
+ * What the plan allows for proposals this month. The free plan sends up to `limit` per calendar month in
+ * São Paulo, counted when a proposal is created whatever happens to it later (the check_proposal trigger
+ * counts the same way and is what enforces it). A `limit` of null (unreadable, or no limit set) gives null:
+ * the screens show nothing rather than a made-up number.
+ */
+export const proposalAllowance = (input: {
+  plan: ProviderRow['plan'];
+  limit: number | null;
+  proposals: Array<Pick<ProposalRow, 'created_at'>>;
+  now?: Date;
+}): ProposalAllowance | null => {
+  if (input.plan === 'pro') return { kind: 'unlimited' };
+  if (input.limit === null) return null;
+  const since = monthStartSaoPaulo(input.now).getTime();
+  const used = input.proposals.filter(item => new Date(item.created_at).getTime() >= since).length;
+  return { kind: 'limited', limit: input.limit, used };
+};
+
+/** Reads what proposalAllowance needs (a Pro provider needs no read). Rejects when a read fails. */
+export const getProposalAllowance = async (provider: Pick<ProviderRow, 'id' | 'plan'>): Promise<ProposalAllowance | null> => {
+  if (provider.plan === 'pro') return { kind: 'unlimited' };
+  const [limit, proposals] = await Promise.all([getFreeProposalsPerMonth(), listMyProposals(provider.id)]);
+  return proposalAllowance({ plan: provider.plan, limit, proposals });
+};

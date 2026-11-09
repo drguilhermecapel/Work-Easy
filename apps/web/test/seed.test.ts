@@ -4,9 +4,10 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-// supabase/seed.sql is generated from catalog/*.json and data/neighborhoods.json by
-// scripts/generate-seed.mjs. This test regenerates it in memory and fails when the
-// committed file is stale: run `npm run db:seed` after changing the catalog.
+// supabase/seed.sql (development) and supabase/catalog.sql (production) are generated from
+// catalog/*.json and data/neighborhoods.json by scripts/generate-seed.mjs. This test regenerates
+// both in memory and fails when a committed file is stale: run `npm run db:seed` after changing
+// the catalog.
 
 interface SeedInputs {
   areas: { areas: Array<{ slug: string; name: string; occupations: Array<{ slug: string; name: string }> }> };
@@ -16,6 +17,7 @@ interface SeedInputs {
 
 interface SeedModule {
   generateSeedSql: (input: SeedInputs) => string;
+  generateCatalogSql: (input: SeedInputs) => string;
   readSeedInputs: (root?: string) => SeedInputs;
   sqlString: (value: unknown) => string;
   sqlArray: (values: string[], type: string) => string;
@@ -112,5 +114,64 @@ describe('supabase/seed.sql', () => {
     expect(sql.match(/insert into public\.occupation_policies /g)).toHaveLength(3);
     expect(sql.match(/on conflict \(/g)).toHaveLength(7);
     expect(sql).toContain("('ocupacao-1199', 'grande', 'Ocupação 1199', '{}'::text[])");
+  });
+});
+
+describe('supabase/catalog.sql (production)', () => {
+  const CATALOG_TABLES = ['areas', 'occupations', 'occupation_policies', 'neighborhoods'] as const;
+  const read = (file: string) => readFileSync(join(ROOT, 'supabase', file), 'utf8');
+
+  /** Row lines (`  (...)`) of one table, in file order, across all its upsert statements. */
+  const rowsOf = (sql: string, table: string): string[] =>
+    sql
+      .split(/\n(?=insert into public\.)/)
+      .filter(statement => statement.startsWith(`insert into public.${table} `))
+      .flatMap(statement => statement.split('\n').filter(line => line.startsWith('  (')));
+
+  it('is up to date with the catalog, from the same generator as seed.sql', async () => {
+    const { generateCatalogSql, readSeedInputs } = await loadGenerator();
+    expect(read('catalog.sql'), 'catalog.sql is stale: run `npm run db:seed`').toBe(generateCatalogSql(readSeedInputs()));
+  });
+
+  it('touches only the four catalog tables, inside one transaction', async () => {
+    const { readSeedInputs } = await loadGenerator();
+    const inputs = readSeedInputs();
+    const sql = read('catalog.sql');
+    const statements = sql.match(/^insert into [^\s(]+/gm) ?? [];
+    // One statement per 500 rows of each table (CHUNK in scripts/generate-seed.mjs)
+    const occupationCount = inputs.areas.areas.reduce((total, area) => total + area.occupations.length, 0);
+    const perChunk = (rows: number) => Math.ceil(rows / 500);
+    expect(statements).toHaveLength(
+      perChunk(inputs.areas.areas.length) + 2 * perChunk(occupationCount) + perChunk(inputs.neighborhoods.length),
+    );
+    for (const statement of statements) {
+      expect(statement).toMatch(/^insert into public\.(areas|occupations|occupation_policies|neighborhoods)$/);
+    }
+    // Column-0 lines other than comments, begin/commit, the inserts and the upsert clause would be other statements
+    const strays = sql.split('\n').filter(line => !/^(--|begin;$|commit;$|$| {2}|on conflict |insert into public\.)/.test(line));
+    expect(strays).toEqual([]);
+    expect(sql.split('\n').filter(line => line === 'begin;')).toHaveLength(1);
+    expect(sql.split('\n').filter(line => line === 'commit;')).toHaveLength(1);
+  });
+
+  it('has the same catalog rows as seed.sql, and as many as the catalog holds', async () => {
+    const { readSeedInputs } = await loadGenerator();
+    const inputs = readSeedInputs();
+    const catalog = read('catalog.sql');
+    const seed = read('seed.sql');
+    const occupationCount = inputs.areas.areas.reduce((total, area) => total + area.occupations.length, 0);
+    const expected = {
+      areas: inputs.areas.areas.length,
+      occupations: occupationCount,
+      occupation_policies: occupationCount,
+      neighborhoods: inputs.neighborhoods.length,
+    };
+    for (const table of CATALOG_TABLES) {
+      expect(rowsOf(catalog, table), `${table}: rows differ from seed.sql`).toEqual(rowsOf(seed, table));
+      expect(rowsOf(catalog, table), table).toHaveLength(expected[table]);
+    }
+    expect(catalog).toContain(
+      `-- ${expected.areas} areas, ${occupationCount} occupations, ${occupationCount} policies, ${expected.neighborhoods} neighborhoods.`,
+    );
   });
 });

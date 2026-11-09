@@ -49,7 +49,7 @@ export const paymentRow = (overrides: Row = {}): Row => ({
 });
 
 export const acceptedTerms = (userId: string): Row[] =>
-  (['terms', 'privacy'] as const).map(purpose => ({
+  (['terms', 'privacy', 'age_declaration'] as const).map(purpose => ({
     id: `c-${purpose}`,
     user_id: userId,
     purpose,

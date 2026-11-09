@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { Download } from 'lucide-react';
 import { findOccupation } from '../../catalog';
 import { AppError } from '../../lib/errors';
 import { formatCents } from '../../lib/money';
@@ -12,19 +13,29 @@ import { listClients } from '../../services/proClients';
 import { formatPeriodBR } from '../../services/proFormat';
 import { listQuotes, type QuoteRow } from '../../services/quotes';
 import { formatPhoneBR } from '../../lib/phone';
+import { csvFileName, downloadCsv, paymentsCsv } from '../../services/proExport';
 import ErrorAlert from '../../components/ErrorAlert';
 import PageStatus from '../../components/PageStatus';
+import { NfseLink, NfseNote } from '../../components/pro/Nfse';
 import PixBox from '../../components/pro/PixBox';
 import ProPage from '../../components/pro/ProPage';
 import { useProvider } from '../../components/pro/proContext';
 import { PAYMENT_METHOD_LABELS, PAYMENT_STATUS_LABELS, PAYMENT_STATUS_STYLES, PROVIDER_STATUS_HELP } from '../../components/pro/labels';
 import { Badge, Card, EmptyState, Field, SectionTitle } from '../../components/pro/ui';
-import { inputClass, linkClass, primaryButton } from '../../components/pro/styles';
+import { inputClass, linkClass, primaryButton, secondaryButton } from '../../components/pro/styles';
 
 const CHARGEABLE: BookingView['status'][] = ['accepted', 'in_progress', 'completed'];
 /** Payments where the money came in: the item must not be charged again (charges-create refuses it too). */
 const PAID: PaymentRow['status'][] = ['confirmed', 'received', 'held', 'released'];
 const METHODS: PaymentMethod[] = ['pix', 'boleto', 'credit_card', 'undefined'];
+/** Payments the provider received: the service can be invoiced (the app only links to the issuer, it never issues). */
+const INVOICEABLE: PaymentRow['status'][] = ['confirmed', 'received', 'released'];
+
+const exportPayments = (payments: PaymentRow[]) =>
+  downloadCsv(
+    csvFileName('cobrancas', todayInSaoPaulo()),
+    paymentsCsv(payments, { method: PAYMENT_METHOD_LABELS, status: PAYMENT_STATUS_LABELS }),
+  );
 
 const load = async (providerId: string) => {
   const [payments, account, bookings, quotes, clients] = await Promise.all([
@@ -227,6 +238,11 @@ const PaymentItem: React.FC<{ payment: PaymentRow }> = ({ payment }) => (
         </div>
       </details>
     )}
+    {INVOICEABLE.includes(payment.status) && (
+      <p className="mt-2">
+        <NfseLink />
+      </p>
+    )}
   </Card>
 );
 
@@ -285,7 +301,19 @@ const Charges: React.FC = () => {
             )}
           </section>
           <section aria-labelledby="cob-lista" className="space-y-3">
-            <SectionTitle id="cob-lista">Suas cobranças</SectionTitle>
+            <SectionTitle
+              id="cob-lista"
+              action={
+                data.data.payments.length > 0 ? (
+                  <button type="button" className={secondaryButton} onClick={() => exportPayments(data.data?.payments ?? [])}>
+                    <Download size={16} aria-hidden="true" /> Exportar CSV
+                  </button>
+                ) : undefined
+              }
+            >
+              Suas cobranças
+            </SectionTitle>
+            {data.data.payments.some(payment => INVOICEABLE.includes(payment.status)) && <NfseNote />}
             {data.data.payments.length === 0 ? (
               <EmptyState>Nenhuma cobrança ainda. Quando você criar uma, ou um cliente pagar pelo app, ela aparece aqui.</EmptyState>
             ) : (

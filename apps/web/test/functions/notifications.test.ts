@@ -65,12 +65,21 @@ describe('WhatsApp template payload', () => {
 
   it('has text for every contract template', () => {
     expect(Object.keys(TEMPLATES).sort()).toEqual([
-      'atendimento_confirmado', 'lembrete_atendimento', 'orcamento_respondido', 'pagamento_recebido',
-      'plantao_oferecido', 'proposta_recebida',
+      'agendamento_solicitado', 'atendimento_confirmado', 'booking_canceled_by_deletion', 'lembrete_atendimento',
+      'orcamento_respondido', 'pagamento_recebido', 'plantao_oferecido', 'proposta_recebida', 'shift_canceled_by_deletion',
     ]);
     for (const [name, spec] of Object.entries(TEMPLATES)) {
       for (const key of spec.params) expect(spec.body, `${name}.${key}`).toContain(`{${key}}`);
     }
+  });
+
+  it('has the account-deletion texts for the people left with a canceled shift or booking', () => {
+    expect(renderTemplateText('shift_canceled_by_deletion', {})).toBe(
+      'Um plantão com você foi cancelado porque a conta da outra parte foi excluída.',
+    );
+    expect(renderTemplateText('booking_canceled_by_deletion', {})).toBe(
+      'Uma reserva com você foi cancelada porque a conta da outra parte foi excluída.',
+    );
   });
 });
 
@@ -85,9 +94,11 @@ describe('Resend email', () => {
     });
     expect(email.to).toEqual(['prestador@example.com']);
     expect(email.subject).toBe('Orçamento respondido');
-    expect(email.text).toContain('O orçamento "Pintura <sala>" foi aceito pelo cliente.');
+    // The client's free text (the quote title) never reaches the message.
+    expect(email.text).toContain('Um orçamento seu foi aceito pelo cliente.');
+    expect(email.text).not.toContain('Pintura');
     expect(email.text).toContain('https://workeasy.com.br');
-    expect(email.html).toContain('Pintura &lt;sala&gt;');
+    expect(email.html).not.toContain('Pintura');
     expect(email.html).not.toContain('<sala>');
     expect(email.tags).toEqual([{ name: 'template', value: 'orcamento_respondido' }]);
   });

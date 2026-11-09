@@ -1,27 +1,19 @@
 import React from 'react';
-import { FileText, Shield, Lock, ChevronLeft } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { FileText, Lock, MessageCircle, ChevronLeft, type LucideIcon } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { LEGAL_DOCS, legalInForce, type LegalDocId } from '../config/legal';
+import { useAuth } from '../contexts/AuthContext';
 
-const DOCUMENTS = [
-  {
-    icon: FileText,
-    title: 'Termos de Uso',
-    body: 'Vão descrever o que a plataforma faz e não faz, as regras para clientes e profissionais, cancelamento, reembolso e atendimento ao consumidor.',
-  },
-  {
-    icon: Lock,
-    title: 'Política de Privacidade',
-    body: 'Vai identificar a empresa responsável e o encarregado de dados, as finalidades e bases legais de cada tratamento, o prazo de guarda e como exercer seus direitos.',
-  },
-  {
-    icon: Shield,
-    title: 'Política de Verificação',
-    body: 'Vai explicar, por categoria de serviço, quais documentos e registros profissionais são conferidos e por quê.',
-  },
-];
+const ICONS: Record<LegalDocId, LucideIcon> = {
+  termos: FileText,
+  privacidade: Lock,
+  sac: MessageCircle,
+};
 
+/** Index of the legal texts (config/legal.ts); each one has its own page. */
 const LegalDocs: React.FC = () => {
   const navigate = useNavigate();
+  const demo = useAuth().mode === 'demo';
 
   return (
     <div className="min-h-screen bg-gray-50 pb-12">
@@ -35,21 +27,37 @@ const LegalDocs: React.FC = () => {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
-        <div role="note" className="bg-amber-50 border border-amber-100 text-amber-900 rounded-xl p-4 text-sm">
-          <strong>Documentos em elaboração.</strong> Este protótipo não presta serviços nem trata dados reais.
-          Os documentos abaixo serão publicados, revisados por advogado, antes de qualquer operação real.
-        </div>
+        {demo ? (
+          <div role="note" className="bg-amber-50 border border-amber-100 text-amber-900 rounded-xl p-4 text-sm">
+            <strong>Documentos em elaboração.</strong> Este protótipo não presta serviços nem trata dados reais.
+            Os documentos abaixo serão publicados, revisados por advogado, antes de qualquer operação real.
+          </div>
+        ) : (
+          !legalInForce() && (
+            <div role="note" className="bg-amber-50 border border-amber-100 text-amber-900 rounded-xl p-4 text-sm">
+              <strong>Documentos em elaboração.</strong> Os textos abaixo são rascunhos em revisão jurídica e podem mudar antes de
+              passar a valer.
+            </div>
+          )
+        )}
 
-        <div className="grid gap-4 md:grid-cols-3">
-          {DOCUMENTS.map(({ icon: Icon, title, body }) => (
-            <section key={title} className="bg-white rounded-2xl shadow-xs border border-gray-100 p-6">
-              <h2 className="font-bold text-gray-900 flex items-center gap-2 mb-3">
-                <Icon size={18} className="text-primary" /> {title}
-              </h2>
-              <p className="text-sm text-gray-600 leading-relaxed">{body}</p>
-            </section>
-          ))}
-        </div>
+        <ul className="grid gap-4 md:grid-cols-3">
+          {LEGAL_DOCS.map(doc => {
+            const Icon = ICONS[doc.id];
+            return (
+              <li key={doc.id} className="bg-white rounded-2xl shadow-xs border border-gray-100 p-6">
+                <h2 className="font-bold text-gray-900 flex items-center gap-2 mb-3">
+                  <Icon size={18} className="text-primary shrink-0" aria-hidden="true" />
+                  <Link to={doc.route} className="hover:text-primary hover:underline">
+                    {doc.title}
+                  </Link>
+                </h2>
+                <p className="text-sm text-gray-600 leading-relaxed">{doc.summary}</p>
+                <p className="text-xs text-gray-400 mt-3">Versão {doc.version}</p>
+              </li>
+            );
+          })}
+        </ul>
       </div>
     </div>
   );

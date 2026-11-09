@@ -13,6 +13,7 @@ import ErrorAlert from '../../components/ErrorAlert';
 import PageStatus from '../../components/PageStatus';
 import CuidadoPage from '../../components/cuidado/CuidadoPage';
 import { CheckinLine, ReportView } from '../../components/cuidado/ShiftRecords';
+import WeekSummary from '../../components/cuidado/WeekSummary';
 import { formatShiftPeriod } from '../../components/cuidado/format';
 import { Card, EmptyState } from '../../components/cuidado/ui';
 import { useCareUserId } from '../../components/cuidado/useCareUser';
@@ -29,7 +30,7 @@ const load = async () => {
     listReports(shiftIds),
     listCaregiverNames(started.flatMap(s => (s.provider_id ? [s.provider_id] : []))),
   ]);
-  return { started, recipients, checkins, reports, names };
+  return { households, started, recipients, checkins, reports, names };
 };
 
 const Content: React.FC<{ userId: string }> = ({ userId }) => {
@@ -41,6 +42,7 @@ const Content: React.FC<{ userId: string }> = ({ userId }) => {
   return (
     <div className="space-y-4">
       <ErrorAlert error={result.error} />
+      {data.started.length > 0 && <WeekSummary households={data.households} />}
       {data.started.length === 0 ? (
         <EmptyState>
           Ainda não há relatórios. Quando um cuidador registrar a entrada e enviar o relatório do dia, ele aparece aqui, junto com os

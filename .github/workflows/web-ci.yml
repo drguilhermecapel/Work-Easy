@@ -1,11 +1,9 @@
 name: Web CI
 
 on:
-  push:
-    branches: [main, develop]
-    paths: ['apps/web/**', '.github/workflows/web-ci.yml']
-  pull_request:
-    paths: ['apps/web/**', '.github/workflows/web-ci.yml']
+  # Manual only: GitHub Actions spend is not allowed in this project. Run it from the
+  # Actions tab (Run workflow) when needed; no push or pull request starts it.
+  workflow_dispatch:
 
 concurrency:
   group: web-ci-${{ github.ref }}
