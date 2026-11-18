@@ -4,7 +4,9 @@ import { describe, expect, it } from 'vitest';
 import {
   DOCUMENT_MAX_BYTES,
   handler,
+  isActiveProvider,
   MESSAGES,
+  type ProviderAccount,
   type UploadDeps,
   VERIFICATION_STEPS,
 } from '../../supabase/functions/provider-document-upload/handler.ts';
@@ -36,9 +38,21 @@ const HEIC = Uint8Array.from([0, 0, 0, 0x18, ...ascii('ftypheic'), 0, 0, 0, 0, .
 interface FakeOptions {
   signedIn?: boolean;
   provider?: boolean;
+  /** The profile row carries deleted_at (the account was closed). */
+  closed?: boolean;
+  /** There is no profile row for the caller. */
+  noProfile?: boolean;
   files?: number;
   putError?: boolean;
   insertError?: boolean;
+}
+
+/** The rows the database answers for the caller: a provider with an open account, unless the options say otherwise. */
+function accountOf(options: FakeOptions): ProviderAccount {
+  return {
+    hasProviderRow: options.provider !== false,
+    profile: options.noProfile ? null : { deletedAt: options.closed ? '2026-11-01T12:00:00Z' : null },
+  };
 }
 
 function fakeDeps(options: FakeOptions = {}) {
@@ -51,7 +65,7 @@ function fakeDeps(options: FakeOptions = {}) {
     randomId: () => 'abcdef12',
     async session() {
       if (options.signedIn === false) return null;
-      return { user: PROVIDER, hasProviderAccount: async () => options.provider !== false };
+      return { user: PROVIDER, providerAccount: async () => accountOf(options) };
     },
     storage: {
       async countFiles(_folder, limit) {
@@ -124,6 +138,49 @@ describe('provider-document-upload: who may send', () => {
     expect(body.error).toMatchObject({ code: 'not_allowed', message: MESSAGES.notProvider });
     expect(stored).toEqual([]);
     expect(inserted).toEqual([]);
+  });
+
+  it('refuses a provider whose account is closed, with the same answer as a non-provider, and writes nothing', async () => {
+    const { response, body, stored, inserted } = await call(
+      upload({ step: 'cadastro_fiscal', file: photo(PHOTO_WITH_GPS, 'image/jpeg') }),
+      { closed: true },
+    );
+
+    expect(response.status).toBe(403);
+    expect(body.error).toMatchObject({ code: 'not_allowed', message: MESSAGES.notProvider });
+    expect(stored).toEqual([]);
+    expect(inserted).toEqual([]);
+  });
+
+  it('refuses a caller whose profile row is missing, with the same answer as a non-provider', async () => {
+    const { response, body, stored } = await call(upload({ step: 'cadastro_fiscal', file: photo(PHOTO_WITH_GPS, 'image/jpeg') }), {
+      noProfile: true,
+    });
+
+    expect(response.status).toBe(403);
+    expect(body.error).toMatchObject({ code: 'not_allowed', message: MESSAGES.notProvider });
+    expect(stored).toEqual([]);
+  });
+
+  it('accepts a provider whose account is open', async () => {
+    const { response, body } = await call(upload({ step: 'cadastro_fiscal', file: photo(PHOTO_WITH_GPS, 'image/jpeg') }), {
+      closed: false,
+    });
+
+    expect(response.status).toBe(200);
+    expect(body.ok).toBe(true);
+  });
+});
+
+describe('provider-document-upload: who counts as a provider', () => {
+  it('accepts a providers row with a profile that is not deleted', () => {
+    expect(isActiveProvider({ hasProviderRow: true, profile: { deletedAt: null } })).toBe(true);
+  });
+
+  it('refuses a closed account, a missing profile and a missing providers row', () => {
+    expect(isActiveProvider({ hasProviderRow: true, profile: { deletedAt: '2026-11-01T12:00:00Z' } })).toBe(false);
+    expect(isActiveProvider({ hasProviderRow: true, profile: null })).toBe(false);
+    expect(isActiveProvider({ hasProviderRow: false, profile: { deletedAt: null } })).toBe(false);
   });
 });
 

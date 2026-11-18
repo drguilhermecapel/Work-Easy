@@ -62,9 +62,22 @@ export const MESSAGES = {
   record: 'Não foi possível registrar o documento. Tente de novo.',
 } as const;
 
+/** The caller's own rows that make it a provider, read with its JWT (RLS: own rows only). */
+export interface ProviderAccount {
+  /** A providers row with the caller's id exists. */
+  hasProviderRow: boolean;
+  /** The caller's profiles row, or null when there is none. `deletedAt` is set once the account is closed. */
+  profile: { deletedAt: string | null } | null;
+}
+
+/** A provider may send documents while it has its providers row and its account is not closed. */
+export function isActiveProvider(account: ProviderAccount): boolean {
+  return account.hasProviderRow && account.profile !== null && account.profile.deletedAt === null;
+}
+
 export interface UploadDeps extends BaseDeps {
-  /** The caller from its JWT, or null. `hasProviderAccount` reads the caller's own providers row (RLS). */
-  session(req: Request): Promise<{ user: AuthUser; hasProviderAccount(): Promise<boolean> } | null>;
+  /** The caller from its JWT, or null. `providerAccount` reads the caller's own rows (RLS). */
+  session(req: Request): Promise<{ user: AuthUser; providerAccount(): Promise<ProviderAccount> } | null>;
   storage: {
     /** Files in a folder of the bucket, up to `limit`. */
     countFiles(folder: string, limit: number): Promise<number>;
@@ -99,7 +112,7 @@ export function handler(req: Request, deps: UploadDeps): Promise<Response> {
   return route(req, { methods: ['POST'], ...corsOf(deps), onError: deps.logError }, async () => {
     const session = await deps.session(req);
     if (!session) throw errors.unauthorized();
-    if (!(await session.hasProviderAccount())) throw errors.notAllowed(MESSAGES.notProvider);
+    if (!isActiveProvider(await session.providerAccount())) throw errors.notAllowed(MESSAGES.notProvider);
     const providerId = session.user.id;
 
     const { step, file } = await readForm(req);
