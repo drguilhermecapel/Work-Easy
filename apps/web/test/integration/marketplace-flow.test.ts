@@ -965,9 +965,12 @@ describe('fluxo do produto contra o Supabase real', () => {
       expect(allowance, 'a cota de fábrica é maior que zero').toBeGreaterThan(0);
 
       const free = await makeApprovedProvider(world, admin, { label: 'prestador-gratis', policy, neighborhood: hood.id });
-      const asker = await world.createUser('cliente-cota');
+      // Um cliente tem no máximo cinco pedidos abertos (request_limit), então cada pedido vem de um cliente diferente
+      const askers: TestUser[] = [];
       const requestIds: string[] = [];
       for (let i = 0; i < allowance + 2; i++) {
+        const asker = await world.createUser(`cliente-cota-${i + 1}`);
+        askers.push(asker);
         const request = must(
           await asker.client
             .from('requests')
@@ -1001,7 +1004,9 @@ describe('fluxo do produto contra o Supabase real', () => {
         );
       } finally {
         // Os pedidos não ficam abertos para os outros testes nem para o catálogo
-        await asker.client.from('requests').update({ status: 'canceled' }).in('id', requestIds);
+        await Promise.all(
+          askers.map((asker, i) => asker.client.from('requests').update({ status: 'canceled' }).eq('id', requestIds[i])),
+        );
       }
     });
   });

@@ -123,19 +123,24 @@ export interface UploadedDocument {
   path: string;
 }
 
-/** Envia o arquivo ao bucket privado e registra o documento, como a tela de cadastro faz. */
+/**
+ * Envia o arquivo ao bucket privado e registra o documento, como a função provider-document-upload faz depois de
+ * validar e limpar o arquivo. O prestador não grava no bucket diretamente (migração 20261118100001), e o runtime de
+ * Edge não sobe na integração; por isso a gravação segue pelo cliente de serviço e a função é coberta pelos testes
+ * unitários em test/functions/provider-document-upload.test.ts.
+ */
 export const submitDocument = async (
   world: World,
   user: TestUser,
   step: VerificationStep,
 ): Promise<UploadedDocument> => {
   const path = `${user.id}/${step}-${world.unique('doc')}.pdf`;
-  const upload = await user.client.storage.from(DOCUMENTS_BUCKET).upload(path, DOCUMENT_BYTES, {
+  const upload = await world.service.storage.from(DOCUMENTS_BUCKET).upload(path, DOCUMENT_BYTES, {
     contentType: 'application/pdf',
   });
   if (upload.error) throw new Error(`upload de ${step}: ${upload.error.message}`);
   const row = must(
-    await user.client.from('provider_documents').insert({ provider_id: user.id, step, storage_path: path }).select('id').single(),
+    await world.service.from('provider_documents').insert({ provider_id: user.id, step, storage_path: path }).select('id').single(),
     `documento ${step}`,
   );
   return { id: row.id, step, path };
