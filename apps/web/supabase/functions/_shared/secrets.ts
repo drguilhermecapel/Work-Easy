@@ -46,4 +46,10 @@ export async function deriveSubaccountToken(platformToken: string, providerId: s
   return Array.from(new Uint8Array(mac), byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
+/** SHA-256 of the UTF-8 text in hex: the stored form of a document that must not be kept in clear. */
+export async function sha256Hex(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', encoder.encode(value));
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
 export const isUuid = (value: string) => UUID.test(value);

@@ -19,8 +19,8 @@ select is(
      from pg_class c
     where c.relnamespace = 'public'::regnamespace and c.relkind = 'r'
       and not exists (select 1 from pg_policy p where p.polrelid = c.oid)),
-  array['assist_usage', 'assist_usage_events'],
-  'every table in public has at least one explicit policy, except the deny-all service-role tables assist_usage and assist_usage_events');
+  array['assist_usage', 'assist_usage_events', 'trial_claims'],
+  'every table in public has at least one explicit policy, except the deny-all service-role tables assist_usage, assist_usage_events and trial_claims');
 
 -- assist_usage and assist_usage_events are the tables with RLS and no policy on purpose: only take_assist_quota() touches them.
 select is(

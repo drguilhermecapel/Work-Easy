@@ -53,6 +53,25 @@ const deps: SubscriptionsDeps = {
       return (updated?.length ?? 0) > 0;
     },
     setProviderPlan,
+    async isPaymentOnboardingComplete(providerId) {
+      const row = must(
+        await serviceClient()
+          .from('provider_payment_accounts')
+          .select('asaas_wallet_id, status')
+          .eq('provider_id', providerId)
+          .maybeSingle(),
+      ) as { asaas_wallet_id: string | null; status: string | null } | null;
+      return Boolean(row?.asaas_wallet_id) && row?.status === 'active';
+    },
+    async claimTrial(cpfHash, providerId) {
+      const { error } = await serviceClient().from('trial_claims').insert({ cpf_hash: cpfHash, provider_id: providerId });
+      if (!error) return true;
+      if (error.code === UNIQUE_VIOLATION) return false;
+      throw new DbError(error.message, error.code);
+    },
+    async releaseTrial(cpfHash, providerId) {
+      must(await serviceClient().from('trial_claims').delete().eq('cpf_hash', cpfHash).eq('provider_id', providerId));
+    },
     async getProPriceCents() {
       const row = must(
         await serviceClient().from('platform_settings').select('value').eq('key', 'pro_price_cents').maybeSingle(),

@@ -15,7 +15,8 @@ import { type ProviderApproval, requireApprovedProvider } from '../_shared/provi
 import { BILLING_TYPE, PAYMENT_METHODS } from '../_shared/types.ts';
 import { isoDate, object, oneOf, optional, string, uuid } from '../_shared/validate.ts';
 import {
-  ALREADY_PAID, ALREADY_PAID_MESSAGE, type NewPayment, type PaymentRecord, paymentView, reuseOrRetire, saveCharge,
+  ALREADY_PAID, ALREADY_PAID_MESSAGE, canReuseCharge, type NewPayment, type PaymentRecord, paymentView, refuseIfSettled,
+  replaceOpenCharge, saveCharge,
 } from '../payments-create/handler.ts';
 
 export interface OwnBooking {
@@ -160,10 +161,8 @@ export function handler(req: Request, deps: ChargesCreateDeps): Promise<Response
 
     const today = saoPauloDate(deps.now());
     const open = await deps.admin.findOpenCharge(target);
-    if (open) {
-      const kept = await reuseOrRetire(sub, open, { method: input.method, today }, deps.admin.markPaymentCanceled);
-      if (kept) return { data: paymentView(kept, true) };
-    }
+    if (open && canReuseCharge(open, { method: input.method, today })) return { data: paymentView(open, true) };
+    if (open) await refuseIfSettled(sub, open);
 
     const dueDate = input.due_date ?? addDays(today, 1);
     if (dueDate < today) throw errors.invalidInput(['due_date: o vencimento não pode estar no passado']);
@@ -216,6 +215,16 @@ export function handler(req: Request, deps: ChargesCreateDeps): Promise<Response
       due_date: dueDate,
       raw: redactAsaasPayload(payment),
     };
+    // The new charge exists in the subaccount: the open one is replaced only now, never before
+    if (open) {
+      await replaceOpenCharge({
+        client: sub,
+        open,
+        replacementAsaasId: payment.id,
+        markCanceled: deps.admin.markPaymentCanceled,
+        logError: deps.logError,
+      });
+    }
     const outcome = await saveCharge({
       client: sub,
       row,

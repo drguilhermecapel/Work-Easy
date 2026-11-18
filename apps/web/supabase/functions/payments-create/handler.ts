@@ -5,9 +5,9 @@
 
 import { AsaasError, type AsaasClient } from '../_shared/asaas-client.ts';
 import { addDays, saoPauloDate } from '../_shared/dates.ts';
-import { redactAsaasPayload } from '../_shared/asaas-events.ts';
+import { ASAAS_PAID, redactAsaasPayload } from '../_shared/asaas-events.ts';
 import {
-  type AuditEntry, type AuthUser, type BaseDeps, auditSafely, callAsaas, corsOf, isUniqueViolation, toHttpError, validated,
+  type AuditEntry, type AuthUser, type BaseDeps, auditSafely, callAsaas, corsOf, isUniqueViolation, validated,
 } from '../_shared/handler-kit.ts';
 import { errors, HttpError, readJson, route } from '../_shared/http.ts';
 import { centsToReais } from '../_shared/money.ts';
@@ -133,29 +133,96 @@ export async function ensurePlatformCustomer(
   return customer.id;
 }
 
-/**
- * The pending charge to hand back for a new request, or null when it was
- * replaced: a charge for another method, or already past its due date (Asaas
- * keeps it open as overdue), is removed in Asaas and marked canceled so the
- * caller creates a fresh one. A charge Asaas will not remove (already paid and
- * waiting for the webhook) is kept and returned.
- */
-export async function reuseOrRetire(
-  client: AsaasClient,
-  open: PaymentRecord,
-  wanted: { method: PaymentMethod; today: string },
-  markCanceled: (id: string) => Promise<void>,
-): Promise<PaymentRecord | null> {
+/** The open charge stays when it is for the same method and not past its due date (due today is still valid). */
+export function canReuseCharge(open: PaymentRecord, wanted: { method: PaymentMethod; today: string }): boolean {
   const stillValid = open.due_date === null || open.due_date >= wanted.today;
-  if (open.method === wanted.method && stillValid) return open;
+  return open.method === wanted.method && stillValid;
+}
+
+export const REPLACE_FAILED_MESSAGE =
+  'Não foi possível trocar a forma de pagamento agora. A cobrança anterior continua em aberto; tente de novo.';
+
+/**
+ * Refuses a replacement when Asaas already shows the open charge as paid (RECEIVED, CONFIRMED,
+ * RECEIVED_IN_CASH...). Runs before anything new is created in Asaas.
+ */
+export async function refuseIfSettled(client: AsaasClient, open: PaymentRecord): Promise<void> {
+  const remote = await callAsaas(() => client.getPayment(open.asaas_payment_id));
+  if (remote && !remote.deleted && ASAAS_PAID.has(remote.status)) throw errors.conflict(ALREADY_PAID, ALREADY_PAID_MESSAGE);
+}
+
+/**
+ * Removes a charge that WorkEasy will not keep: one created moments ago, which no row points to.
+ * A charge Asaas no longer has is already gone; any other failure is logged, and the caller keeps
+ * its own error.
+ */
+export async function discardCharge(
+  client: AsaasClient,
+  asaasPaymentId: string,
+  logError: (error: unknown) => void,
+): Promise<void> {
   try {
-    await client.deletePayment(open.asaas_payment_id);
+    await client.deletePayment(asaasPaymentId);
   } catch (error) {
-    if (error instanceof AsaasError && (error.status === 400 || error.status === 409)) return open;
-    if (!(error instanceof AsaasError && error.status === 404)) throw toHttpError(error);
+    if (error instanceof AsaasError && error.status === 404) return;
+    logError(error);
+    logError(new Error(`charge ${asaasPaymentId} left in Asaas without a payments row`));
   }
-  await markCanceled(open.id);
-  return null;
+}
+
+/**
+ * 'canceled': Asaas removed the charge, or it is gone there. 'settled': Asaas refuses to remove a
+ * charge it has settled. Any other refusal is thrown.
+ */
+async function cancelInAsaas(client: AsaasClient, asaasPaymentId: string): Promise<'canceled' | 'settled'> {
+  try {
+    await client.deletePayment(asaasPaymentId);
+    return 'canceled';
+  } catch (error) {
+    if (!(error instanceof AsaasError) || ![400, 404, 409].includes(error.status)) throw error;
+    if (error.status === 404) return 'canceled';
+    // Read the charge to tell a paid one from another refusal
+    const remote = await callAsaas(() => client.getPayment(asaasPaymentId));
+    if (!remote || remote.deleted) return 'canceled';
+    if (ASAAS_PAID.has(remote.status)) return 'settled';
+    throw error;
+  }
+}
+
+/**
+ * Replaces the open charge with the new one, which already exists in Asaas. The open charge is
+ * canceled in Asaas first and then marked canceled in the table: its row is never deleted. When Asaas
+ * shows it as paid, the new charge is removed and the request is refused (already_paid). When the
+ * cancel fails for any other reason, the new charge is removed, the open one stays pending, the
+ * failure is logged and the request fails with 502. (Two pending rows for one booking are refused by
+ * payments_one_pending_per_booking_uidx, so a new charge cannot be kept next to the open one.)
+ */
+export async function replaceOpenCharge(input: {
+  client: AsaasClient;
+  open: PaymentRecord;
+  replacementAsaasId: string;
+  markCanceled(id: string): Promise<void>;
+  logError(error: unknown): void;
+}): Promise<void> {
+  let outcome: 'canceled' | 'settled';
+  try {
+    outcome = await cancelInAsaas(input.client, input.open.asaas_payment_id);
+  } catch (error) {
+    input.logError(error);
+    await discardCharge(input.client, input.replacementAsaasId, input.logError);
+    throw new HttpError(502, 'payment_replace_failed', REPLACE_FAILED_MESSAGE);
+  }
+  if (outcome === 'settled') {
+    await discardCharge(input.client, input.replacementAsaasId, input.logError);
+    throw errors.conflict(ALREADY_PAID, ALREADY_PAID_MESSAGE);
+  }
+  try {
+    await input.markCanceled(input.open.id);
+  } catch (error) {
+    // The open charge is already canceled in Asaas: the replacement must not stay without a row
+    await discardCharge(input.client, input.replacementAsaasId, input.logError);
+    throw error;
+  }
 }
 
 /**
@@ -174,12 +241,7 @@ export async function saveCharge(input: {
   try {
     return { saved: await input.insert(input.row) };
   } catch (error) {
-    try {
-      await input.client.deletePayment(input.row.asaas_payment_id);
-    } catch (cleanup) {
-      input.logError(cleanup);
-      input.logError(new Error(`charge ${input.row.asaas_payment_id} left in Asaas without a payments row`));
-    }
+    await discardCharge(input.client, input.row.asaas_payment_id, input.logError);
     if (isUniqueViolation(error)) {
       const existing = await input.findOpen();
       if (existing) return { existing };
@@ -214,10 +276,8 @@ export function handler(req: Request, deps: PaymentsCreateDeps): Promise<Respons
 
     const today = saoPauloDate(deps.now());
     const open = await deps.admin.findOpenPayment(booking.id);
-    if (open) {
-      const kept = await reuseOrRetire(asaas, open, { method: input.method, today }, deps.admin.markPaymentCanceled);
-      if (kept) return { data: paymentView(kept, true) };
-    }
+    if (open && canReuseCharge(open, { method: input.method, today })) return { data: paymentView(open, true) };
+    if (open) await refuseIfSettled(asaas, open);
 
     const wallet = await deps.admin.getProviderWallet(booking.provider_id);
     if (!wallet) {
@@ -275,6 +335,16 @@ export function handler(req: Request, deps: PaymentsCreateDeps): Promise<Respons
       due_date: dueDate,
       raw: redactAsaasPayload(payment),
     };
+    // The new charge exists in Asaas: the open one is replaced only now, never before
+    if (open) {
+      await replaceOpenCharge({
+        client: asaas,
+        open,
+        replacementAsaasId: payment.id,
+        markCanceled: deps.admin.markPaymentCanceled,
+        logError: deps.logError,
+      });
+    }
     const outcome = await saveCharge({
       client: asaas,
       row,
