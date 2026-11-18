@@ -72,6 +72,8 @@ describe('/conta with a backend (simulated Supabase client)', () => {
     expect(await screen.findByRole('heading', { name: 'Minha conta' })).toBeInTheDocument();
     expect(await screen.findByLabelText('Nome completo')).toHaveValue('Maria Teste');
     expect(screen.getByText(/lei fiscal obriga/)).toBeInTheDocument();
+    expect(screen.getByText(/As notas dos plantões das suas casas e os textos do relatório diário/)).toBeInTheDocument();
+    expect(screen.getByText(/continuam guardados sem identificação/)).toBeInTheDocument();
 
     const button = screen.getByRole('button', { name: /Excluir minha conta/ });
     const input = screen.getByLabelText(/Para confirmar, digite EXCLUIR/);
@@ -194,7 +196,9 @@ describe('/conta with a backend (simulated Supabase client)', () => {
     fake.session = { access_token: 't', user: { id: USER_ID, email: 'maria@example.com' } };
     renderAt('/conta');
     const row = (await screen.findByText('Consulta de antecedentes')).closest('li') as HTMLElement;
-    expect(row).toHaveTextContent('A retirada fica registrada, mas não apaga a certidão já enviada nem muda quem pode vê-la.');
+    expect(row).toHaveTextContent('Ao retirar o consentimento, a certidão já enviada é removida em até 30 dias depois da retirada.');
+    expect(row).toHaveTextContent('A retirada fica registrada e não muda quem pode vê-la até a remoção.');
+    expect(row).not.toHaveTextContent('não apaga a certidão');
     expect(row).toHaveTextContent('Você remove a certidão no cadastro só enquanto ele está em rascunho e a certidão ainda não foi analisada.');
     expect(row).toHaveTextContent('Depois do envio para análise, você não consegue removê-la; a exclusão da sua conta também apaga a certidão.');
   });
