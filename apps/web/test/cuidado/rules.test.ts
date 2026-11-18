@@ -113,6 +113,18 @@ describe('shift period typed in São Paulo time', () => {
     expect(period?.end.toISOString()).toBe('2030-01-16T10:00:00.000Z');
   });
 
+  it('accepts 23h59, the longest shift when times are typed to the minute', () => {
+    const period = toShiftPeriod('2030-01-15', '08:00', '07:59');
+    expect(period?.start.toISOString()).toBe('2030-01-15T11:00:00.000Z');
+    expect(period?.end.toISOString()).toBe('2030-01-16T10:59:00.000Z');
+    expect((period!.end.getTime() - period!.start.getTime()) / 3_600_000).toBeCloseTo(23 + 59 / 60, 10);
+  });
+
+  it('refuses an end equal to the start, which would be a shift of zero or of 24 hours', () => {
+    expect(toShiftPeriod('2030-01-15', '08:00', '08:00')).toBeNull();
+    expect(toShiftPeriod('2030-01-15', '00:00', '00:00')).toBeNull();
+  });
+
   it('rejects missing or malformed values', () => {
     expect(toShiftPeriod('', '08:00', '20:00')).toBeNull();
     expect(toShiftPeriod('2030-01-15', '', '20:00')).toBeNull();

@@ -324,6 +324,34 @@ describe('family screens of the care line', () => {
       });
     });
 
+    it('refuses a shift whose end is equal to its start, and says so in the form', async () => {
+      renderCare('/cuidado/plantoes');
+      const form = await screen.findByRole('form', { name: 'Novo plantão' });
+      await userEvent.type(within(form).getByLabelText('Dia de início'), '2030-01-15');
+      await userEvent.clear(within(form).getByLabelText('Fim'));
+      await userEvent.type(within(form).getByLabelText('Fim'), '08:00');
+      await userEvent.type(within(form).getByLabelText(/Valor do plantão/), '280');
+      await userEvent.click(within(form).getByRole('button', { name: 'Criar plantão' }));
+      expect(await within(form).findByRole('alert')).toHaveTextContent('O fim do plantão não pode ser igual ao início. Informe outro horário de fim.');
+      expect(callsOn('shifts', 'insert')).toHaveLength(0);
+    });
+
+    it('accepts a shift of 23h59 that ends the next day', async () => {
+      renderCare('/cuidado/plantoes');
+      const form = await screen.findByRole('form', { name: 'Novo plantão' });
+      await userEvent.type(within(form).getByLabelText('Dia de início'), '2030-01-15');
+      await userEvent.clear(within(form).getByLabelText('Fim'));
+      await userEvent.type(within(form).getByLabelText('Fim'), '07:59');
+      expect(within(form).getByText(/08:00 às 07:59 do dia seguinte/)).toBeInTheDocument();
+      await userEvent.type(within(form).getByLabelText(/Valor do plantão/), '280');
+      await userEvent.click(within(form).getByRole('button', { name: 'Criar plantão' }));
+      await screen.findByText(/Plantão criado/);
+      expect(callsOn('shifts', 'insert')[0].payload).toMatchObject({
+        period: '[2030-01-15T11:00:00.000Z,2030-01-16T10:59:00.000Z)',
+        rate_cents: 28000,
+      });
+    });
+
     it.each([
       ['without a day', '', '280', /Informe o dia e os horários/],
       ['without a value', '2030-01-15', '', /Informe o valor do plantão em reais/],
