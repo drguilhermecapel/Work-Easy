@@ -572,7 +572,7 @@ Funções e triggers sinalizam regras com `raise exception` e mensagens-código:
 `slug_taken` (endereço da página já usado),
 `checkin_window` (check-in/out fora de ±2 h), `booking_limit` (pedidos de agendamento
 abertos demais, inclusive o ciclo de cancelar e pedir de novo ao mesmo profissional),
-`request_limit` (5 pedidos abertos do cliente), `offer_limit` (ofertas de plantão demais),
+`request_limit` (5 pedidos abertos do cliente), `request_daily_limit` (20 pedidos por dia, provisório), `consent_daily_limit` (20 concessões de consentimento por finalidade e dia, provisório), `offer_limit` (ofertas de plantão demais),
 `offer_declined` (cuidador que recusou o plantão), `shift_too_long` (plantão acima de 60 dias),
 `household_has_shifts` (casa com plantão não pode ser apagada), `client_has_history` (cliente do CRM com
 atendimento ou orçamento), `cpf_cnpj_invalid` (dígito verificador), `data_request_limit` (3 solicitações
