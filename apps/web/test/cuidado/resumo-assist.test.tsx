@@ -127,7 +127,7 @@ describe('/cuidado/relatorios: Resumo da semana', () => {
 
   it.each([
     [503, 'assist_not_configured', 'A IA ainda não está ativada neste ambiente. Leia os relatórios abaixo.'],
-    [429, 'assist_rate_limited', 'Você usou todos os pedidos de IA desta hora. Tente de novo mais tarde. Leia os relatórios abaixo.'],
+    [429, 'assist_rate_limited', 'Você atingiu o limite de pedidos de IA nos últimos 60 minutos. Tente de novo mais tarde. Leia os relatórios abaixo.'],
     [422, 'assist_declined', 'A IA não conseguiu usar este texto. Leia os relatórios abaixo.'],
     [502, 'assist_unavailable', 'A IA não conseguiu responder agora. Leia os relatórios abaixo.'],
     [504, 'assist_timeout', 'A IA demorou para responder. Leia os relatórios abaixo.'],

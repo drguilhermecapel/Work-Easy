@@ -15,7 +15,7 @@ import { centsToInput } from './proFormat';
 // The sentence of each code the assists answer; the screen adds what the person can do instead.
 const ASSIST_MESSAGES: Record<string, string> = {
   assist_not_configured: 'A IA ainda não está ativada neste ambiente.',
-  assist_rate_limited: 'Você usou todos os pedidos de IA desta hora. Tente de novo mais tarde.',
+  assist_rate_limited: 'Você atingiu o limite de pedidos de IA nos últimos 60 minutos. Tente de novo mais tarde.',
   assist_declined: 'A IA não conseguiu usar este texto.',
   assist_unavailable: 'A IA não conseguiu responder agora.',
   assist_busy: 'A IA está ocupada no momento. Tente de novo em instantes.',

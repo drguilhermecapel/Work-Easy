@@ -243,7 +243,7 @@ describe('/pro/orcamentos: Sugerir itens com IA', () => {
 
   it.each([
     [503, 'assist_not_configured', 'A IA ainda não está ativada neste ambiente. Monte os itens manualmente.'],
-    [429, 'assist_rate_limited', 'Você usou todos os pedidos de IA desta hora. Tente de novo mais tarde. Monte os itens manualmente.'],
+    [429, 'assist_rate_limited', 'Você atingiu o limite de pedidos de IA nos últimos 60 minutos. Tente de novo mais tarde. Monte os itens manualmente.'],
     [422, 'assist_declined', 'A IA não conseguiu usar este texto. Monte os itens manualmente.'],
     [502, 'assist_unavailable', 'A IA não conseguiu responder agora. Monte os itens manualmente.'],
     [503, 'assist_busy', 'A IA está ocupada no momento. Tente de novo em instantes. Monte os itens manualmente.'],
