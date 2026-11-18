@@ -8,7 +8,7 @@ const HealthDataNotice: React.FC<{ className?: string; children?: React.ReactNod
     <span>
       <strong>O WorkEasy não pede dados de saúde.</strong>{' '}
       {children ??
-        'O app bloqueia no seu navegador alguns termos de saúde, mas o texto livre não é conferido no servidor. Não escreva doenças, diagnósticos, remédios, doses, exames ou sintomas. Combine esses cuidados direto com o cuidador, fora do app.'}
+        'Campos livres, como notas, humor e observações, podem receber esse tipo de informação. O aviso ao lado do campo não impede o envio. O servidor filtra os relatórios antes de enviá-los ao assistente de IA, mas esse filtro não é garantia. Não escreva doenças, diagnósticos, remédios, doses, exames ou sintomas. Combine esses cuidados direto com o cuidador, fora do app.'}
     </span>
   </p>
 );

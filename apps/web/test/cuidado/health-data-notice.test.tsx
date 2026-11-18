@@ -10,9 +10,20 @@ describe('HealthDataNotice', () => {
     expect(note).not.toHaveTextContent(/não guarda dados de saúde/);
   });
 
-  it('says that the browser blocks some health terms and that free text is not checked on the server', () => {
+  it('says that free fields may receive health data, that the notice does not stop sending, and that the server filter is no guarantee', () => {
     render(<HealthDataNotice />);
-    expect(screen.getByRole('note')).toHaveTextContent(/bloqueia no seu navegador alguns termos de saúde/);
-    expect(screen.getByRole('note')).toHaveTextContent(/o texto livre não é conferido no servidor/);
+    const note = screen.getByRole('note');
+    expect(note).toHaveTextContent(/Campos livres, como notas, humor e observações, podem receber esse tipo de informação\./);
+    expect(note).toHaveTextContent(/O aviso ao lado do campo não impede o envio\./);
+    expect(note).toHaveTextContent(
+      /O servidor filtra os relatórios antes de enviá-los ao assistente de IA, mas esse filtro não é garantia\./,
+    );
+  });
+
+  it('drops the old claims that the free text is not checked on the server and that the app keeps no health data', () => {
+    render(<HealthDataNotice />);
+    const note = screen.getByRole('note');
+    expect(note).not.toHaveTextContent(/não é conferido no servidor/);
+    expect(note).not.toHaveTextContent(/não guarda/);
   });
 });

@@ -537,7 +537,7 @@ Esta tarefa é de texto. As lacunas abaixo estão listadas e não foram corrigid
 ### Conflitos com documentos irmãos e DECISOES.md
 
 - **C1.** `docs/juridico/01-termos-de-uso.md`, 1.2, descreve uma caixa única ("Li e aceito os Termos de Uso e a Política de Privacidade"). Esta lista propõe duas (seções 2, 3.1 e 3.2). Alinhar o 01 se a proposta for adotada.
-- **C2.** `docs/lojas/google-play.md` (linhas 410 e 977) e `docs/juridico/06-ripd-relatorio-de-impacto.md` (linhas 350 e 507, G05) dizem que a tela avisa "O WorkEasy não guarda dados de saúde". O código diz "não pede", e um teste veda "não guarda" (`test/cuidado/health-data-notice.test.tsx`). Corrigir essas referências.
+- **C2.** A tela diz "O WorkEasy não pede dados de saúde" (DD43: nenhum texto afirma que o app não guarda esse dado). O documento 06 já usa "não pede" nos itens 4.2.3 e S18, que o C2 citava. Ainda dizem "O WorkEasy não guarda dados de saúde": `docs/lojas/google-play.md` (linhas 410 e 977), `docs/juridico/01-termos-de-uso.md` (linha 395), `docs/juridico/00-pacote-para-advogado.md` (linha 143) e `docs/operacao/06-manual-do-cuidado.md` (linhas 534 e 594). Corrigir essas referências; um teste veda "não guarda" na tela (`test/cuidado/health-data-notice.test.tsx`).
 - **C3.** `docs/DECISOES.md`, D7, diz "não apaga em cascata"; o schema diz o contrário (Q18).
 - **C4.** `docs/juridico/03-politica-de-privacidade.md`, seções 11.4 e 12, já citam o Sentry e a Anthropic para orçamento e resumo. Esta lista foi alinhada a elas (seção 4.11).
 

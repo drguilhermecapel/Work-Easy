@@ -137,7 +137,7 @@ const CONSENTS: Array<{ purpose: ConsentPurpose; title: string; description: str
     purpose: 'background_check',
     title: 'Consulta de antecedentes',
     description:
-      'Para profissionais cuja ocupação exige certidão de antecedentes criminais no cadastro. A retirada fica registrada, mas não apaga a certidão já enviada nem muda quem pode vê-la. Você remove a certidão no cadastro só enquanto ele está em rascunho e a certidão ainda não foi analisada. Depois do envio para análise, você não consegue removê-la; a exclusão da sua conta também apaga a certidão.',
+      'Para profissionais cuja ocupação exige certidão de antecedentes criminais no cadastro. Ao retirar o consentimento, a certidão já enviada é removida em até 30 dias depois da retirada. A retirada fica registrada e não muda quem pode vê-la até a remoção. Você remove a certidão no cadastro só enquanto ele está em rascunho e a certidão ainda não foi analisada. Depois do envio para análise, você não consegue removê-la; a exclusão da sua conta também apaga a certidão.',
     revocable: true,
   },
   {
@@ -300,8 +300,9 @@ const DeleteSection: React.FC<{ onDeleted: () => void }> = ({ onDeleted }) => {
   return (
     <form onSubmit={run} className="space-y-3">
       <p className="text-sm text-gray-600">
-        Seus dados pessoais são apagados e você sai do app. Pagamentos e atendimentos já realizados continuam registrados de
-        forma anonimizada, sem seu nome e contatos, porque a lei fiscal obriga a guardar esses registros.
+        Seus dados pessoais são apagados e você sai do app. As notas dos plantões das suas casas e os textos do relatório diário
+        (refeições, atividades, humor e observações) também são apagados. Pagamentos e atendimentos já realizados continuam
+        guardados sem identificação, porque a lei fiscal obriga a guardar esses registros.
       </p>
       <div>
         <label htmlFor="conta-excluir" className="block text-sm font-medium text-gray-700 mb-1">
