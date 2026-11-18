@@ -79,15 +79,18 @@ const addDay = (day: string, count: number): string => {
 
 /**
  * Day and times typed by the family (São Paulo time) → the period of the shift.
- * An end that is not after the start means the shift ends the next day (a night shift).
- * Null when a value is missing or malformed.
+ * An end before the start means the shift ends the next day (a night shift); 08:00 to 07:59
+ * is 23h59, the longest shift when times are typed to the minute. An end equal to the start
+ * is refused: a shift lasts more than zero. Null when a value is missing or malformed, or when
+ * the two are equal.
  */
 export const toShiftPeriod = (day: string, start: string, end: string): Period | null => {
   const from = saoPauloDateTime(day, start);
   if (!from) return null;
   let to = saoPauloDateTime(day, end);
   if (!to) return null;
-  if (to.getTime() <= from.getTime()) to = saoPauloDateTime(addDay(day, 1), end);
+  if (to.getTime() === from.getTime()) return null;
+  if (to.getTime() < from.getTime()) to = saoPauloDateTime(addDay(day, 1), end);
   return to ? { start: from, end: to } : null;
 };
 
