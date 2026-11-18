@@ -2,10 +2,10 @@
 // draft { occupation_slug, urgent, summary } with Claude on the server. The
 // occupation is chosen only among catalog candidates and validated again
 // here. Without ANTHROPIC_API_KEY the function answers 503. Every call costs
-// money on the platform's account, so each user gets `hourlyLimit` calls per
-// hour (429 above it). The quota is taken atomically in the database
-// (take_assist_quota: one counter per user and clock hour) before the model is
-// called, so a burst of simultaneous requests cannot pass the limit.
+// money on the platform's account, so each user gets `hourlyLimit` calls in any
+// 60-minute window (429 above it). The quota is taken atomically in the database
+// (take_assist_quota: the calls granted to the user in the last 60 minutes) before
+// the model is called, so a burst of simultaneous requests cannot pass the limit.
 //
 // Off by default: the text leaves the platform for a third-party model, so the
 // function answers 503 feature_disabled until platform_settings holds
@@ -39,8 +39,8 @@ export type ClassifyResult =
 
 export interface AssistUsage {
   /**
-   * Consumes one call of the current hour for `userId` (take_assist_quota). Resolves false,
-   * without consuming anything, when `limit` calls were already made this hour. A database
+   * Consumes one call of the quota of `userId` (take_assist_quota). Resolves false, without
+   * consuming anything, when `limit` calls were already granted in the last 60 minutes. A database
    * failure rejects: the model is never called without a granted quota.
    */
   take(userId: string, limit: number): Promise<boolean>;
@@ -77,7 +77,7 @@ export function handler(req: Request, deps: AssistDeps): Promise<Response> {
     if (deps.hourlyLimit < 1 || !(await deps.usage.take(session.user.id, deps.hourlyLimit))) {
       throw errors.tooMany(
         'assist_rate_limited',
-        'Você atingiu o limite de pedidos organizados pelo assistente nesta hora. Tente de novo mais tarde ou preencha o pedido manualmente.',
+        'Você atingiu o limite de pedidos organizados pelo assistente nos últimos 60 minutos. Tente de novo mais tarde ou preencha o pedido manualmente.',
       );
     }
 

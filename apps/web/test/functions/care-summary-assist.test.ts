@@ -462,7 +462,7 @@ describe('care-summary: the summary', () => {
 });
 
 describe('care-summary: quota', () => {
-  it('limits each user per hour, taking the quota before the model is called', async () => {
+  it('limits each user per 60 minutes, taking the quota before the model is called', async () => {
     const under = summaryDeps(CLEAN, { used: 9, limit: 10 });
     expect((await call(under.deps)).status).toBe(200);
     expect(under.usage.takes).toEqual([{ userId: USER.id, limit: 10 }]);

@@ -24,7 +24,7 @@ interface Over {
   noSession?: boolean;
 }
 
-/** `used` calls were already made this hour; take() is atomic like take_assist_quota. */
+/** `used` calls were already granted in the last 60 minutes; take() is atomic like take_assist_quota. */
 function quoteDeps(result: ModelResult | (() => ModelResult | Promise<ModelResult>) | null, over: Over = {}) {
   const requests: ModelRequest[] = [];
   const audits: AuditEntry[] = [];
@@ -251,7 +251,7 @@ describe('quote-assist: the draft', () => {
 });
 
 describe('quote-assist: quota', () => {
-  it('limits each user per hour, taking the quota before the model is called', async () => {
+  it('limits each user per 60 minutes, taking the quota before the model is called', async () => {
     const under = quoteDeps(CLEAN, { used: 9, limit: 10 });
     expect((await call(under.deps)).status).toBe(200);
     expect(under.usage.takes).toEqual([{ userId: PROVIDER.id, limit: 10 }]);

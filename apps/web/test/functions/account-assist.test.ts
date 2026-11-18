@@ -335,7 +335,7 @@ describe('request-assist', () => {
     { slug: 'diarista', name: 'Diarista', synonyms: ['faxina'] },
   ];
 
-  // `used` calls were already made this hour; take() is atomic like take_assist_quota:
+  // `used` calls were already granted in the last 60 minutes; take() is atomic like take_assist_quota:
   // it grants while used < limit and counts the grant, and refuses without counting.
   // `enabled` is the platform switch (request_assist_enabled); on unless a test turns it off.
   function assistDeps(
@@ -379,7 +379,7 @@ describe('request-assist', () => {
     expect(res.body.error.code).toBe('assist_not_configured');
   });
 
-  it('limits each user per hour, taking the quota before the model is called', async () => {
+  it('limits each user per 60 minutes, taking the quota before the model is called', async () => {
     const ok: ClassifyResult = { kind: 'ok', text: '{"occupation_slug":"encanador","urgent":false,"summary":"Vazamento."}' };
     const under = assistDeps(ok, { used: 9, limit: 10 });
     expect((await read(await assist(post('request-assist', text), under.deps))).status).toBe(200);

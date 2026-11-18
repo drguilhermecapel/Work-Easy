@@ -65,7 +65,7 @@ pages/<área>/...              telas novas por área (pro, cliente, admin, cuida
 | `ANTHROPIC_API_KEY` | Edge Functions | IA opcional (fase 3); ausente = função responde 503 |
 | `CRON_SECRET` | Edge Functions | protege funções chamadas pelo agendador |
 | `PRO_GRACE_DAYS` | Edge Functions | dias que um Pro com cobrança atrasada mantém o plano depois do fim do período pago (padrão 0, máximo 60) |
-| `ASSIST_HOURLY_LIMIT` | Edge Functions | chamadas do assistente por usuário por hora, num contador só para `request-assist`, `quote-assist` e `care-summary` (padrão 10; 0 desliga os três) |
+| `ASSIST_HOURLY_LIMIT` | Edge Functions | chamadas do assistente por usuário em qualquer janela de 60 minutos, num limite só para `request-assist`, `quote-assist` e `care-summary` (padrão 10; 0 desliga os três) |
 | `APP_ENV` | Edge Functions | `production` (padrão quando `SITE_URL` é um endereço público e a variável não existe), ou `development`, `staging`, `test`. Qualquer outro valor conta como produção. Em produção: `ASAAS_BASE_URL` obrigatória, sandbox recusado, localhost fechado no CORS |
 | `ALLOW_DEV_ORIGINS` | Edge Functions | `true` libera `http://localhost:3000` e `http://127.0.0.1:3000` no CORS fora de produção; já vale com o Asaas sandbox; em produção é ignorado |
 
@@ -268,14 +268,18 @@ Colunas listadas sem `created_at timestamptz default now()`, que toda tabela tem
   o plano Pro não tem limite e só chamadas da API (`anon`/`authenticated`, lidas por
   `current_setting('role')` porque o trigger é `security definer`) são limitadas, não a service role.
   Um advisory lock por prestador impede que duas propostas simultâneas passem juntas.
+- `assist_usage_events` (`id` identity, `user_id → profiles on delete cascade`,
+  `used_at timestamptz`): uma linha por chamada concedida do assistente de pedidos; a cota é a
+  contagem das linhas dos últimos 60 minutos. RLS ligada, **sem política e sem grant** para
+  `anon`/`authenticated` (exceção declarada ao "toda tabela tem política" em `12_rls_matrix`);
+  só `take_assist_quota` a toca.
 - `assist_usage` (`user_id → profiles on delete cascade`, `window_start timestamptz`,
-  `count int`, pk (`user_id`, `window_start`)): cota horária do assistente de pedidos.
-  RLS ligada, **sem política e sem grant** para `anon`/`authenticated` (exceção declarada
-  ao "toda tabela tem política" em `12_rls_matrix`); só `take_assist_quota` a toca.
+  `count int`, pk (`user_id`, `window_start`)): contador da cota por hora da versão anterior,
+  sem gravação desde `20261118500001`; mesmas regras de RLS e grant.
 - Funções:
   - `take_assist_quota(p_user uuid, p_limit int) → boolean` (service role): consome 1
-    unidade da hora cheia (UTC) corrente de forma atômica; `false` quando estourou ou
-    `p_limit < 1`. Ver "Assistente (`request-assist`)".
+    chamada da janela deslizante de 60 minutos do usuário, de forma atômica; `false` quando
+    estourou ou `p_limit < 1`. Ver "Assistente (`request-assist`)".
   - `open_requests_for_me()` → pedidos `open` e não vencidos cuja ocupação o prestador
     tem aprovada (registro não `rejected`) e cujo bairro ele atende, sem expor
     telefone/e-mail do cliente. Colunas: `id, occupation_slug, neighborhood_id,
@@ -604,7 +608,7 @@ usuário (exceto webhook e cron), responde JSON `{ ok, data | error }` e grava
 | `notify-dispatch` | agendador (`CRON_SECRET`) | consome `claim_notifications` e envia por WhatsApp Cloud API (template) ou Resend; sem credencial → `skipped` |
 | `account-export` | usuário | devolve JSON com os dados do próprio usuário |
 | `account-delete` | usuário | recusa (409 `active_bookings`) se há atendimento `paid`, `in_progress` ou `disputed`; cancela com aviso à outra parte os atendimentos `accepted` ainda não pagos (`cancel_unpaid_accepted_bookings_for_user`) e os plantões atribuídos ou ofertados (`cancel_shifts_for_user_deletion`; plantão em andamento termina), sem bloquear a exclusão; cancela a assinatura Pro e as cobranças `pending` no Asaas, e abre registro de suporte quando a subconta não tem chave (`open_support_task`); registra `data_requests`, chama `anonymize_user` e apaga o usuário do Auth |
-| `request-assist` | cliente (fase 3) | transforma texto livre em pedido estruturado (ocupação, urgência, resumo) com Claude Haiku 5.5 no servidor; limite por usuário por hora, compartilhado com `quote-assist` e `care-summary` (padrão 10; 429); responde 503 sem `ANTHROPIC_API_KEY`; nenhuma tela chama a função hoje |
+| `request-assist` | cliente (fase 3) | transforma texto livre em pedido estruturado (ocupação, urgência, resumo) com Claude Haiku 5.5 no servidor; limite por usuário em qualquer janela de 60 minutos, compartilhado com `quote-assist` e `care-summary` (padrão 10; 429); responde 503 sem `ANTHROPIC_API_KEY`; nenhuma tela chama a função hoje |
 
 Asaas: autenticação pelo cabeçalho `access_token`; valores em reais com duas
 casas (converter de centavos); conferir a documentação oficial
@@ -797,18 +801,20 @@ banco. Mudou aqui, muda `supabase/functions` no mesmo commit.
   baixo, `max_tokens` 700, saída estruturada (`output_config.format`). O Haiku
   5.5 não tem fallback de recusa no servidor: recusa vira "preencha
   manualmente" (422).
-- Limite de `ASSIST_HOURLY_LIMIT` chamadas por usuário por hora, somadas entre os três assistentes
-  (padrão 10; 429
-  `assist_rate_limited`; limite 0 desliga o assistente sem consultar o banco). A cota é
-  consumida **antes** da chamada ao modelo por `take_assist_quota(p_user uuid, p_limit int)
-  returns boolean` (`04_marketplace.sql`, só `service_role`, `security definer`,
-  `search_path` vazio): um único `insert ... on conflict do update ... where count < limit`
-  na tabela `assist_usage` (`user_id`, `window_start`, `count`, pk composta; RLS ligada e
-  nenhuma política nem grant para usuários). Devolve `true` e soma 1, ou `false` sem
-  consumir nada quando a hora esgotou; por ser atômico, uma rajada simultânea não passa do
-  limite. A janela é a hora cheia em UTC (não uma janela deslizante de 60 minutos).
-  Falha do banco ao consumir a cota vira erro 500 e o modelo não é chamado. As linhas
-  de `assist_usage` com mais de 1 dia são apagadas por `workeasy-expire-stale`.
+- Limite de `ASSIST_HOURLY_LIMIT` chamadas por usuário em qualquer janela de 60 minutos, somadas
+  entre os três assistentes (padrão 10; 429 `assist_rate_limited`; limite 0 desliga o assistente
+  sem consultar o banco). A cota é consumida **antes** da chamada ao modelo por
+  `take_assist_quota(p_user uuid, p_limit int) returns boolean` (migração
+  `20261118500001_assist_quota_sliding_window.sql`, só `service_role`, `security definer`,
+  `search_path` vazio): sob uma trava por usuário, conta as chamadas concedidas nos últimos 60
+  minutos na tabela `assist_usage_events` (`user_id`, `used_at`; RLS ligada e nenhuma política nem
+  grant para usuários) e grava uma nova só quando a contagem está abaixo do limite. Devolve `true`,
+  ou `false` sem gravar nada quando a janela esgotou; por causa da trava, uma rajada simultânea não
+  passa do limite. A janela é deslizante: cada chamada sai da conta 60 minutos depois de concedida.
+  A mesma função apaga as chamadas do próprio usuário com mais de 2 horas.
+  Falha do banco ao consumir a cota vira erro 500 e o modelo não é chamado. A tabela
+  `assist_usage` (contador por hora da versão anterior) não é mais gravada; as linhas com mais de
+  1 dia são apagadas por `workeasy-expire-stale`.
 - O catálogo é lido em páginas de 1000 linhas (`max_rows` do PostgREST), até
   20 000 linhas.
 

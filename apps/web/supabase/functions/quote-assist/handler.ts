@@ -3,8 +3,8 @@
 // edits everything in the quote form. The model never sets a price: a unit price comes back
 // only when the provider passed reference prices and the item points to one of them. Without
 // ANTHROPIC_API_KEY the function answers 503. Every call costs money on the platform's account,
-// so each user gets `hourlyLimit` assist calls per hour (429 above it), taken atomically in the
-// database (take_assist_quota) before the model is called.
+// so each user gets `hourlyLimit` assist calls in any 60-minute window (429 above it), taken
+// atomically in the database (take_assist_quota) before the model is called.
 
 import { AiOutputError, findInstruction } from '../_shared/ai-guard.ts';
 import { aiErrors, type AiUsage, type ModelRequest, type ModelResult, takeQuota } from '../_shared/ai-model.ts';
@@ -33,7 +33,7 @@ export interface QuoteAssistDeps extends BaseDeps {
 
 const MESSAGES = {
   notConfigured: 'O assistente de orçamentos depende de configuração no servidor (ANTHROPIC_API_KEY).',
-  rateLimited: 'Você atingiu o limite de sugestões de IA nesta hora. Tente de novo mais tarde ou monte os itens manualmente.',
+  rateLimited: 'Você atingiu o limite de sugestões de IA nos últimos 60 minutos. Tente de novo mais tarde ou monte os itens manualmente.',
   declined: 'A IA não conseguiu sugerir itens para este texto. Monte os itens manualmente.',
   incomplete: 'A IA não concluiu a resposta. Monte os itens manualmente.',
   invalid: 'A IA devolveu uma resposta que não pôde ser usada. Monte os itens manualmente.',

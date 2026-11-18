@@ -22,10 +22,13 @@ select throws_ok(format($$insert into public.assist_usage_events (user_id) value
 select tests.clear_authentication();
 
 -- ---------------------------------------------------------------- the window
--- Two calls, 59 and 1 minute ago, fill a limit of 2. The first one is in the previous clock hour for every
--- minute of the hour except the last, which is the case the hour counter got wrong.
+-- Two calls fill a limit of 2: one 1 minute ago, and one in the previous clock hour that is still inside the
+-- window, whatever the minute. With t = minute * 60 + second of now(), the window is (now - 3600 s, now] and
+-- the previous hour ends at now - t s, so the overlap is (now - 3600 s, now - t s). Its midpoint,
+-- now - (3600 + t) / 2 s, is inside it for every t < 3600.
 insert into public.assist_usage_events (user_id, used_at) values
-  (tests.uid('provider_a'), now() - interval '59 minutes'),
+  (tests.uid('provider_a'),
+   now() - make_interval(secs => ((3600 + extract(minute from now()) * 60 + extract(second from now())) / 2)::float8)),
   (tests.uid('provider_a'), now() - interval '1 minute');
 select tests.authenticate_service();
 select is(public.take_assist_quota(tests.uid('provider_a'), 2), false,
