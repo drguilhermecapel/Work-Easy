@@ -90,12 +90,19 @@ function upload(fields: Record<string, string | Blob>): Request {
   return new Request(ENDPOINT, { method: 'POST', body: form, headers: { Authorization: 'Bearer test-token' } });
 }
 
-const photo = (bytes: Uint8Array, type: string, name = 'cpf.jpg') => new File([bytes], name, { type });
+const photo = (bytes: Uint8Array<ArrayBuffer>, type: string, name = 'cpf.jpg') => new File([bytes], name, { type });
+
+/** The envelope of the function: `data` on success, `error` on refusal. */
+interface Answer {
+  ok: boolean;
+  data: Record<string, unknown>;
+  error: { code: string; message: string };
+}
 
 async function call(request: Request, options: FakeOptions = {}) {
   const fake = fakeDeps(options);
   const response = await handler(request, fake.deps);
-  return { response, body: (await response.json()) as Record<string, any>, ...fake };
+  return { response, body: (await response.json()) as Answer, ...fake };
 }
 
 describe('provider-document-upload: who may send', () => {
