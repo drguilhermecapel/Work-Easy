@@ -4,6 +4,8 @@ import userEvent from '@testing-library/user-event';
 import {
   NEIGHBORHOODS,
   baseTables,
+  functionData,
+  functionError,
   isEq,
   occupationRow,
   ok,
@@ -12,6 +14,7 @@ import {
   ruleError,
   signInProvider,
   type ProFake,
+  type Result,
   type TableCall,
 } from './fake';
 
@@ -47,8 +50,30 @@ let provider: ReturnType<typeof providerRow> | null;
 let occupations: ReturnType<typeof occupationRow>[];
 let documents: Array<Record<string, unknown>>;
 let selected: string[];
+/** Forms the page sent to the upload function, in order. */
+let uploads: FormData[];
 
 const pdf = (name = 'documento.pdf') => new File(['%PDF-1.4 teste'], name, { type: 'application/pdf' });
+
+const UPLOAD = 'provider-document-upload';
+
+/** The upload function stores what it receives and records it, as the server does: the list then shows it. */
+const storeLikeFunction = (body: unknown): Result => {
+  const form = body as FormData;
+  uploads.push(form);
+  const step = String(form.get('step'));
+  const row = {
+    id: `doc-${documents.length + 1}`,
+    step,
+    storage_path: `prov-1/${step}-stored`,
+    status: 'submitted',
+    rejection_reason: null,
+    expires_at: null,
+    created_at: '2026-10-22T12:00:00Z',
+  };
+  documents = [row, ...documents];
+  return functionData(row);
+};
 
 beforeEach(() => {
   fake.reset();
@@ -57,6 +82,8 @@ beforeEach(() => {
   occupations = [];
   documents = [];
   selected = [];
+  uploads = [];
+  fake.functionsHandlers[UPLOAD] = storeLikeFunction;
   fake.tables = {
     ...baseTables({ provider: null }),
     providers: (call: TableCall) => {
@@ -235,7 +262,7 @@ describe('/pro/cadastro: steps of a draft provider', () => {
     expect(screen.getByRole('checkbox', { name: /Lapa/ })).not.toBeChecked();
   });
 
-  it('asks for the documents the policy requires, uploads to the private bucket and records them', async () => {
+  it('asks for the documents the policy requires, sends them to the upload function and lists them', async () => {
     draft();
     const user = userEvent.setup();
     renderPro('/pro/cadastro');
@@ -250,12 +277,10 @@ describe('/pro/cadastro: steps of a draft provider', () => {
 
     await user.upload(screen.getByLabelText(/Enviar arquivo.*Documento com foto e selfie/), pdf());
 
-    await waitFor(() => expect(fake.uploads).toHaveLength(1));
-    expect(fake.uploads[0].bucket).toBe('provider-documents');
-    expect(fake.uploads[0].path).toMatch(/^prov-1\/documento_selfie-[a-z0-9]+-[a-z0-9]+\.pdf$/);
-    expect(fake.uploads[0].options).toMatchObject({ contentType: 'application/pdf', upsert: false });
-    const insert = fake.tableCalls.find(call => call.table === 'provider_documents' && call.op === 'insert');
-    expect(insert?.payload).toEqual({ provider_id: 'prov-1', step: 'documento_selfie', storage_path: fake.uploads[0].path });
+    await waitFor(() => expect(uploads).toHaveLength(1));
+    expect(uploads[0].get('step')).toBe('documento_selfie');
+    expect((uploads[0].get('file') as File).type).toBe('application/pdf');
+    expect(fake.tableCalls.filter(call => call.table === 'provider_documents' && call.op === 'insert')).toEqual([]);
 
     expect(await screen.findByText('Enviado, aguardando análise', { selector: 'span.inline-block' })).toBeInTheDocument();
     expect(screen.getAllByText('Não enviado')).toHaveLength(2);
@@ -277,13 +302,13 @@ describe('/pro/cadastro: steps of a draft provider', () => {
 
     await user.click(await screen.findByRole('button', { name: /Fotografar.*CPF ou CNPJ/ }));
 
-    await waitFor(() => expect(fake.uploads).toHaveLength(1));
+    await waitFor(() => expect(uploads).toHaveLength(1));
     expect(seen).toHaveLength(1);
     expect(seen[0].capture).toBe('environment');
     expect(seen[0].accept).toContain('image/jpeg');
     expect(seen[0].accept).not.toContain('pdf');
-    expect(fake.uploads[0].path).toMatch(/^prov-1\/cadastro_fiscal-[a-z0-9]+-[a-z0-9]+\.jpg$/);
-    expect(fake.uploads[0].options).toMatchObject({ contentType: 'image/jpeg', upsert: false });
+    expect(uploads[0].get('step')).toBe('cadastro_fiscal');
+    expect((uploads[0].get('file') as File).type).toBe('image/jpeg');
   });
 
   it('refuses a file of the wrong type or size before sending it', async () => {
@@ -299,18 +324,18 @@ describe('/pro/cadastro: steps of a draft provider', () => {
     Object.defineProperty(big, 'size', { value: 11 * 1024 * 1024 });
     await user.upload(input, big);
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('O arquivo precisa ter até 10 MB.'));
-    expect(fake.uploads).toEqual([]);
+    expect(uploads).toEqual([]);
   });
 
-  it('removes the file again when recording the document fails', async () => {
+  it('shows the sentence the upload function answers when it cannot record the document', async () => {
     draft();
-    const base = fake.tables.provider_documents;
-    fake.tables.provider_documents = (call: TableCall) => (call.op === 'insert' ? { data: null, error: { code: '42501', message: 'rls' } } : base(call));
+    const sentence = 'Não foi possível registrar o documento. Tente de novo.';
+    fake.functionsHandlers[UPLOAD] = () => functionError(502, 'upstream_error', sentence);
     const user = userEvent.setup();
     renderPro('/pro/cadastro');
     await user.upload(await screen.findByLabelText(/Enviar arquivo.*CPF ou CNPJ/), pdf());
-    expect(await screen.findByRole('alert')).toHaveTextContent('Você não tem permissão');
-    expect(fake.removed).toEqual([{ bucket: 'provider-documents', paths: [fake.uploads[0].path] }]);
+    expect(await screen.findByRole('alert')).toHaveTextContent(sentence);
+    expect(documents).toEqual([]);
   });
 
   it('shows a rejected document with the reason and lets the provider send another', async () => {
@@ -389,7 +414,7 @@ describe('/pro/cadastro: steps of a draft provider', () => {
     expect(input).toBeEnabled();
     await user.upload(input, pdf('certidao.pdf'));
 
-    await waitFor(() => expect(fake.uploads).toHaveLength(1));
+    await waitFor(() => expect(uploads).toHaveLength(1));
     const consent = fake.tableCalls.find(call => call.table === 'consents' && call.op === 'insert');
     // user_id and at belong to the server: the insert grant is by column
     expect(consent?.payload).toMatchObject({ purpose: 'background_check', granted: true });
