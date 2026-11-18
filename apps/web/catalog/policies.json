@@ -47045,12 +47045,9 @@
    "empresa_cliente",
    "externo"
   ],
-  "notes": "Contrato de engenharia ou arquitetura sujeito a ART (Lei 6.496/1977, art. 1º). Trabalho privativo ou compartilhado de arquitetura: RRT (Lei 12.378/2010, art. 45). Carga da laje e impermeabilização: sem norma lida.",
+  "notes": "Exige avaliação de carga da laje e impermeabilização por engenheiro ou arquiteto com ART ou RRT; instalação sem projeto pode causar infiltração e risco estrutural.",
   "confidence": "a_confirmar",
-  "sources": [
-   "https://www2.camara.gov.br/legin/fed/lei/1970-1979/lei-6496-7-dezembro-1977-366461-publicacaooriginal-1-pl.html",
-   "https://www2.camara.gov.br/legin/fed/lei/2010/lei-12378-31-dezembro-2010-609912-publicacaooriginal-131243-pl.html"
-  ]
+  "sources": []
  },
  "horta-domestica-e-agricultura-urbana": {
   "regulated": false,
@@ -47142,11 +47139,9 @@
    "empresa_cliente",
    "externo"
   ],
-  "notes": "Manejo de plantas; agrotóxico exige registro prévio (Lei 7.802/1989, art. 3º) e venda por receituário prescrito por profissional habilitado (art. 13). Controle de pragas urbanas (cupim, formiga) só por empresa licenciada: sem conferência.",
+  "notes": "Manejo de plantas; agrotóxico exige produto registrado e receituário agronômico (Lei 7.802/1989). Controle de pragas urbanas (cupim, formiga) é só de empresa licenciada.",
   "confidence": "a_confirmar",
-  "sources": [
-   "https://legis.senado.leg.br/norma/549678/publicacao/15766306"
-  ]
+  "sources": []
  },
  "grama-sintetica": {
   "regulated": false,
@@ -50831,11 +50826,9 @@
    "estabelecimento",
    "empresa_cliente"
   ],
-  "notes": "Usinagem sob desenho ou amostra (torno, fresa, CNC), orçada por peça, hora ou lote. Conselho profissional: não localizado. Vício de qualidade: a oficina responde (CDC, art. 18). Conformidade ao projeto: regra contratual, não lida.",
+  "notes": "Usinagem sob desenho ou amostra (torno, fresa e CNC), orçada por peça, hora ou lote. Sem registro profissional; a oficina responde pela conformidade das peças ao projeto.",
   "confidence": "a_confirmar",
-  "sources": [
-   "https://www2.camara.leg.br/legin/fed/lei/1990/lei-8078-11-setembro-1990-365086-publicacaooriginal-1-pl.html"
-  ]
+  "sources": []
  },
  "galvanizador": {
   "regulated": true,
@@ -51754,7 +51747,7 @@
    "empresa_cliente"
   ],
   "notes": "Vasos de pressão (P.V > 8) e vapor: NR-13, 13.2.1, b e q. Espaço confinado: NR-33, 33.2.2. Queda > 2 m: NR-35, 35.2.1. Projetos: ART (Lei 6.496/1977, art. 1º); TRT se compartilhada (Lei 13.639/2018, art. 16). Soldador: sem conferência.",
-  "confidence": "conferido",
+  "confidence": "a_confirmar",
   "sources": [
    "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-13-atualizada-2023-b.pdf",
    "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-33-atualizada-2022-_retificada.pdf",
