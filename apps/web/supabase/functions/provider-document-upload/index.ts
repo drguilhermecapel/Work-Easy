@@ -15,10 +15,16 @@ const deps: UploadDeps = {
     if (!caller) return null;
     return {
       user: caller.user,
-      async hasProviderAccount() {
-        // The caller's own providers row, read with its JWT (RLS: own row only)
-        const row = must(await caller.db.from('providers').select('id').eq('id', caller.user.id).maybeSingle());
-        return row !== null;
+      async providerAccount() {
+        // The caller's own rows, read with its JWT (RLS: own rows only)
+        const provider = must(await caller.db.from('providers').select('id').eq('id', caller.user.id).maybeSingle());
+        const profile = must(await caller.db.from('profiles').select('deleted_at').eq('id', caller.user.id).maybeSingle()) as
+          | { deleted_at: string | null }
+          | null;
+        return {
+          hasProviderRow: provider !== null,
+          profile: profile === null ? null : { deletedAt: profile.deleted_at },
+        };
       },
     };
   },
