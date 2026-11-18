@@ -276,9 +276,14 @@ export const careRpcs = (world: CareWorld): FakeSupabase['rpcs'] => {
               status: shift.status,
               offer_status: offer?.status ?? null,
               caregiver_payout_cents: shift.caregiver_payout_cents,
-              notes: shift.notes,
-              neighborhood_name: world.neighborhoods.find(n => n.id === home?.neighborhood_id)?.name ?? null,
-              recipient_first_name: person?.first_name ?? null,
+              // A canceled shift keeps its period and status as history; the notes, the neighborhood and the
+              // first name of the person cared for are withheld (migration 20261118600005).
+              notes: shift.status === 'canceled' ? null : shift.notes,
+              neighborhood_name:
+                shift.status === 'canceled'
+                  ? null
+                  : world.neighborhoods.find(n => n.id === home?.neighborhood_id)?.name ?? null,
+              recipient_first_name: shift.status === 'canceled' ? null : person?.first_name ?? null,
             };
           })
           .filter(Boolean),

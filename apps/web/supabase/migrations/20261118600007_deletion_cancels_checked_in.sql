@@ -8,10 +8,11 @@
 -- were. The shift kept checked_in, and the foreign key cleared its caregiver when the caregiver's account was
 -- deleted: the family was left with a shift that had no caregiver and no notice.
 --
--- Now a shift in progress of the deleted caregiver is canceled whatever its period, because its check-out cannot
--- happen once the caregiver's account is gone. The counterparts are told through the same path as every other
--- cancellation in this function (private.notify with shift_canceled_by_deletion); the deleted account is never told.
--- A completed shift is history and stays as it is.
+-- Now a shift in progress of the deleted caregiver is canceled while it has not ended (upper(period) > now()),
+-- because its check-out cannot happen once the caregiver's account is gone. The counterparts are told through the
+-- same path as every other cancellation in this function (private.notify with shift_canceled_by_deletion); the
+-- deleted account is never told. A shift whose period has already ended is history: it is not canceled and gets
+-- no cancellation notice, which would describe care that already took place as canceled.
 --
 -- Not changed here: a shift in progress when the family's account is deleted. Only the caregiver's deletion is decided.
 --
@@ -42,7 +43,7 @@ begin
       join public.households h on h.id = s.household_id
      where ((s.status in ('open', 'offered', 'assigned') and lower(s.period) > now()
              and (s.provider_id = p_user or h.owner_id = p_user))
-            or (s.status = 'checked_in' and s.provider_id = p_user))
+            or (s.status = 'checked_in' and s.provider_id = p_user and upper(s.period) > now()))
      order by lower(s.period)
        for update of s
   loop

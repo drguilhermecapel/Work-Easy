@@ -1,9 +1,10 @@
 -- Account deletion, care shifts in progress (migration 20261118600007). When a caregiver's account is deleted, a shift
--- in progress (checked_in) is canceled, whether it has started or starts later (a caregiver checks in up to 2 hours
--- early). Its family is told through the same notice as the other cancellations (shift_canceled_by_deletion), and the
--- deleted account is not told. A completed shift does not change. Only the service role can run the function.
+-- in progress (checked_in) that has not ended is canceled, whether it has started or starts later (a caregiver checks
+-- in up to 2 hours early). Its family is told through the same notice as the other cancellations
+-- (shift_canceled_by_deletion), and the deleted account is not told. A completed shift, or a checked-in shift whose
+-- period has already ended, is history and does not change or get a notice. Only the service role can run the function.
 begin;
-select plan(15);
+select plan(17);
 select has_function('tests', 'setup_fixture', 'test helpers are installed (run 00_helpers first)');
 select tests.setup_fixture();
 
@@ -28,6 +29,11 @@ insert into public.shifts (id, household_id, period, rate_cents, status, provide
   (md5('ci-early-e')::uuid, (select id from ids where name = 'house_b'),
      tstzrange(now() + interval '1 hour', now() + interval '5 hours'), 100, 'checked_in', tests.uid('provider_e'));
 
+-- A checked-in shift whose period has already ended is history: check-out was not recorded, but the care took place.
+insert into public.shifts (id, household_id, period, rate_cents, status, provider_id) values
+  (md5('ci-ended-c')::uuid, (select id from ids where name = 'house_a'),
+     tstzrange(now() - interval '5 hours', now() - interval '1 hour'), 100, 'checked_in', tests.uid('provider_c'));
+
 -- ================================================================ caregiver C leaves, a shift in progress has started
 select tests.authenticate_service();
 select is(public.cancel_shifts_for_user_deletion(tests.uid('provider_c')), 2,
@@ -40,6 +46,11 @@ select is((select status::text from public.shifts where id = md5('assigned-c')::
           'the future assigned shift of the caregiver is canceled');
 select is((select status::text from public.shifts where id = md5('done-c')::uuid), 'completed',
           'a completed shift is history and does not change');
+select is((select status::text from public.shifts where id = md5('ci-ended-c')::uuid), 'checked_in',
+          'a checked-in shift whose period has ended is history and does not change');
+select is((select count(*)::int from public.notifications
+            where params ->> 'shift_id' = (md5('ci-ended-c')::uuid)::text), 0,
+          'a checked-in shift whose period has ended produces no notice');
 select is((select provider_id from public.shifts where id = md5('ci-started-c')::uuid), tests.uid('provider_c'),
           'the canceled shift in progress keeps the caregiver who checked in');
 select is((select count(*)::int from public.audit_log
