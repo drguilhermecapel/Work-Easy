@@ -79,10 +79,11 @@ const payloadTooLarge = () => new HttpError(413, 'payload_too_large', 'O corpo d
  * A declared Content-Length is checked before reading. The bytes are also
  * counted as they arrive, so a streamed body without a length is cut off too.
  */
-async function readBodyText(req: Request, limit: number): Promise<string> {
+/** Reads the whole body as bytes; more than `limit` bytes is refused with 413 (see readBodyText). */
+export async function readBodyBytes(req: Request, limit: number): Promise<Uint8Array<ArrayBuffer>> {
   const declared = req.headers.get('content-length');
   if (declared !== null && Number(declared) > limit) throw payloadTooLarge();
-  if (!req.body) return '';
+  if (!req.body) return new Uint8Array(0);
   const reader = req.body.getReader();
   const chunks: Uint8Array[] = [];
   let received = 0;
@@ -96,13 +97,17 @@ async function readBodyText(req: Request, limit: number): Promise<string> {
     }
     chunks.push(next.value);
   }
-  const bytes = new Uint8Array(received);
+  const bytes = new Uint8Array(new ArrayBuffer(received));
   let offset = 0;
   for (const chunk of chunks) {
     bytes.set(chunk, offset);
     offset += chunk.byteLength;
   }
-  return new TextDecoder().decode(bytes);
+  return bytes;
+}
+
+async function readBodyText(req: Request, limit: number): Promise<string> {
+  return new TextDecoder().decode(await readBodyBytes(req, limit));
 }
 
 export async function readJson(req: Request, limit = JSON_BODY_LIMIT): Promise<unknown> {

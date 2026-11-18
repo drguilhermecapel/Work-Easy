@@ -1,6 +1,6 @@
 import { loadPolicies } from '../catalog';
 import type { OccupationPolicy, PriceUnit, VerificationStep } from '../catalog/types';
-import { AppError } from '../lib/errors';
+import { AppError, toAppErrorAsync } from '../lib/errors';
 import { stripImageMetadata } from '../lib/imageMetadata';
 import type { Tables } from '../lib/database.types';
 import { db, unwrap, unwrapMaybe } from './client';
@@ -248,68 +248,64 @@ export const listMyDocuments = (providerId: string): Promise<ProviderDocumentRow
     ).filter(hasFile),
   );
 
-const randomPart = (): string => globalThis.crypto?.randomUUID?.().slice(0, 8) ?? Math.random().toString(36).slice(2, 10);
-
 const TOO_LARGE = 'O arquivo precisa ter até 10 MB.';
 
-/** Files a provider keeps in the bucket, reviewed or not (private.provider_document_slot_free). */
-const DOCUMENT_LIMIT = 60;
-const DOCUMENT_LIMIT_MESSAGE =
-  `Você já enviou o máximo de ${DOCUMENT_LIMIT} documentos. Enquanto o cadastro estiver em rascunho, ` +
-  'remova os que ainda não foram analisados antes de enviar outro.';
+/** The Edge Function that stores a document: it removes the metadata left, enforces the limit and writes the bucket. */
+const DOCUMENT_UPLOAD_FUNCTION = 'provider-document-upload';
 
-/**
- * The database refuses an upload over the limit with the row policy (HTTP 403), the same answer as a
- * refused permission. The folder is counted again: when it is full, the answer is the limit; otherwise
- * the refusal stays as it is.
- */
-const refusedUpload = async (error: unknown, providerId: string): Promise<unknown> => {
-  const refusal = error as { status?: unknown; message?: unknown } | null;
-  const denied = refusal?.status === 403 || (typeof refusal?.message === 'string' && /row-level security/i.test(refusal.message));
-  if (!denied) return error;
+interface DocumentUploadAnswer {
+  ok: boolean;
+  data?: ProviderDocumentRow;
+}
+
+/** The sentence the function sent with a refusal (its error body), or null when there is none. */
+const refusalSentence = async (error: unknown): Promise<string | null> => {
+  const context = (error as { context?: unknown } | null)?.context;
+  if (!context || typeof (context as Response).clone !== 'function') return null;
   try {
-    const { data } = await db().storage.from(DOCUMENT_BUCKET).list(providerId, { limit: DOCUMENT_LIMIT });
-    return (data?.length ?? 0) >= DOCUMENT_LIMIT ? new AppError('invalid_input', { message: DOCUMENT_LIMIT_MESSAGE }) : error;
+    const body = (await (context as Response).clone().json()) as { error?: { message?: unknown } } | null;
+    const message = body?.error?.message;
+    return typeof message === 'string' && message.trim() ? message : null;
   } catch {
-    return error;
+    return null;
   }
 };
 
 /**
- * Sends the file to the private bucket (provider-documents/<provider_id>/...) and
- * records it for the review. A failed record removes the file again.
- *
- * The app re-encodes a photo in the browser before sending it, which is meant to drop
- * its metadata (GPS position, device model), and refuses a photo that is still over
- * the limit. A PDF is sent as it is. The server does not inspect the file contents, so
- * a direct upload through the storage API is not covered by this step. That is a
- * known residual risk.
+ * A refused upload. The function's own sentence is shown when it sent one, because the code alone
+ * (for example a full folder or a file it cannot read) does not say what the provider should do.
  */
-export const uploadProviderDocument = (input: { providerId: string; step: VerificationStep; file: File }): Promise<ProviderDocumentRow> =>
+const uploadRefusal = async (error: unknown): Promise<AppError> => {
+  const app = await toAppErrorAsync(error);
+  const message = await refusalSentence(error);
+  return message ? new AppError(app.code, { cause: error, detail: app.detail, message }) : app;
+};
+
+/**
+ * Sends the file to the provider-document-upload Edge Function, which stores it in the private bucket
+ * under the provider's folder and records it for the review. The browser removes the photo's metadata
+ * first (stripImageMetadata); the function removes what is left, because a file can reach it without
+ * the browser. A PDF is sent as it is. A refusal from the function is shown with its own sentence.
+ */
+export const uploadProviderDocument = (input: { step: VerificationStep; file: File }): Promise<ProviderDocumentRow> =>
   guard(async () => {
-    const { providerId, step, file } = input;
+    const { step, file } = input;
     if (!DOCUMENT_TYPES[file.type]) {
       throw new AppError('invalid_input', { message: 'Envie uma foto (JPG, PNG, WebP ou HEIC) ou um PDF.' });
     }
     if (file.size === 0 || file.size > DOCUMENT_MAX_BYTES) throw new AppError('invalid_input', { message: TOO_LARGE });
-    // Prepared in the browser before sending. Direct storage API uploads bypass this (known residual risk).
     // undefined selects the browser codec; the limit lets lossy output shrink until it fits.
     const prepared = await stripImageMetadata(file, undefined, DOCUMENT_MAX_BYTES);
     // The stripper already keeps the copy within the limit; this check is a guard.
     if (prepared.size > DOCUMENT_MAX_BYTES) throw new AppError('invalid_input', { message: TOO_LARGE });
-    const extension = DOCUMENT_TYPES[prepared.type];
-    const path = `${providerId}/${step}-${Date.now().toString(36)}-${randomPart()}.${extension}`;
-    const bucket = db().storage.from(DOCUMENT_BUCKET);
-    const { error: uploadError } = await bucket.upload(path, prepared, { contentType: prepared.type, upsert: false });
-    if (uploadError) throw await refusedUpload(uploadError, providerId);
-    try {
-      return unwrap<ProviderDocumentRow>(
-        await db().from('provider_documents').insert({ provider_id: providerId, step, storage_path: path }).select(DOCUMENT_COLUMNS).single(),
-      );
-    } catch (err) {
-      await bucket.remove([path]).catch(() => undefined);
-      throw err;
-    }
+
+    const form = new FormData();
+    form.append('step', step);
+    form.append('file', prepared, prepared.name);
+    const { data, error } = await db().functions.invoke<DocumentUploadAnswer>(DOCUMENT_UPLOAD_FUNCTION, { body: form });
+    if (error) throw await uploadRefusal(error);
+    if (!data?.ok || !data.data) throw new AppError('server_error');
+    return data.data;
   });
 
 /** Removes a document that no one has reviewed yet (the database refuses the others). */

@@ -1,14 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ImageCodec } from '../../lib/imageMetadata';
-import type { ProFake } from './fake';
+import { functionData, functionError, type ProFake } from './fake';
 
-// The upload must call the metadata helper before the bucket receives anything.
+// The upload must call the metadata helper before the upload function receives anything.
 // The real helper runs, with a fake codec in place of the canvas jsdom does not have.
 // `oversize` makes the fake output too large: 'first' only at the top quality (a lower one fits), 'all' at every quality.
-const { calls, limits, state } = vi.hoisted(() => ({
+const { calls, limits, state, received } = vi.hoisted(() => ({
   calls: [] as string[],
   limits: [] as Array<number | undefined>,
   state: { refuse: false, oversize: 'none' as 'none' | 'first' | 'all' },
+  received: [] as FormData[],
 }));
 
 vi.mock('../../lib/supabase', async () => {
@@ -45,17 +46,24 @@ const { supabase } = await import('../../lib/supabase');
 const { DOCUMENT_MAX_BYTES, uploadProviderDocument } = await import('../../services/providers');
 const fake = supabase as unknown as ProFake;
 
-// Records the moment the bucket receives a file
-const storageFrom = fake.storage.from;
-fake.storage.from = bucket => {
-  const target = storageFrom(bucket);
-  return {
-    ...target,
-    upload: async (path, file, options) => {
-      calls.push('upload');
-      return target.upload(path, file, options);
-    },
-  };
+const UPLOAD = 'provider-document-upload';
+
+/** The function answers with the row it stored, as the list of documents reads it. */
+const storedRow = {
+  id: 'doc-1',
+  step: 'cadastro_fiscal',
+  storage_path: 'prov-1/cadastro_fiscal-x.jpg',
+  status: 'submitted',
+  rejection_reason: null,
+  expires_at: null,
+  created_at: '2026-11-18T12:00:00Z',
+};
+
+// Records the moment the upload function receives the file. The browser no longer writes the bucket.
+const receive = (body: unknown) => {
+  calls.push('invoke');
+  received.push(body as FormData);
+  return functionData(storedRow);
 };
 
 // Real JPEG and HEIC signatures: the helper reads the type from the first bytes
@@ -63,28 +71,31 @@ const JPEG_BYTES = Uint8Array.from([0xff, 0xd8, 0xff, 0xe1, ...new TextEncoder()
 const HEIC_BYTES = Uint8Array.from([0, 0, 0, 0x18, ...new TextEncoder().encode('ftypheicmif1heic')]);
 const PHOTO = new File([JPEG_BYTES], 'cpf.jpg', { type: 'image/jpeg' });
 
-const upload = (file: File) => uploadProviderDocument({ providerId: 'prov-1', step: 'cadastro_fiscal', file });
+const upload = (file: File) => uploadProviderDocument({ step: 'cadastro_fiscal', file });
+const sentFile = (): File => received[0].get('file') as File;
 
 describe('uploadProviderDocument and photo metadata', () => {
   beforeEach(() => {
     calls.length = 0;
     limits.length = 0;
+    received.length = 0;
     state.refuse = false;
     state.oversize = 'none';
     fake.reset();
-    fake.tables.provider_documents = call => ({ data: { id: 'doc-1', ...(call.payload as object) }, error: null });
+    fake.functionsHandlers[UPLOAD] = receive;
   });
 
-  it('strips the photo before the bucket receives it', async () => {
+  it('strips the photo before the upload function receives it', async () => {
     await upload(PHOTO);
 
-    expect(calls).toEqual(['strip', 'upload']);
-    expect(fake.uploads).toHaveLength(1);
-    const stored = fake.uploads[0];
-    expect(stored.file).not.toBe(PHOTO);
-    expect(await (stored.file as Blob).text()).toBe('sem metadados');
-    expect(stored.options).toMatchObject({ contentType: 'image/jpeg', upsert: false });
-    expect(fake.tableCalls.find(call => call.op === 'insert')?.payload).toMatchObject({ storage_path: stored.path });
+    expect(calls).toEqual(['strip', 'invoke']);
+    expect(received).toHaveLength(1);
+    expect(received[0].get('step')).toBe('cadastro_fiscal');
+    expect(sentFile().name).toBe('cpf.jpg');
+    expect(sentFile().type).toBe('image/jpeg');
+    expect(await sentFile().text()).toBe('sem metadados');
+    expect(fake.uploads).toEqual([]);
+    expect(fake.tableCalls).toEqual([]);
   });
 
   it('asks the preparation step for the 10 MB limit', async () => {
@@ -94,40 +105,37 @@ describe('uploadProviderDocument and photo metadata', () => {
     expect(DOCUMENT_MAX_BYTES).toBe(10 * 1024 * 1024);
   });
 
-  it('stores a HEIC photo as JPEG, under a .jpg path', async () => {
+  it('sends a HEIC photo as JPEG, the type the browser prepared', async () => {
     await upload(new File([HEIC_BYTES], 'foto.heic', { type: 'image/heic' }));
 
-    expect(fake.uploads[0].path).toMatch(/^prov-1\/cadastro_fiscal-[a-z0-9]+-[a-z0-9]+\.jpg$/);
-    expect(fake.uploads[0].options).toMatchObject({ contentType: 'image/jpeg' });
+    expect(sentFile().type).toBe('image/jpeg');
   });
 
-  it('stores a JPEG declared as a PDF as a JPEG, under a .jpg path', async () => {
+  it('sends a JPEG declared as a PDF as a JPEG', async () => {
     await upload(new File([JPEG_BYTES], 'comprovante.pdf', { type: 'application/pdf' }));
 
-    expect(fake.uploads[0].path).toMatch(/\.jpg$/);
-    expect(fake.uploads[0].options).toMatchObject({ contentType: 'image/jpeg' });
+    expect(sentFile().type).toBe('image/jpeg');
   });
 
-  it('sends a PDF as it is, under a .pdf path', async () => {
+  it('sends a PDF as it is', async () => {
     const pdf = new File([new TextEncoder().encode('%PDF-1.4 comprovante')], 'comprovante.pdf', { type: 'application/pdf' });
 
     await upload(pdf);
 
-    expect(fake.uploads[0].file).toBe(pdf);
-    expect(fake.uploads[0].path).toMatch(/\.pdf$/);
-    expect(fake.uploads[0].options).toMatchObject({ contentType: 'application/pdf' });
+    expect(sentFile().type).toBe('application/pdf');
+    expect(await sentFile().text()).toBe('%PDF-1.4 comprovante');
   });
 
-  it('uploads the lower-quality copy when the top quality is over the limit', async () => {
+  it('sends the lower-quality copy when the top quality is over the limit', async () => {
     state.oversize = 'first';
 
     await upload(PHOTO);
 
-    expect(calls).toEqual(['strip', 'upload']);
-    expect(await (fake.uploads[0].file as Blob).text()).toBe('sem metadados');
+    expect(calls).toEqual(['strip', 'invoke']);
+    expect(await sentFile().text()).toBe('sem metadados');
   });
 
-  it('uploads and records nothing when the photo cannot be prepared', async () => {
+  it('sends and records nothing when the photo cannot be prepared', async () => {
     state.refuse = true;
 
     await expect(upload(PHOTO)).rejects.toMatchObject({
@@ -135,7 +143,7 @@ describe('uploadProviderDocument and photo metadata', () => {
       message: 'Não foi possível preparar a foto. Tente outra imagem ou envie em PDF.',
     });
     expect(calls).toEqual(['strip']);
-    expect(fake.uploads).toEqual([]);
+    expect(received).toEqual([]);
     expect(fake.tableCalls).toEqual([]);
   });
 
@@ -147,7 +155,7 @@ describe('uploadProviderDocument and photo metadata', () => {
       message: 'A foto continua grande demais depois de preparada. Envie uma foto de menor resolução ou em PDF.',
     });
     expect(calls).toEqual(['strip']);
-    expect(fake.uploads).toEqual([]);
+    expect(received).toEqual([]);
     expect(fake.tableCalls).toEqual([]);
   });
 
@@ -156,38 +164,51 @@ describe('uploadProviderDocument and photo metadata', () => {
 
     await expect(upload(huge)).rejects.toMatchObject({ code: 'invalid_input', message: 'O arquivo precisa ter até 10 MB.' });
     expect(calls).toEqual([]);
-    expect(fake.uploads).toEqual([]);
+    expect(received).toEqual([]);
   });
 });
 
-describe('the document limit of the provider folder', () => {
-  // The storage refuses an upload over the limit with the row policy: HTTP 403, as a refused permission
-  const refused = { name: 'StorageApiError', status: 403, statusCode: '403', message: 'new row violates row-level security policy' };
-
+describe('the refusals of the upload function reach the provider', () => {
   beforeEach(() => {
     calls.length = 0;
+    received.length = 0;
     state.refuse = false;
     state.oversize = 'none';
     fake.reset();
   });
 
-  it('says the limit when the folder is full and the storage refuses the file', async () => {
-    fake.folder = Array.from({ length: 60 }, (_, i) => `cadastro_fiscal-${i}.jpg`);
-    fake.uploadError = refused;
+  // The function sends its own sentence in the error body; the screen shows it
+  it('shows the sentence of a full folder, not a permission sentence', async () => {
+    const sentence =
+      'Você já enviou o máximo de 60 documentos. Enquanto o cadastro estiver em rascunho, remova os que ainda não foram analisados antes de enviar outro.';
+    fake.functionsHandlers[UPLOAD] = () => functionError(409, 'document_limit', sentence);
 
-    await expect(upload(PHOTO)).rejects.toMatchObject({
-      code: 'invalid_input',
-      message:
-        'Você já enviou o máximo de 60 documentos. Enquanto o cadastro estiver em rascunho, remova os que ainda não foram analisados antes de enviar outro.',
-    });
+    await expect(upload(PHOTO)).rejects.toMatchObject({ message: sentence });
     expect(fake.tableCalls).toEqual([]);
   });
 
-  it('keeps the permission sentence when the folder still has room', async () => {
-    fake.folder = Array.from({ length: 59 }, (_, i) => `cadastro_fiscal-${i}.jpg`);
-    fake.uploadError = refused;
+  it('shows the sentence of a file the function cannot read', async () => {
+    const sentence = 'Não foi possível ler o arquivo. Tente outra imagem ou envie em PDF.';
+    fake.functionsHandlers[UPLOAD] = () => functionError(400, 'file_unreadable', sentence);
 
-    await expect(upload(PHOTO)).rejects.toMatchObject({ code: 'permission_denied' });
-    expect(fake.tableCalls).toEqual([]);
+    await expect(upload(PHOTO)).rejects.toMatchObject({ message: sentence });
+  });
+
+  it('shows the sentence of a provider without a record', async () => {
+    fake.functionsHandlers[UPLOAD] = () => functionError(403, 'not_allowed', 'Só prestadores podem enviar documentos.');
+
+    await expect(upload(PHOTO)).rejects.toMatchObject({ message: 'Só prestadores podem enviar documentos.' });
+  });
+
+  it('falls back to the sentence of the app when the answer has no sentence of its own', async () => {
+    fake.functionsHandlers[UPLOAD] = () => ({
+      data: null,
+      error: { name: 'FunctionsHttpError', message: 'Edge Function returned a non-2xx status code', context: new Response('indisponível', { status: 503 }) },
+    });
+
+    await expect(upload(PHOTO)).rejects.toMatchObject({
+      code: 'function_unavailable',
+      message: 'Este serviço está indisponível no momento. Tente mais tarde.',
+    });
   });
 });

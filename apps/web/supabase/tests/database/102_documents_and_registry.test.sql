@@ -1,4 +1,5 @@
--- Verification documents: a provider keeps at most 60 files in the provider-documents bucket.
+-- Verification documents: a provider keeps at most 60 files in the provider-documents bucket. The upload
+-- function counts them and writes the bucket; the provider has no insert policy on it.
 -- Registry: changing the number or the state of a confirmed registry takes the occupation's approval
 -- away, so it leaves the search until an administrator confirms and approves it again.
 begin;
@@ -14,20 +15,21 @@ select is((select count(*)::int from storage.objects
             where bucket_id = 'provider-documents' and (storage.foldername(name))[1] = tests.uid('provider_c')::text), 59,
           'provider C has 59 files in the bucket');
 
+-- A provider writes no file itself: the upload function writes the bucket and counts the folder
+-- against the limit (test/functions/provider-document-upload.test.ts). Nothing in the database counts now.
 select tests.authenticate_as('provider_c');
-select lives_ok(format($$insert into storage.objects (bucket_id, name) values ('provider-documents', %L)$$,
-                       tests.uid('provider_c') || '/arquivo-60.png'),
-                'the sixtieth file is accepted');
+select throws_ok(format($$insert into storage.objects (bucket_id, name) values ('provider-documents', %L)$$,
+                        tests.uid('provider_c') || '/arquivo-60.png'),
+                 '42501', null, 'the sixtieth file is not written by the provider itself');
 select throws_ok(format($$insert into storage.objects (bucket_id, name) values ('provider-documents', %L)$$,
                         tests.uid('provider_c') || '/arquivo-61.png'),
-                 '42501', null, 'the sixty-first file is refused by the policy');
+                 '42501', null, 'the sixty-first file is not written by the provider itself either');
 select tests.clear_authentication();
 
--- The limit is per provider: provider D still has room.
 select tests.authenticate_as('provider_d');
-select lives_ok(format($$insert into storage.objects (bucket_id, name) values ('provider-documents', %L)$$,
-                       tests.uid('provider_d') || '/selfie.png'),
-                'another provider uploads freely');
+select throws_ok(format($$insert into storage.objects (bucket_id, name) values ('provider-documents', %L)$$,
+                        tests.uid('provider_d') || '/selfie.png'),
+                 '42501', null, 'another provider cannot write its file directly either');
 select tests.clear_authentication();
 
 -- Registry: provider B's medical registry is confirmed and approved (its documents are accepted).

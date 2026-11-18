@@ -388,7 +388,7 @@ const DocumentsStep: React.FC<{ provider: ProviderRow; userId: string }> = ({ pr
     try {
       // The certificate of criminal record is only used with the provider's consent (LGPD)
       if (step === 'antecedentes' && !data.data?.backgroundConsent) await recordConsent(userId, 'background_check', true);
-      await uploadProviderDocument({ providerId: provider.id, step, file });
+      await uploadProviderDocument({ step, file });
       data.reload();
     } catch (err) {
       setError(err);
