@@ -1,14 +1,17 @@
 -- Consent proof after account deletion (migration 20261110500001): anonymize_user keeps the
--- decisions of the account that are still within five years, without the account id, and links
--- them to the account for the service role only. Users and anonymous callers read neither table.
--- The purge removes the expired proofs, and the links that no proof is left for.
+-- decisions of the account without the account id, and links them to the account for the service
+-- role only. Users and anonymous callers read neither table. The purge removes the expired proofs,
+-- and the links that no proof is left for.
+-- Changed by migration 20261118600010 (DD39): every decision is kept, and the five years count from
+-- the deletion, not from each decision. The assertions on the deadline below were written for the
+-- earlier rule (decisions filtered by their own date, deadline from each decision) and now expect the
+-- new one. The assertion count is unchanged.
 begin;
 select plan(25);
 select has_function('tests', 'setup_fixture', 'test helpers are installed (run 00_helpers first)');
 select tests.setup_fixture();
 
--- Decisions of client A: two inside five years and one older than five years (not kept).
--- Client B has one recent decision.
+-- Decisions of client A: two recent and one older than five years. Client B has one recent decision.
 insert into public.consents (user_id, purpose, version, granted, at) values
   (tests.uid('client_a'), 'terms', '2026-10', true, now() - interval '2 years'),
   (tests.uid('client_a'), 'privacy', '2026-10', true, now() - interval '1 year'),
@@ -23,16 +26,17 @@ select tests.clear_authentication();
 
 select is((select count(*)::int from public.consent_proofs p
              join public.consent_proof_links l on l.proof_owner = p.proof_owner
-            where l.user_id = tests.uid('client_a')), 2,
-          'the two decisions inside five years are kept once, even after a repeated call');
-select is((select count(*)::int from public.consent_proofs where version = '2019-01'), 0,
-          'a decision older than five years is not kept');
-select is((select p.retain_until from public.consent_proofs p
+            where l.user_id = tests.uid('client_a')), 3,
+          'the three decisions are kept once, even after a repeated call');
+select is((select count(*)::int from public.consent_proofs where version = '2019-01'), 1,
+          'a decision older than five years is kept too: the five years count from the deletion');
+-- Previously compared with the decision's date plus five years; now the deadline is five years after the deletion.
+select ok((select p.retain_until from public.consent_proofs p
              join public.consent_proof_links l on l.proof_owner = p.proof_owner
-            where l.user_id = tests.uid('client_a') and p.purpose = 'terms'),
-          (select c.at + interval '5 years' from public.consents c
-            where c.user_id = tests.uid('client_a') and c.purpose = 'terms'),
-          'a proof is kept until five years after its decision');
+            where l.user_id = tests.uid('client_a') and p.purpose = 'terms')
+          between now() + interval '5 years' - interval '1 minute'
+              and now() + interval '5 years' + interval '1 minute',
+          'a proof is kept until five years after the deletion, not after its decision');
 select ok(exists (select 1 from public.consent_proof_links where user_id = tests.uid('client_a')),
           'the account is linked to its proofs');
 select hasnt_column('public', 'consent_proofs', 'user_id', 'the proofs carry no account id');
@@ -74,7 +78,7 @@ update public.consent_proofs set retain_until = now() - interval '1 day'
 select private.purge_expired_consent_proofs();
 select is((select count(*)::int from public.consent_proofs p
              join public.consent_proof_links l on l.proof_owner = p.proof_owner
-            where l.user_id = tests.uid('client_a')), 1,
+            where l.user_id = tests.uid('client_a')), 2,
           'the purge removes an expired proof and keeps the others of the account');
 select is((select count(*)::int from public.consent_proofs p
              join public.consent_proof_links l on l.proof_owner = p.proof_owner
