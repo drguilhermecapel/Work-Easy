@@ -51,7 +51,7 @@ export interface AssistDeps extends BaseDeps {
   featureEnabled(): Promise<boolean>;
   /** Null when ANTHROPIC_API_KEY is not set. */
   classify: ((request: ClassifyRequest) => Promise<ClassifyResult>) | null;
-  /** Calls per user per hour (ASSIST_HOURLY_LIMIT). */
+  /** Calls per user in any 60-minute window (ASSIST_HOURLY_LIMIT). */
   hourlyLimit: number;
   usage: AssistUsage;
   session(req: Request): Promise<{ user: AuthUser; listOccupations(): Promise<OccupationCandidate[]> } | null>;

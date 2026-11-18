@@ -28,7 +28,7 @@ export interface FunctionConfig {
   allowDevOrigins: boolean;
   /** Days a past-due Pro keeps the plan after the paid period (PRO_GRACE_DAYS, default 0). */
   proGraceDays: number;
-  /** AI assist calls (request-assist, quote-assist, care-summary) per user per hour, one shared counter (ASSIST_HOURLY_LIMIT, default 10). */
+  /** AI assist calls (request-assist, quote-assist, care-summary) per user in any 60-minute window, one shared count (ASSIST_HOURLY_LIMIT, default 10). */
   assistHourlyLimit: number;
   /** baseUrl is undefined only in production without ASAAS_BASE_URL; asaasBaseUrl() turns that into a ConfigError. */
   asaas: { apiKey?: string; baseUrl?: string; webhookToken?: string };

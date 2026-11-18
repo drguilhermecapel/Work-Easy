@@ -328,9 +328,8 @@ select is(public.take_assist_quota(tests.uid('client_a'), 2), true, 'the first u
 select is(public.take_assist_quota(tests.uid('client_a'), 2), true, 'and the second');
 select is(public.take_assist_quota(tests.uid('client_a'), 2), false, 'the third is refused at limit 2');
 select tests.clear_authentication();
-select is((select count from public.assist_usage where user_id = tests.uid('client_a')
-              and window_start = date_trunc('hour', now() at time zone 'UTC') at time zone 'UTC'), 2,
-          'a refused call does not consume anything: the counter stays at the limit');
+select is((select count(*)::int from public.assist_usage_events where user_id = tests.uid('client_a')), 2,
+          'a refused call does not consume anything: the events stay at the limit');
 select tests.authenticate_service();
 select is(public.take_assist_quota(tests.uid('client_a'), 3), true, 'raising the limit grants again in the same hour');
 select is(public.take_assist_quota(tests.uid('client_b'), 2), true, 'another user has an independent counter');
@@ -339,18 +338,20 @@ select is((select count(*)::int from generate_series(1, 10) g where public.take_
 select is(public.take_assist_quota(tests.uid('client_b'), 0), false, 'a limit of 0 turns the assistant off');
 select is(public.take_assist_quota(null, 5), false, 'a null user is refused');
 select tests.clear_authentication();
-select is((select count(*)::int from public.assist_usage where user_id = tests.uid('client_b')), 1,
+select is((select count(*)::int from public.assist_usage_events where user_id = tests.uid('client_b')), 1,
           'a limit of 0 or below writes no row');
 
 insert into public.assist_usage (user_id, window_start, count)
 values (tests.uid('provider_c'), date_trunc('hour', now() at time zone 'UTC') at time zone 'UTC' - interval '1 hour', 5),
        (tests.uid('provider_c'), date_trunc('hour', now() at time zone 'UTC') at time zone 'UTC' - interval '2 days', 5);
+insert into public.assist_usage_events (user_id, used_at)
+select tests.uid('provider_c'), now() - interval '30 minutes' from generate_series(1, 5) g;
 select tests.authenticate_service();
-select is(public.take_assist_quota(tests.uid('provider_c'), 5), true, 'a full previous hour does not count against the current one');
+select is(public.take_assist_quota(tests.uid('provider_c'), 5), false, 'five calls of the last 60 minutes fill the limit, across the clock hour');
 select tests.clear_authentication();
 select private.expire_stale();
-select is((select count(*)::int from public.assist_usage where user_id = tests.uid('provider_c')), 2,
-          'expire_stale drops counters older than a day and keeps the recent windows');
+select is((select count(*)::int from public.assist_usage where user_id = tests.uid('provider_c')), 1,
+          'expire_stale drops counters older than a day and keeps the recent one');
 
 select * from finish();
 rollback;
