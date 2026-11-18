@@ -13478,14 +13478,15 @@
   "verification": [
    "documento_selfie",
    "cadastro_fiscal",
-   "registro_profissional"
+   "registro_profissional",
+   "antecedentes"
   ],
-  "backgroundCheck": false,
+  "backgroundCheck": true,
   "billing": "so_assinatura",
   "ratingRanking": false,
   "laborLock": false,
   "providerType": "autonomo",
-  "audienceMinors": false,
+  "audienceMinors": true,
   "priceUnits": [
    "sessao",
    "mes"
@@ -19780,7 +19781,7 @@
   ],
   "backgroundCheck": true,
   "billing": "sob_consulta_juridica",
-  "ratingRanking": true,
+  "ratingRanking": false,
   "laborLock": false,
   "providerType": "autonomo_ou_empresa",
   "audienceMinors": false,
@@ -19815,7 +19816,7 @@
   ],
   "backgroundCheck": true,
   "billing": "sob_consulta_juridica",
-  "ratingRanking": true,
+  "ratingRanking": false,
   "laborLock": true,
   "providerType": "autonomo_ou_empresa",
   "audienceMinors": false,
@@ -54209,7 +54210,7 @@
    "antecedentes"
   ],
   "backgroundCheck": true,
-  "billing": "comissao_primeiro_servico",
+  "billing": "sob_consulta_juridica",
   "ratingRanking": true,
   "laborLock": false,
   "providerType": "autonomo_ou_empresa",
