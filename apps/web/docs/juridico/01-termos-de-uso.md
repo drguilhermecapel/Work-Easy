@@ -392,7 +392,7 @@ Esta seção é interna. Cada ponto diz o que o rascunho assume e o que precisa 
 10. **Registros de acesso.** Não há definição de onde ficam (item 13.3).
 11. **Pagamento retido na tela.** Se `escrow_enabled` for ligado, `PaymentPanel.tsx` passa a dizer "Pagamento retido: o valor só é repassado ao profissional depois que o atendimento é concluído e liberado", mas `payments-create` nunca retém o valor. Ligar a chave sem implementar a retenção faria a tela prometer o que o sistema não faz (item 6.6).
 12. **Menu Cuidado.** `navModelFor` (`components/navItems.ts`) mostra "Cuidado" a todo cliente com sessão, enquanto `DECISOES.md` (D12) manda não divulgar o menu antes dos pré-requisitos (item 5.7).
-13. **Dados de saúde na linha Cuidado.** A tela diz "O WorkEasy não guarda dados de saúde", mas campos de texto livre (preferências, contato de emergência, observações do plantão, descrição do pedido) podem receber esse tipo de dado. O item 5.7 (c) diz só que o app "não foi feito para guardar" tais dados.
+13. **Dados de saúde na linha Cuidado.** A tela diz "O WorkEasy não pede dados de saúde" e avisa que campos de texto livre (preferências, contato de emergência, observações do plantão, descrição do pedido) podem receber esse tipo de dado. O item 5.7 (c) diz só que o app "não foi feito para guardar" tais dados.
 14. **Documento de arquitetura.** A tabela de rotas de `ARQUITETURA.md` diz que o login é "por código (e-mail ou WhatsApp/SMS)", mas `services/auth.ts` envia o código só por e-mail ou SMS. O texto (item 3.1) segue o código.
 15. **Textos das lojas.** `docs/lojas/app-store.md` descreve o perfil como "informado" ou "conferido pela equipe", enquanto o produto e estes Termos dizem "confirmado pelo WorkEasy". Alinhar as lojas com o produto.
 

@@ -140,7 +140,7 @@ Convenções:
 
 1. **Job de rebaixamento do Pro.** O 02 (G5, a) diz que nada rebaixava o plano. A migration `20261109000007_pro_plan_expiry.sql` cria o job `workeasy-expire-pro-plans`, de hora em hora. Atualizar o 02 e a Tabela C (C09).
 2. **Tela do resumo semanal.** O 06 (pergunta 16) cita `pages/cuidado/Relatorios.tsx`. No código, a chamada a `care-summary` está em `components/cuidado/WeekSummary.tsx`. A frase do 06 ("nenhuma tela o chama hoje") vale só para `request-assist`.
-3. **Frase sobre dados de saúde.** Os documentos 06, 07 (Q9) e 11 (Conflitos C2) dizem que as telas mostram "O WorkEasy não guarda dados de saúde". A busca no código de `apps/web` não encontrou essa frase. A tela diz hoje "O WorkEasy não pede dados de saúde." (`components/cuidado/HealthDataNotice.tsx`, linha 9). Conferir antes de citar.
+3. **Frase sobre dados de saúde.** Os documentos 06, 07 (Q9) e 11 (Conflitos C2) citavam "O WorkEasy não guarda dados de saúde". Essa frase foi retirada dos textos e das telas (DD43); a tela diz agora "O WorkEasy não pede dados de saúde." A tela diz hoje "O WorkEasy não pede dados de saúde." (`components/cuidado/HealthDataNotice.tsx`, linha 9). Conferir antes de citar.
 4. **Contagens.** "Sem ranking por nota": 272 (01 e 02, seção D) contra 462 (05, item 20). "A confirmar" e "conferido": 1.057 e 653 (01 e 02) contra 1.102 e 608 (05, item 20). Em 2026-11-09 o catálogo tem 1.382 e 328.
 5. **Decisão D7.** `docs/DECISOES.md` diz "anonimiza e não apaga em cascata". O schema apaga em cascata (11, Q18 e Conflitos C3; 07, Q19). Ver A22 e B15.
 6. **Decreto revogado.** O Decreto 11.034/2022 é citado em 01, 02 e 10. O art. 24 do Decreto 13.135/2026 o revogou (04, A4). Atualizar as referências.

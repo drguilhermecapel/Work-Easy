@@ -531,7 +531,7 @@ Regras de proteção do dado: os arquivos ficam no bucket privado; **não baixe*
 ### 8.1 Princípios
 
 - **Mínimo necessário.** Pergunte só o que muda a escala, a segurança ou a decisão de atender.
-- **Sem diagnóstico e sem lista de remédios.** O app diz "O WorkEasy não guarda dados de saúde" e sua ficha deve ser coerente. A única informação de saúde que você pergunta é se há **procedimento técnico na rotina** (sim ou não), para saber se atende.
+- **Sem diagnóstico e sem lista de remédios.** O app diz "O WorkEasy não pede dados de saúde" e avisa que campos livres podem receber esse tipo de informação; sua ficha deve ser coerente. A única informação de saúde que você pergunta é se há **procedimento técnico na rotina** (sim ou não), para saber se atende.
 - **A ficha é sua, fora do app.** Guarde em arquivo com senha e verificação em duas etapas, só você acessa; nada em grupo de WhatsApp.
 - Restrições alimentares e alergias importam para a segurança, mas **a família as escreve na folha de rotina em casa** e conta direto ao cuidador (é o que o próprio app orienta). O WorkEasy não as guarda.
 
@@ -591,7 +591,7 @@ Itens 1 a 3 são limites desta linha **[proposta]**, com apoio na CBO, que diz q
 > 2. O WorkEasy organiza a escala. O cuidador é profissional independente; não é empregado do WorkEasy.
 > 3. O cuidador faz companhia e apoio à vida diária. Ele não faz procedimento de saúde e **não administra medicamento**.
 > 4. Em urgência, o cuidador liga para o SAMU (192) e depois para a família.
-> 5. O app não guarda dados de saúde. Informações de saúde, alergias e remédios ficam na folha de rotina em casa, e eu as repasso direto ao cuidador.
+> 5. O app não pede dados de saúde. Informações de saúde, alergias e remédios ficam na folha de rotina em casa, e eu as repasso direto ao cuidador; evito colocá-las nos campos livres do app.
 > 6. O mesmo cuidador não pode ser escalado por mais de 2 dias diferentes por semana na minha casa; mais que isso pode ser vínculo de emprego doméstico (LC 150/2015). Se eu quiser mais dias, a contratação é minha, fora do WorkEasy.
 > 7. Hoje o WorkEasy não recebe nem repassa o pagamento do plantão: o acerto é direto entre mim e o cuidador.
 > 8. A pessoa cuidada, ou quem decide por ela, sabe que o primeiro nome, o ano de nascimento e as preferências dela serão usados para organizar o cuidado.
