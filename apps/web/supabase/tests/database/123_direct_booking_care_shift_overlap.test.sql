@@ -1,8 +1,8 @@
--- Direct booking requests: a period that overlaps a care shift the provider already holds (assigned
--- or checked in) is refused with slot_unavailable. A period next to the shift is accepted, and a shift of
--- another provider does not block.
+-- Direct booking requests and own bookings: a period that overlaps a care shift the provider already holds
+-- (assigned or checked in) is refused with slot_unavailable. A period next to the shift is accepted, and a
+-- shift of another provider does not block. The last checks cover create_own_booking the same way.
 begin;
-select plan(11);
+select plan(15);
 select has_function('tests', 'setup_fixture', 'test helpers are installed (run 00_helpers first)');
 select tests.setup_fixture();
 
@@ -43,6 +43,27 @@ select is((select count(*)::int from public.bookings where provider_id = tests.u
           3, 'the refused requests wrote no booking: provider C has the three accepted ones');
 select is((select count(*)::int from public.bookings where provider_id = tests.uid('provider_d') and client_id = tests.uid('client_a')),
           1, 'provider D has the one accepted request');
+
+-- Own bookings (create_own_booking) in week 41, so that they do not meet the requests above. Provider C has
+-- an assigned shift from 10:00 to 12:00 that week; each provider has one client of its own (origin own).
+insert into public.provider_clients (id, provider_id, name, origin) values
+  (md5('pc123-c')::uuid, tests.uid('provider_c'), 'Cliente próprio de teste', 'own'),
+  (md5('pc123-d')::uuid, tests.uid('provider_d'), 'Cliente próprio de teste', 'own');
+insert into public.shifts (household_id, period, rate_cents, status, provider_id) values
+  (md5('h123')::uuid, tests.sp_period(tests.at(41, 0, '10:00'), 2), 30000, 'assigned', tests.uid('provider_c'));
+
+select tests.authenticate_as('provider_c');
+select throws_ok($$select public.create_own_booking(md5('pc123-c')::uuid, 't-reparo', tests.sp_period(tests.at(41, 0, '09:30'), 1), 5000)$$,
+                 'P0001', 'slot_unavailable', 'an own booking that overlaps an assigned shift is refused');
+select lives_ok($$select public.create_own_booking(md5('pc123-c')::uuid, 't-reparo', tests.sp_period(tests.at(41, 0, '12:00'), 1), 5000)$$,
+                'an own booking that starts when the shift ends is accepted');
+select tests.authenticate_as('provider_d');
+select lives_ok($$select public.create_own_booking(md5('pc123-d')::uuid, 't-reparo', tests.sp_period(tests.at(41, 0, '10:00'), 2), 5000)$$,
+                'the assigned shift of provider C does not block the own booking of provider D');
+
+select tests.clear_authentication();
+select is((select count(*)::int from public.bookings where origin = 'own' and provider_id = tests.uid('provider_c')), 1,
+          'the refused own booking wrote no row: provider C has its one accepted own booking');
 
 select * from finish();
 rollback;
