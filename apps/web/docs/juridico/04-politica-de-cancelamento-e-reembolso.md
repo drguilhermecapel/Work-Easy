@@ -56,13 +56,13 @@ Só o banco de dados muda o estado de um atendimento. Cada mudança entra no his
 | Concluído | O profissional marcou como concluído | Liberar, ou contestar em até 7 dias depois do fim do horário | Nada |
 | Liberado | O cliente liberou, ou a equipe decidiu a favor do profissional | Nada | Nada |
 | Em contestação | Contestação aberta | Nada | Nada (a equipe decide) |
-| Cancelado | Cancelado por você, pelo profissional, ou pela equipe (só ao decidir uma contestação) | Nada | Nada |
+| Cancelado | Cancelado por você, pelo profissional, ou pela equipe (só ao decidir uma contestação), ou pelo sistema quando o Asaas informa o estorno de um pagamento de atendimento pago | Nada | Nada |
 
 2.1 **Hoje, depois do pagamento, nenhum dos dois lados pode cancelar o atendimento pelo app.** O botão não aparece em "Pago". Veja a cláusula 5.5 para o caminho atual.
 
 ## 3. Cancelar como cliente
 
-3.1 Você pode cancelar enquanto o atendimento está em "Aguardando o profissional" ou em "Aceito". Use o botão "Cancelar atendimento". O motivo é opcional, com até 1.000 caracteres. O cancelamento não pode ser desfeito.
+3.1 Você pode cancelar enquanto o atendimento está em "Aguardando o profissional" ou em "Aceito". Use o botão "Cancelar atendimento". O motivo é opcional, com até 500 caracteres. O cancelamento não pode ser desfeito.
 
 3.2 O app não cobra multa de cancelamento. Não existe taxa de cancelamento no código que cancela o atendimento. [PROPOSTA: nenhuma multa nesta fase.]
 
@@ -91,7 +91,7 @@ Só o banco de dados muda o estado de um atendimento. Cada mudança entra no his
 
 4.3 Se havia cobrança em aberto, ela é cancelada, como na cláusula 3.4.
 
-4.4 Hoje o app não envia mensagem ao cliente quando um atendimento é cancelado. Os lembretes pendentes são descartados, e nada é enviado no lugar. O cliente vê o cancelamento e o motivo na tela do atendimento. [PLANEJADO: aviso de cancelamento por WhatsApp ou e-mail.]
+4.4 Hoje o app não envia mensagem ao cliente quando um atendimento é cancelado pelo cliente ou pelo profissional. A exceção é a exclusão da conta de uma das partes: a outra recebe aviso (cláusula 11.1). Os lembretes pendentes são descartados, e nada é enviado no lugar. O cliente vê o cancelamento e o motivo na tela do atendimento. [PLANEJADO: aviso de cancelamento por WhatsApp ou e-mail.]
 
 4.5 Cancelamentos repetidos e sem motivo podem ser tratados como quebra de regra, com aviso, nos termos do documento 02 (Termos do Prestador, cláusulas 7.7 e 17). [PROPOSTA: o painel ainda não calcula taxa de cancelamento por profissional. Ele conta atendimentos por status.]
 
@@ -187,7 +187,7 @@ Só o banco de dados muda o estado de um atendimento. Cada mudança entra no his
 
 ## 9. SAC e prazos de resposta
 
-9.1 Canal: e-mail, [E-MAIL DO SAC]. O app não tem telefone, formulário ou chat de atendimento. [PLANEJADO]
+9.1 Canal: e-mail, [E-MAIL DO SAC]. O app não tem telefone, formulário ou chat de atendimento do SAC. [PLANEJADO] Onde a compilação tem número de concierge, a tela de pedido abre o WhatsApp da operação. Esse canal serve a pedidos e não é o SAC desta política.
 
 9.2 Prazo de resposta proposto: 5 dias corridos. [PROPOSTA] Base: Decreto 7.962/2013, art. 4º, parágrafo único: "A manifestação do fornecedor às demandas previstas no inciso V do caput será encaminhada em até cinco dias ao consumidor." O inciso V manda manter atendimento eletrônico que permita resolver demandas de "informação, dúvida, reclamação, suspensão ou cancelamento do contrato". [CONDICIONAL: depende de parecer quanto a serviço contratado pelo app.]
 
@@ -215,7 +215,7 @@ Só o banco de dados muda o estado de um atendimento. Cada mudança entra no his
 
 ## 11. Conta e atendimentos abertos
 
-11.1 Não é possível excluir a conta enquanto houver atendimento "Pago", "Em andamento" ou "Em contestação". Atendimento "Aceito" sem pagamento é cancelado na exclusão, com aviso à outra parte. Para excluir, conclua ou cancele os atendimentos pagos ou em andamento, ou aguarde a decisão da equipe. A regra está em ARQUITETURA.md, seção da função `account-delete`.
+11.1 Não é possível excluir a conta enquanto houver atendimento "Pago", "Em andamento" ou "Em contestação". Atendimento "Aceito" sem pagamento é cancelado na exclusão, com aviso à outra parte. Para excluir, o profissional precisa iniciar e concluir os atendimentos pagos, e concluir os em andamento. Atendimento pago não pode ser cancelado pelo app (cláusula 2.1); o pedido de cancelamento vai ao SAC (cláusula 5.5). Atendimento em contestação depende da decisão da equipe. A regra está em ARQUITETURA.md, seção da função `account-delete`. Na exclusão, o app limpa as notas de plantão e os campos de texto do relatório diário (refeições, atividades, humor e observações) dos plantões das casas do titular. Na exclusão da conta de cuidador, um plantão em check-in que ainda não terminou é cancelado, com aviso à família; plantão já encerrado fica como histórico [CONDICIONAL: depende de parecer]. Os demais dados seguem a Política de Privacidade (documento 03, seção 7).
 
 11.2 Consequência: um atendimento "Pago" que não pode ser cancelado pelo app pode impedir a exclusão da conta até a equipe agir. [PLANEJADO: caminho de cancelamento para atendimento pago, cláusula 5.5.]
 
@@ -285,7 +285,7 @@ Só o banco de dados muda o estado de um atendimento. Cada mudança entra no his
 Duas divergências entre o código e a fonte, que a equipe precisa resolver antes de o texto virar regra:
 - `supabase/functions/_shared/asaas-client.ts` diz que o estorno da API vale só para cartão e Pix. A documentação do Asaas tem um endpoint separado de estorno de boleto. O código de `asaas-webhook` pede o estorno também para boleto e, quando falha, registra `payment.refund_failed`.
 - A documentação do Asaas para estorno de boleto não diz que o procedimento é impossível pela API. Ele depende de dados bancários do pagador.
-- `docs/operacao/04-operacao-concierge-do-dia-a-dia.md`, L12: um estorno recebido com atendimento em "Em contestação" ou já "Cancelado" pede a transição para "Cancelado", mas a matriz do banco só aceita `paid → canceled`. Não testado. Resolver antes de a regra virar texto.
+- `docs/operacao/04-operacao-concierge-do-dia-a-dia.md`, L12: um estorno recebido com atendimento em "Em contestação" ou já "Cancelado" não pede a transição para "Cancelado" (`bookingTransition`, em `asaas-events.ts`, só leva a `canceled` a partir de `paid`). A matriz do banco também recusa `disputed → canceled` para o serviço. Não testado. Resolver antes de a regra virar texto.
 - A mesma operação (seções 6.6 e 6.9) prevê estorno manual no painel do Asaas quando o estorno falha, com decisão do responsável. Esta política não prevê esse procedimento para o consumidor [CONDICIONAL: depende de parecer].
 - A operação manda cobrar pela Trilha B até o parecer, e só depois pela Trilha A (cobrança pelo app), que esta política descreve. Alinhar com o parecer.
 - `docs/juridico/02-termos-do-prestador.md`, cláusula 11.5, afirma que o repasse "é desfeito" quando há estorno, e que boleto "é tratado pelo SAC". Esta política trata o repasse como [incerto] (cláusula 5.7) e registra que o código tenta o estorno também para boleto. Alinhar.

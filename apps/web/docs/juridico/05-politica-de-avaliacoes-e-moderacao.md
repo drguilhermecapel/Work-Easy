@@ -73,7 +73,7 @@
 
 2.3 **Ninguém muda isso.** Nem o cliente, nem o administrador. A função `private.check_review()` roda em inserção e em alteração e força `published = false` quando a ocupação não permite nota. O teste `supabase/tests/database/07_quotes_reviews.test.sql` cobre a inserção e a tentativa de publicação pelo cliente. A moderação do administrador (ocultar e reexibir) tem teste no mesmo arquivo ("an admin hides a review", "an admin shows it again"). Não há teste de que o administrador não altere outras colunas (seção 5.1).
 
-2.4 Hoje são 462 ocupações sem nota, de 1.710 no catálogo (contagem de `catalog/policies.json` em 2026-11-08; a matriz da Frente A ainda pode mudar). Todas estão marcadas como reguladas. Ver seção 10.
+2.4 Em 2026-11-08 eram 462 ocupações sem nota, de 1.710 no catálogo (contagem de `catalog/policies.json` naquela data). Em 2026-11-18 o mesmo arquivo tem 467 ocupações sem nota, de 1.710; a matriz da Frente A ainda pode mudar. Todas estão marcadas como reguladas. Ver seção 10.
 
 2.5 Quando a nota não é publicada, a tela do cliente diz: "só você e o profissional veem a sua." A equipe administradora também vê, porque a política `reviews_select` permite. **Texto a corrigir:** "só você, o profissional e a equipe do WorkEasy veem a sua." (seção 13.)
 
@@ -148,7 +148,7 @@ Não se oculta avaliação por nota baixa, nem porque o profissional discorda.
 
 6.5 **Reativação:** o autor não consegue publicar de novo (trigger `reviews_05_guard`, função `private.guard_review_update`; teste "the client cannot change the publication"). Só o administrador reativa. Em ocupação sem nota, a reativação é impossível, porque a regra da seção 2.3 força `published = false`.
 
-6.6 **Registro:** hoje ocultar não grava motivo, nem quem ocultou, nem quando, e não entra em `audit_log` (não há trigger de auditoria em `reviews`; há só o trigger de eventos de produto `product_events_reviews`, que registra `review_published` e não guarda motivo nem autor). [PLANEJADO] Antes de a política valer: campos de moderação em `reviews` (motivo, quem, quando) e registro em `audit_log` a cada ocultação e reativação.
+6.6 **Registro:** hoje ocultar não grava motivo, nem quem ocultou, nem quando, e não entra em `audit_log` (não há trigger de auditoria em `reviews`; há só o trigger de eventos de produto `product_events_reviews`, que registra `review_published` quando a avaliação passa a publicada (não ao ocultar), com o cliente que avaliou como usuário do evento, e não guarda motivo nem quem ocultou). [PLANEJADO] Antes de a política valer: campos de moderação em `reviews` (motivo, quem, quando) e registro em `audit_log` a cada ocultação e reativação.
 
 6.7 **Prazo interno:** [DECISÃO DO DONO] Proposta: a equipe analisa denúncia e contestação em até 2 dias úteis. Ordem judicial tem o prazo que o juiz fixar, e ele prevalece sobre o prazo interno.
 
@@ -242,7 +242,7 @@ Em 17/06/2026, o STF concluiu o julgamento dos embargos de declaração e fixou 
 - **OAB, Provimento 205/2021.** O artigo 3º, I, veda referir valores de honorários, forma de pagamento, gratuidade ou descontos como forma de captação de clientes. O artigo 5º, §1º, veda pagar ou patrocinar aparição em rankings ou prêmios que visem "destacar ou eleger profissionais". Não há menção a avaliações nem a depoimentos.
 - **CFP, Resolução 9/2024** (cópia na normasbrasil, não no DOU). Não encontrei regra sobre avaliação, depoimento ou ranking. O artigo 2º dessa cópia não tem alíneas o e p (ponto 8). O artigo 3º, §2º, diz que é responsabilidade da profissional "as manifestações públicas em relação aos serviços prestados", quanto à divulgação por meio de TDICs.
 
-10.5 **Consequência para o produto.** O catálogo registra "preço público nem ranking (Prov. 205); sem nota, por cautela" para advogado, "Sem avaliação pública" para psicólogo e "sem ranking ou depoimentos (CFM)" para médico. Os textos que abri não trazem essas proibições expressas. Por isso, a nota desligada é hoje uma decisão de cautela do produto, não uma regra de conselho comprovada. [CONDICIONAL: depende de parecer] A página de ocupação diz "Os profissionais não são ordenados por nota, por regra do conselho." Esse texto vale também para as 283 com base a confirmar. Até o parecer, deve dizer que a regra é de cautela do WorkEasy e que a base está em confirmação.
+10.5 **Consequência para o produto.** O catálogo registra "preço público nem ranking (Prov. 205); sem nota, por cautela" para advogado, "Sem avaliação pública" para psicólogo e "sem comissão por paciente nem ranking ou depoimentos (CFM)" para médico. Os textos que abri não trazem essas proibições expressas. Por isso, a nota desligada é hoje uma decisão de cautela do produto, não uma regra de conselho comprovada. [CONDICIONAL: depende de parecer] A página de ocupação diz "Os profissionais de [nome da ocupação] não são ordenados por nota, por regra do conselho profissional." Esse texto vale também para as 283 com base a confirmar. Até o parecer, deve dizer que a regra é de cautela do WorkEasy e que a base está em confirmação.
 
 ---
 

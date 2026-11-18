@@ -4,16 +4,16 @@
 
 ## Decisões adotadas por delegação (2026-11-09)
 
-O dono adotou, por delegação, uma opção para cada tema de T1 a T6. Cada escolha é um **padrão de produto**, não parecer jurídico. **O advogado precisa confirmar cada uma antes de publicar** os textos deste documento ou qualquer alteração nos Termos, na Política ou no app. Os textos propostos e as perguntas abaixo continuam valendo; o que muda é a opção a seguir. Registro completo: `apps/web/docs/DECISOES.md`, seção "Decisões delegadas (2026-11-09)".
+Uma opção para cada tema de T1 a T6 foi tomada pelo assistente sob delegação do dono. Cada escolha vale como decisão tomada pelo assistente sob delegação, não como parecer jurídico, e é um **padrão de produto**. **O advogado precisa confirmar cada uma antes de publicar** os textos deste documento ou qualquer alteração nos Termos, na Política ou no app. Os textos propostos e as perguntas abaixo continuam valendo; o que muda é a opção a seguir. Registro completo: `apps/web/docs/DECISOES.md`, seção "Decisões delegadas (2026-11-09)".
 
 | Tema | Opção adotada | Pendência antes de publicar |
 |---|---|---|
-| T1. Pessoa cuidada sem idade mínima | **A.** Exigir 18 anos completos, com declaração obrigatória no cadastro (DD19) | O código ainda aceita qualquer ano de nascimento entre 1900 e 2100. Ajustar `03` (10.3), `11` (4.4 e Q6) e o aviso da linha Cuidado |
-| T2. Aceite dos Termos: declaração de 18 anos | **B.** Caixa separada só para a declaração de 18 anos, pedida também a contas existentes na próxima entrada (DD20) | A caixa atual só tem "Li e aceito". Ajustar 3.3 dos Termos e 10.1 da Política |
+| T1. Pessoa cuidada sem idade mínima | **A.** Exigir 18 anos completos, com declaração obrigatória no cadastro (DD19) | A declaração de 18 anos já está no cadastro (`apps/web/components/cuidado/RecipientForm.tsx`). O código ainda aceita qualquer ano de nascimento entre 1900 e 2100. Ajustar `03` (10.3), `11` (4.4 e Q6) e o aviso da linha Cuidado |
+| T2. Aceite dos Termos: declaração de 18 anos | **B.** Caixa separada só para a declaração de 18 anos, pedida também a contas existentes na próxima entrada (DD20) | A caixa separada já existe em `apps/web/pages/conta/Entrar.tsx` e em `apps/web/components/TermsGate.tsx`. Ajustar 3.3 dos Termos e 10.1 da Política para descrevê-la |
 | T3. Aviso nos campos de texto livre | **A.** Aviso e dica por campo; campos mantidos (DD21) | O aviso já aparece nos formulários de plantão e de relatório. Sem reforço da trava por palavras |
 | T4. Registro de acesso às contas | **C**, com prazo de 6 meses e acesso restrito a administrador: data, hora e tipo do evento de login. O app não grava IP; o IP fica nos registros do provedor, como complemento da **D** (DD22) | Ativar o hook no painel do provedor. O texto da opção A, que cita IP, não é adotado. A suficiência da opção C segue como pergunta ao advogado |
-| T5. Prova do consentimento depois da exclusão | **A.** Registro pseudonimizado, por 5 anos (DD23). O prazo segue o padrão de prescrição do CDC e precisa de validação | Não há registro pseudonimizado nem rotina de apagamento. A chave de ligação precisa ficar com acesso restrito |
-| T6. Exclusão com atendimento em andamento | **B.** Bloqueia só atendimento pago, em andamento ou em disputa. Atendimento aceito e não pago (inclui plantão atribuído e reserva aceita) é cancelado com aviso à outra parte (DD12) | O código ainda bloqueia atendimento aceito e não cancela nem avisa. Ajustar o item 3.7 dos Termos depois da confirmação |
+| T5. Prova do consentimento depois da exclusão | **A.** Registro pseudonimizado, por 5 anos (DD23). O prazo segue o padrão de prescrição do CDC e precisa de validação | O registro pseudonimizado (`consent_proofs`) e o expurgo existem no código (migrações 20261110500001 e 20261118200002). A chave (`consent_proof_links`) só é lida pelo service role. O código conta 5 anos a partir de cada consentimento, não da exclusão. A verificação do agendamento do expurgo em produção é ação do dono |
+| T6. Exclusão com atendimento em andamento | **B.** Bloqueia só atendimento pago, em andamento ou em disputa. Atendimento aceito e não pago (inclui plantão atribuído e reserva aceita) é cancelado com aviso à outra parte (DD12) | O código já não bloqueia atendimento aceito: cancela e avisa a outra parte (migrações 20261110600004 e 20261110600007). Plantão em check-in que não terminou é cancelado na exclusão do cuidador (migração 20261118600007). Ajustar o item 3.7 dos Termos depois da confirmação |
 
 As divergências 1 a 5 continuam abertas. Esta seção não corrige nenhuma delas.
 
@@ -35,8 +35,8 @@ As divergências 1 a 5 continuam abertas. Esta seção não corrige nenhuma dela
 
 Estas divergências aparecem nos documentos ou entre documento e código. Precisam de decisão antes de publicar. Não foram corrigidas aqui.
 
-1. **Declaração de 18 anos (T2).** Os Termos (3.3) e a Política (10.1) dizem que "vale a sua declaração ao aceitar". A caixa de aceite tem só "Li e aceito os Termos de Uso e a Política de Privacidade" (`apps/web/pages/conta/Entrar.tsx`). O produto não tem declaração de idade.
-2. **Aviso sobre criança e responsável (T1).** O aviso de `11`, 4.4, diz que o cadastro de criança "precisa ser feito por pai, mãe ou responsável legal". O formulário não pergunta idade. O código só aceita ano de nascimento entre 1900 e 2100 (`apps/web/services/care.ts`, `LIMITS`). O aviso promete uma regra que o produto não aplica.
+1. **Declaração de 18 anos (T2).** Os Termos (3.3) e a Política (10.1) dizem que "vale a sua declaração ao aceitar". A tela de entrada tem a caixa "Li e aceito os Termos de Uso e a Política de Privacidade" e, em caixa separada, "Declaro que tenho 18 anos completos." (`apps/web/pages/conta/Entrar.tsx`). Os Termos (3.3) e a Política (10.1) ainda não descrevem a caixa separada.
+2. **Aviso sobre criança e responsável (T1).** O aviso de `11`, 4.4, diz que o cadastro de criança "precisa ser feito por pai, mãe ou responsável legal". O formulário da pessoa cuidada pede a declaração de 18 anos completos (`apps/web/components/cuidado/RecipientForm.tsx`), mas o código ainda aceita ano de nascimento entre 1900 e 2100 (`apps/web/services/care.ts`, `LIMITS`). O aviso promete uma regra que o produto não aplica.
 3. **Filtro de palavras de saúde (T3).** `11`, 4.8, diz que o filtro "roda só no navegador". Há também um filtro no servidor, no resumo semanal (`apps/web/supabase/functions/_shared/care-summary.ts`, linhas 205 e 318). O aviso deve refletir os dois.
 4. **Escopo da linha Cuidado (T1).** `03`, 10.3, e `11`, 4.4, tratam a pessoa cuidada menor de 18 anos como caso possível. `DECISOES.md` (seção 5) e `00` (A18) tratam a linha como voltada a idosos. O escopo precisa ser fechado antes de escolher uma opção de T1.
 5. **"Em disputa" ou "em contestação" (T6).** `03`, 7.2, diz "em contestação". `11`, 4.5, diz "em disputa". O código usa o status `disputed`. O sentido é o mesmo, mas o termo muda entre documentos.
@@ -45,7 +45,7 @@ Estas divergências aparecem nos documentos ou entre documento e código. Precis
 
 ## T1. Pessoa cuidada sem idade mínima
 
-**Problema.** O cadastro da pessoa cuidada aceita qualquer ano de nascimento entre 1900 e 2100. Não pergunta se a pessoa é adulta e não pede declaração de responsável legal.
+**Problema.** O cadastro da pessoa cuidada aceita qualquer ano de nascimento entre 1900 e 2100. Pede a declaração de que a pessoa tem 18 anos completos, mas não confere a idade e não pede declaração de responsável legal.
 
 **Opções**
 
@@ -62,7 +62,7 @@ Estas divergências aparecem nos documentos ou entre documento e código. Precis
 > **A pessoa cuidada tem 18 anos completos?**
 > ( ) Sim   ( ) Não
 >
-> *Ajuda do campo:* A linha Cuidado atende pessoas com 18 anos completos ou mais. Ao responder, você confirma essa idade.
+> *Ajuda do campo:* A linha Cuidado atende pessoas com 18 anos completos ou mais. Ao marcar "Sim", você declara que a pessoa tem essa idade. Sem essa declaração, o cadastro não é feito.
 >
 > *Se marcar "Não":* Não podemos fazer este cadastro. A linha Cuidado atende apenas pessoas com 18 anos completos ou mais. [CONTATO: onde a família pode buscar outra forma de atendimento.]
 
@@ -93,7 +93,7 @@ Estas divergências aparecem nos documentos ou entre documento e código. Precis
 
 ## T2. Aceite dos Termos: declaração de 18 anos
 
-**Problema.** Os Termos (3.3) e a Política (10.1) dizem que vale a declaração de 18 anos feita ao aceitar. A caixa de aceite não tem essa declaração (divergência 1).
+**Problema.** Os Termos (3.3) e a Política (10.1) dizem que vale a declaração de 18 anos feita ao aceitar. A declaração já tem caixa separada na tela de entrada e no `TermsGate` (divergência 1).
 
 **Opções**
 
@@ -186,7 +186,7 @@ Opção A: dois textos de dica por campo. Os textos evitam a expressão "não gu
 
 ## T4. Registro de acesso às contas
 
-**Problema.** Não se decidiu se o WorkEasy deve guardar registro de acesso às contas (data, hora e origem) pelo prazo do Marco Civil, nem onde, por quanto tempo e com que acesso. Hoje o código não grava endereço IP (`03`, Q7).
+**Problema.** Decidiu-se a opção C (DD22): registro de data, hora e tipo do evento de login, pelo prazo de 6 meses e com acesso restrito a administrador. O código já tem a tabela `access_events` e a função do hook de login (migração 20261110500002). Ela não grava endereço IP (`03`, Q7).
 
 **Opções**
 
@@ -199,7 +199,7 @@ Opção A: dois textos de dica por campo. Os textos evitam a expressão "não gu
 
 **Redação proposta (rascunho para advogado)**
 
-*Opção A,* só para usar se o advogado confirmar a aplicação do art. 15. Seção nova na Política (ou item 13.3 dos Termos):
+*Opção A, não adotada (DD22).* Só para usar se o advogado confirmar a aplicação do art. 15 e a decisão mudar. Este texto cita IP, que o app não grava. Seção nova na Política (ou item 13.3 dos Termos):
 
 > **Registros de acesso à sua conta.** Guardamos registros de acesso à sua conta, com data, hora e endereço de origem (IP), pelo prazo de 6 (seis) meses. Eles ficam em ambiente controlado, com acesso restrito, e são apagados depois desse prazo. Entregamos esses registros somente quando a lei exigir.
 
@@ -222,7 +222,7 @@ Opção A: dois textos de dica por campo. Os textos evitam a expressão "não gu
 
 ## T5. Prova do consentimento depois da exclusão
 
-**Problema.** Hoje a exclusão apaga os consentimentos junto com a conta (`03`, Q12, e seção 6). A empresa pode precisar provar, depois da exclusão, que a pessoa aceitou os Termos e a Política.
+**Problema.** A exclusão apaga os consentimentos junto com a conta (`03`, Q12, e seção 6). Desde a migração 20261110500001, ela também copia para um registro pseudonimizado as decisões de consentimento ainda dentro de 5 anos. A empresa pode precisar provar, depois da exclusão, que a pessoa aceitou os Termos e a Política.
 
 **Fatos conferidos.** O `audit_log` mantém o código da conta, sem chave estrangeira (`03`, Q12). `11`, Q7, sugere manter um registro mínimo e anonimizado para defesa do controlador (LGPD, art. 16, IV).
 
@@ -238,7 +238,7 @@ Opção A: dois textos de dica por campo. Os textos evitam a expressão "não gu
 
 *Opção A.* Trecho para a seção 7 da Política, sobre o que fica depois da exclusão:
 
-> Depois da exclusão, guardamos só a prova de que um titular aceitou os Termos de Uso e a Política de Privacidade: a versão aceita, a data e a hora. Esse registro usa um código no lugar do seu nome. A ligação com a sua conta fica guardada separada, com acesso restrito, e é usada só para responder a uma disputa sobre o aceite. Esse registro é apagado em [PRAZO: a definir pelo advogado].
+> Na exclusão, limpamos as notas dos plantões e os textos do relatório diário (refeições, atividades, humor e observações) dos plantões das casas da sua conta. Os demais dados seguem a regra de retenção desta Política. Depois da exclusão, guardamos a prova das suas decisões de consentimento: a finalidade, a versão do texto, se você concordou, a data e a hora. Esse registro inclui o aceite dos Termos de Uso e da Política de Privacidade, e usa um código no lugar do seu nome. A ligação com a sua conta fica guardada separada, com acesso restrito, e é usada só para responder a uma disputa sobre o aceite. Esse registro é apagado 5 (cinco) anos depois da exclusão da conta. [CONFERIR antes de publicar: o código ainda conta 5 anos a partir da data de cada consentimento, não da exclusão.]
 
 **Normas e fontes a conferir**
 
@@ -250,15 +250,15 @@ Opção A: dois textos de dica por campo. Os textos evitam a expressão "não gu
 - LGPD, art. 5º, XI (anonimização) e art. 13, § 4º (pseudonimização) [incerto; não citados nos documentos lidos].
 - CDC, art. 27 (prazo de cinco anos para reparação por fato do serviço) [incerto; não citado nos documentos lidos. Aplicação à prova do aceite não conferida].
 
-**Pergunta para o advogado.** Entre o registro pseudonimizado com chave guardada à parte (opção A) e a anonimização sem chave (opção C), qual sustenta a prova do aceite sem manter dado pessoal além do necessário, e por qual prazo?
+**Pergunta para o advogado.** A opção A, adotada pelo assistente sob delegação, sustenta a prova do aceite sem manter dado pessoal além do necessário? O prazo de 5 anos depois da exclusão tem base suficiente?
 
 ---
 
 ## T6. Exclusão com atendimento em andamento
 
-**Problema.** A exclusão é recusada enquanto houver atendimento aceito, pago, em andamento ou em disputa (`apps/web/supabase/functions/account-delete/handler.ts`; `11`, 4.5; `03`, 7.2). O texto não diz o que a pessoa pode fazer nem o que acontece com a outra parte.
+**Problema.** A exclusão é recusada enquanto houver atendimento pago, em andamento ou em disputa (`apps/web/supabase/functions/account-delete/handler.ts`; `11`, 4.5; `03`, 7.2). O texto não diz o que a pessoa pode fazer nem o que acontece com a outra parte.
 
-**Fatos conferidos.** Quando a família exclui a conta, o cuidador com plantão confirmado deixa de ver esse plantão (`11`, 4.5). A exclusão também cancela a assinatura Pro e as cobranças em aberto (`03`, 7.3). Não há ação de cancelamento para atendimento pago, nem do cliente nem do profissional (`00`, A05).
+**Fatos conferidos.** Quando a família exclui a conta, o plantão confirmado que ainda não começou é cancelado, e o cuidador recebe o aviso. Ele continua vendo o período e o status do plantão, como histórico, sem as notas, o primeiro nome da pessoa cuidada nem o bairro (migrações 20261110600007 e 20261118600005; `11`, 4.5, a ajustar). A exclusão também cancela a assinatura Pro e as cobranças em aberto (`03`, 7.3). Não há ação de cancelamento para atendimento pago, nem do cliente nem do profissional (`00`, A05).
 
 **Opções**
 
@@ -272,9 +272,9 @@ Opção A: dois textos de dica por campo. Os textos evitam a expressão "não gu
 
 *Opção B.* Substitui o parágrafo 3.7 dos Termos:
 
-> Você pode pedir a exclusão da conta a qualquer momento, em "Minha conta". Se houver atendimento pago, em andamento ou em contestação, a exclusão espera o fim dele ou a solução pela equipe. Se houver atendimento aceito e ainda não pago, a exclusão cancela esse atendimento, conforme o item 7, e avisamos a outra parte. Avisamos você quando a exclusão for concluída. Se a exclusão ficar pendente por mais de [PRAZO], a equipe entra em contato pelo canal cadastrado.
+> Você pode pedir a exclusão da conta a qualquer momento, em "Minha conta". Se houver atendimento pago, em andamento ou em contestação, a exclusão espera o fim dele ou a solução pela equipe. Se houver atendimento aceito e ainda não pago, ou plantão atribuído, a exclusão cancela esse atendimento ou plantão, conforme o item 7, e avisamos a outra parte. Se você é cuidador e tem plantão com check-in feito que ainda não terminou, esse plantão é cancelado com a exclusão, e a família recebe o mesmo aviso de cancelamento dos demais. Plantão já encerrado fica como histórico. Na exclusão, também limpamos as notas dos plantões e os textos do relatório diário (refeições, atividades, humor e observações) dos plantões das casas da sua conta; os demais dados seguem a Política de Privacidade. Avisamos você quando a exclusão for concluída. Se a exclusão ficar pendente por mais de [PRAZO], a equipe entra em contato pelo canal cadastrado.
 
-*Nota:* este texto exige duas mudanças que o código não faz hoje: cancelar o atendimento aceito e avisar a outra parte. Também usa "em contestação", e não "em disputa" (divergência 5).
+*Nota:* o código já cancela o atendimento aceito e avisa a outra parte, e já cancela o plantão com check-in na exclusão do cuidador (migrações 20261110600004, 20261110600007 e 20261118600007). Também usa "em contestação", e não "em disputa" (divergência 5).
 
 **Normas e fontes a conferir**
 

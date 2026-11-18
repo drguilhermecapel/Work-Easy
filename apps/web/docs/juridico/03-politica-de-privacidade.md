@@ -46,12 +46,12 @@
 | D. Dados para pagamento | Para o profissional (conta de recebimento no Asaas): nome, e-mail, CPF ou CNPJ, data de nascimento (quando CPF), celular, valor de renda informado, endereço, número, complemento, bairro e CEP. Para o cliente que paga: nome, CPF ou CNPJ, e-mail e celular | Cadastro de recebimento e cobrança | Não está na lista do art. 5º, II. Tratamos com cuidado |
 | E. Pedidos e propostas | Ocupação, bairro, descrição em texto livre (10 a 2.000 caracteres), datas preferidas, urgência, preço e mensagem da proposta | Uso do app | **Pode**, se o texto livre trouxer dado sensível |
 | F. Atendimentos e avaliações | Datas, horários, valores, status, motivos de cancelamento e de contestação; nota e comentário da avaliação | Uso do app | **Pode**, no comentário ou no motivo |
-| G. Linha Cuidado | Casa (nome, bairro, observações); pessoa cuidada (primeiro nome, ano de nascimento, preferências, contato de emergência); plantões; check-in e check-out (com coordenadas, se você permitir); relatório do dia (refeições, atividades, humor, notas) | Uso da família e do cuidador | **Pode**: os campos de texto livre podem trazer dado de saúde, mesmo sem campo próprio para isso. A pessoa cuidada pode ser criança (seção 10) |
+| G. Linha Cuidado | Casa (nome, bairro, observações); pessoa cuidada (primeiro nome, ano de nascimento, preferências, contato de emergência); plantões; check-in e check-out (com coordenadas, se você permitir); relatório do dia (refeições, atividades, humor, notas) | Uso da família e do cuidador | **Pode**: os campos de texto livre podem trazer dado de saúde, mesmo sem campo próprio para isso. A pessoa cuidada tem de ter 18 anos completos (seção 10) |
 | H. Consentimentos e pedidos de titular | Cada decisão de consentimento (finalidade, versão, aceite ou recusa, data e hora); pedidos de cópia e de exclusão | Sempre | Não |
 | I. Mensagens | Telefone e e-mail usados no envio; modelo da mensagem; nome da ocupação, da outra parte e do bairro no texto; status de envio | Notificações | Não |
-| J. Dados técnicos | Sessão de login no navegador (seção 11); registro de ações (ação, entidade, data, quem fez); eventos de funil do produto (tipo do passo, data e identificador de pedido, atendimento ou assinatura; sem nome, telefone, e-mail ou texto livre; seção 6); [PLANEJADO] registros de acesso (data, hora e endereço IP) | Sempre | Não |
+| J. Dados técnicos | Sessão de login no navegador (seção 11); registro de ações (ação, entidade, data, quem fez); eventos de funil do produto (tipo do passo, data e identificador de pedido, atendimento ou assinatura; sem nome, telefone, e-mail ou texto livre; seção 6); [PLANEJADO] registros de acesso (data, hora e método de entrada; o endereço IP não é gravado) | Sempre | Não |
 | L. Clientes e orçamentos digitados pelo profissional | Nome, telefone, e-mail e observações de cada cliente da lista dele; orçamentos com nome e telefone do cliente, itens e valores. São dados de **terceiros**, que não criam conta | Cadastro e orçamento feitos pelo profissional | Pode, se as observações trouxerem dado sensível. [CONDICIONAL: Q1] |
-| K. Localização do aparelho | Latitude e longitude com 6 casas decimais, só no check-in e check-out de plantão, e só se você aceitar o consentimento "Localização" e permitir no aparelho | Plantão | Não está na lista do art. 5º, II. Tratamos com cuidado |
+| K. Localização do aparelho | Latitude e longitude, gravadas com 3 casas decimais (cerca de 110 m), mesmo que o aparelho envie mais, só no check-in e check-out de plantão, e só se você aceitar o consentimento "Localização" e permitir no aparelho | Plantão | Não está na lista do art. 5º, II. Tratamos com cuidado |
 
 ### 2.2. Dados que não coletamos
 
@@ -111,7 +111,7 @@ Art. 7º (dados comuns) e art. 11 (dados sensíveis), da Lei 13.709/2018 (LGPD).
 
 - **Profissional**: vê nome, telefone e cidade do perfil do cliente quando o cliente pede horário ou aceita proposta.
 - **Cliente**: vê nome e cidade do profissional desde o pedido ou a proposta. Vê o telefone e os dados de contato do perfil dele depois que o profissional aceita (Termos de Uso, cláusulas 4.4 e 5.1).
-- **Família e cuidador**: o cuidador vê o primeiro nome da pessoa cuidada e o bairro da casa. Não vê contato, preferências nem o valor pago pela família. A família vê o perfil do cuidador só depois que ele aceita o plantão.
+- **Família e cuidador**: o cuidador vê o primeiro nome da pessoa cuidada e o bairro da casa. Não vê contato, preferências nem o valor pago pela família. O cuidador vê também as notas do plantão em que está escalado. Se a família cancelar o plantão, o cuidador vê só o período e o status, como histórico: não vê as notas, o primeiro nome nem o bairro. A família vê o perfil do cuidador só depois que ele aceita o plantão.
 - **Equipe do WorkEasy**: vê o que a função de administrador precisa para analisar cadastro, disputas e pagamentos. Essas ações ficam no registro de ações.
 - **Operação por WhatsApp**: na página de pedido, o app monta uma mensagem de WhatsApp para o número da operação configurado no site. Quem envia é você, pelo próprio WhatsApp. A mensagem leva o serviço, o bairro e a cidade, o prazo e a urgência informados, a descrição do pedido e o nome, se você tiver preenchido (código: `pages/cliente/concierge.ts`).
 - **Autoridades**: quando a lei ou uma ordem judicial exigir. Os registros de acesso só são entregues com autorização judicial (Marco Civil da Internet, art. 15, § 3º).
@@ -141,7 +141,7 @@ Art. 7º (dados comuns) e art. 11 (dados sensíveis), da Lei 13.709/2018 (LGPD).
 | Dado | Enquanto a conta existe | Depois da exclusão (seção 7) |
 |---|---|---|
 | Nome, telefone e e-mail do perfil | Até você editar ou excluir a conta | Nome e telefone são apagados. O perfil sai com o login. |
-| Arquivos de documentos do profissional | Você pode apagar arquivo que ainda não foi analisado. Arquivo já analisado fica até a exclusão. | Apagados. A pasta é esvaziada antes da anonimização. |
+| Arquivos de documentos do profissional | Você pode apagar arquivo que ainda não foi analisado, enquanto o cadastro estiver em rascunho. Depois do envio do cadastro para análise, não pode removê-lo: o arquivo fica até a exclusão da conta. | Apagados. A pasta é esvaziada antes da anonimização. |
 | Pedidos | Abertos até o vencimento: 7 dias por padrão, no máximo 30. Depois ficam fechados. | Descrição trocada por texto padrão e datas preferidas apagadas antes; depois o pedido sai com o login (cascata do banco). |
 | Propostas | Enquanto existirem | Apagadas com o login (cascata a partir do pedido e do prestador). |
 | Atendimentos e eventos | Enquanto existirem | Mantidos sem identificação. Observações, motivos de cancelamento e motivos de evento são apagados. |
@@ -150,14 +150,19 @@ Art. 7º (dados comuns) e art. 11 (dados sensíveis), da Lei 13.709/2018 (LGPD).
 | Casa, pessoa cuidada, plantões, check-ins e relatórios da família | Enquanto existirem | Apagados junto com a casa ou com a conta de quem a criou. |
 | Coordenadas de check-in do cuidador | Enquanto existirem | Apagadas quando a conta do cuidador é excluída. |
 | Mensagens | Enquanto existirem | Pendentes são apagadas; telefone, e-mail e parâmetros são apagados antes; o restante sai com o login. |
-| Consentimentos | Histórico completo | Apagados com a conta (Q12). |
+| Consentimentos | Histórico completo | Apagados com a conta. Uma prova de cada decisão fica guardada, pseudonimizada, por 5 anos após a exclusão (seção 7.5; Q12). |
+| Certidão de antecedentes retirada (consentimento "Consulta de antecedentes" revogado) | Depois de 30 dias da retirada, o arquivo é removido pela rotina agendada [PLANEJADO: depende de ativação pelo dono]. Se a certidão já foi analisada ou tem registro de auditoria, a linha fica com status "purged", sem arquivo; senão, a linha é apagada. | Apagada com os demais documentos. |
+| Registros de acesso: data, hora e método de entrada, sem IP [PLANEJADO: depende da ativação do gancho de login no Supabase] | Até 6 meses, pelo expurgo diário do banco | Continuam com o código da conta até o fim desse prazo. |
+| Eventos de uso do assistente de IA (contagem da janela de 60 minutos) | Até 1 dia, pelo expurgo diário do banco | Saem com o login, pela cascata do banco. |
 | Pedidos de cópia e de exclusão | Registro | Mantido sem vínculo com a conta. |
 | Registro de ações (`audit_log`) | Sempre | Mantido. O código da conta continua. Texto livre digitado pela equipe não é apagado. |
 | Eventos de funil (medição interna do produto) | Até 400 dias, com apagamento automático diário | Mantidos sem o código da conta (fica nulo). Não guardam nome, telefone, e-mail nem texto livre. |
 | Conteúdo de mensagens na Meta | — | Até 30 dias, segundo a Meta. Identificadores de envio são apagados em até 30 dias após o último status. |
 | Mensagens no Resend | — | Prazo não informado no texto aberto. |
 | Cópias de segurança e registros do Supabase | — | [incerto]. Q13. |
-| Registro fiscal de pagamento | — | Prazo a definir [incerto]. Q11. |
+| Registro fiscal de pagamento | — | Prazo a definir [incerto]. Q11. O cadastro no Asaas tem prazo próprio (seção 7.6). |
+
+Os prazos de registros de acesso, provas de consentimento e eventos de uso do assistente são aplicados pelo expurgo diário do banco, agendado pelo pg_cron. Confirmar que o agendamento está ativo em produção é ação do dono do produto [a confirmar].
 
 ---
 
@@ -165,19 +170,19 @@ Art. 7º (dados comuns) e art. 11 (dados sensíveis), da Lei 13.709/2018 (LGPD).
 
 7.1. **Como excluir.** Em "Excluir minha conta", na página Conta, digite EXCLUIR e confirme.
 
-7.2. **Quando a exclusão é recusada.** Se você tem atendimento pago, em andamento ou em contestação, a exclusão é recusada. Atendimento aceito e ainda não pago é cancelado, com aviso à outra parte, e plantões ainda não iniciados também são cancelados. Conclua ou cancele os atendimentos pagos e tente de novo.
+7.2. **Quando a exclusão é recusada.** Se você tem atendimento pago, em andamento ou em contestação, a exclusão é recusada. Atendimento aceito e ainda não pago é cancelado, com aviso à outra parte. Plantões ainda não iniciados também são cancelados, com aviso à outra parte. Se você é cuidador e tem um plantão em andamento (com check-in e horário ainda não encerrado), esse plantão também é cancelado, e a família recebe o mesmo aviso de cancelamento dos demais. Plantão já encerrado fica como histórico. Conclua ou cancele os atendimentos pagos e tente de novo.
 
 7.3. **O que o app faz**, nesta ordem:
-1. Cancela sua assinatura Pro e as cobranças em aberto no Asaas.
+1. Cancela sua assinatura Pro, as cobranças em aberto no Asaas, os plantões e os atendimentos aceitos e ainda não pagos, como diz a seção 7.2.
 2. Apaga os arquivos de documentos do profissional.
 3. Anonimiza os seus dados e os registros que ficam.
 4. Apaga o login.
 
-7.4. **Apagado**: nome e telefone do perfil; comentário das avaliações; observações e motivos de cancelamento; pedidos, propostas e orçamentos; casas, pessoas cuidadas, plantões e relatórios da família; documentos; mensagens; consentimentos; sua lista de clientes. Antes de sair, são trocados por texto padrão a descrição dos pedidos e os nomes dos clientes na sua lista, que também perdem telefone e e-mail. Os itens ligados ao seu login saem com ele, pela própria exclusão em cascata do banco.
+7.4. **Apagado**: nome e telefone do perfil; comentário das avaliações; observações e motivos de cancelamento; pedidos, propostas e orçamentos; casas, pessoas cuidadas, plantões e relatórios da família; documentos; mensagens; consentimentos (a prova de cada decisão fica guardada, pseudonimizada, como diz a seção 7.5); sua lista de clientes. Antes de sair, são trocados por texto padrão a descrição dos pedidos e os nomes dos clientes na sua lista, que também perdem telefone e e-mail. Também são limpos o texto livre dos plantões das suas casas: as notas do plantão e os campos de refeições, atividades, humor e observações dos relatórios diários. Os itens ligados ao seu login saem com ele, pela própria exclusão em cascata do banco.
 
-7.5. **Fica sem identificar você**: atendimentos e eventos; pagamentos, só com os campos fiscais (o nome, o CPF ou CNPJ e o e-mail do pagador são retirados); notas de avaliação; eventos de funil, sem o código da conta; o pedido de exclusão. O registro de ações permanece com o código da conta. O motivo: obrigação fiscal [prazo e base a confirmar, Q11] e a imutabilidade do registro de ações.
+7.5. **Fica sem identificar você**: atendimentos e eventos; pagamentos, só com os campos fiscais (o nome, o CPF ou CNPJ e o e-mail do pagador são retirados); notas de avaliação; eventos de funil, sem o código da conta; a prova de cada consentimento, pseudonimizada, pelo prazo de 5 anos após a exclusão (seção 6); o pedido de exclusão. O registro de ações permanece com o código da conta, e os registros de acesso também, pelo prazo de 6 meses [PLANEJADO: depende da ativação do gancho de login]. O motivo: obrigação fiscal [prazo e base a confirmar, Q11], a imutabilidade do registro de ações e a prova do consentimento [prazo e base a confirmar, Q12].
 
-7.6. **Fora do alcance do app**: cópias de segurança e registros mantidos pelos fornecedores (Supabase, Meta, Resend, Asaas e Sentry, se ativo). Prazos [incerto]. O cadastro de cliente no Asaas não é removido pelo app (Q10).
+7.6. **Fora do alcance do app**: cópias de segurança e registros mantidos pelos fornecedores (Supabase, Meta, Resend, Asaas e Sentry, se ativo). Prazos [incerto]. O cadastro no Asaas não é removido pelo app (Q10). Por decisão tomada para fins fiscais, esse cadastro fica guardado por 5 anos após a exclusão. A decisão foi tomada sob delegação e não é parecer de contador (Q11).
 
 ---
 
@@ -194,7 +199,7 @@ Art. 7º (dados comuns) e art. 11 (dados sensíveis), da Lei 13.709/2018 (LGPD).
 | VI. Eliminação dos dados tratados com o seu consentimento | Excluir a conta (seção 7) ou revogar o consentimento. Há exceções para a guarda por obrigação legal (art. 16) | Na hora, no app, ou prazo da seção 8.3 |
 | VII. Informação sobre compartilhamento | Seção 4 desta política | — |
 | VIII. Informação sobre não consentir | Seção 3.14 | — |
-| IX. Revogação de consentimento | Em "Consentimentos", na página Conta, revogue "Comunicações de novidades", "Consulta de antecedentes" ou "Localização" | Na hora, no app |
+| IX. Revogação de consentimento | Em "Consentimentos", na página Conta, revogue "Comunicações de novidades", "Consulta de antecedentes" ou "Localização". A certidão retirada é removida depois de 30 dias da retirada, pela rotina agendada (seção 6) | Na hora, no app |
 
 8.2. Os termos "Termos de Uso" e "Política de Privacidade" não são revogáveis no app. Sem esse aceite não há conta.
 
@@ -229,7 +234,7 @@ Art. 7º (dados comuns) e art. 11 (dados sensíveis), da Lei 13.709/2018 (LGPD).
 
 10.2. Serviços para crianças, como babá ou reforço escolar, são contratados por um adulto responsável.
 
-10.3. **A pessoa cuidada pode ser criança ou adolescente.** Nesse caso, o adulto responsável é quem informa os dados. [PLANEJADO: pergunta de idade e declaração do responsável no cadastro da pessoa cuidada.] O cadastro atual aceita qualquer nome e ano de nascimento. [CONDICIONAL: o art. 14, § 1º, da LGPD pede consentimento específico e em destaque de um dos pais ou do responsável legal para tratar dados de criança. O enunciado da ANPD sobre o tema (publicado em 24/05/2023) admite as bases dos arts. 7º e 11, desde que prevaleça o melhor interesse. Q5.]
+10.3. **A pessoa cuidada tem de ter 18 anos completos.** Quem cadastra a pessoa cuidada declara que ela tem 18 anos completos, e a declaração é obrigatória para enviar o cadastro. A data da declaração fica guardada. O app não confere a idade: vale a declaração. Pessoa menor de 18 anos não pode ser cadastrada. [Q5.]
 
 10.4. **Lei 15.211/2025 (ECA Digital).** A lei se aplica a produto ou serviço de tecnologia direcionado a crianças e adolescentes ou de "acesso provável" por eles (art. 1º, caput). Para isso, o texto considera a probabilidade de uso e a atratividade, a facilidade de acesso e o risco à privacidade ou ao desenvolvimento (art. 1º, parágrafo único, I a III). [CONDICIONAL: se o WorkEasy se enquadra, depende de parecer. Q6. O texto da Câmara indica vigência em 17/03/2026.]
 
@@ -288,7 +293,7 @@ Use este resumo para preencher a declaração de privacidade da Google Play e da
 - **Contato**: nome, e-mail e telefone da conta. Usado para entrar, para as mensagens do app e para o contato do suporte.
 - **Identificação e documentos**: CPF ou CNPJ; documento com foto e selfie (só profissional); certidão de antecedentes, quando a ocupação exige; registro no conselho.
 - **Informações financeiras**: dados de pagamento e de conta de recebimento tratados pelo Asaas. O número do cartão não passa pelo app.
-- **Localização**: precisa, opcional e com consentimento, só no check-in e check-out de plantão.
+- **Localização**: coordenadas gravadas com 3 casas decimais (cerca de 110 m), opcionais e com consentimento, só no check-in e check-out de plantão.
 - **Conteúdo criado pelo usuário**: pedidos, propostas, avaliações, relatórios de plantão.
 - **Dados de saúde**: não coletamos de propósito. O texto livre pode trazer informação de saúde. [CONDICIONAL: Q2]
 - **Publicidade e rastreamento**: nenhum de terceiros encontrado no código lido. Relatório de erros (Sentry) só se configurado. [a confirmar]
@@ -307,7 +312,7 @@ Use este resumo para preencher a declaração de privacidade da Google Play e da
 
 **Q4. Legítimo interesse.** A segurança e a prevenção à fraude podem usar o art. 7º, IX. Isso exige teste de balanceamento documentado. Quem faz, quando e onde fica guardado?
 
-**Q5. Pessoa cuidada menor de 18 anos.** Opções: (a) proibir no cadastro; (b) aceitar com declaração do responsável e consentimento específico e em destaque (art. 14, § 1º), com finalidade própria em `consents`; (c) usar as bases dos arts. 7º e 11 com melhor interesse prevalecente, como sugere o enunciado da ANPD [número não consta na página de notícia, de 24/05/2023; o PDF não foi aberto].
+**Q5. Pessoa cuidada: 18 anos completos.** O cadastro exige 18 anos completos, com declaração de quem cadastra (`care_recipients.adult_declared_at`, migração 20261110500005). Confirme se essa regra basta e se o art. 14 da LGPD pede algo além da declaração. Ficaram de fora: (b) aceitar com declaração do responsável e consentimento específico e em destaque (art. 14, § 1º), com finalidade própria em `consents`; (c) usar as bases dos arts. 7º e 11 com melhor interesse prevalecente, como sugere o enunciado da ANPD [número não consta na página de notícia, de 24/05/2023; o PDF não foi aberto].
 
 **Q6. ECA Digital (Lei 15.211/2025).** O WorkEasy é produto de "acesso provável" por crianças e adolescentes (art. 1º, parágrafo único, I a III)? Argumentos a favor de não ser: cadastro de 18 anos ou mais e serviço não direcionado. Argumentos contra: facilidade de acesso e interesse em serviços de cuidado. O texto da Câmara, reaberto nesta revisão, diz no art. 41-A: "Esta Lei entra em vigor em 17 de março de 2026", com a nota "Artigo acrescido pela Lei nº 15.352, de 25/2/2026". A mesma página traz notas de alteração posteriores (por exemplo, Lei nº 15.504, de 15/9/2026, no art. 36-A). Confirme a vigência e a versão consolidada no Planalto e no DOU. Também: o guia da ANPD sobre o escopo foi publicado no fim de outubro de 2026; a data é incerta (I8).
 
@@ -319,9 +324,9 @@ Use este resumo para preencher a declaração de privacidade da Google Play e da
 
 **Q10. Asaas.** A política não pôde ser aberta (HTTP 403). Confirme: (a) se o Asaas é operador ou controlador dos dados de cadastro do profissional e do pagador; (b) prazo de guarda; (c) se a conta do cliente no Asaas é removida na exclusão (hoje não é); (d) onde o Asaas hospeda os dados.
 
-**Q11. Prazo fiscal.** Hoje pagamentos e atendimentos são mantidos sem identificação. A base é o art. 16, I (obrigação legal) e o prazo vem da lei tributária. Defina o prazo com o contador e com o advogado. Não cite prazo sem fonte.
+**Q11. Prazo fiscal.** Hoje pagamentos e atendimentos são mantidos sem identificação. A base é o art. 16, I (obrigação legal) e o prazo vem da lei tributária. Decisão tomada sob delegação, sem parecer de contador: o cadastro no Asaas fica 5 anos após a exclusão (seção 7.6). Confirme o prazo e a base com o contador e com o advogado. Não cite prazo sem fonte.
 
-**Q12. Prova do aceite após a exclusão.** Consentimentos e pedidos de titular são apagados em cascata com o login. O `audit_log` mantém o código da conta, sem chave estrangeira. Decida se a prova do aceite deve sobreviver à exclusão, por quanto tempo e com que base (art. 16, I). Decida também se o texto livre digitado pela equipe no registro de ações pode ser reduzido.
+**Q12. Prova do aceite após a exclusão.** Consentimentos e pedidos de titular são apagados em cascata com o login. O `audit_log` mantém o código da conta, sem chave estrangeira. Pela decisão do WorkEasy, a prova do aceite fica guardada, pseudonimizada, por 5 anos após a exclusão (seção 7.5). Confirme a base legal e o prazo (art. 16, I, ou outra). Decida também se o texto livre digitado pela equipe no registro de ações pode ser reduzido.
 
 **Q13. Cópias de segurança e logs.** Prazo de retenção de backups e logs do Supabase. Confirme se a exclusão chega às cópias e em quanto tempo (art. 16 e art. 18, IV).
 

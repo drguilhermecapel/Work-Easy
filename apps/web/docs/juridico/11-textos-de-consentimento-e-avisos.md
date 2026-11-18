@@ -1,6 +1,7 @@
 # Textos de consentimento e avisos na interface
 
 > **Rascunho para revisão de advogado. Não é parecer jurídico.**
+> Os padrões adotados nas seções T1 a T6 do documento 12 são decisões tomadas pelo assistente sob delegação, não parecer jurídico. O advogado precisa confirmá-los antes de publicar.
 
 | Campo | Valor |
 |---|---|
@@ -26,21 +27,21 @@
 | # | Bloqueio | Por quê | O que fazer |
 |---|---|---|---|
 | B1 | O aceite de Termos e Privacidade leva a `/legal`, que hoje diz "Documentos em elaboração" (`pages/LegalDocs.tsx`, linhas 32 e 38 a 40). | Pede-se aceite de um texto que não foi publicado. O CDC, art. 46, diz que o contrato não obriga o consumidor sem a oportunidade de conhecer o conteúdo antes. A LGPD, art. 9º, caput, exige informação clara, adequada e ostensiva; o §1º exige que ela seja apresentada previamente, com transparência, de forma clara e inequívoca. | Publicar os documentos 01 e 03 e apontar os links do aceite para eles. |
-| B2 | A autorização de antecedentes diz "Posso retirar a autorização". Retirar hoje só grava a decisão em `consents`: a certidão continua no bucket e nenhuma regra muda. | Promessa que o produto não cumpre. | Usar o texto da seção 3 (`consent.background_check`), que diz só o que é verdade. Ou implementar o efeito antes de publicar a promessa. |
-| B3 | Retirar a localização não impede o envio. `check_in` (`supabase/migrations/20261019000009_care.sql`, linhas 358 a 386) não consulta `consents`. | Idem B2. | Usar o texto da seção 3 (`consent.location`), que fala só do padrão da caixa. |
-| B4 | `config/legal.ts` dá a `marketing`, `background_check` e `location` a versão `2026-10`, sem o sufixo `-rascunho`, embora os textos sejam rascunho. | Quem aceitar vê uma versão que parece publicada. | Usar `2026-11-rascunho` nos três (seção 3) e alinhar o TODO de `legal.ts` com a publicação. |
+| B2 | A autorização de antecedentes diz "Posso retirar a autorização". Retirar grava a decisão em `consents` e marca a certidão para remoção (`20261109100005_background_check_withdrawal.sql`). A remoção do bucket depende da função `background-check-purge` agendada em produção (ação do dono). | Promessa que o produto não cumpre. | Usar o texto da seção 3.4 (`consent.background_check`), com o prazo de 30 dias marcado como dependente da função agendada. Não publicar antes de o dono agendar a função. |
+| B3 | Retirar a localização não impede o envio. `check_in` consulta a última decisão de localização (`private.has_location_consent`, migração `20261118300001`): sem consentimento vigente, o registro sai sem coordenadas, mas não é recusado. | Idem B2. | Texto da seção 3.5 (`consent.location`) está correto. Depois da retirada, o servidor não grava coordenadas nos registros novos. |
+| B4 | `config/legal.ts` dá a `marketing`, `background_check` e `location` a versão `2026-10`, `age_declaration` a `2026-11`, sem o sufixo `-rascunho`, embora os textos sejam rascunho. | Quem aceitar vê uma versão que parece publicada. | Usar `2026-11-rascunho` nos quatro (seção 3, incluindo 3.6) e alinhar `legal.ts` com a publicação. |
 
 ## 2. Mapa: onde cada aviso aparece hoje
 
 | Tela (rota) | Arquivo e linhas | Aviso hoje | Status | Ação |
 |---|---|---|---|---|
-| `/entrar` | `pages/conta/Entrar.tsx`, linhas 209 a 227 | Um checkbox: "Li e aceito os Termos de Uso e a Política de Privacidade." Os dois links vão para `/legal`. | ajuste | Dois checkboxes (`consent.terms` e `consent.privacy`) e links para os documentos publicados. Hoje `acceptCurrentTerms` grava os dois de uma vez (`services/account.ts`, linhas 100 a 104). |
-| Barreira de aceite em `/conta`, `/pedido`, `/agendar/:slug`, `/cuidado/*`, `/pro/*` | `components/TermsGate.tsx`, linhas 46 a 65 | "Para continuar, aceite a versão atual dos termos" e o mesmo checkbox. | ajuste | Os mesmos dois checkboxes. |
+| `/entrar` | `pages/conta/Entrar.tsx`, linhas 209 a 227 | Um checkbox: "Li e aceito os Termos de Uso e a Política de Privacidade." Os dois links vão para `/legal`. Mais uma caixa, "Declaro que tenho 18 anos completos." (`age_declaration`, linha 231). | ajuste | Dois checkboxes (`consent.terms` e `consent.privacy`) e links para os documentos publicados. Hoje `acceptCurrentTerms` grava os dois de uma vez (`services/account.ts`, linhas 100 a 104). |
+| Barreira de aceite em `/conta`, `/pedido`, `/agendar/:slug`, `/cuidado/*`, `/pro/*` | `components/TermsGate.tsx`, linhas 46 a 65 | "Para continuar, aceite a versão atual dos termos" e o mesmo checkbox, mais "Declaro que tenho 18 anos completos." quando essa declaração falta. | ajuste | Os mesmos dois checkboxes, e a declaração de 18 anos (seção 3.6). |
 | `/conta`, Consentimentos | `pages/conta/Conta.tsx`, linhas 117 a 149 | Descrições das cinco finalidades. O título de `background_check` é "Consulta de antecedentes" (linha 138). | ajuste | Trocar as descrições da seção 3. O WorkEasy não consulta antecedentes: a pessoa envia a certidão. |
 | `/conta`, Consentimentos | `pages/conta/Conta.tsx`, linha 424 | "Cada decisão fica registrada com data e versão do texto. Revogar não apaga o histórico." | ativo | Manter. |
 | `/conta`, Excluir minha conta | `pages/conta/Conta.tsx`, linhas 303 a 325 | "Seus dados pessoais são apagados e você sai do app..." | ajuste | Seção 4.5. |
 | `/pro/cadastro`, passo 3 | `pages/pro/Cadastro.tsx`, linha 405 | "Envie uma foto ou um PDF de até 10 MB para cada item. Os arquivos ficam em um espaço privado..." | ajuste | Manter e acrescentar o aviso do item de documento com selfie (seção 4.1). |
-| `/pro/cadastro`, passo 3, item Certidão de antecedentes | `pages/pro/Cadastro.tsx`, linhas 428 a 436 | Checkbox "Autorizo o WorkEasy a usar a certidão de antecedentes para analisar o meu cadastro. Posso retirar a autorização em Minha conta." | ajuste | Seção 3 (`consent.background_check`) e a explicação da seção 4.2, acima do checkbox. |
+| `/pro/cadastro`, passo 3, item Certidão de antecedentes | `pages/pro/Cadastro.tsx`, linhas 428 a 436 | Checkbox "Autorizo o WorkEasy a usar a certidão de antecedentes para analisar o meu cadastro. Posso retirar a autorização em Minha conta." | ajuste | Seção 3 (`consent.background_check`) e a explicação da seção 4.2, acima do checkbox. A frase do bloco em `Cadastro.tsx` (linhas 452 a 455) que diz que a retirada não apaga a certidão deve sair. |
 | `/cuidado` | `components/cuidado/HealthDataNotice.tsx`, linhas 9 a 11, e `services/care.ts`, linha 158 | "O WorkEasy não pede dados de saúde." (a frase "não guarda" não existe no código; o teste `test/cuidado/health-data-notice.test.tsx` a veta) | ajuste | Seção 4.8. Acrescentar o aviso do resumo semanal, que envia textos à IA (4.11). |
 | `/cuidado`, cadastro da pessoa cuidada | `components/cuidado/RecipientForm.tsx`, linhas 46 a 88 | Só o aviso de saúde e as dicas de campo. | novo | Seção 4.4 (terceiro cadastrado pela família). |
 | `/pro/plantoes`, registro de entrada e saída | `components/cuidado/CheckinPanel.tsx`, linhas 94 a 100 | Checkbox "Enviar minha localização neste registro" e explicação. | ajuste | Seção 3 (`consent.location`). |
@@ -68,6 +69,7 @@ Resumo:
 | `consent.marketing` | `/conta` | Novidades e ofertas [PLANEJADO] | Consentimento: art. 7º, I | `2026-10` → `2026-11-rascunho` | `Conta.tsx` (CONSENTS) |
 | `consent.background_check` | `/pro/cadastro`, passo 3; `/conta` | Uso da certidão de antecedentes para analisar o cadastro | Consentimento: art. 7º, I. [CONDICIONAL: depende de parecer] | `2026-10` → `2026-11-rascunho` | `Cadastro.tsx`, `Conta.tsx` |
 | `consent.location` | `/pro/plantoes` (registro); `/conta` | Localização no registro de entrada e saída | Consentimento: art. 7º, I. [CONDICIONAL: depende de parecer] | `2026-10` → `2026-11-rascunho` | `CheckinPanel.tsx`, `Conta.tsx` |
+| `consent.age_declaration` | `/entrar` e barreira de aceite | Declaração de 18 anos completos | Decisão do assistente sob delegação (documento 12, T2). Base legal: [CONDICIONAL: depende de parecer] | `2026-11` → `2026-11-rascunho` | `Entrar.tsx`, `TermsGate.tsx` |
 
 ### 3.1 `consent.terms`
 
@@ -116,14 +118,14 @@ Resumo:
 - **Tela:** `/pro/cadastro`, passo 3, junto ao item Certidão de antecedentes. Só aparece quando a política da ocupação exige o item e a autorização ainda não foi dada. O envio do arquivo fica bloqueado até marcar a caixa (`Cadastro.tsx`, linhas 467 e 478). Também em `/conta`.
 - **Finalidade:** `background_check`.
 - **Base legal:** [CONDICIONAL: depende de parecer.] Consentimento (art. 7º, I), se for a base escolhida. A certidão de antecedentes não está na lista de dado sensível do art. 5º, II. Outra base pode ser mais adequada, por exemplo a obrigação legal da ocupação (art. 7º, II), se houver. Como a autorização é condição para o upload, a informação deve ser destacada (art. 9º, §3º). Revogação: art. 8º, §5º.
-- **Versão:** `2026-11-rascunho` (hoje `2026-10`). **Status:** ajuste. **Lido em:** `pages/pro/Cadastro.tsx`, `pages/conta/Conta.tsx`.
+- **Versão:** `2026-11-rascunho` (hoje `2026-10`). **Status:** ajuste. [PLANEJADO até a função de remoção estar agendada em produção: ação do dono.] **Lido em:** `pages/pro/Cadastro.tsx`, `pages/conta/Conta.tsx`.
 - **Checkbox:**
 
   > Autorizo o WorkEasy a usar a minha certidão de antecedentes criminais para analisar o meu cadastro.
 
 - **Texto de apoio:**
 
-  > Você pode retirar esta autorização em Minha conta. Isso registra a sua decisão, mas não apaga a certidão já enviada. Enquanto o arquivo não foi analisado, você pode removê-lo. Depois disso, ele só sai com a exclusão da sua conta.
+  > Você pode retirar esta autorização em Minha conta. Ao retirar, a certidão é marcada para remoção e, depois de 30 dias da retirada, é apagada do armazenamento. Enquanto o cadastro estiver em rascunho e a certidão ainda não tiver sido analisada, você pode removê-la no próprio cadastro. Se houve análise ou registro de auditoria do arquivo, o cadastro mantém só a linha do registro, marcada como removida, sem o arquivo.
 
 - **Nota para a Conta:** trocar o título "Consulta de antecedentes" por "Certidão de antecedentes" e a descrição por "Uso da certidão que você enviou para analisar o seu cadastro, quando a sua ocupação exige."
 
@@ -139,7 +141,21 @@ Resumo:
 
 - **Texto de apoio:**
 
-  > A localização é lida só neste momento, quando você registra entrada ou saída, e fica gravada no registro. A família vê o local no mapa. Se você não enviar, o registro vale do mesmo jeito. Se o aparelho bloquear a localização, o registro sai sem ela, e a família não vê mapa desse registro. Retirar a autorização em Minha conta desmarca esta opção por padrão e não apaga a localização de registros já feitos.
+  > A localização é lida só neste momento, quando você registra entrada ou saída, e fica gravada no registro com precisão de cerca de 110 metros (3 casas decimais). A família vê o local no mapa. Se você não enviar, o registro vale do mesmo jeito. Se o aparelho bloquear a localização, o registro sai sem ela, e a família não vê mapa desse registro. Retirar a autorização em Minha conta desmarca esta opção por padrão e não apaga a localização de registros já feitos.
+
+### 3.6 `consent.age_declaration`
+
+- **Tela:** `/entrar` (checkbox) e barreira de aceite (`TermsGate`), para quem ainda não fez a declaração.
+- **Finalidade:** `age_declaration`. A declaração fica no histórico de consentimentos, como as outras finalidades.
+- **Base legal:** decisão tomada pelo assistente sob delegação (documento 12, T2): caixa separada só para a declaração de 18 anos. Base legal para exigir 18 anos completos: [CONDICIONAL: depende de parecer; não está no repositório].
+- **Versão:** `2026-11-rascunho` (hoje `2026-11`, em `config/legal.ts`, linha 86). **Status:** ajuste. **Lido em:** `pages/conta/Entrar.tsx`, `components/TermsGate.tsx`.
+- **Checkbox:**
+
+  > Declaro que tenho 18 anos completos.
+
+- **Texto de apoio:**
+
+  > Quem aceita os Termos declara ter 18 anos completos. Sem essa declaração, o aceite não é concluído.
 
 ## 4. Avisos (não são consentimento)
 
@@ -163,7 +179,7 @@ Resumo:
 > - **De quem:** você envia. O WorkEasy não consulta órgãos públicos nem bases de antecedentes.
 > - **Por quê:** a sua ocupação exige a certidão para o cadastro. A lista de exigências por ocupação virá na Política de Verificação. [PLANEJADO]
 > - **Quem vê:** você e a equipe do WorkEasy que analisa o cadastro. Nenhum cliente vê o arquivo.
-> - **Guarda:** no espaço privado até você excluir a sua conta. Hoje não há prazo automático para apagar a certidão.
+> - **Guarda:** no espaço privado até você retirar a autorização ou excluir a sua conta. Depois de 30 dias da retirada, a certidão é apagada do armazenamento. Sem retirada, o arquivo fica guardado até a exclusão da conta.
 > - **Sem o arquivo:** o cadastro não vai para análise.
 
 ### 4.3 Assistente de texto para pedidos [PLANEJADO] · `notice.llm.assistant`
@@ -171,34 +187,35 @@ Resumo:
 - **Tela:** `/pedido`, passo 2, quando a chamada ao assistente for ligada à interface.
 - **Base legal:** execução de contrato a pedido do titular (art. 7º, V). [CONDICIONAL: depende de parecer] O fornecedor de IA é, em regra, operador da plataforma. [CONDICIONAL: depende de parecer] O fornecedor é a Anthropic: o código chama a API dela com a chave do servidor (`supabase/functions/_runtime/anthropic.ts`, usado por `request-assist`). Nome do operador no contrato, país, prazo de guarda e uso para treino não foram verificados. [incerto]
 - **Versão:** `2026-11-rascunho`. **Status:** planejado. **Lido em:** `pages/cliente/Pedido.tsx`.
-- **Fatos do código:** `supabase/functions/request-assist` aceita de 10 a 2.000 caracteres, devolve ocupação, urgência e resumo de até 500 caracteres, e tem limite de chamadas por hora (`ASSIST_HOURLY_LIMIT`, padrão 10). Sem chave no servidor, responde 503.
+- **Fatos do código:** `supabase/functions/request-assist` aceita de 10 a 2.000 caracteres, devolve ocupação, urgência e resumo de até 500 caracteres, e tem limite de chamadas por usuário em qualquer janela de 60 minutos, uma janela deslizante e não a hora civil (`ASSIST_HOURLY_LIMIT`, padrão 10; contagem compartilhada com `quote-assist` e `care-summary`; migração `20261118500001`). Sem chave no servidor, responde 503.
 
-> Seu texto será processado por um serviço de IA para sugerir a ocupação e um resumo do pedido. Não escreva telefone, endereço completo nem dados de saúde. Você confere a sugestão antes de enviar o pedido. Se preferir, preencha o pedido à mão. Há um limite de pedidos organizados pelo assistente por hora.
+> Seu texto será processado por um serviço de IA para sugerir a ocupação e um resumo do pedido. Não escreva telefone, endereço completo nem dados de saúde. Você confere a sugestão antes de enviar o pedido. Se preferir, preencha o pedido à mão. Há um limite de uso do assistente: ele conta os pedidos feitos em qualquer janela de 60 minutos.
 
 ### 4.4 Cadastro de terceiro (pessoa cuidada) · `notice.care.recipient`
 
 - **Tela:** `/cuidado`, formulário de pessoa cuidada (`RecipientForm.tsx`), no topo.
-- **Base legal:** a família cadastra dados de uma terceira pessoa. Quem é o controlador desses dados? [CONDICIONAL: depende de parecer]. Se a pessoa for criança, o consentimento precisa ser "específico e em destaque dado por pelo menos um dos pais ou pelo responsável legal" (LGPD, art. 14, §1º). Para adolescentes e idosos, a base depende de parecer (Q6).
+- **Base legal:** a família cadastra dados de uma terceira pessoa. Quem é o controlador desses dados? [CONDICIONAL: depende de parecer]. Se a pessoa for criança, o consentimento precisa ser "específico e em destaque dado por pelo menos um dos pais ou pelo responsável legal" (LGPD, art. 14, §1º). Para pessoas adultas cadastradas por terceiros, a base depende de parecer (Q6). Com a declaração obrigatória de 18 anos completos (documento 12, T1), o cadastro não é feito para criança ou adolescente.
 - **Versão:** `2026-11-rascunho`. **Status:** novo. **Lido em:** `components/cuidado/RecipientForm.tsx`.
-- **Fatos do código:** sobre a pessoa cuidada, `caregiver_shifts()` devolve só `recipient_first_name` ao cuidador, e o bairro vem de `neighborhood_name` (`supabase/migrations/20261019000009_care.sql`, linhas 470 a 480). Preferências e contato de emergência ficam com a família.
+- **Fatos do código:** sobre a pessoa cuidada, `caregiver_shifts()` devolve só `recipient_first_name` ao cuidador, e o bairro vem de `neighborhood_name` (`supabase/migrations/20261019000009_care.sql`, linhas 470 a 480). Redefinida em `20261118600005_caregiver_shifts_hide_cancelled.sql`: em plantão cancelado pela família, o cuidador vê só período e status. Preferências e contato de emergência ficam com a família.
 
-> Você está cadastrando alguém que recebe o cuidado. Informe só o necessário para organizar os plantões. Se a pessoa for criança, o cadastro precisa ser feito por pai, mãe ou responsável legal. Ao informar um contato de emergência, você passa dados de outra pessoa: confirme que ela concorda. O cuidador vê só o primeiro nome da pessoa e o bairro da casa. Preferências e contato de emergência ficam só com a família.
+> Você está cadastrando alguém que recebe o cuidado. Informe só o necessário para organizar os plantões. Só cadastre quem tem 18 anos completos, e confirme a declaração antes de salvar: sem ela, o cadastro não é enviado. Ao informar um contato de emergência, você passa dados de outra pessoa: confirme que ela concorda. O cuidador vê só o primeiro nome da pessoa e o bairro da casa. Preferências e contato de emergência ficam só com a família.
 
 ### 4.5 Confirmação de exclusão da conta · `notice.account.delete`
 
 - **Tela:** `/conta`, seção Excluir minha conta (`Conta.tsx`, linhas 303 a 325). A confirmação continua sendo digitar `EXCLUIR`.
-- **Fatos do código:** `account-delete` apaga a pasta de documentos, cancela a assinatura Pro e as cobranças em aberto, chama `anonymize_user` e apaga o usuário do Auth. Recusa com 409 `active_bookings` se há atendimento `accepted`, `paid`, `in_progress` ou `disputed`. Pelo cascade do banco (`on delete cascade` a partir de `profiles`, que cai com `auth.users`), também saem consentimentos, casas, pessoas cuidadas, plantões, check-ins e relatórios da família (ARQUITETURA.md, seção 'LGPD e auditoria'). `anonymize_user` só anonimiza essas casas e pessoas; a remoção vem do cascade. Há exportação em 'Cópia dos seus dados' (`account-export`, `Conta.tsx`, linha 431). Conflito com `docs/DECISOES.md`, D7: ver Q18. Pagamentos e atendimentos ficam anonimizados.
-- **Base legal:** eliminação, art. 18, VI. Conservação permitida, art. 16, I e IV. Guarda fiscal: CTN, art. 195, parágrafo único, sujeita a parecer (Q7 e I3). [CONDICIONAL: depende de parecer]
+- **Fatos do código:** `account-delete` apaga a pasta de documentos, cancela a assinatura Pro e as cobranças em aberto, chama `anonymize_user` e apaga o usuário do Auth. Recusa com 409 `active_bookings` se há atendimento `paid`, `in_progress` ou `disputed` (`BLOCKING_BOOKING_STATUSES`). Atendimento `accepted` sem pagamento é cancelado e a outra parte recebe aviso (`20261110600007_deletion_counterpart_notices.sql`). Pelo cascade do banco (`on delete cascade` a partir de `profiles`, que cai com `auth.users`), também saem consentimentos, casas, pessoas cuidadas, plantões, check-ins e relatórios da família (ARQUITETURA.md, seção 'LGPD e auditoria'). `anonymize_user` anonimiza essas casas e pessoas, e limpa as notas dos plantões e os textos dos relatórios diários delas (`20261118600002`); a remoção vem do cascade. Na exclusão, uma cópia pseudonimizada das decisões de consentimento ainda dentro de 5 anos vai para `consent_proofs`, sem o identificador da conta (`20261110500001`). Há exportação em 'Cópia dos seus dados' (`account-export`, `Conta.tsx`, linha 431). Conflito com `docs/DECISOES.md`, D7: ver Q18. Pagamentos e atendimentos ficam anonimizados.
+- **Base legal:** eliminação, art. 18, VI. Conservação permitida, art. 16, I e IV. Guarda fiscal: CTN, art. 195, parágrafo único, sujeita a parecer (Q7 e I3). Cadastro no Asaas por 5 anos: CTN, art. 173, decisão do assistente sob delegação, não parecer do contador. Prova pseudonimizada por 5 anos: decisão do assistente sob delegação (documento 12, T5), a validar. [CONDICIONAL: depende de parecer]
 - **Versão:** `2026-11-rascunho`. **Status:** ajuste. **Lido em:** `pages/conta/Conta.tsx`, e a mensagem de 409 em `supabase/functions/account-delete/handler.ts`.
 
 > Excluir a conta é definitivo e não pode ser desfeito. Ao confirmar, o WorkEasy:
 >
-> - apaga seus dados pessoais, seu perfil, os documentos que você enviou e o seu histórico de consentimentos;
+> - apaga seus dados pessoais, seu perfil e os documentos que você enviou; apaga o seu histórico de consentimentos, mas guarda uma cópia sem identificação das suas decisões por até 5 anos depois da exclusão;
 > - cancela a sua assinatura Pro e as cobranças em aberto;
-> - se você é da família, apaga as suas casas, as pessoas cuidadas e os plantões. Um cuidador com plantão confirmado deixa de ver esse plantão. Cancele antes e avise o cuidador por fora;
-> - mantém pagamentos e atendimentos já feitos, sem nome nem contatos, para registro fiscal.
+> - se você é da família, apaga as suas casas, as pessoas cuidadas e os plantões. Antes, apaga as notas dos plantões e os textos dos relatórios diários (refeições, atividades, humor e observações). Os plantões futuros com cuidador são cancelados, e o cuidador recebe aviso. Cancele antes e avise o cuidador por fora;
+> - se você é cuidador, os plantões futuros atribuídos a você são cancelados. Um plantão com entrada registrada e horário ainda não encerrado também é cancelado. A família recebe o mesmo aviso de cancelamento dos demais. Plantão já encerrado fica no histórico;
+> - mantém pagamentos e atendimentos já feitos, sem nome nem contatos, para registro fiscal. O cadastro de cobrança no Asaas fica guardado por 5 anos depois da exclusão, pelo mesmo motivo.
 >
-> Você não consegue excluir a conta enquanto houver atendimento aceito, pago, em andamento ou em disputa. Conclua ou cancele esses atendimentos antes. Antes de excluir, você pode baixar seus dados em Cópia dos seus dados.
+> Você não consegue excluir a conta enquanto houver atendimento pago, em andamento ou em disputa. Conclua ou cancele esses atendimentos antes. Atendimento aceito e ainda não pago é cancelado, e a outra parte recebe aviso. Antes de excluir, você pode baixar seus dados em Cópia dos seus dados.
 
 ### 4.6 Armazenamento no aparelho e cookies · `notice.storage`
 
@@ -220,11 +237,11 @@ Resumo:
 ### 4.8 Dados de saúde (ajuste do aviso atual) · `notice.health.care`
 
 - **Tela:** `/cuidado` (todas as telas com `HealthDataNotice`) e a constante `HEALTH_DATA_NOTICE` em `services/care.ts`, linha 158, usada nas mensagens de erro.
-- **Fatos do código:** há um filtro de palavras (`services/care.ts`, `HEALTH_TERMS` e `findHealthTerm`). O próprio comentário diz que é "A heuristic, not a promise to catch everything". A frase atual é "não pede", não "não guarda" (o teste `test/cuidado/health-data-notice.test.tsx` veta "não guarda"). Mesmo assim, o aviso deve dizer que o filtro roda só no navegador e não confere todo o texto livre (`HealthDataNotice.tsx`, linhas 9 a 11), e que o resumo semanal envia textos à IA (4.11). Os campos de texto livre (preferências, contato de emergência, observações, relatório diário) existem.
+- **Fatos do código:** há um filtro de palavras (`services/care.ts`, `HEALTH_TERMS` e `findHealthTerm`). O próprio comentário diz que é "A heuristic, not a promise to catch everything". A frase atual é "não pede", não "não guarda" (o teste `test/cuidado/health-data-notice.test.tsx` veta "não guarda"). Mesmo assim, o aviso deve dizer que o filtro roda no navegador, nos campos, e que no resumo semanal o servidor também deixa de fora relatórios com esses termos (`care-summary`, `reports_omitted`); nenhum dos dois confere todo o texto livre (`HealthDataNotice.tsx`, linhas 9 a 11). O resumo semanal envia textos à IA (4.11). Os campos de texto livre (preferências, contato de emergência, observações, relatório diário) existem.
 - **Base legal:** dado de saúde é dado sensível (art. 5º, II). Tratá-lo exige o art. 11. O produto não deve tratá-lo. [CONDICIONAL: depende de parecer]
 - **Versão:** `2026-11-rascunho`. **Status:** ajuste.
 
-> O WorkEasy não pede dados de saúde. Não escreva doenças, diagnósticos, remédios, doses, exames ou sintomas. O app bloqueia algumas dessas palavras, mas não todas. Combine esses cuidados direto com o cuidador, fora do app.
+> O WorkEasy não pede dados de saúde. Não escreva doenças, diagnósticos, remédios, doses, exames ou sintomas. O app bloqueia no seu navegador algumas dessas palavras. No resumo semanal, o servidor também deixa de fora relatórios em que as encontra. Nenhum dos dois pega tudo. Combine esses cuidados direto com o cuidador, fora do app.
 
 ### 4.9 Teleconsulta [PLANEJADO] · `notice.future.telemedicine`
 
@@ -279,7 +296,7 @@ export interface LegalText {
   /** Rota ou componente onde o texto aparece. */
   screen: string;
   /** Finalidade de consentimento (consent_purpose), quando for um consentimento. */
-  purpose?: 'terms' | 'privacy' | 'marketing' | 'background_check' | 'location';
+  purpose?: 'terms' | 'privacy' | 'marketing' | 'background_check' | 'location' | 'age_declaration';
   /** Rótulo do checkbox, quando houver. */
   label?: string;
   /** Texto de apoio para a tela. */
@@ -332,7 +349,7 @@ export const LEGAL_TEXTS: Record<string, LegalText> = {
     screen: '/pro/cadastro (passo 3); /conta',
     purpose: 'background_check',
     label: 'Autorizo o WorkEasy a usar a minha certidão de antecedentes criminais para analisar o meu cadastro.',
-    body: 'Você pode retirar esta autorização em Minha conta. Isso registra a sua decisão, mas não apaga a certidão já enviada. Enquanto o arquivo não foi analisado, você pode removê-lo. Depois disso, ele só sai com a exclusão da sua conta.',
+    body: 'Você pode retirar esta autorização em Minha conta. Ao retirar, a certidão é marcada para remoção e, depois de 30 dias da retirada, é apagada do armazenamento. Enquanto o cadastro estiver em rascunho e a certidão ainda não tiver sido analisada, você pode removê-la no próprio cadastro. Se houve análise ou registro de auditoria do arquivo, o cadastro mantém só a linha do registro, marcada como removida, sem o arquivo.',
     legalBasis: 'Consentimento: art. 7º, I, se for a base escolhida; a certidão não está no art. 5º, II; informação destacada: art. 9º, §3º. [CONDICIONAL: depende de parecer]',
     version: '2026-11-rascunho',
     status: 'ajuste',
@@ -343,11 +360,22 @@ export const LEGAL_TEXTS: Record<string, LegalText> = {
     screen: '/pro/plantoes (registro de entrada e saída); /conta',
     purpose: 'location',
     label: 'Enviar minha localização neste registro',
-    body: 'A localização é lida só neste momento, quando você registra entrada ou saída, e fica gravada no registro. A família vê o local no mapa. Se você não enviar, o registro vale do mesmo jeito. Se o aparelho bloquear a localização, o registro sai sem ela, e a família não vê mapa desse registro. Retirar a autorização em Minha conta desmarca esta opção por padrão e não apaga a localização de registros já feitos.',
+    body: 'A localização é lida só neste momento, quando você registra entrada ou saída, e fica gravada no registro com precisão de cerca de 110 metros (3 casas decimais). A família vê o local no mapa. Se você não enviar, o registro vale do mesmo jeito. Se o aparelho bloquear a localização, o registro sai sem ela, e a família não vê mapa desse registro. Retirar a autorização em Minha conta desmarca esta opção por padrão e não apaga a localização de registros já feitos.',
     legalBasis: 'Consentimento: art. 7º, I; revogação: art. 8º, §5º. [CONDICIONAL: depende de parecer]',
     version: '2026-11-rascunho',
     status: 'ajuste',
     readBy: ['components/cuidado/CheckinPanel.tsx', 'pages/conta/Conta.tsx'],
+  },
+  'consent.age_declaration': {
+    id: 'consent.age_declaration',
+    screen: '/entrar (checkbox); barreira de aceite (TermsGate)',
+    purpose: 'age_declaration',
+    label: 'Declaro que tenho 18 anos completos.',
+    body: 'Quem aceita os Termos declara ter 18 anos completos. Sem essa declaração, o aceite não é concluído.',
+    legalBasis: 'Decisão do assistente sob delegação (documento 12, T2). Base legal para exigir 18 anos completos: [CONDICIONAL: depende de parecer; não está no repositório]',
+    version: '2026-11-rascunho',
+    status: 'ajuste',
+    readBy: ['pages/conta/Entrar.tsx', 'components/TermsGate.tsx'],
   },
   'notice.provider.documents': {
     id: 'notice.provider.documents',
@@ -361,7 +389,7 @@ export const LEGAL_TEXTS: Record<string, LegalText> = {
   'notice.provider.background_detail': {
     id: 'notice.provider.background_detail',
     screen: '/pro/cadastro (passo 3, acima do checkbox de antecedentes)',
-    body: 'Certidão de antecedentes criminais. O que é pedido: um arquivo da certidão que você já tem, em foto ou PDF de até 10 MB. De quem: você envia. O WorkEasy não consulta órgãos públicos nem bases de antecedentes. Por quê: a sua ocupação exige a certidão para o cadastro. Quem vê: você e a equipe do WorkEasy que analisa o cadastro. Nenhum cliente vê o arquivo. Guarda: no espaço privado até você excluir a sua conta. Hoje não há prazo automático para apagar a certidão. Sem o arquivo, o cadastro não vai para análise.',
+    body: 'Certidão de antecedentes criminais. O que é pedido: um arquivo da certidão que você já tem, em foto ou PDF de até 10 MB. De quem: você envia. O WorkEasy não consulta órgãos públicos nem bases de antecedentes. Por quê: a sua ocupação exige a certidão para o cadastro. Quem vê: você e a equipe do WorkEasy que analisa o cadastro. Nenhum cliente vê o arquivo. Guarda: no espaço privado até você retirar a autorização ou excluir a sua conta. Depois de 30 dias da retirada, a certidão é apagada do armazenamento. Sem retirada, o arquivo fica guardado até a exclusão da conta. Sem o arquivo, o cadastro não vai para análise.',
     legalBasis: 'Informação prévia e destacada: art. 9º, §1º e §3º. Prazo de guarda e base: [CONDICIONAL: depende de parecer]',
     version: '2026-11-rascunho',
     status: 'novo',
@@ -370,7 +398,7 @@ export const LEGAL_TEXTS: Record<string, LegalText> = {
   'notice.llm.assistant': {
     id: 'notice.llm.assistant',
     screen: '/pedido (passo 2), quando o assistente for ligado à tela',
-    body: 'Seu texto será processado por um serviço de IA para sugerir a ocupação e um resumo do pedido. Não escreva telefone, endereço completo nem dados de saúde. Você confere a sugestão antes de enviar o pedido. Se preferir, preencha o pedido à mão. Há um limite de pedidos organizados pelo assistente por hora.',
+    body: 'Seu texto será processado por um serviço de IA para sugerir a ocupação e um resumo do pedido. Não escreva telefone, endereço completo nem dados de saúde. Você confere a sugestão antes de enviar o pedido. Se preferir, preencha o pedido à mão. Há um limite de uso do assistente: ele conta os pedidos feitos em qualquer janela de 60 minutos.',
     legalBasis: 'Execução de contrato a pedido do titular: art. 7º, V. [CONDICIONAL: depende de parecer]. Fornecedor: Anthropic (API, chave no servidor); prazo de guarda e treino: [incerto]. [PLANEJADO]',
     version: '2026-11-rascunho',
     status: 'planejado',
@@ -379,8 +407,8 @@ export const LEGAL_TEXTS: Record<string, LegalText> = {
   'notice.care.recipient': {
     id: 'notice.care.recipient',
     screen: '/cuidado (formulário de pessoa cuidada), no topo',
-    body: 'Você está cadastrando alguém que recebe o cuidado. Informe só o necessário para organizar os plantões. Se a pessoa for criança, o cadastro precisa ser feito por pai, mãe ou responsável legal. Ao informar um contato de emergência, você passa dados de outra pessoa: confirme que ela concorda. O cuidador vê só o primeiro nome da pessoa e o bairro da casa. Preferências e contato de emergência ficam só com a família.',
-    legalBasis: 'Terceiro cadastrado pela família: [CONDICIONAL: depende de parecer]. Criança: art. 14, §1º.',
+    body: 'Você está cadastrando alguém que recebe o cuidado. Informe só o necessário para organizar os plantões. Só cadastre quem tem 18 anos completos, e confirme a declaração antes de salvar: sem ela, o cadastro não é enviado. Ao informar um contato de emergência, você passa dados de outra pessoa: confirme que ela concorda. O cuidador vê só o primeiro nome da pessoa e o bairro da casa. Preferências e contato de emergência ficam só com a família.',
+    legalBasis: 'Terceiro cadastrado pela família: [CONDICIONAL: depende de parecer]. Criança: art. 14, §1º. Cadastro só com declaração de 18 anos completos (documento 12, T1).',
     version: '2026-11-rascunho',
     status: 'novo',
     readBy: ['components/cuidado/RecipientForm.tsx'],
@@ -406,8 +434,8 @@ export const LEGAL_TEXTS: Record<string, LegalText> = {
   'notice.account.delete': {
     id: 'notice.account.delete',
     screen: '/conta (Excluir minha conta)',
-    body: 'Excluir a conta é definitivo e não pode ser desfeito. Ao confirmar, o WorkEasy: apaga seus dados pessoais, seu perfil, os documentos que você enviou e o seu histórico de consentimentos; cancela a sua assinatura Pro e as cobranças em aberto; se você é da família, apaga as suas casas, as pessoas cuidadas e os plantões, e um cuidador com plantão confirmado deixa de ver esse plantão (cancele antes e avise o cuidador por fora); mantém pagamentos e atendimentos já feitos, sem nome nem contatos, para registro fiscal. Você não consegue excluir a conta enquanto houver atendimento aceito, pago, em andamento ou em disputa. Antes, você pode baixar seus dados em Cópia dos seus dados.',
-    legalBasis: 'Eliminação: art. 18, VI; conservação: art. 16, I e IV; guarda fiscal: CTN, art. 195, parágrafo único. [CONDICIONAL: depende de parecer]',
+    body: 'Excluir a conta é definitivo e não pode ser desfeito. Ao confirmar, o WorkEasy: apaga seus dados pessoais, seu perfil e os documentos que você enviou; apaga o seu histórico de consentimentos, mas guarda uma cópia sem identificação das suas decisões por até 5 anos depois da exclusão; cancela a sua assinatura Pro e as cobranças em aberto; se você é da família, apaga as suas casas, as pessoas cuidadas e os plantões; antes, apaga as notas dos plantões e os textos dos relatórios diários (refeições, atividades, humor e observações); os plantões futuros com cuidador são cancelados, e o cuidador recebe aviso (cancele antes e avise o cuidador por fora); se você é cuidador, os plantões futuros atribuídos a você são cancelados, e também o que já tem entrada registrada e horário ainda não encerrado; a família recebe o mesmo aviso de cancelamento, e plantão já encerrado fica no histórico; mantém pagamentos e atendimentos já feitos, sem nome nem contatos, para registro fiscal. Você não consegue excluir a conta enquanto houver atendimento aceito, pago, em andamento ou em disputa. Antes, você pode baixar seus dados em Cópia dos seus dados.',
+    legalBasis: 'Eliminação: art. 18, VI; conservação: art. 16, I e IV; guarda fiscal: CTN, art. 195, parágrafo único; cadastro no Asaas por 5 anos: CTN, art. 173 (decisão do assistente sob delegação, não parecer do contador). Prova pseudonimizada por 5 anos: decisão do assistente sob delegação (documento 12, T5), a validar. [CONDICIONAL: depende de parecer]',
     version: '2026-11-rascunho',
     status: 'ajuste',
     readBy: ['pages/conta/Conta.tsx', 'supabase/functions/account-delete/handler.ts'],
@@ -433,7 +461,7 @@ export const LEGAL_TEXTS: Record<string, LegalText> = {
   'notice.health.care': {
     id: 'notice.health.care',
     screen: '/cuidado (HealthDataNotice); services/care.ts (HEALTH_DATA_NOTICE)',
-    body: 'O WorkEasy não pede dados de saúde. Não escreva doenças, diagnósticos, remédios, doses, exames ou sintomas. O app bloqueia algumas dessas palavras, mas não todas. Combine esses cuidados direto com o cuidador, fora do app.',
+    body: 'O WorkEasy não pede dados de saúde. Não escreva doenças, diagnósticos, remédios, doses, exames ou sintomas. O app bloqueia no seu navegador algumas dessas palavras. No resumo semanal, o servidor também deixa de fora relatórios em que as encontra. Nenhum dos dois pega tudo. Combine esses cuidados direto com o cuidador, fora do app.',
     legalBasis: 'Dado de saúde: art. 5º, II; tratamento exige art. 11. [CONDICIONAL: depende de parecer]',
     version: '2026-11-rascunho',
     status: 'ajuste',
@@ -468,15 +496,15 @@ Esta tarefa é de texto. As lacunas abaixo estão listadas e não foram corrigid
 |---|---|---|---|---|
 | G1 | `pages/LegalDocs.tsx`, linhas 32 e 38 a 40; `AppShell.tsx`, linha 51 (`legalRoutes`) | "Documentos em elaboração" em `/legal`. Todos os aceites apontam para ele. | Aceite sem texto publicado (B1). | Publicar 01 e 03 antes de ligar os aceites. |
 | G2 | `pages/conta/Entrar.tsx`, linhas 209 a 227; `components/TermsGate.tsx`; `services/account.ts`, linhas 100 a 104 | Um checkbox grava `terms` e `privacy` juntos. | Não há ciência separada da Política. | Dois checkboxes, dois registros. |
-| G3 | `pages/pro/Cadastro.tsx`, linhas 369 e 428 a 436; `pages/conta/Conta.tsx` | Revogar a autorização de antecedentes não muda o arquivo nem a análise. O arquivo já analisado só sai com a exclusão da conta (`ARQUITETURA.md`, seção de documentos). | Promessa do texto antigo não se cumpre (B2). | Texto da seção 3.4 ou regra de efeito no servidor. |
-| G4 | `components/cuidado/CheckinPanel.tsx`, linha 44 e linhas 74 e 81; migration `20261019000009_care.sql` | A caixa vem marcada depois de um consentimento anterior (`useLocation = locationGranted`). `check_in` não consulta `consents`. | Caixa pré-marcada por consentimento antigo; revogação não bloqueia o envio (B3). | Caixa começar desmarcada a cada registro; checagem no servidor se a revogação deve valer. |
+| G3 | `pages/pro/Cadastro.tsx`, linhas 369 e 428 a 436; `pages/conta/Conta.tsx` | Revogar marca o arquivo para remoção, e depois de 30 dias ele é apagado (`20261118400002`), mas a remoção depende da função `background-check-purge` agendada em produção (ação do dono). Arquivo já analisado fica como linha `purged`, sem arquivo. | Promessa do texto antigo não se cumpre (B2). | Trocar o texto de `Cadastro.tsx` (linhas 452 a 455) e de `Conta.tsx` (linha 140) pelo da seção 3.4. O efeito no servidor já existe; falta agendar a função. |
+| G4 | `components/cuidado/CheckinPanel.tsx`, linha 44 e linhas 74 e 81; migration `20261019000009_care.sql` | A caixa vem marcada depois de um consentimento anterior (`useLocation = locationGranted`). `check_in` consulta a última decisão de localização (migração `20261118300001`). | Caixa pré-marcada por consentimento antigo. Sem consentimento vigente, o servidor não grava coordenadas (B3). | Caixa começar desmarcada a cada registro. O servidor já cobre a retirada. |
 | G5 | `pages/conta/Conta.tsx`, linha 131 | Marketing grava consentimento sem envio. | Consentimento sem uso. | Esconder até haver envio ou marcar [PLANEJADO]. |
-| G6 | `config/legal.ts` | `marketing`, `background_check` e `location` com versão `2026-10`, sem `-rascunho`. TODO de alinhamento com `/legal`. | Versão parece publicada (B4). | Versão `2026-11-rascunho` até o parecer. |
-| G7 | `components/cuidado/HealthDataNotice.tsx`, linha 9; `services/care.ts`, linha 158 | "O WorkEasy não pede dados de saúde." (o código não diz "não guarda") | O aviso não diz que o filtro roda só no navegador e que o resumo semanal vai à IA. | Acrescentar essas duas frases (seções 4.8 e 4.11). |
+| G6 | `config/legal.ts` | `marketing`, `background_check` e `location` com versão `2026-10`, e `age_declaration` com `2026-11`, sem `-rascunho`. Não há TODO no arquivo. | Versão parece publicada (B4). | Versão `2026-11-rascunho` até o parecer. |
+| G7 | `components/cuidado/HealthDataNotice.tsx`, linha 9; `services/care.ts`, linha 158 | "O WorkEasy não pede dados de saúde." (o código não diz "não guarda") | O aviso não diz que o resumo semanal vai à IA, nem que o servidor também deixa de fora relatórios com termos de saúde. | Acrescentar as frases das seções 4.8 e 4.11. |
 | G8 | `pages/cliente/Pedido.tsx`, linha 454 | "fica guardado neste navegador" | O rascunho fica na aba (`sessionStorage`). | Texto da seção 4.7. |
-| G9 | `pages/conta/Conta.tsx`, linhas 303 a 325 | A exclusão de conta da família apaga plantões com cuidador confirmado, sem aviso. O aviso só existe na exclusão de casa (`Casas.tsx`, `caregiverWarning`). | O cuidador perde o plantão sem aviso. | Aviso da seção 4.5 e, se possível, bloqueio com plantão confirmado. |
+| G9 | `pages/conta/Conta.tsx`, linhas 303 a 325 | A exclusão de conta da família cancela os plantões futuros com cuidador e manda aviso ao cuidador (`20261110600007_deletion_counterpart_notices.sql`). O aviso de exclusão de casa (`Casas.tsx`, `caregiverWarning`) é outro. | O cuidador perde o plantão e recebe aviso de cancelamento; a seção 4.5 precisa dizer isso. | Texto da seção 4.5, já atualizado. |
 | G10 | `components/cuidado/ShiftRecords.tsx`, linha 16 | O link "Ver local do registro" envia as coordenadas ao OpenStreetMap. | Terceiro recebe a localização ao clicar; sem aviso. | Citar na Política; aviso curto no link. [incerto: se é transferência] |
-| G11 | Retenção, geral | Não há regra de prazo para coordenadas, documentos ou consentimentos. Há 7 `cron.schedule`: notificações (`…000008_notifications.sql`, linhas 276 e 277, que também limpa `assist_usage`), planos Pro (`…000009_pro_plan_expiry`), pedidos (`…000006_booking_requests`), lembretes (`20261023100000_booking_reminders`), retenção de eventos de produto em 400 dias (`20261108100000_product_events`) e contagens de notificação (`20261109100001_notification_daily_cap`). Nenhum apaga coordenadas, documentos ou consentimentos. | A Política não pode prometer prazo que o código não cumpre. | Definir prazos com o advogado (Q4) e implementar. |
+| G11 | Retenção, geral | Coordenadas do registro de plantão não têm prazo no código. Há 8 `cron.schedule`: notificações (`…000008_notifications.sql`, linhas 276 e 277, que também limpa `assist_usage`), planos Pro (`…000009_pro_plan_expiry`), pedidos (`…000006_booking_requests`), lembretes (`20261023100000_booking_reminders`), retenção de eventos de produto em 400 dias (`20261108100000_product_events`) e contagens de notificação (`20261109100001_notification_daily_cap`). Nenhuma regra apaga as coordenadas. O expurgo diário `run_retention_purge` (`20261118200002`, pg_cron, 03:00) apaga provas de consentimento após 5 anos, eventos de acesso após 6 meses (data e método de login, sem IP; o registro depende de ativar o hook no painel do Supabase, ação do dono) e eventos de uso do assistente (registro de cota, sem texto) após 1 dia. Documentos de antecedentes retirados são apagados 30 dias depois da retirada pela função `background-check-purge` (`20261118400002`), que depende de agendamento em produção (ação do dono). A verificação do agendamento do expurgo também é ação do dono. | A Política não pode prometer prazo que o código não cumpre. | Definir com o advogado (Q4) os prazos que faltam: coordenadas e documentos aprovados ou reprovados. |
 | G12 | `android/app/src/main/AndroidManifest.xml`, linha 36; `ios/App/App/Info.plist`, linhas 11 e 12 | Câmera declarada para uma simulação. | Permissão sem uso real na versão de loja. | Retirar se a simulação não vai à loja. |
 | G13 | `ACCESS_COARSE_LOCATION` no manifesto | O app pede alta precisão. | Permissão redundante. | Avaliar remover. |
 | G14 | `AppShell.tsx`, linha 50 (`prototypeRoutes`) | Rotas de prontuário e teleconsulta ficam acessíveis na demo, com dados de demonstração. | Pode parecer funcionalidade de saúde. | Mostrar o aviso da seção 4.9 e 4.10 ou esconder na build de loja. |
@@ -490,10 +518,10 @@ Esta tarefa é de texto. As lacunas abaixo estão listadas e não foram corrigid
 - **Q1. Papel da empresa.** O WorkEasy é controlador, operador ou os dois, em cada tratamento? O texto usa "controlador" para a empresa. Isto muda a Política (documento 03, seção 1) e este documento.
 - **Q2. Aceite e consentimento.** Aceitar os Termos é aceite de contrato, não consentimento do art. 7º, I. A Política é ciência, não consentimento. O código grava os dois na tabela `consents`, que é de consentimento. Vale manter o nome `privacy` no enum? Como fica a prova (art. 8º, §2º, que põe o ônus no controlador)?
 - **Q3. Base da certidão de antecedentes.** Consentimento (art. 7º, I), obrigação legal da ocupação (art. 7º, II), ou outra? A certidão não está no art. 5º, II. O consentimento é condição para o upload (`Cadastro.tsx`, linhas 467, 478 e 431 a 436). Isso afeta a liberdade da escolha e a validade: ver art. 9º, §3º (condição para o serviço), art. 8º, §3º (vício de consentimento) e art. 9º, §1º (consentimento nulo sem informação clara). Os trechos foram lidos no texto compilado (ver Fontes).
-- **Q4. Prazos de guarda.** Qual prazo para a certidão após reprovação, após aprovação e após retirada da autorização? Hoje não há prazo no código (G11). A eliminação por revogação (art. 18, VI) vale para esse dado?
-- **Q5. Revogação sem efeito técnico.** Pode o texto dizer que a retirada "registra a decisão" (seção 3.4), ou é preciso que o código faça a retirada valer (B2 e B3)? O art. 8º, §5º diz que os tratamentos anteriores ficam ratificados até o pedido de eliminação. Como isso se aplica a localização e certidão?
-- **Q6. Terceiros cadastrados pela família.** Quem responde pelos dados da pessoa cuidada e do contato de emergência? Para adolescentes e pessoas idosas, qual base vale? O art. 14, §1º exige consentimento de pai, mãe ou responsável para criança. O Enunciado CD/ANPD nº 1 (citado em requerimento do Senado, ver Fontes) permite outras bases com o melhor interesse. Qual interpretação adotar? [incerto] Há também o PL 2628/2022, que propõe mudar o art. 14 (citado no mesmo requerimento; situação atual não verificada). [incerto]
-- **Q7. Exclusão e guarda fiscal.** A plataforma guarda registros fiscais? O CTN, art. 195, parágrafo único, fala em livros e comprovantes de escrituração comercial e fiscal até a prescrição dos créditos tributários. Aplica-se a pagamentos e atendimentos da plataforma? Qual prazo? Além disso, a exclusão apaga o histórico de consentimentos (cascade). Manter um registro mínimo e anonimizado para defesa do controlador (art. 16, IV)? [CONDICIONAL: depende de parecer]
+- **Q4. Prazos de guarda.** Qual prazo para a certidão após reprovação, após aprovação e após retirada da autorização? O código prevê 30 dias após a retirada (`20261118400002`), mas não há prazo após aprovação ou reprovação (G11). A eliminação por revogação (art. 18, VI) vale para esse dado?
+- **Q5. Efeito técnico da revogação.** A retirada agora marca a certidão para remoção, que acontece depois de 30 dias, mas depende de função agendada em produção (ação do dono). Esse efeito basta para a retirada, ou o advogado pede outra regra? O art. 8º, §5º diz que os tratamentos anteriores ficam ratificados até o pedido de eliminação. Como isso se aplica a localização e certidão?
+- **Q6. Terceiros cadastrados pela família.** Quem responde pelos dados da pessoa cuidada e do contato de emergência? Com a declaração de 18 anos completos (documento 12, T1), a pergunta vale para pessoas adultas cadastradas por terceiros, como pessoas idosas: qual base vale? O art. 14, §1º exige consentimento de pai, mãe ou responsável para criança. O Enunciado CD/ANPD nº 1 (citado em requerimento do Senado, ver Fontes) permite outras bases com o melhor interesse. Qual interpretação adotar? [incerto] Há também o PL 2628/2022, que propõe mudar o art. 14 (citado no mesmo requerimento; situação atual não verificada). [incerto]
+- **Q7. Exclusão e guarda fiscal.** A plataforma guarda registros fiscais? O CTN, art. 195, parágrafo único, fala em livros e comprovantes de escrituração comercial e fiscal até a prescrição dos créditos tributários. Aplica-se a pagamentos e atendimentos da plataforma? Qual prazo? Além disso, a exclusão apaga o histórico de consentimentos (cascade), mas o código guarda uma cópia pseudonimizada das decisões (`consent_proofs`, migração `20261110500001`). Manter um registro mínimo e anonimizado para defesa do controlador (art. 16, IV)? Decisões do assistente sob delegação, a validar: prova pseudonimizada por 5 anos (documento 12, T5) e cadastro no Asaas por 5 anos após a exclusão (CTN, art. 173). Não são parecer do contador. [CONDICIONAL: depende de parecer]
 - **Q8. Dados de localização.** Base e prazo da localização do plantão. O link para o OpenStreetMap transfere dados a terceiro? (G10) [incerto]
 - **Q9. Assistente de IA.** Nome e país do fornecedor, prazo de guarda do texto enviado, uso para treinamento, e transferência internacional, se houver. Hoje nada disso está verificado. [incerto]
 - **Q10. Selfie.** Quando houver conferência automática, qual base e qual consentimento (art. 11, I)? Antes disso, o texto da seção 4.1 vale. Pode-se pedir um RIPD específico? (ver documento 06)

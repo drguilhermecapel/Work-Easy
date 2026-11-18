@@ -172,3 +172,19 @@ Tomadas pelo assistente sob delegação do dono. Cada decisão tem o motivo e o 
 | DD36 | Precisão da localização nos textos jurídicos | O banco grava 3 casas decimais. A Política (item K), a RIPD, o registro OP-20 e a ficha da loja ainda dizem 6 | Texto jurídico não é alterado sem validação | advogado | pendente: texto a corrigir após validação |
 | DD37 | Limpeza de notas e relatórios na exclusão | A anonimização limpa notas de plantão e campos de relatório diário dos plantões da casa do titular. Relatórios escritos por prestador quando o titular é o próprio prestador não entram nesta regra | Texto livre de terceiro deixa de existir no momento da exclusão | advogado (texto de exclusão no RIPD) | implementada (migração 20261118600002; teste 125). Texto jurídico de exclusão pendente |
 | DD38 | Retenção do assistente | Eventos de uso do assistente são apagados após um dia, pelo expurgo diário | O RIPD declara um dia; antes a limpeza só acontecia se o próprio usuário voltasse a usar | advogado | implementada (migração 20261118600002; teste 125) |
+
+## Decisões jurídicas delegadas (2026-11-18)
+
+Tomadas pelo assistente sob delegação integral do dono, incluindo as jurídicas. **Não são parecer de advogado nem de contador.** Cada uma tem base registrada no próprio projeto; os pontos marcados como "confirmar" continuam com o advogado, e a publicação depende de revisão profissional.
+
+| ID | Decisão | Base registrada | Status |
+|---|---|---|---|
+| DD39 | Prova do consentimento depois da exclusão: a exclusão copia todas as decisões do titular, pseudonimizadas, com prazo de 5 anos contados da exclusão | Prazo geral de prescrição do CDC, art. 27 (confirmar com o advogado: artigo ainda não lido no repositório) | implementação em andamento (migração 20261118600010; teste 132) |
+| DD40 | Plantão em check-in quando a família exclui a conta: cancelado com aviso ao cuidador, simétrico ao DD30 | DD30 e DD12 | implementação em andamento (migração 20261118600011; teste 133) |
+| DD41 | Cadastro no Asaas depois de 5 anos: remoção feita manualmente pelo operador, sem automação | CTN, art. 173 (prazo decadencial) para a guarda; remoção não automatizada por falta de chave da subconta após a exclusão | decidida; procedimento manual a documentar no runbook |
+| DD42 | Antecedentes retirados: o texto da tela diz que o arquivo é removido em até 30 dias depois da retirada, em vez de dizer que a certidão não é apagada | Expurgo de 30 dias implementado (migrações 20261109100005 e 20261118400002) | implementação em andamento (texto e teste); a remoção efetiva depende da rotina agendada, que é ação do dono |
+| DD43 | Dados de saúde: os textos não afirmam mais que o app não guarda dados de saúde; dizem que o app não pede esse dado, que campos livres podem recebê-lo e que o aviso não impede o envio | DD21 | implementação em andamento (textos de documento e de tela) |
+| DD44 | Catálogo alinhado à matriz de conselhos: enfermagem sem ranking; gestão de imóvel por temporada sob consulta jurídica, sem comissão; psicólogo generalista com público menor e antecedentes | Regra conservadora da própria matriz | implementação em andamento (catálogo e seed) |
+| DD45 | Idade na linha Cuidado: pessoa cuidada tem 18 anos completos; ocupações voltadas a crianças e recém-nascidos (babá, cuidadora de recém-nascido) não são oferecidas nessa linha | DD19 e DD20 | decidida; bloqueio técnico na escolha de ocupação pendente, registrado como risco residual |
+| DD46 | Nome do limite do assistente: `ASSIST_HOURLY_LIMIT` fica com o mesmo nome; os textos dizem 60 minutos | Renomear é mudança de código e de ambiente | decidida |
+| DD47 | Data-base dos documentos: a conferência passa a valer para o HEAD 532dc74, em 18/11/2026 | Estado atual do repositório | decidida; publicação define a data final |

@@ -19,6 +19,7 @@
    - **[CONDICIONAL: depende de parecer]**: só vale se o advogado confirmar. O recurso está desligado hoje, ou o ponto jurídico está em aberto.
    - **[PLANEJADO]**: ainda não existe no produto. Se continuar sem existir na data da publicação, apague a frase.
    - **[incerto]**: não consegui confirmar em fonte aberta nesta sessão. Todos estão na seção B de "Pontos para o advogado".
+   - **[decisão de produto]**: escolha de redação ou de prazo que eu tomei por delegação, nos padrões das seções T1 a T6 do documento 12. Não é parecer jurídico; o advogado confirma cada uma antes de publicar.
    - [RAZÃO SOCIAL], [CNPJ], [ENDEREÇO], [E-MAIL DO SAC], [E-MAIL DO ENCARREGADO], [DATA DE VIGÊNCIA]: dados da empresa, que ainda não existe.
 3. **Remissões.** "(P7)" manda para a pergunta P7 da seção A de "Pontos para o advogado". "(G5)" manda para o descompasso G5 entre o texto e o produto, na seção C (para o dono).
 4. **Prazos com †.** Um número seguido de † (por exemplo, "30 dias†") é sugestão minha, sem norma por trás. Estão todos na seção E.
@@ -83,7 +84,7 @@ Estes Termos do Prestador ("Termos") são um contrato entre você e [RAZÃO SOCI
 
 ### 2. Quem pode ser prestador
 
-**2.1 Pessoa física.** Ter 18 anos completos e capacidade para contratar. Hoje o app não confere a idade sozinho: vale a sua declaração. A lei proíbe contratar menor de 18 anos para trabalho doméstico (LC 150/2015, art. 1º, parágrafo único).
+**2.1 Pessoa física.** Ter 18 anos completos e capacidade para contratar. Você declara a idade em caixa própria, antes de usar a área do prestador, e a declaração é obrigatória **[decisão de produto]**. Hoje o app não confere a idade sozinho: vale a sua declaração. A lei proíbe contratar menor de 18 anos para trabalho doméstico (LC 150/2015, art. 1º, parágrafo único).
 
 **2.2 Empresa, inclusive MEI.** Quem cria o cadastro declara que pode representá-la e responde pelos dados que informa.
 
@@ -133,7 +134,7 @@ Estes Termos do Prestador ("Termos") são um contrato entre você e [RAZÃO SOCI
 
 **5.5 Registro profissional.** O número do registro é informado por você. A página mostra "informado pelo profissional" até uma pessoa da equipe conferir; só então mostra "confirmado pelo WorkEasy". A conferência é feita pela equipe, caso a caso. O WorkEasy não garante que o seu registro continue regular: isso é entre você e o conselho.
 
-**5.6 Certidão de antecedentes criminais.** Só é pedida quando a política da ocupação exige (por exemplo, nas que atendem crianças ou adolescentes). Você mesmo obtém a certidão e a envia. O app só a usa para analisar o seu cadastro, e só depois de você autorizar. O WorkEasy não consulta bases de antecedentes por conta própria. Você pode retirar a autorização em "Minha conta". Se retirar, não usamos mais a certidão e podemos pedir que você a envie de novo ou deixar de aprovar as ocupações que a exigem. Hoje a retirada não apaga o arquivo nem retira a aprovação sozinha. **[PLANEJADO]** *(P18, G11)*
+**5.6 Certidão de antecedentes criminais.** Só é pedida quando a política da ocupação exige (por exemplo, nas que atendem crianças ou adolescentes). Você mesmo obtém a certidão e a envia. O app só a usa para analisar o seu cadastro, e só depois de você autorizar. O WorkEasy não consulta bases de antecedentes por conta própria. Você pode retirar a autorização em "Minha conta". Se retirar, não usamos mais a certidão e podemos pedir que você a envie de novo ou deixar de aprovar as ocupações que a exigem. A retirada, sozinha, não retira a aprovação. Passados 30 dias† da retirada, o arquivo sai do armazenamento; a linha fica sem o arquivo quando já houve análise ou registro de auditoria, e é apagada nos demais casos. **[PLANEJADO: a remoção depende de rotina agendada, ainda não ativa]** Quando o arquivo sai, a aprovação das ocupações que dependiam só dele é retirada, como no item 6.4. *(P18, G11)*
 
 **5.7 Prazo e avisos.** A fila de análise é ordenada pela data do cadastro. Não prometemos prazo de análise. O app mostra a situação do cadastro (Rascunho, Em análise, Aprovado, Suspenso), mas não envia mensagem quando ela muda. **[PLANEJADO]** Aviso por mensagem. *(G2)*
 
@@ -149,7 +150,7 @@ Estes Termos do Prestador ("Termos") são um contrato entre você e [RAZÃO SOCI
 
 **6.3 Validade.** Mantenha os documentos válidos. O app ainda não controla validade sozinho: não avisa quando um documento vence e não retira a aprovação por vencimento. **[PLANEJADO]** Enquanto isso, podemos pedir a renovação a qualquer momento, e a aprovação pode ser retirada se você não a enviar. *(G4)*
 
-**6.4 Documento que deixa de valer.** Se um documento já aceito passar a ser recusado, ou for apagado pela equipe, o app retira a aprovação das ocupações que dependiam só dele, e elas saem da busca. Aceitar o documento de novo não devolve a aprovação: a equipe precisa aprová-la outra vez.
+**6.4 Documento que deixa de valer.** Se um documento já aceito passar a ser recusado, ou for apagado pela equipe ou removido na rotina de antecedentes (item 5.6), o app retira a aprovação das ocupações que dependiam só dele, e elas saem da busca. Aceitar o documento de novo não devolve a aprovação: a equipe precisa aprová-la outra vez.
 
 **6.5 Pedido de revisão.** Se discordar de uma recusa, envie um documento novo ou escreva para [E-MAIL DO SAC] dizendo o que mudou. Respondemos por escrito, com a decisão e o motivo, em até 10 dias úteis†. **[PLANEJADO]** Pedido de revisão dentro do app. *(G3, P22)*
 
@@ -207,11 +208,11 @@ Estes Termos do Prestador ("Termos") são um contrato entre você e [RAZÃO SOCI
 
 **10.6 Cobrança automática.** Se você não cancelar, a assinatura continua e o Asaas cobra todo mês na mesma data. Hoje a data e o valor da primeira cobrança aparecem na tela "Assinatura". **[PLANEJADO]** Aviso por mensagem 3 dias† antes da primeira cobrança depois do teste. *(P4, G5)*
 
-**10.7 Cancelamento.** Cancele quando quiser, em "Assinatura" > "Cancelar assinatura". As próximas cobranças deixam de ser emitidas. Você mantém o Pro até o fim do período já pago (ou do teste); depois, o plano volta ao grátis. **[PLANEJADO]** Rebaixamento automático na data. **A mensalidade do período já pago não é devolvida, salvo se a lei mandar.** **[CONDICIONAL: depende de parecer]** *(P4, G5)*
+**10.7 Cancelamento.** Cancele quando quiser, em "Assinatura" > "Cancelar assinatura". As próximas cobranças deixam de ser emitidas. Você mantém o Pro até o fim do período já pago (ou do teste); depois, uma rotina automática volta o plano ao grátis. **A mensalidade do período já pago não é devolvida, salvo se a lei mandar.** **[CONDICIONAL: depende de parecer]** *(P4, G5)*
 
 **10.8 Assinar de novo.** Se você assinar de novo dentro de um período já pago, a cobrança começa no fim desse período, não hoje.
 
-**10.9 Atraso.** Se uma cobrança vence sem pagamento, a assinatura passa a "Pagamento atrasado". Você continua no Pro até o fim do período já pago mais a carência do Anexo I; depois, o plano volta ao grátis. **[PLANEJADO]** Hoje o plano só volta ao grátis quando o Asaas avisa o atraso depois desse prazo: nenhuma rotina rebaixa o plano na data (G5a). Se você pagar depois, o Pro volta e o novo período conta do vencimento da cobrança paga. Um teste que não é pago termina do mesmo jeito. Seus dados continuam: só deixam de valer as vantagens do Pro.
+**10.9 Atraso.** Se uma cobrança vence sem pagamento, a assinatura passa a "Pagamento atrasado". Você continua no Pro até o fim do período já pago mais a carência do Anexo I; depois, uma rotina automática volta o plano ao grátis (G5a). Se você pagar depois, o Pro volta e o novo período conta do vencimento da cobrança paga. Um teste que não é pago termina do mesmo jeito. Seus dados continuam: só deixam de valer as vantagens do Pro.
 
 **10.10 Outras cobranças.** Hoje o WorkEasy não cobra de você nada além da mensalidade do Pro. A comissão está desligada (cláusula 12). O Asaas pode cobrar tarifas pelo uso da conta de recebimento (cláusula 11).
 
@@ -386,11 +387,18 @@ Estes Termos do Prestador ("Termos") são um contrato entre você e [RAZÃO SOCI
 
 **20.1 Sair.** Você pode cancelar a assinatura a qualquer momento (cláusula 10) e excluir a conta em "Minha conta" > "Excluir minha conta", digitando EXCLUIR. Antes, baixe seus dados em "Baixar meus dados".
 
-**20.2 Quando não dá para excluir.** A exclusão é recusada enquanto houver atendimento pago, em andamento ou em contestação. Atendimento aceito e ainda não pago é cancelado, com aviso à outra parte. Conclua ou cancele antes os atendimentos pagos ou em andamento.
+**20.2 Quando não dá para excluir.** A exclusão é recusada enquanto houver atendimento pago, em andamento ou em contestação. Atendimento aceito e ainda não pago é cancelado, com aviso à outra parte. Conclua ou cancele antes os atendimentos pagos ou em andamento. **Plantão de cuidado não bloqueia a exclusão.** Os plantões futuros que você já aceitou são cancelados com a exclusão, e a família é avisada, como nos demais cancelamentos, se o contato dela estiver confirmado. **[decisão de produto]** Um plantão em andamento (com entrada registrada e horário que ainda não terminou) também é cancelado **[CONDICIONAL: depende de parecer]**. Plantão já encerrado fica como histórico.
 
-**20.3 O que a exclusão faz.** O app: (a) cancela a assinatura Pro e as cobranças em aberto no Asaas; (b) apaga os seus documentos e os arquivos enviados; (c) apaga o seu nome, telefone, bairros, agenda e apresentação, e tira a sua página do ar; (d) apaga os dados dos seus clientes no CRM e nos orçamentos (nome, telefone, e-mail e anotações); e (e) remove o seu acesso. Os seus orçamentos, o estado da assinatura, as notificações e o histórico dos seus aceites são apagados junto com a conta. *(G10)*
+**20.3 O que a exclusão faz.** O app: (a) cancela a assinatura Pro e as cobranças em aberto no Asaas; (b) apaga os seus documentos e os arquivos enviados; (c) apaga o seu nome, telefone, bairros, agenda e apresentação, e tira a sua página do ar; (d) apaga os dados dos seus clientes no CRM e nos orçamentos (nome, telefone, e-mail e anotações); e (e) remove o seu acesso. Os seus orçamentos, o estado da assinatura, as notificações e o histórico dos seus aceites são apagados junto com a conta; a prova dos aceites fica guardada, sem o seu nome (item 20.4). Se você também cadastrou casas de cuidado como família, as notas dos plantões dessas casas e os textos do relatório diário (refeições, atividades, humor e observações) são apagados; os plantões e os relatórios continuam como registro. *(G10)*
 
-**20.4 O que fica guardado.** **Ficam os registros de pagamento e de atendimento, sem o seu nome e contatos, porque a lei fiscal manda guardá-los (LGPD, art. 16, I); os registros de auditoria e de segurança, que não podem ser alterados e podem conter motivos escritos pela equipe; e o pedido de exclusão, com a data.** Dos pagamentos, o app mantém só os campos fiscais. O prazo de guarda é o que a lei exigir **[incerto]**. *(P19)*
+**20.4 O que fica guardado.** **Ficam os registros de pagamento e de atendimento, sem o seu nome e contatos, porque a lei fiscal manda guardá-los (LGPD, art. 16, I); os registros de auditoria, que não podem ser alterados e podem conter motivos escritos pela equipe; a prova dos seus aceites, sem o seu nome; e o pedido de exclusão, com a data.** Dos pagamentos, o app mantém só os campos fiscais. O prazo de guarda dos registros de pagamento é o que a lei exigir **[incerto]**. Os demais prazos são estes. São escolhas do WorkEasy, tomadas por delegação, e não parecer jurídico **[decisão de produto]**:
+
+- **Prova dos aceites:** o que você decidiu (aceitar ou retirar), a finalidade, a versão do texto, a data e a hora, sem o seu nome. Fica guardada por até 5 anos contados da data de cada decisão, e uma rotina diária a apaga depois desse prazo. **[PLANEJADO: a rotina diária ainda precisa ser conferida em produção]** A ligação com a sua conta fica guardada à parte, com acesso restrito, e só é usada em disputa sobre o aceite.
+- **Registro de acesso à conta:** data, hora e forma de entrada, sem endereço IP, por 6 meses, como manda o art. 15 do Marco Civil da Internet. **[PLANEJADO: começa quando o gancho de login estiver ativo no painel do Supabase]**
+- **Cadastro no Asaas:** fica guardado por 5 anos depois da exclusão, pelo prazo fiscal do art. 173 do CTN. Não é parecer do contador. **[incerto: se o Asaas aplica esse prazo ao seu cadastro]**
+- **Eventos de uso do assistente de IA:** apagados depois de 1 dia, pela mesma rotina diária.
+
+*(P19)*
 
 **20.5 O que a exclusão não faz.** A exclusão não fecha a sua conta no Asaas: para isso, fale com o Asaas **[incerto]**. Também não apaga o que outras pessoas guardaram por conta própria. *(G10)*
 
@@ -436,7 +444,7 @@ Estes valores são configurações da plataforma. O dono pode mudá-los sem novo
 | Teste grátis do Pro | 30 dias, uma vez por conta | 10.5 | `pro_trial_days` = 30 (0 desliga; máximo 90) |
 | Plano grátis | 5 propostas novas por mês civil, no fuso de São Paulo | 9.2 | `free_proposals_per_month` = 5 (0 tira o limite) |
 | Propostas ativas por pedido | 3 | 7.5 | `proposal_limit` = 3 |
-| Carência depois do vencimento | 0 dia | 10.9 | variável `PRO_GRACE_DAYS` das Edge Functions (padrão 0; máximo 60). Não é um `platform_settings`. |
+| Carência depois do vencimento | 0 dia | 10.9 | `platform_settings.pro_grace_days` = 0 (usada pela rotina de expiração) e variável `PRO_GRACE_DAYS` das Edge Functions (padrão 0; máximo 60). Os dois devem ser iguais. |
 | Trava do trabalho doméstico | 2 dias por semana com o mesmo cliente ou casa | 15.3 | `labor_lock_days_per_week` = 2 |
 | Comissão | Desligada. Programados: 12% e teto de R$ 150,00 | 12 | `commission_enabled` = false; `commission_bps` = 1200; `commission_cap_cents` = 15000 |
 | Pagamento retido | Desligado | 12.4 | `escrow_enabled` = false |
@@ -450,7 +458,7 @@ Li o código e `ARQUITETURA.md`; **não executei** o app, a stack local nem os t
 
 | Cláusula | O que o texto afirma | Onde conferi |
 |---|---|---|
-| 2.1 | O app não confere a idade | `become_provider` e `pages/pro/Cadastro.tsx` não pedem nem checam idade |
+| 2.1 | O app não confere a idade com documento; a declaração de 18 anos é pedida | A declaração é pedida pelo `TermsGate` (`components/TermsGate.tsx`, usado em `components/pro/ProPage.tsx`) e gravada como consentimento `age_declaration` (`services/account.ts`, `REQUIRED_CONSENTS`); `become_provider` e `pages/pro/Cadastro.tsx` não pedem idade |
 | 2.3 | O cadastro não tem CNPJ nem licença do prestador; `provider_type` não é imposto | `providers` sem coluna de CNPJ (03); `provider_type` só em `catalog/` e na página de demonstração `pages/ProviderRegistration.tsx` |
 | 3.1, 3.3 | O app pede o aceite de Termos de Uso e Privacidade no login e na área do prestador, e de novo quando a versão muda | `pages/conta/Entrar.tsx`; `components/TermsGate.tsx` (usado em `components/pro/ProPage.tsx`); `services/account.ts`; `config/legal.ts` |
 | 4.2 | Sem horário mínimo, sem exclusividade, sem instrução de execução | nenhuma regra assim nas migrations nem nas Edge Functions; agenda em `availability` (03) |
@@ -459,7 +467,7 @@ Li o código e `ARQUITETURA.md`; **não executei** o app, a stack local nem os t
 | 5.2 | Quatro passos; "Rascunho" não aparece na busca | `pages/pro/Cadastro.tsx`; `PROVIDER_STATUS_HELP` em `components/pro/labels.ts` |
 | 5.3 | A política aparece nas páginas da ocupação | `pages/OccupationPage.tsx` |
 | 5.5, 13.4 | Registro mostrado com nome, número, UF e "informado pelo profissional" ou "confirmado pelo WorkEasy" | `components/cliente/RegistryNote.tsx`; `get_provider_page` (03) |
-| 5.6 | Certidão só quando a política pede; consentimento antes do envio; sem consulta externa | `DocumentsStep` e `recordConsent` em `Cadastro.tsx`; as Edge Functions só falam com o Asaas (`asaas-client.ts`), com o WhatsApp e o e-mail (`notify-dispatch`) e, em `request-assist`, com a API de IA; nenhuma consulta bases de antecedentes |
+| 5.6 | Certidão só quando a política pede; consentimento antes do envio; sem consulta externa | `DocumentsStep` e `recordConsent` em `Cadastro.tsx`; as Edge Functions só falam com o Asaas (`asaas-client.ts`), com o WhatsApp e o e-mail (`notify-dispatch`) e, em `request-assist`, `quote-assist` e `care-summary`, com a API de IA; nenhuma consulta bases de antecedentes |
 | 5.7, 17.8 | Sem mensagem de mudança de situação; fila por data de cadastro | seis modelos de notificação em 08; `admin_provider_queue` (11) ordena por `created_at` |
 | 5.8 | Aprovação por ocupação | `private.offers_occupation`, `admin_set_provider_status`, `admin_set_occupation_approval` (03 e 11; `ARQUITETURA.md`, "Prestadores") |
 | 5.9, 6.5 | O motivo da recusa de documento aparece; o de registro não | `DocumentsStep` ("Motivo da recusa"); `admin_set_registry_status` (11) grava o motivo só em `audit_log` |
@@ -476,9 +484,9 @@ Li o código e `ARQUITETURA.md`; **não executei** o app, a stack local nem os t
 | 9.1 a 9.3 | O que cada plano inclui | `pages/pro/Assinatura.tsx`; `charges-create` responde `pro_required`; `private.check_proposal` (12); nenhuma outra checagem de plano nas telas |
 | 10.1 a 10.4 | Preço na tela, formas de pagamento, CPF/CNPJ, cartão na página do Asaas, `pending` até o pagamento | `Assinatura.tsx`; `subscriptions-manage/handler.ts` |
 | 10.5 | Teste uma vez, até o fim do dia, primeira cobrança nesse dia | `subscriptions-manage/handler.ts` (`trialDays`, `nextDueDate`, `T23:59:59-03:00`) |
-| 10.7 | Cancelar mantém o Pro até o fim do período; não há rebaixamento por data | `planAfterCancel` (`_shared/subscriptions.ts`); os dois `cron.schedule` de 08 não tocam `providers.plan` |
+| 10.7 | Cancelar mantém o Pro até o fim do período; uma rotina automática rebaixa o plano depois do fim do período | `planAfterCancel` (`_shared/subscriptions.ts`); `private.expire_pro_plans` (migração `20261109000007_pro_plan_expiry.sql`, de hora em hora) |
 | 10.8 | Reassinar começa no fim do período pago | `firstDueDate` (`_shared/subscriptions.ts`) |
-| 10.9 | Atraso, carência e volta do Pro ao pagar | `asaas-webhook/handler.ts` (`applySubscription`, `planWhileOverdue`); `PRO_GRACE_DAYS` em `_shared/config.ts` |
+| 10.9 | Atraso, carência e volta do Pro ao pagar | `asaas-webhook/handler.ts` (`applySubscription`, `planWhileOverdue`); `PRO_GRACE_DAYS` em `_shared/config.ts`; `private.expire_pro_plans` (migração `20261109000007_pro_plan_expiry.sql`) |
 | 11.1, 11.3 | Dados enviados ao Asaas; chave no Vault que não volta ao app | `ReceivingSection` em `Assinatura.tsx`; `asaas-onboard/handler.ts`; `store_provider_payment_secret` (06) |
 | 11.4 | Cobrança na conta do WorkEasy com split sobre o valor líquido | `payments-create/handler.ts`; `_shared/split.ts`; documentação do Asaas (F27) |
 | 11.5 | Estorno desfaz o repasse; pagamento de atendimento cancelado é reembolsado | `asaas-webhook/handler.ts`; F27; `ARQUITETURA.md`, "Webhook" |
@@ -495,7 +503,7 @@ Li o código e `ARQUITETURA.md`; **não executei** o app, a stack local nem os t
 | 18.2, 18.4 | Na cobrança Pro, o app envia ao Asaas o nome, o CPF ou CNPJ e, se houver, o e-mail e o telefone do cliente próprio; a página do orçamento não tem aviso de privacidade | `charges-create/handler.ts` (`cpf_cnpj` obrigatório; nome, e-mail e telefone do corpo da chamada ou do CRM); nenhuma menção a privacidade em `pages/publico/Orcamento.tsx` nem em `components/pro/QuoteDocument.tsx` |
 | 18.5 | Contato do cliente só depois de pedido ou aceite | `ARQUITETURA.md`, "Contato (perfil)"; `private.shares_contact` |
 | 18.6 | Cliente que exclui a conta limpa CRM e orçamentos | `anonymize_user` (10) |
-| 20.1 a 20.5 | Exclusão, o que apaga e o que fica | `account-delete/handler.ts`; `anonymize_user` (10); `ARQUITETURA.md`, "LGPD e auditoria"; `services/account.ts` |
+| 20.1 a 20.5 | Exclusão, o que apaga e o que fica | `account-delete/handler.ts`; `anonymize_user` (10, com as migrações `20261118600002` e `20261110500001`); `cancel_shifts_for_user_deletion` (`20261118600007`); `drop_payment_secret` (`20261109300005`); `ARQUITETURA.md`, "LGPD e auditoria"; `services/account.ts` |
 
 ## Pontos para o advogado
 
@@ -611,15 +619,15 @@ Nenhum dos dois temas trata de marketplace de serviços gerais. São contexto, n
 
 **P18. Certidão de antecedentes criminais.** *(cláusula 5.6; F19)*
 
-- **Assume:** consentimento específico, pedido quando o prestador envia a certidão, revogável em "Minha conta". A retirada não dispara nada no código (G11).
+- **Assume:** consentimento específico, pedido quando o prestador envia a certidão, revogável em "Minha conta". A retirada marca o arquivo para remoção (G11).
 - **Li:** consentimento é "manifestação livre, informada e inequívoca ... para uma finalidade determinada" (art. 5º, XII); por escrito, em cláusula destacada (art. 8º, § 1º); o ônus da prova é do controlador (§ 2º); é vedado o tratamento com vício de consentimento (§ 3º); revogável a qualquer momento (§ 5º). Antecedentes criminais não estão na lista de dados sensíveis do art. 5º, II, mas pedem cuidado.
-- **Pergunto:** condicionar a aprovação ao consentimento tira a liberdade? Nas ocupações em que a certidão é exigida por norma (crianças e adolescentes), outra base legal serve melhor (art. 7º, II)? O histórico de consentimentos é apagado com a conta (G10): como provar depois?
+- **Pergunto:** condicionar a aprovação ao consentimento tira a liberdade? Nas ocupações em que a certidão é exigida por norma (crianças e adolescentes), outra base legal serve melhor (art. 7º, II)? A prova dos aceites fica guardada, sem o nome, por até 5 anos depois de cada decisão (G10): isso basta para provar o consentimento?
 
 **P19. Exclusão, retenção e prova.** *(cláusulas 18.6, 20; F14, F18, F19)*
 
 - **Assume:** ficam registros de pagamento e de atendimento, sem nome e contatos; a auditoria, que é imutável e pode ter texto livre; e o pedido de exclusão.
 - **Li:** LGPD, art. 16, I (conservação para cumprir obrigação legal ou regulatória); CTN, arts. 173 e 174 (5 anos para constituir e para cobrar o crédito tributário) e art. 195, parágrafo único (livros e comprovantes conservados até a prescrição); LC 123/2006, art. 26, II (Simples: documentos guardados "enquanto não decorrido o prazo decadencial e não prescritas eventuais ações"). O prazo exato e quais registros ficam são **[incerto]**.
-- **Pergunto:** (a) o `audit_log`, que ninguém altera nem apaga, é compatível com os direitos do art. 18 da LGPD? (b) a exclusão apaga o histórico de consentimentos (G10); (c) a chave da subconta no Vault não é apagada e a subconta do Asaas não é fechada (G10); (d) as anotações do prestador sobre um cliente somem quando o cliente exclui a conta (18.6): o prestador pode precisar delas para se defender?
+- **Pergunto:** (a) o `audit_log`, que ninguém altera nem apaga, é compatível com os direitos do art. 18 da LGPD? (b) a exclusão apaga o histórico de consentimentos, mas guarda a prova pseudonimizada por 5 anos (G10): esse prazo tem base? (c) a chave da subconta sai do Vault com a conta, mas a subconta do Asaas não é fechada (G10); (d) as anotações do prestador sobre um cliente somem quando o cliente exclui a conta (18.6): o prestador pode precisar delas para se defender?
 
 **P20. Responsabilidade, indenização, regresso e adesão.** *(cláusulas 1.3, 19, 22.4; F15, F17, F19)*
 
@@ -671,7 +679,7 @@ Cada item diz o que o texto assume e o que o código faz. Os itens G5(a), G1, G2
 - **G3. Revisão e resposta.** Não há canal no app para pedir revisão nem para responder a aviso. Só e-mail para o SAC, que ainda não existe como página. *(6.5, 17.3 a 17.5)*
 - **G4. Validade de documentos.** `provider_documents.expires_at` existe, mas o envio não a preenche, nenhuma tela a edita e nenhum job a usa. O administrador só vê "Validade informada" se houver valor. *(6.3)*
 - **G5. Assinatura Pro.**
-  - (a) **Nada rebaixa `providers.plan` quando `current_period_end` passa.** Quem cancela, inclusive no teste, fica com `plan = 'pro'` por tempo indeterminado, a menos que um evento do Asaas chegue depois da data. É falha de receita: falta um job (pg_cron) que volte o plano a `free`. *(10.5, 10.7)*
+  - (a) **Uma rotina automática volta o plano a `free` depois do fim do período pago e da carência** (`private.expire_pro_plans`, migração `20261109000007_pro_plan_expiry.sql`, pg_cron de hora em hora). Falta confirmar em produção que o agendamento está ativo (ação do dono). *(10.5, 10.7)*
   - (b) Não há aviso antes da primeira cobrança depois do teste. *(10.6)*
   - (c) Mudar `pro_price_cents` não reajusta assinaturas em curso. *(10.2)*
   - (d) A carência é a variável `PRO_GRACE_DAYS` (padrão 0) e a tela não a mostra. *(10.9)*
@@ -680,8 +688,8 @@ Cada item diz o que o texto assume e o que o código faz. Os itens G5(a), G1, G2
 - **G7. Dados exigidos por conselho.** O cadastro não tem especialidade, número de especialista nem responsável técnico. A página mostra registro, número, UF e situação, e não mostra o CNPJ de empresas. *(13.4)*
 - **G8. Prestador pessoa jurídica.** Sem campo de CNPJ nem de licença em `providers`; `provider_type` não é imposto. *(2.3)*
 - **G9. Regime tributário** (MEI, Simples ou outro) não é coletado. É o portão 5 de `DECISOES.md` §4. *(14.4)*
-- **G10. Exclusão de conta.** (a) O histórico de consentimentos é apagado em cascata. (b) A chave da subconta fica no Vault: não há `vault.delete_secret` no código. (c) A subconta do Asaas não é fechada. (d) As anotações do prestador sobre um cliente somem quando o cliente exclui a conta. *(18.6, 20)*
-- **G11. Consentimento de antecedentes.** Retirá-lo não revoga documento nem aprovação. *(5.6)*
+- **G10. Exclusão de conta.** (a) O histórico de consentimentos é apagado em cascata, mas uma cópia pseudonimizada das decisões fica guardada por 5 anos (migração `20261110500001`). (b) A chave da subconta é apagada do Vault junto com a conta (migração `20261109300005`). (c) A subconta do Asaas não é fechada. (d) As anotações do prestador sobre um cliente somem quando o cliente exclui a conta. *(18.6, 20)*
+- **G11. Consentimento de antecedentes.** Retirá-lo marca o arquivo para remoção (`withdraw_background_check`, migração `20261109100005`), mas não retira a aprovação. A remoção em 30 dias depende da função `background-check-purge` agendada (ação do dono). Quando o arquivo sai, o trigger do item 6.4 retira a aprovação. A tela "Minha conta" ainda diz que a retirada não apaga a certidão (`pages/conta/Conta.tsx`). *(5.6)*
 - **G12. Comissão.** A taxa só é calculada quando o atendimento vira "aceito" e só aparece como "Taxa da plataforma" na cobrança já criada (`Cobrancas.tsx`). Falta mostrá-la antes de o prestador aceitar. Hoje não afeta, porque a comissão está desligada. *(12.2)*
 - **G13. Preço público.** A política não tem campo para ocultar preço. `search_providers` e `get_provider_page` devolvem preço para todas as ocupações. Não existe função de administrador para ocultar preço ou texto de um perfil; só avaliação, aprovação de ocupação e suspensão. *(13.5, 13.6)*
 - **G14. Ativação no Asaas.** A tela não avisa que o Asaas pode enviar e-mail de ativação e pedir documentos. O modelo (BaaS ou não-BaaS) não está definido. Os limites do período de avaliação do Asaas afetam o beta (P9). *(11.2)*
@@ -714,6 +722,7 @@ Nenhum tem norma por trás. São decisões de negócio do dono, com o advogado.
 |---|---|---|
 | 3.3, 9.4, 10.2, 12.2 (f) | Aviso de 30 dias antes de mudança que piora a situação do prestador | Dá tempo de cancelar sem perder o que já foi combinado |
 | 6.5 | Resposta em 10 dias úteis a pedido de revisão de recusa de cadastro | Prazo de fila de um operador pequeno |
+| 5.6 | Remoção da certidão 30 dias depois da retirada | Escolha minha, sem norma por trás; a guarda de antecedentes ainda não foi conferida com o advogado (P18) |
 | 10.6 | Aviso de mensagem 3 dias antes da primeira cobrança depois do teste | Tempo de cancelar |
 | 17.3 | 10 dias para o prestador responder ao aviso; decisão em 10 dias úteis | Direito de resposta antes da suspensão |
 | 17.4 | Aviso em até 2 dias úteis depois de suspensão cautelar | Suspensão na hora, aviso logo depois |
@@ -727,7 +736,7 @@ Nenhum tem norma por trás. São decisões de negócio do dono, com o advogado.
 1. Preencher os seis dados da empresa e apagar toda marca **[PLANEJADO]** que ainda não exista no produto.
 2. Resolver cada **[CONDICIONAL: depende de parecer]**: manter com o texto aprovado, ou apagar o recurso do produto e do texto.
 3. Decidir o aceite próprio (P3) e, se for o caso, criar a finalidade em migration nova e atualizar `CONSENT_VERSIONS` em `apps/web/config/legal.ts`.
-4. Corrigir no produto, antes de aceitar prestadores reais: G5(a), G2 e G3. Os demais G dizem o que o texto não pode prometer enquanto não existirem.
+4. Corrigir no produto, antes de aceitar prestadores reais: G2 e G3. Confirmar em produção o agendamento de G5(a) e da remoção de antecedentes (G11). Os demais G dizem o que o texto não pode prometer enquanto não existirem.
 5. Conferir, na data da publicação, o quadro do STF e da OIT, o catálogo (seção D) e os valores do Anexo I.
 6. Alinhar números e nomes com os documentos 01, 03, 04, 05, 10 e 11 (prazo do SAC, contestação em 7 dias, ordem da busca, trava de 2 dias). Também: a mensalidade do Pro (10.7 e 10.9) não tem regra no documento 04 (reembolso e arrependimento).
 7. Retirar do texto público os anexos, esta seção e as fontes.

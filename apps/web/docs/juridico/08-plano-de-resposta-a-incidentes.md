@@ -108,7 +108,7 @@ R = executa. A = aprova (um por linha). C = consultado. I = informado.
 | Cenário | Dados envolvidos | Critério provável | Nível inicial |
 |---|---|---|---|
 | 9.1 Arquivos de documentos do Storage | Documentos de prestador: `documento_selfie`, `cnh`, `antecedentes` e demais passos da política | Identidade e imagem. Enquadrar em I ou IV: [incerto] | G1 |
-| 9.2 Conta de cliente tomada | Dados de atendimento, casas e assistidos | II, se houver assistido idoso ou criança | G2 |
+| 9.2 Conta de cliente tomada | Dados de atendimento, casas e assistidos | II, se houver assistido idoso. Cadastro novo exige a declaração de 18 anos ou mais (`care_recipients.adult_declared_at`); cadastro anterior à regra, sem essa declaração, pode ter criança ou adolescente e entra no critério II. | G2 |
 | 9.2 Conta de administrador tomada | Documentos de prestador e `payments.raw` (nome, CPF/CNPJ e e-mail do pagador) | III, I e II | G1 |
 | 9.3 Webhook forjado | Eventos de pagamento | III, se alterar pagamento. Sem efeito se a releitura no Asaas recusar. | G3 sem efeito; G2 com efeito |
 | 9.4 RLS ou grant incorreto | Telefone e e-mail de clientes e prestadores | VI, conforme o número de titulares [incerto] | G2; G1 se a exposição for ampla |
@@ -122,7 +122,7 @@ R = executa. A = aprova (um por linha). C = consultado. I = informado.
 |---|---|---|---|
 | `audit_log` | Tabela `public.audit_log`. Leitura do admin em `/admin/auditoria`. | Ações com `actor_id`, `action`, `entity`, `entity_id`, `data`, `at`. Nomes reais: `payment.status`, `payment.void`, `payment.void_paid`, `payment.refund_failed`, `payment.received_after_cancel`, `payment.refunded_after_cancel`, `payment.reviewed`, `payment.raw_viewed`, `payment_event.unverified`, `payment_event.failed`, `booking.created`, `booking.transition`, `subscription.status`, `provider.created`, `provider.submitted`, `provider.status`, `occupation.approval_revoked`, `setting.changed`, `dispute.resolved`, `user.anonymized`, e `client.*` (ações de usuário). | Não guarda IP nem user agent. Ações da service role têm `actor_id` nulo e `data.via = 'service'`. |
 | `payment_events` | Tabela; leitura do admin (`payment_events_select_admin`). | `asaas_event_id` único, `event_type`, `payload` redigido, `processed_at`. | Payload já redigido. A prova completa fica no painel do Asaas [incerto: exportação não verificada]. |
-| Logs de Edge Function | Painel do Supabase, tipo "Edge Function". | Nome e mensagem do erro. `logError` grava só `nome: mensagem`, sem corpo da requisição. | Retenção depende do plano e não consta na página lida [incerto]. Exporta CSV ou JSON, até 1.000 linhas por download. |
+| Logs de Edge Function | Painel do Supabase, tipo "Edge Function". | Nome e mensagem do erro. `logError` grava `nome: mensagem` quando recebe um `Error`; outro valor é gravado como veio. O código não grava corpo de requisição. | Retenção depende do plano e não consta na página lida [incerto]. Exporta CSV ou JSON, até 1.000 linhas por download. |
 | Logs de Auth, API Gateway, Postgres, Storage, PostgREST | Mesmo painel de logs. | Eventos de cada serviço. | Mesma retenção. |
 | Advisors de segurança | `supabase db advisors` (CLI), Security Advisor no painel, `get_advisors` pelo MCP. | Checks citados pela página: `0013_rls_disabled_in_public`, `0010_security_definer_view`, `0002_auth_users_exposed`, `0023_sensitive_columns_exposed`, `0024_permissive_rls_policy`, `0028` e `0029` (função `SECURITY DEFINER` executável por anônimo ou autenticado). | Roda sob demanda, não é contínuo. Achados de saúde (`log_*_error_rate_high`) podem demorar a sair depois da correção, porque medem taxa de erro em um período. |
 | Histórico do agendador | `cron.job_run_details`. Jobs: `workeasy-dispatch-notifications` e `workeasy-expire-stale` (migração 08), e outros `workeasy-*` das migrações seguintes. | Execuções dos jobs. | Não é limpo automaticamente. |
@@ -309,7 +309,7 @@ select cron.schedule('workeasy-dispatch-notifications', '* * * * *', 'select pri
 - Ações, na ordem:
   1. Revogar as sessões do usuário com `auth.admin.signOut(jwt, scope)`. A página da API de admin mostra os parâmetros `jwt` e `scope`. O significado de cada valor de `scope` e o efeito sobre tokens já emitidos não foram confirmados [incerto]. Execução por script com chave de serviço [PLANEJADO].
   2. Bloquear a conta enquanto se apura. A página mostra `auth.admin.updateUserById(id, { ban_duration: '876000h' })` como exemplo. O efeito sobre sessões existentes não foi confirmado [incerto]. O valor que desfaz o bloqueio não está na página lida [incerto].
-  3. Se a conta for de prestador: suspender com `admin_set_provider_status(p_provider, 'suspended', motivo)`. O motivo é obrigatório. Se a ocupação for o problema: `admin_set_occupation_approval(p_provider, p_occupation, false, motivo)`.
+  3. Se a conta for de prestador: suspender com `admin_set_provider_status(p_provider, 'suspended', motivo)`. O banco aceita motivo vazio (`p_reason` é opcional), então o plano exige preenchê-lo; na suspensão, ele fica em `audit_log`, em `data.reason`. Se a ocupação for o problema: `admin_set_occupation_approval(p_provider, p_occupation, false, motivo)`.
   4. Se a conta for de administrador: remover a linha em `public.admins` com a chave de serviço e revisar `audit_log` desde a suspeita. MFA está desligado em `config.toml` (lacuna, seção 13).
   5. Investigar: `audit_log` por `actor_id`, `booking_events` com `actor_id`, e linhas criadas pela conta em `consents` e `data_requests` no período.
   6. Rever o login: `otp_expiry = 3600` e 30 verificações por 5 min por IP em `supabase/config.toml`. Ajustar ou não é decisão do owner [PROPOSTA].
@@ -353,7 +353,7 @@ select cron.schedule('workeasy-dispatch-notifications', '* * * * *', 'select pri
 - Chaves do sistema: `SUPABASE_SERVICE_ROLE_KEY` (legada, JWT), chave `sb_secret_...`, `ASAAS_API_KEY` (conta raiz), chaves de subconta guardadas no Vault (`api_key_secret_id`), `ANTHROPIC_API_KEY`.
 - Ações, na ordem:
   1. Supabase: em Settings > API Keys, criar primeiro a nova chave secreta e depois desabilitar a comprometida. Criar a nova não revoga as legadas `anon` e `service_role`, que valem até serem desabilitadas. A página avisa que essas duas serão descontinuadas até o fim de 2026. A página cita o guia "Rotate a leaked or compromised API key", não lido nesta revisão [incerto]. Ela também diz para trocar a chave assim que a causa do vazamento for corrigida, e para usar uma chave secreta separada por componente do backend.
-  2. As Edge Functions recebem `SUPABASE_SECRET_KEYS` e `SUPABASE_SERVICE_ROLE_KEY` da plataforma (página de segredos do Supabase). O código lê `SUPABASE_SERVICE_ROLE_KEY` antes de `SUPABASE_SECRET_KEYS` (`supabase/functions/_shared/config.ts`, linha 61). Por isso, enquanto a service role legada estiver habilitada, as funções podem continuar usando a chave antiga. Confirmar, depois da troca, qual chave está em uso [incerto: não testado].
+  2. As Edge Functions recebem `SUPABASE_SECRET_KEYS` e `SUPABASE_SERVICE_ROLE_KEY` da plataforma (página de segredos do Supabase). O código lê `SUPABASE_SERVICE_ROLE_KEY` antes de `SUPABASE_SECRET_KEYS` (`supabase/functions/_shared/config.ts`, linha 95). Por isso, enquanto a service role legada estiver habilitada, as funções podem continuar usando a chave antiga. Confirmar, depois da troca, qual chave está em uso [incerto: não testado].
   3. `ASAAS_API_KEY`: gerar nova chave no painel do Asaas [incerto: passo não lido] e depois:
      ```bash
      supabase secrets set ASAAS_API_KEY='<nova chave>'
@@ -388,15 +388,17 @@ select cron.schedule('workeasy-dispatch-notifications', '* * * * *', 'select pri
   - O resumo é limitado a 500 caracteres.
   - A função não grava o resumo no banco.
   - Nenhuma tela lida chama `request-assist`. A busca em `services/` e `pages/` não achou chamada.
-- Sinal: resumo com conteúdo fora do pedido; ocupação fora da lista (`occupation_slug is not a candidate`); aumento de `assist_usage`; erros `request-assist incomplete` nos logs.
+- Sinal: resumo com conteúdo fora do pedido; ocupação fora da lista (`occupation_slug is not a candidate`); aumento de `assist_usage_events` (uma linha por pedido concedido); erros `request-assist incomplete` nos logs.
 - Ações, na ordem:
   1. Desligar o assistente sem redeploy:
      ```bash
      supabase secrets set ASSIST_HOURLY_LIMIT=0
      ```
-     Com zero, a função responde 429 antes de consultar o banco (ARQUITETURA; `handler.ts`). A mensagem diz "nesta hora", o que confunde quando o assistente está desligado (lacuna, seção 13).
+     Com zero, a função responde 429 antes de consumir a cota no banco (`take_assist_quota`; ARQUITETURA; `handler.ts`). A mesma variável vale para `quote-assist` e `care-summary`, que usam a mesma cota. A mensagem diz que o limite foi atingido nos últimos 60 minutos, também com zero, o que confunde quando o assistente está desligado (lacuna, seção 13).
+
+     Para desligar só o `request-assist`, há o interruptor `platform_settings.request_assist_enabled`: sem essa linha, ou com valor diferente de JSON `true`, a função responde 503 com a mensagem "O assistente de pedidos está desligado nesta plataforma." O valor é ajustado por `admin_set_setting`, chamada por um administrador autenticado; a tela de configurações não o lista.
   2. Se for preciso retirar a função: `supabase functions delete request-assist`. A página da CLI diz que isso não remove o código local.
-- Limite hoje: se um recurso futuro gravar o resumo para o prestador, este cenário sobe para G2 [PLANEJADO].
+- Limite hoje: se um recurso futuro gravar o resumo para o prestador, este cenário sobe para G2 [PLANEJADO]. As linhas de `assist_usage_events` são apagadas após um dia pelo expurgo diário (`run_retention_purge`), então a contagem deve ser copiada logo no início da apuração.
 
 9.8 Phishing ou falsificação de identidade contra cliente ou prestador
 
@@ -418,7 +420,7 @@ select cron.schedule('workeasy-dispatch-notifications', '* * * * *', 'select pri
 
 | Evidência | Como obter | Limite |
 |---|---|---|
-| `audit_log` do período | SQL com chave de serviço, ou exportação em `/admin/auditoria` | Imutável no banco |
+| `audit_log` do período | SQL com chave de serviço, ou leitura em `/admin/auditoria` (a tela não exporta; copiar por SQL) | Imutável no banco |
 | `payment_events` do período | SQL com chave de serviço | Payload já redigido |
 | Logs de Edge Function, Auth, Storage e Postgres | Painel de logs, em CSV ou JSON (até 1.000 linhas por download). Log drain para exportação contínua. | Retenção depende do plano, não informada [incerto] |
 | Histórico do agendador | `select * from cron.job_run_details` | Não é limpo automaticamente |
@@ -431,7 +433,7 @@ select cron.schedule('workeasy-dispatch-notifications', '* * * * *', 'select pri
 
 10.4 Cada exportação recebe um hash SHA-256, anotado no registro do incidente [PROPOSTA].
 
-10.5 O registro e as evidências ficam guardados por cinco anos, mesmo quando não houve comunicação (art. 10).
+10.5 O registro e as evidências devem ficar guardados por cinco anos, mesmo quando não houve comunicação (art. 10). O `audit_log` não pode ser apagado (trigger e revogações), e o expurgo diário (`run_retention_purge`) não o inclui. Logs e backups da Supabase não cumprem esse prazo por si: a retenção de logs não foi confirmada, e os backups ficam de 7 a 30 dias, conforme o plano (seções 10.2 e 10.3). O plano ainda não define o local de guarda do registro e das cópias [PLANEJADO].
 
 ## 11. Revisão pós-incidente (modelo)
 
@@ -503,7 +505,7 @@ Roteiro (o facilitador lê cada inject no tempo indicado):
 | Modo manutenção | Não existe | [PLANEJADO] | — |
 | Plano do Supabase e retenção de logs | Não definidos | [PLANEJADO] | Decidir antes do lançamento |
 | Rotação periódica de chaves | Não existe | [PLANEJADO] | — |
-| Mensagem do assistente quando desligado | Diz "nesta hora" | Lacuna | Ajustar texto |
+| Mensagem do assistente quando desligado | Com `ASSIST_HOURLY_LIMIT=0`, diz que o limite foi atingido nos últimos 60 minutos. O interruptor `request_assist_enabled` tem mensagem própria. | Lacuna | Ajustar texto |
 
 ## 14. Pontos para o advogado
 
