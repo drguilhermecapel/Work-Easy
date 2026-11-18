@@ -20,7 +20,7 @@ export interface QuoteAssistDeps extends BaseDeps {
   model: string;
   /** Null when ANTHROPIC_API_KEY is not set. */
   classify: ((request: ModelRequest) => Promise<ModelResult>) | null;
-  /** Assist calls per user per hour (ASSIST_HOURLY_LIMIT). */
+  /** Assist calls per user in any 60-minute window (ASSIST_HOURLY_LIMIT). */
   hourlyLimit: number;
   usage: AiUsage;
   admin: { audit(entry: AuditEntry): Promise<void> };
