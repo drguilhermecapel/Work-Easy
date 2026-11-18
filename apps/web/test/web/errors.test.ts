@@ -120,6 +120,8 @@ describe('lib/errors', () => {
       ['client_has_history', /^Este cliente tem atendimentos ou orçamentos e não pode ser apagado da lista\. O histórico precisa ficar\./],
       ['cpf_cnpj_invalid', /^CPF ou CNPJ inválido\. Confira os números\./],
       ['quote_daily_limit', /^Você já criou o máximo de 30 orçamentos hoje\. O limite renova à meia-noite/],
+      ['request_daily_limit', /^Você já criou o máximo de 20 pedidos hoje, e pedidos cancelados também contam\. O limite renova à meia-noite/],
+      ['consent_daily_limit', /^Você já registrou o máximo de 20 consentimentos desta finalidade hoje\. O limite renova à meia-noite/],
       ['quote_items_invalid', /descrição de até 500 caracteres/],
       ['data_request_limit', /^Você já tem solicitações pendentes deste tipo\. Aguarde a resolução antes de pedir outra\./],
       ['storage_not_empty', /arquivos enviados na sua conta/],

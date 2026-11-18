@@ -31,6 +31,8 @@ export const DATABASE_ERROR_CODES = [
   'cpf_cnpj_invalid',
   'quote_daily_limit',
   'data_request_limit',
+  'request_daily_limit',
+  'consent_daily_limit',
   'storage_not_empty',
 ] as const;
 
@@ -124,6 +126,10 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   cpf_cnpj_invalid: 'CPF ou CNPJ inválido. Confira os números.',
   quote_daily_limit: 'Você já criou o máximo de 30 orçamentos hoje. O limite renova à meia-noite, no horário de Brasília.',
   data_request_limit: 'Você já tem solicitações pendentes deste tipo. Aguarde a resolução antes de pedir outra.',
+  request_daily_limit:
+    'Você já criou o máximo de 20 pedidos hoje, e pedidos cancelados também contam. O limite renova à meia-noite, no horário de Brasília.',
+  consent_daily_limit:
+    'Você já registrou o máximo de 20 consentimentos desta finalidade hoje. O limite renova à meia-noite, no horário de Brasília.',
   storage_not_empty:
     'Ainda há arquivos enviados na sua conta. Tente excluir a conta de novo; se o erro continuar, fale com o suporte.',
   // The monthly allowance comes from platform_settings, so the sentence does not state a number
