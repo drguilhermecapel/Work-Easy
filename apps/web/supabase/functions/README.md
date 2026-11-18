@@ -60,6 +60,7 @@ curl "${H[@]}" -d '{"text":"Tem um vazamento embaixo da pia, preciso hoje"}' $BA
 curl -H "asaas-access-token: $ASAAS_WEBHOOK_TOKEN" -H 'Content-Type: application/json' \
   -d '{"id":"evt_teste_1","event":"PAYMENT_RECEIVED","payment":{"id":"pay_xxx","dueDate":"2026-10-19"}}' $BASE/asaas-webhook
 curl -H "x-cron-secret: $CRON_SECRET" -H 'Content-Type: application/json' -d '{"limit":20}' $BASE/notify-dispatch
+curl -X POST -H "x-cron-secret: $CRON_SECRET" $BASE/background-check-purge
 ```
 
 No sandbox do Asaas, configure o webhook da conta raiz (Integrações → Webhooks)

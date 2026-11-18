@@ -403,11 +403,14 @@ authorization_url_path = "/oauth/consent"
 allow_dynamic_registration = false
 
 # Called by Asaas and by the scheduler, without a user JWT. Each one checks its own secret in code:
-# asaas-access-token (asaas-webhook) and x-cron-secret (notify-dispatch).
+# asaas-access-token (asaas-webhook) and x-cron-secret (notify-dispatch, background-check-purge).
 [functions.asaas-webhook]
 verify_jwt = false
 
 [functions.notify-dispatch]
+verify_jwt = false
+
+[functions.background-check-purge]
 verify_jwt = false
 
 [edge_runtime]

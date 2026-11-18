@@ -20,10 +20,18 @@ export interface ProviderOccupationRow {
   approved: boolean;
 }
 
-export type ProviderDocumentRow = Pick<
+type ProviderDocumentDbRow = Pick<
   Tables<'provider_documents'>,
   'id' | 'step' | 'storage_path' | 'status' | 'rejection_reason' | 'expires_at' | 'created_at'
 >;
+
+/** A document with a file. A purged one (status 'purged', no file) is not listed: its step counts as missing. */
+export type ProviderDocumentRow = Omit<ProviderDocumentDbRow, 'status' | 'storage_path'> & {
+  status: Exclude<ProviderDocumentDbRow['status'], 'purged'>;
+  storage_path: string;
+};
+
+const hasFile = (row: ProviderDocumentDbRow): row is ProviderDocumentRow => row.status !== 'purged' && row.storage_path !== null;
 
 const PROVIDER_COLUMNS =
   'id, display_name, slug, bio, avatar_path, status, plan, base_neighborhood_id, accepts_platform_requests, created_at';
@@ -235,9 +243,9 @@ export const DOCUMENT_TYPES: Record<string, string> = {
 
 export const listMyDocuments = (providerId: string): Promise<ProviderDocumentRow[]> =>
   guard(async () =>
-    unwrap<ProviderDocumentRow[]>(
+    unwrap<ProviderDocumentDbRow[]>(
       await db().from('provider_documents').select(DOCUMENT_COLUMNS).eq('provider_id', providerId).order('created_at', { ascending: false }),
-    ),
+    ).filter(hasFile),
   );
 
 const randomPart = (): string => globalThis.crypto?.randomUUID?.().slice(0, 8) ?? Math.random().toString(36).slice(2, 10);

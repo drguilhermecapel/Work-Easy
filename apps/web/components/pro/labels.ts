@@ -35,13 +35,16 @@ export const REGISTRY_STATUS_LABELS: Record<Enums<'registry_status'>, string> = 
   rejected: 'Recusado',
 };
 
-export const DOCUMENT_STATUS_LABELS: Record<Enums<'document_status'>, string> = {
+/** Statuses the provider can see: a purged document has no file and is not listed (services/providers.ts). */
+type ListedDocumentStatus = Exclude<Enums<'document_status'>, 'purged'>;
+
+export const DOCUMENT_STATUS_LABELS: Record<ListedDocumentStatus, string> = {
   submitted: 'Enviado, aguardando análise',
   accepted: 'Aceito',
   rejected: 'Recusado',
 };
 
-export const DOCUMENT_STATUS_STYLES: Record<Enums<'document_status'> | 'missing', string> = {
+export const DOCUMENT_STATUS_STYLES: Record<ListedDocumentStatus | 'missing', string> = {
   submitted: 'bg-amber-100 text-amber-800',
   accepted: 'bg-green-100 text-green-800',
   rejected: 'bg-red-100 text-red-800',

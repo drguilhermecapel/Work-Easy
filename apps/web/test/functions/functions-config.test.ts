@@ -10,9 +10,9 @@ function functionBlock(name: string): string | undefined {
 }
 
 describe('supabase/config.toml: verify_jwt', () => {
-  // These two functions receive calls without a user JWT (Asaas webhook, cron). They keep their
-  // own authentication in code: asaas-access-token in asaas-webhook, x-cron-secret in notify-dispatch.
-  for (const name of ['asaas-webhook', 'notify-dispatch']) {
+  // These functions receive calls without a user JWT (Asaas webhook, cron). They keep their own
+  // authentication in code: asaas-access-token in asaas-webhook, x-cron-secret in the scheduled ones.
+  for (const name of ['asaas-webhook', 'notify-dispatch', 'background-check-purge']) {
     it(`${name} disables the gateway JWT check`, () => {
       const block = functionBlock(name);
       expect(block, `[functions.${name}] is missing`).toBeDefined();

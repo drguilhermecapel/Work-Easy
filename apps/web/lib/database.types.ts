@@ -681,14 +681,14 @@ isOneToOne: false
                   ]
                 },"provider_documents": {
                   Row: {
-                    "created_at": string,"deletion_requested_at": string | null,"expires_at": string | null,"id": string,"provider_id": string,"rejection_reason": string | null,"reviewed_at": string | null,"reviewed_by": string | null,"status": Database["public"]['Enums']["document_status"],"step": Database["public"]['Enums']["verification_step"],"storage_path": string
+                    "created_at": string,"deletion_requested_at": string | null,"expires_at": string | null,"id": string,"provider_id": string,"rejection_reason": string | null,"reviewed_at": string | null,"reviewed_by": string | null,"status": Database["public"]['Enums']["document_status"],"step": Database["public"]['Enums']["verification_step"],"storage_path": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"deletion_requested_at"?: string | null,"expires_at"?: string | null,"id"?: string,"provider_id": string,"rejection_reason"?: string | null,"reviewed_at"?: string | null,"reviewed_by"?: string | null,"status"?: Database["public"]['Enums']["document_status"],"step": Database["public"]['Enums']["verification_step"],"storage_path": string
+                    "created_at"?: string,"deletion_requested_at"?: string | null,"expires_at"?: string | null,"id"?: string,"provider_id": string,"rejection_reason"?: string | null,"reviewed_at"?: string | null,"reviewed_by"?: string | null,"status"?: Database["public"]['Enums']["document_status"],"step": Database["public"]['Enums']["verification_step"],"storage_path"?: string | null
                   }
                   Update: {
-                    "created_at"?: string,"deletion_requested_at"?: string | null,"expires_at"?: string | null,"id"?: string,"provider_id"?: string,"rejection_reason"?: string | null,"reviewed_at"?: string | null,"reviewed_by"?: string | null,"status"?: Database["public"]['Enums']["document_status"],"step"?: Database["public"]['Enums']["verification_step"],"storage_path"?: string
+                    "created_at"?: string,"deletion_requested_at"?: string | null,"expires_at"?: string | null,"id"?: string,"provider_id"?: string,"rejection_reason"?: string | null,"reviewed_at"?: string | null,"reviewed_by"?: string | null,"status"?: Database["public"]['Enums']["document_status"],"step"?: Database["public"]['Enums']["verification_step"],"storage_path"?: string | null
                   }
                   Relationships: [
                     {
@@ -1233,6 +1233,26 @@ isOneToOne: true
 "available_slots":
 { Args: { "p_day": string,"p_duration_minutes": number,"p_provider": string }; Returns: (unknown)[]
                            },
+"background_check_purge_candidates":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "created_at": string,
+"deletion_requested_at": string | null,
+"expires_at": string | null,
+"id": string,
+"provider_id": string,
+"rejection_reason": string | null,
+"reviewed_at": string | null,
+"reviewed_by": string | null,
+"status": Database["public"]['Enums']["document_status"],
+"step": Database["public"]['Enums']["verification_step"],
+"storage_path": string | null
+            }[]
+                          SetofOptions: {
+        from: "*"
+        to: "provider_documents"
+        isOneToOne: false
+        isSetofReturn: true
+      } },
 "become_provider":
 { Args: { "p_display_name": string,"p_occupation": string,"p_registry_number"?: string,"p_registry_uf"?: string,"p_slug": string }; Returns: string
                            },
@@ -1306,6 +1326,9 @@ isOneToOne: true
 "log_event":
 { Args: { "p_action": string,"p_data"?: Json,"p_entity": string,"p_entity_id"?: string }; Returns: number
                            },
+"mark_background_check_purged":
+{ Args: { "p_id": string }; Returns: undefined
+                           },
 "offer_shift":
 { Args: { "p_providers": (string)[],"p_shift": string }; Returns: number
                            },
@@ -1348,7 +1371,7 @@ isOneToOne: true
                            }
           }
           Enums: {
-            "billing_model": "comissao_primeiro_servico"|"so_assinatura"|"sob_consulta_juridica","booking_origin": "platform"|"own","booking_status": "requested"|"accepted"|"paid"|"in_progress"|"completed"|"released"|"canceled"|"disputed","consent_purpose": "terms"|"privacy"|"marketing"|"background_check"|"location"|"age_declaration","data_request_kind": "export"|"delete","document_status": "submitted"|"accepted"|"rejected","notification_channel": "whatsapp"|"email","notification_status": "queued"|"sending"|"sent"|"failed"|"skipped","payment_method": "pix"|"credit_card"|"boleto"|"undefined","payment_status": "pending"|"confirmed"|"received"|"held"|"released"|"refunded"|"failed"|"canceled","plan_code": "free"|"pro","price_unit": "hora"|"dia"|"servico"|"m2"|"sessao"|"plantao"|"mes"|"projeto"|"km"|"pacote"|"pagina"|"palavra"|"aula"|"evento"|"visita","proposal_status": "sent"|"accepted"|"declined"|"withdrawn","provider_kind": "autonomo"|"autonomo_ou_empresa"|"somente_empresa_licenciada","provider_status": "draft"|"pending_review"|"approved"|"suspended","quote_status": "draft"|"sent"|"accepted"|"declined"|"expired","registry_status": "not_required"|"informed"|"confirmed"|"rejected","request_status": "open"|"matched"|"closed"|"canceled","service_location": "domicilio"|"online"|"estabelecimento"|"empresa_cliente"|"externo","shift_status": "open"|"offered"|"assigned"|"checked_in"|"completed"|"canceled"|"no_show","subscription_status": "pending"|"trialing"|"active"|"past_due"|"canceled","user_role": "client"|"provider","verification_step": "documento_selfie"|"cadastro_fiscal"|"registro_profissional"|"antecedentes"|"certificado_curso"|"cnh"|"licenca_orgao"|"seguro_rc"
+            "billing_model": "comissao_primeiro_servico"|"so_assinatura"|"sob_consulta_juridica","booking_origin": "platform"|"own","booking_status": "requested"|"accepted"|"paid"|"in_progress"|"completed"|"released"|"canceled"|"disputed","consent_purpose": "terms"|"privacy"|"marketing"|"background_check"|"location"|"age_declaration","data_request_kind": "export"|"delete","document_status": "submitted"|"accepted"|"rejected"|"purged","notification_channel": "whatsapp"|"email","notification_status": "queued"|"sending"|"sent"|"failed"|"skipped","payment_method": "pix"|"credit_card"|"boleto"|"undefined","payment_status": "pending"|"confirmed"|"received"|"held"|"released"|"refunded"|"failed"|"canceled","plan_code": "free"|"pro","price_unit": "hora"|"dia"|"servico"|"m2"|"sessao"|"plantao"|"mes"|"projeto"|"km"|"pacote"|"pagina"|"palavra"|"aula"|"evento"|"visita","proposal_status": "sent"|"accepted"|"declined"|"withdrawn","provider_kind": "autonomo"|"autonomo_ou_empresa"|"somente_empresa_licenciada","provider_status": "draft"|"pending_review"|"approved"|"suspended","quote_status": "draft"|"sent"|"accepted"|"declined"|"expired","registry_status": "not_required"|"informed"|"confirmed"|"rejected","request_status": "open"|"matched"|"closed"|"canceled","service_location": "domicilio"|"online"|"estabelecimento"|"empresa_cliente"|"externo","shift_status": "open"|"offered"|"assigned"|"checked_in"|"completed"|"canceled"|"no_show","subscription_status": "pending"|"trialing"|"active"|"past_due"|"canceled","user_role": "client"|"provider","verification_step": "documento_selfie"|"cadastro_fiscal"|"registro_profissional"|"antecedentes"|"certificado_curso"|"cnh"|"licenca_orgao"|"seguro_rc"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -1468,7 +1491,7 @@ export const Constants = {
           }
         },"public": {
           Enums: {
-            "billing_model": ["comissao_primeiro_servico", "so_assinatura", "sob_consulta_juridica"],"booking_origin": ["platform", "own"],"booking_status": ["requested", "accepted", "paid", "in_progress", "completed", "released", "canceled", "disputed"],"consent_purpose": ["terms", "privacy", "marketing", "background_check", "location", "age_declaration"],"data_request_kind": ["export", "delete"],"document_status": ["submitted", "accepted", "rejected"],"notification_channel": ["whatsapp", "email"],"notification_status": ["queued", "sending", "sent", "failed", "skipped"],"payment_method": ["pix", "credit_card", "boleto", "undefined"],"payment_status": ["pending", "confirmed", "received", "held", "released", "refunded", "failed", "canceled"],"plan_code": ["free", "pro"],"price_unit": ["hora", "dia", "servico", "m2", "sessao", "plantao", "mes", "projeto", "km", "pacote", "pagina", "palavra", "aula", "evento", "visita"],"proposal_status": ["sent", "accepted", "declined", "withdrawn"],"provider_kind": ["autonomo", "autonomo_ou_empresa", "somente_empresa_licenciada"],"provider_status": ["draft", "pending_review", "approved", "suspended"],"quote_status": ["draft", "sent", "accepted", "declined", "expired"],"registry_status": ["not_required", "informed", "confirmed", "rejected"],"request_status": ["open", "matched", "closed", "canceled"],"service_location": ["domicilio", "online", "estabelecimento", "empresa_cliente", "externo"],"shift_status": ["open", "offered", "assigned", "checked_in", "completed", "canceled", "no_show"],"subscription_status": ["pending", "trialing", "active", "past_due", "canceled"],"user_role": ["client", "provider"],"verification_step": ["documento_selfie", "cadastro_fiscal", "registro_profissional", "antecedentes", "certificado_curso", "cnh", "licenca_orgao", "seguro_rc"]
+            "billing_model": ["comissao_primeiro_servico", "so_assinatura", "sob_consulta_juridica"],"booking_origin": ["platform", "own"],"booking_status": ["requested", "accepted", "paid", "in_progress", "completed", "released", "canceled", "disputed"],"consent_purpose": ["terms", "privacy", "marketing", "background_check", "location", "age_declaration"],"data_request_kind": ["export", "delete"],"document_status": ["submitted", "accepted", "rejected", "purged"],"notification_channel": ["whatsapp", "email"],"notification_status": ["queued", "sending", "sent", "failed", "skipped"],"payment_method": ["pix", "credit_card", "boleto", "undefined"],"payment_status": ["pending", "confirmed", "received", "held", "released", "refunded", "failed", "canceled"],"plan_code": ["free", "pro"],"price_unit": ["hora", "dia", "servico", "m2", "sessao", "plantao", "mes", "projeto", "km", "pacote", "pagina", "palavra", "aula", "evento", "visita"],"proposal_status": ["sent", "accepted", "declined", "withdrawn"],"provider_kind": ["autonomo", "autonomo_ou_empresa", "somente_empresa_licenciada"],"provider_status": ["draft", "pending_review", "approved", "suspended"],"quote_status": ["draft", "sent", "accepted", "declined", "expired"],"registry_status": ["not_required", "informed", "confirmed", "rejected"],"request_status": ["open", "matched", "closed", "canceled"],"service_location": ["domicilio", "online", "estabelecimento", "empresa_cliente", "externo"],"shift_status": ["open", "offered", "assigned", "checked_in", "completed", "canceled", "no_show"],"subscription_status": ["pending", "trialing", "active", "past_due", "canceled"],"user_role": ["client", "provider"],"verification_step": ["documento_selfie", "cadastro_fiscal", "registro_profissional", "antecedentes", "certificado_curso", "cnh", "licenca_orgao", "seguro_rc"]
           }
         }
 } as const
