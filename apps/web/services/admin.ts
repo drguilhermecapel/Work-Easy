@@ -471,7 +471,9 @@ export const getProviderDetail = async (providerId: string): Promise<ProviderDet
     db().from('providers').select(PROVIDER_COLUMNS).eq('id', providerId).maybeSingle(),
     db().from('profiles').select('full_name, phone').eq('id', providerId).maybeSingle(),
     db().from('provider_occupations').select(OCCUPATION_COLUMNS).eq('provider_id', providerId).order('is_primary', { ascending: false }),
-    db().from('provider_documents').select(DOCUMENT_COLUMNS).eq('provider_id', providerId).order('created_at', { ascending: false }),
+    // A purged document has no file to open (its record stays in audit_log): the list leaves it out.
+    db().from('provider_documents').select(DOCUMENT_COLUMNS).eq('provider_id', providerId)
+      .in('status', ['submitted', 'accepted', 'rejected']).order('created_at', { ascending: false }),
   ]);
   const providerRow = unwrapMaybe<AdminProvider>(provider);
   if (!providerRow) throw new AppError('not_found');
