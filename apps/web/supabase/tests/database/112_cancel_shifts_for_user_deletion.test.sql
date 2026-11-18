@@ -1,6 +1,7 @@
 -- Account deletion, care shifts: the future shifts of the deleted user are canceled and do not block the
--- deletion; a shift in progress, a past shift and other households' shifts are left as they are. Only the
--- service role can run the function.
+-- deletion; a past shift and other households' shifts are left as they are. A shift in progress (checked_in) of the
+-- deleted caregiver is canceled too (20261118600007); a shift in progress of another family is not touched by a
+-- family's deletion there. Only the service role can run the function.
 begin;
 select plan(38);
 select has_function('tests', 'setup_fixture', 'test helpers are installed (run 00_helpers first)');
@@ -32,9 +33,10 @@ insert into public.shifts (id, household_id, period, rate_cents, status, provide
   (md5('assigned-b')::uuid, (select id from ids where name = 'house_b'), tests.sp_period(tests.at(110, 3, '08:00'), 4), 100, 'assigned', tests.uid('provider_c')),
   (md5('unrelated-b')::uuid, (select id from ids where name = 'house_b'), tests.sp_period(tests.at(110, 4, '08:00'), 4), 100, 'assigned', tests.uid('provider_d')),
   (md5('canceled-a')::uuid, (select id from ids where name = 'house_a'), tests.sp_period(tests.at(110, 2, '08:00'), 4), 100, 'canceled', null),
-  -- Checked in early: the start is still ahead, but the shift is in progress.
+  -- Checked in early by caregiver C: the start is still ahead, but the shift is in progress. Caregiver C's deletion
+  -- cancels it (20261118600007); the deletion of family A, which owns house A, does not touch it.
   (md5('in-progress-b')::uuid, (select id from ids where name = 'house_b'),
-     tstzrange(now() + interval '1 hour', now() + interval '5 hours'), 100, 'checked_in', tests.uid('provider_e')),
+     tstzrange(now() + interval '1 hour', now() + interval '5 hours'), 100, 'checked_in', tests.uid('provider_c')),
   -- Past shifts: one assigned (never checked in), one completed.
   (md5('past-c')::uuid, (select id from ids where name = 'house_b'),
      tstzrange(now() - interval '3 days', now() - interval '3 days' + interval '4 hours'), 100, 'assigned', tests.uid('provider_c')),
@@ -88,7 +90,7 @@ select is((select status::text from public.shifts where id = md5('assigned-b')::
 select is((select status::text from public.shifts where id = md5('unrelated-b')::uuid), 'assigned',
           'a shift of another family with another caregiver is not touched');
 select is((select status::text from public.shifts where id = md5('in-progress-b')::uuid), 'checked_in',
-          'a shift in progress is not canceled, even though it starts later than now');
+          'a shift in progress of another family is not touched by this family deletion');
 select is((select status::text from public.shifts where id = md5('past-c')::uuid), 'assigned',
           'a past shift is not canceled');
 select is((select status::text from public.shifts where id = md5('completed-a')::uuid), 'completed',
@@ -113,15 +115,16 @@ select is((select count(*)::int from public.notifications
 
 -- ================================================================ caregiver account
 select tests.authenticate_service();
-select is(public.cancel_shifts_for_user_deletion(tests.uid('provider_c')), 1,
-          'the caregiver account cancels its one future assigned shift left, in another family');
+-- Changed by 20261118600007: the shift in progress of the caregiver is canceled too, so the count is two, not one.
+select is(public.cancel_shifts_for_user_deletion(tests.uid('provider_c')), 2,
+          'the caregiver account cancels its future assigned shift and the shift in progress, both in another family');
 select tests.clear_authentication();
 select is((select status::text from public.shifts where id = md5('assigned-b')::uuid), 'canceled',
           'the future shift of the caregiver is canceled');
 select is((select status::text from public.shifts where id = md5('past-c')::uuid), 'assigned',
           'the past shift of the caregiver stays as it is');
-select is((select status::text from public.shifts where id = md5('in-progress-b')::uuid), 'checked_in',
-          'the shift in progress of another caregiver is still checked in');
+select is((select status::text from public.shifts where id = md5('in-progress-b')::uuid), 'canceled',
+          'the shift in progress of the caregiver is canceled, even though it starts later than now');
 -- Offers held by the caregiver who left: the shift with no other offer goes back to open, the shared one stays offered.
 select is((select status::text from public.shifts where id = md5('solo-b')::uuid), 'open',
           'a shift offered only to the caregiver who left goes back to open');

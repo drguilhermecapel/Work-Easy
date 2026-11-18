@@ -1,7 +1,8 @@
 -- Account deletion with a household and its shifts, in the order account-delete uses: the shifts and the accepted
 -- bookings are canceled, anonymize_user keeps the household and its shifts, and the Auth delete goes through.
--- The same goes for a caregiver's account: its future shifts are canceled, and a shift in progress stays
--- checked in with no caregiver, because the caregiver's account is gone.
+-- The same goes for a caregiver's account: its future shifts and the shift in progress are canceled (from
+-- migration 20261118600007; before it, the shift in progress stayed checked in), and the canceled shift has no
+-- caregiver once the caregiver's account is gone.
 begin;
 select plan(20);
 select has_function('tests', 'setup_fixture', 'test helpers are installed (run 00_helpers first)');
@@ -53,8 +54,9 @@ insert into public.shifts (id, household_id, period, rate_cents, status, provide
 select pass('the caregiver has a shift in progress and a future shift in another household');
 
 select tests.authenticate_service();
-select is(public.cancel_shifts_for_user_deletion(tests.uid('provider_c')), 1,
-          'the caregiver account cancels its future shift and leaves the one in progress');
+-- Changed by 20261118600007: the shift in progress is canceled too, so the count is two, not one.
+select is(public.cancel_shifts_for_user_deletion(tests.uid('provider_c')), 2,
+          'the caregiver account cancels its future shift and the one in progress');
 select lives_ok($$select public.anonymize_user(tests.uid('provider_c'))$$, 'anonymize_user runs for the caregiver account');
 select tests.clear_authentication();
 
@@ -64,10 +66,10 @@ select is((select status::text from public.shifts where id = md5('assigned-b')::
           'the future shift of the caregiver is canceled');
 select is((select provider_id from public.shifts where id = md5('assigned-b')::uuid), null::uuid,
           'and has no caregiver once the account is gone');
--- Recorded behavior: the shift in progress ends with the account. It stays checked_in with no caregiver, so the
--- check-out cannot happen and the daily report cannot be written.
-select is((select status::text from public.shifts where id = md5('in-progress-b')::uuid), 'checked_in',
-          'the shift in progress stays checked in');
+-- Changed by 20261118600007: the shift in progress is canceled with the caregiver's account, like the future shift.
+-- Before it, the shift stayed checked_in and the foreign key cleared its caregiver, so nothing could check it out.
+select is((select status::text from public.shifts where id = md5('in-progress-b')::uuid), 'canceled',
+          'the shift in progress is canceled');
 select is((select provider_id from public.shifts where id = md5('in-progress-b')::uuid), null::uuid,
           'with no caregiver once the account is gone');
 
