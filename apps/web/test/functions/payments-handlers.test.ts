@@ -63,6 +63,8 @@ function paymentsDeps(over: {
   /** findOpenPayment answers: first call, then the following ones */
   openAfter?: PaymentRecord | null;
   auditFails?: boolean;
+  /** markPaymentCanceled rejects with this (the open charge was canceled in Asaas, its row not updated) */
+  markCanceledError?: Error;
   /** the booking already has a received/confirmed payment */
   paid?: boolean;
 } = {}) {
@@ -97,7 +99,10 @@ function paymentsDeps(over: {
         inserted.push(row);
         return { id: 'payment-row-1' };
       },
-      markPaymentCanceled: async id => void canceled.push(id),
+      markPaymentCanceled: async id => {
+        if (over.markCanceledError) throw over.markCanceledError;
+        canceled.push(id);
+      },
       audit: async entry => {
         if (over.auditFails) throw new Error('audit_log unavailable');
         audits.push(entry);
@@ -217,7 +222,11 @@ describe('payments-create', () => {
     const res = await read(await paymentsCreate(post('payments-create', { booking_id: BOOKING_ID, method: 'boleto' }), deps));
     expect(res.status).toBe(201);
     expect(res.body.data).toMatchObject({ reused: false });
-    expect(calls.map(c => `${c.method} ${new URL(c.url).pathname}`)).toEqual(['DELETE /v3/payments/pay_0', 'POST /v3/payments']);
+    // Changed with the no-delete rule: Asaas is asked about the open charge, the new charge is created,
+    // and only then the open one is canceled (it used to be deleted before the new charge existed)
+    expect(calls.map(c => `${c.method} ${new URL(c.url).pathname}`)).toEqual([
+      'GET /v3/payments/pay_0', 'POST /v3/payments', 'DELETE /v3/payments/pay_0',
+    ]);
     expect(canceled).toEqual(['p0']);
   });
 
@@ -232,15 +241,87 @@ describe('payments-create', () => {
   });
 
   it('keeps the old charge when Asaas will not remove it (paid, webhook pending)', async () => {
-    const { deps, canceled } = paymentsDeps({
+    // Asaas shows the open charge as pending when the request starts, and as received after it refuses the cancel
+    let reads = 0;
+    const { deps, calls, canceled, inserted } = paymentsDeps({
       open: OPEN,
       customerId: 'cus_1',
-      routes: { 'DELETE /v3/payments/pay_0': { status: 400, body: { errors: [{ code: 'invalid_action', description: 'Não é possível remover esta cobrança.' }] } } },
+      routes: {
+        'GET /v3/payments/pay_0': () => ({ body: { ...ASAAS_PAYMENT, id: 'pay_0', status: reads++ === 0 ? 'PENDING' : 'RECEIVED' } }),
+        'POST /v3/payments': { body: ASAAS_PAYMENT },
+        'DELETE /v3/payments/pay_0': { status: 400, body: { errors: [{ code: 'invalid_action', description: 'Não é possível remover esta cobrança.' }] } },
+        'DELETE /v3/payments/pay_1': { body: { deleted: true, id: 'pay_1' } },
+      },
     });
     const res = await read(await paymentsCreate(post('payments-create', { booking_id: BOOKING_ID, method: 'boleto' }), deps));
-    expect(res.status).toBe(200);
-    expect(res.body.data).toMatchObject({ payment_id: 'p0', reused: true });
+    // changed from 200 (the paid charge was returned as reused): the request is refused and the new charge removed
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('already_paid');
     expect(canceled).toEqual([]);
+    expect(inserted).toEqual([]);
+    expect(calls.map(c => `${c.method} ${new URL(c.url).pathname}`)).toContain('DELETE /v3/payments/pay_1');
+  });
+
+  it('refuses to replace an open charge that Asaas already shows as paid, before creating the new one', async () => {
+    const { deps, calls, canceled, inserted } = paymentsDeps({
+      open: OPEN,
+      customerId: 'cus_1',
+      routes: { 'GET /v3/payments/pay_0': { body: { ...ASAAS_PAYMENT, id: 'pay_0', status: 'CONFIRMED' } } },
+    });
+    const res = await read(await paymentsCreate(post('payments-create', { booking_id: BOOKING_ID, method: 'boleto' }), deps));
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('already_paid');
+    expect(calls.map(c => `${c.method} ${new URL(c.url).pathname}`)).toEqual(['GET /v3/payments/pay_0']);
+    expect(canceled).toEqual([]);
+    expect(inserted).toEqual([]);
+  });
+
+  it('keeps the open charge pending and removes the new one when the cancel fails for another reason (502)', async () => {
+    const { deps, calls, canceled, inserted, errors: logged } = paymentsDeps({
+      open: OPEN,
+      customerId: 'cus_1',
+      routes: {
+        'POST /v3/payments': { body: ASAAS_PAYMENT },
+        'DELETE /v3/payments/pay_0': { status: 500, body: { errors: [{ code: 'internal', description: 'Falha no Asaas.' }] } },
+        'DELETE /v3/payments/pay_1': { body: { deleted: true, id: 'pay_1' } },
+      },
+    });
+    const res = await read(await paymentsCreate(post('payments-create', { booking_id: BOOKING_ID, method: 'boleto' }), deps));
+    expect(res.status).toBe(502);
+    expect(res.body.error.code).toBe('payment_replace_failed');
+    expect(canceled).toEqual([]);
+    expect(inserted).toEqual([]);
+    expect(calls.map(c => `${c.method} ${new URL(c.url).pathname}`)).toContain('DELETE /v3/payments/pay_1');
+    expect(logged.length).toBeGreaterThan(0);
+  });
+
+  it('replaces the open charge when Asaas no longer has it (404): it is marked canceled here too', async () => {
+    const { deps, canceled, inserted } = paymentsDeps({
+      open: OPEN,
+      customerId: 'cus_1',
+      routes: {
+        'POST /v3/payments': { body: ASAAS_PAYMENT },
+        'DELETE /v3/payments/pay_0': { status: 404, body: { errors: [] } },
+      },
+    });
+    const res = await read(await paymentsCreate(post('payments-create', { booking_id: BOOKING_ID, method: 'boleto' }), deps));
+    expect(res.status).toBe(201);
+    expect(canceled).toEqual(['p0']);
+    expect(inserted).toHaveLength(1);
+  });
+
+  it('removes the new charge when the open one cannot be marked canceled after Asaas canceled it', async () => {
+    const { deps, calls, inserted } = paymentsDeps({
+      open: OPEN,
+      customerId: 'cus_1',
+      markCanceledError: new DbError('connection reset', '08006'),
+    });
+    const res = await read(await paymentsCreate(post('payments-create', { booking_id: BOOKING_ID, method: 'boleto' }), deps));
+    expect(res.status).toBe(500);
+    const sent = calls.map(c => `${c.method} ${new URL(c.url).pathname}`);
+    expect(sent).toContain('DELETE /v3/payments/pay_0');
+    expect(sent).toContain('DELETE /v3/payments/pay_1');
+    expect(inserted).toEqual([]);
   });
 
   it('under concurrency, the request that loses the insert removes its Asaas charge and returns the winner', async () => {
@@ -308,6 +389,8 @@ describe('charges-create', () => {
     quoteClient?: string | null;
     /** the CRM record the provider's client id resolves to (null: not found) */
     client?: typeof CRM_CLIENT | null;
+    /** Asaas routes that replace or add to the defaults */
+    routes?: Parameters<typeof asaasWith>[0];
   } = {}) {
     const inserted: NewPayment[] = [];
     const canceled: string[] = [];
@@ -315,6 +398,7 @@ describe('charges-create', () => {
       'POST /v3/customers': { body: { id: 'cus_sub', name: 'Cliente' } },
       'POST /v3/payments': { body: { ...ASAAS_PAYMENT, id: 'pay_sub', billingType: 'BOLETO' } },
       'DELETE /v3/payments/pay_0': { body: { deleted: true, id: 'pay_0' } },
+      ...over.routes,
     });
     const deps: ChargesCreateDeps = {
       ...baseDeps,
@@ -415,9 +499,42 @@ describe('charges-create', () => {
     const other = chargesDeps({ open });
     const res = await read(await chargesCreate(post('charges-create', { ...body, method: 'pix' }), other.deps));
     expect(res.status).toBe(201);
-    expect(other.calls[0]).toMatchObject({ method: 'DELETE' });
-    expect(other.calls[0].headers.access_token).toBe('sub-key');
+    // Changed with the no-delete rule: the new charge is created first, then the open one is canceled
+    const cancel = other.calls.at(-1)!;
+    expect(cancel).toMatchObject({ method: 'DELETE' });
+    expect(cancel.headers.access_token).toBe('sub-key');
     expect(other.canceled).toEqual(['p0']);
+  });
+
+  it('refuses to replace a charge that Asaas already shows as paid (409 already_paid), before creating anything', async () => {
+    const open: PaymentRecord = {
+      id: 'p0', asaas_payment_id: 'pay_0', method: 'pix', status: 'pending', amount_cents: 250050,
+      invoice_url: 'u', pix_qr_code: null, pix_payload: null, due_date: '2026-10-25',
+    };
+    const made = chargesDeps({ open, routes: { 'GET /v3/payments/pay_0': { body: { id: 'pay_0', status: 'RECEIVED' } } } });
+    const res = await read(await chargesCreate(post('charges-create', body), made.deps));
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('already_paid');
+    expect(made.calls.map(c => `${c.method} ${new URL(c.url).pathname}`)).toEqual(['GET /v3/payments/pay_0']);
+    expect(made.inserted).toEqual([]);
+    expect(made.canceled).toEqual([]);
+  });
+
+  it('keeps the open charge pending and removes the new one when the cancel fails (502)', async () => {
+    const open: PaymentRecord = {
+      id: 'p0', asaas_payment_id: 'pay_0', method: 'pix', status: 'pending', amount_cents: 250050,
+      invoice_url: 'u', pix_qr_code: null, pix_payload: null, due_date: '2026-10-25',
+    };
+    const made = chargesDeps({
+      open,
+      routes: { 'DELETE /v3/payments/pay_0': { status: 500, body: { errors: [{ code: 'internal', description: 'Falha no Asaas.' }] } } },
+    });
+    const res = await read(await chargesCreate(post('charges-create', body), made.deps));
+    expect(res.status).toBe(502);
+    expect(res.body.error.code).toBe('payment_replace_failed');
+    expect(made.canceled).toEqual([]);
+    expect(made.inserted).toEqual([]);
+    expect(made.calls.map(c => `${c.method} ${new URL(c.url).pathname}`)).toContain('DELETE /v3/payments/pay_sub');
   });
 
   it('refuses to charge a quote or a booking that already has a received payment (409 already_paid)', async () => {
