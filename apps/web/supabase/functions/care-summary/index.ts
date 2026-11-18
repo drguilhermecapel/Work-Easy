@@ -32,8 +32,9 @@ const deps: CareSummaryDeps = {
     : null,
   hourlyLimit: config.assistHourlyLimit,
   usage: {
-    // One atomic statement in the database: counter per user and clock hour, incremented only
-    // while below the limit (take_assist_quota, shared with request-assist and quote-assist).
+    // One call to the database, serialized per user: it counts the calls granted to the user in the
+    // last 60 minutes and grants one more only while below the limit (take_assist_quota, shared
+    // with request-assist and quote-assist).
     async take(userId, limit) {
       return quotaGranted(must(await serviceClient().rpc('take_assist_quota', { p_user: userId, p_limit: limit })));
     },

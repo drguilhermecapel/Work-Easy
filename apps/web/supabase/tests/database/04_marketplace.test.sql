@@ -344,8 +344,12 @@ select is((select count(*)::int from public.assist_usage_events where user_id = 
 insert into public.assist_usage (user_id, window_start, count)
 values (tests.uid('provider_c'), date_trunc('hour', now() at time zone 'UTC') at time zone 'UTC' - interval '1 hour', 5),
        (tests.uid('provider_c'), date_trunc('hour', now() at time zone 'UTC') at time zone 'UTC' - interval '2 days', 5);
+-- Five calls in the previous clock hour that are still inside the window, for every minute of the run: the
+-- midpoint of the overlap (now - 3600 s, now - t s), t = minute * 60 + second of now(); see test 122.
 insert into public.assist_usage_events (user_id, used_at)
-select tests.uid('provider_c'), now() - interval '30 minutes' from generate_series(1, 5) g;
+select tests.uid('provider_c'),
+       now() - make_interval(secs => ((3600 + extract(minute from now()) * 60 + extract(second from now())) / 2)::float8)
+  from generate_series(1, 5) g;
 select tests.authenticate_service();
 select is(public.take_assist_quota(tests.uid('provider_c'), 5), false, 'five calls of the last 60 minutes fill the limit, across the clock hour');
 select tests.clear_authentication();

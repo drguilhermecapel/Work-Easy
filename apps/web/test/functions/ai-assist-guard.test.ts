@@ -244,7 +244,7 @@ describe('the call to the model', () => {
     expect(interpretResponse(response({ content: [] }))).toEqual({ kind: 'incomplete', reason: 'no text (end_turn)' });
   });
 
-  it('takes the quota before anything else and refuses when the hour is used up', async () => {
+  it('takes the quota before anything else and refuses when the 60-minute quota is used up', async () => {
     const calls: Array<[string, number]> = [];
     const usage = { take: async (id: string, limit: number) => (calls.push([id, limit]), calls.length <= 1) };
     await expect(takeQuota({ hourlyLimit: 3, usage }, 'u1', 'limite')).resolves.toBeUndefined();

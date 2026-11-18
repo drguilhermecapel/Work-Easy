@@ -20,8 +20,8 @@ export type ModelResult =
 
 export interface AiUsage {
   /**
-   * Consumes one call of the current hour for `userId` (take_assist_quota). Resolves false,
-   * without consuming anything, when `limit` calls were already made this hour. A database
+   * Consumes one call of the quota of `userId` (take_assist_quota). Resolves false, without
+   * consuming anything, when `limit` calls were already granted in the last 60 minutes. A database
    * failure rejects: the model is never called without a granted quota.
    */
   take(userId: string, limit: number): Promise<boolean>;
@@ -64,8 +64,8 @@ export function interpretResponse(response: ModelResponseLike): ModelResult {
 }
 
 /**
- * Takes one unit of the user's hourly quota before the model is asked (429 when the hour is
- * used up; limit 0 turns the assist off without asking the database).
+ * Takes one unit of the user's quota of the last 60 minutes before the model is asked (429 when
+ * it is used up; limit 0 turns the assist off without asking the database).
  */
 export async function takeQuota(
   deps: { hourlyLimit: number; usage: AiUsage },

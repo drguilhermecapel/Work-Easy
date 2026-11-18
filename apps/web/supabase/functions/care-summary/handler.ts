@@ -6,9 +6,9 @@
 // markers (a report that mentions health is not sent at all), inside delimited blocks, to a
 // model without tools that answers a JSON schema only. The answer is checked again here
 // (schema, links, instructions, clinical vocabulary, known names) before the family sees it.
-// Without ANTHROPIC_API_KEY the function answers 503. The hourly quota (take_assist_quota,
-// shared with request-assist and quote-assist) is taken before the model is called, and only
-// when there is something to summarize.
+// Without ANTHROPIC_API_KEY the function answers 503. The quota of the last 60 minutes
+// (take_assist_quota, shared with request-assist and quote-assist) is taken before the model
+// is called, and only when there is something to summarize.
 
 import { AiOutputError } from '../_shared/ai-guard.ts';
 import { aiErrors, type AiUsage, type ModelRequest, type ModelResult, takeQuota } from '../_shared/ai-model.ts';
@@ -40,7 +40,7 @@ export interface CareSummaryDeps extends BaseDeps {
 
 const MESSAGES = {
   notConfigured: 'O resumo da semana depende de configuração no servidor (ANTHROPIC_API_KEY).',
-  rateLimited: 'Você atingiu o limite de usos da IA nesta hora. Tente de novo mais tarde: os relatórios continuam disponíveis para leitura.',
+  rateLimited: 'Você atingiu o limite de usos da IA nos últimos 60 minutos. Tente de novo mais tarde: os relatórios continuam disponíveis para leitura.',
   notOwner: 'Você só pode pedir o resumo das suas próprias casas.',
   declined: 'A IA não conseguiu resumir estes relatórios. Leia os relatórios abaixo.',
   incomplete: 'A IA não concluiu o resumo. Leia os relatórios abaixo.',
