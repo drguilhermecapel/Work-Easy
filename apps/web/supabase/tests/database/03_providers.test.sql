@@ -89,12 +89,16 @@ select throws_ok(format($$insert into public.provider_documents (provider_id, st
                  'document path must be inside the own folder');
 select throws_ok($$update public.provider_documents set status = 'accepted'$$, '42501', null,
                  'provider cannot accept the own document');
-select lives_ok(format($$insert into storage.objects (bucket_id, name) values ('provider-documents', %L)$$,
-                       tests.uid('provider_a') || '/rg.png'),
-                'provider uploads into the own folder of provider-documents');
+select throws_ok(format($$insert into storage.objects (bucket_id, name) values ('provider-documents', %L)$$,
+                        tests.uid('provider_a') || '/rg.png'),
+                 '42501', null, 'provider cannot upload into the own folder: the upload function writes the bucket');
 select throws_ok(format($$insert into storage.objects (bucket_id, name) values ('provider-documents', %L)$$,
                         tests.uid('provider_c') || '/rg.png'),
                  '42501', null, 'provider cannot upload into another folder');
+-- The upload function writes with the service role: the file of the document record above is in the bucket
+select tests.authenticate_service();
+insert into storage.objects (bucket_id, name) values ('provider-documents', tests.uid('provider_a') || '/rg.png');
+select tests.authenticate_as('provider_a');
 select tests.authenticate_as('client_a');
 select is((select count(*)::int from storage.objects where bucket_id = 'provider-documents'), 0,
           'other users cannot read provider documents in storage');
@@ -115,9 +119,11 @@ insert into public.provider_documents (provider_id, step, storage_path) values
   (tests.uid('client_b'), 'cadastro_fiscal', tests.uid('client_b') || '/cpf.pdf');
 select throws_ok($$select public.submit_provider_for_review()$$, 'P0001', 'documents_missing',
                  'document records without the uploaded files do not count');
+select tests.authenticate_service();
 insert into storage.objects (bucket_id, name) values
   ('provider-documents', tests.uid('client_b') || '/selfie.png'),
   ('provider-documents', tests.uid('client_b') || '/cpf.pdf');
+select tests.authenticate_as('client_b');
 select is(public.submit_provider_for_review()::text, 'pending_review', 'complete documents move the provider to review');
 select throws_ok($$select public.submit_provider_for_review()$$, 'P0001', 'invalid_transition',
                  'a provider in review cannot submit again');
@@ -136,6 +142,7 @@ select lives_ok($$select public.become_provider('Faxina C', 't-faxina-c', 't-dom
 insert into public.provider_documents (provider_id, step, storage_path) values
   (tests.uid('client_c'), 'documento_selfie', tests.uid('client_c') || '/selfie.png'),
   (tests.uid('client_c'), 'cadastro_fiscal', tests.uid('client_c') || '/cpf.pdf');
+select tests.authenticate_service();
 insert into storage.objects (bucket_id, name) values
   ('provider-documents', tests.uid('client_c') || '/selfie.png'),
   ('provider-documents', tests.uid('client_c') || '/cpf.pdf');
