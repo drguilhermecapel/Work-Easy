@@ -192,9 +192,12 @@
    "estabelecimento",
    "empresa_cliente"
   ],
-  "notes": "Troca e instalação de vidros, boxes, espelhos e portas de vidro, com medição no local. Vidro em fachada ou em altura segue as regras de trabalho em altura.",
+  "notes": "Troca e instalação de vidros, boxes, espelhos e portas de vidro, com medição no local (sem conferência). Atividade com diferença de nível acima de 2 m e risco de queda, como vidro em fachada, segue a NR-35 (item 35.2.1, conferida na fonte).",
   "confidence": "a_confirmar",
-  "sources": []
+  "sources": [
+   "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-35-atualizada-2025-1.pdf",
+   "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/norma-regulamentadora-no-35-nr-35"
+  ]
  },
  "marido-de-aluguel": {
   "regulated": false,
@@ -2022,9 +2025,12 @@
    "domicilio",
    "empresa_cliente"
   ],
-  "notes": "Só trincas sem risco estrutural. Reforço, laudo e recuperação estrutural exigem engenheiro ou arquiteto com ART/RRT (Lei 6.496/1977), fora desta oferta.",
+  "notes": "Só trincas sem risco estrutural. Reforço, laudo e recuperação estrutural são sujeitos à ART (Lei 6.496/1977, art. 1º) ou ao RRT de arquiteto (Lei 12.378/2010, art. 45), fora desta oferta.",
   "confidence": "a_confirmar",
-  "sources": []
+  "sources": [
+   "https://legis.senado.leg.br/norma/548372/publicacao/15758785",
+   "https://legis.senado.leg.br/norma/585375/publicacao/15759195"
+  ]
  },
  "manutencao-e-reforma-de-piscinas": {
   "regulated": false,
@@ -2238,7 +2244,7 @@
    "empresa_cliente"
   ],
   "notes": "Limpeza fina após obra: pó, tinta, cimento e respingos. A retirada de entulho é outro serviço e não faz parte deste item. NR-18 alcança limpeza de edifícios em geral.",
-  "confidence": "conferido",
+  "confidence": "a_confirmar",
   "sources": [
    "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/NR18atualizada2026I.pdf"
   ]
@@ -2460,12 +2466,9 @@
    "domicilio",
    "empresa_cliente"
   ],
-  "notes": "Limpeza de janelas, vitrines e fachadas de vidro. Trabalho acima de 2 m com risco de queda (andaime, cadeirinha ou rapel) exige capacitação da NR-35 (8 h inicial) e proteção contra queda. NR-18 alcança limpeza de edifícios em geral.",
-  "confidence": "conferido",
-  "sources": [
-   "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/NR35atualizada2023.pdf",
-   "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/NR18atualizada2026I.pdf"
-  ]
+  "notes": "Limpeza de janelas, vitrines e fachadas de vidro. Trabalho em altura (andaime, cadeirinha ou rapel) exige treinamento da NR-35 e proteção contra queda.",
+  "confidence": "a_confirmar",
+  "sources": []
  },
  "higienizacao-de-colchao": {
   "regulated": false,
@@ -3153,13 +3156,9 @@
    "empresa_cliente",
    "externo"
   ],
-  "notes": "Lavagem de placas fotovoltaicas em telhados e usinas, com água deionizada. Trabalho com risco de queda acima de 2 m exige NR-35 (treinamento inicial de 8 h); instalação energizada segue a NR-10 (CA e CC).",
+  "notes": "Lavagem de placas fotovoltaicas em telhados e usinas, com água deionizada. Trabalho em altura exige NR-35; o sistema energizado segue a NR-10.",
   "confidence": "a_confirmar",
-  "sources": [
-   "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/NR35atualizada2023.pdf",
-   "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/norma-regulamentadora-no-35-nr-35",
-   "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-10-atualizada-2026-1.pdf"
-  ]
+  "sources": []
  },
  "resgate-de-animais-silvestres-e-captura-de-cobras-morcegos-e-escorpioes": {
   "regulated": true,
@@ -3579,11 +3578,9 @@
    "domicilio",
    "empresa_cliente"
   ],
-  "notes": "CDC art. 40 (lido): orçamento prévio por escrito, com mão de obra, materiais e datas de início e término. Troca de refil e sanitização: manual do fabricante, sem norma conferida.",
+  "notes": "Troca de refil e sanitização conforme o manual do fabricante. Orçamento prévio por escrito (CDC art. 40). Em domicílio: antecedentes.",
   "confidence": "a_confirmar",
-  "sources": [
-   "http://legis.senado.leg.br/norma/549954/publicacao/15763242"
-  ]
+  "sources": []
  },
  "conserto-de-smartwatch": {
   "regulated": false,
@@ -3638,9 +3635,11 @@
    "domicilio",
    "estabelecimento"
   ],
-  "notes": "Orçamento prévio por escrito (CDC art. 40). Peças originais ou equivalentes só com aval do cliente (art. 21). Em domicílio: antecedentes.",
+  "notes": "Orçamento prévio discriminando mão de obra, materiais, pagamento e prazos (CDC, art. 40). Peças originais e novas ou com especificações do fabricante (art. 21); outras só com autorização do cliente. Domicílio: antecedentes (plataforma).",
   "confidence": "a_confirmar",
-  "sources": []
+  "sources": [
+   "https://www2.camara.leg.br/legin/fed/lei/1990/lei-8078-11-setembro-1990-365086-publicacaooriginal-1-pl.html"
+  ]
  },
  "manutencao-de-aquecedor-a-gas-e-boiler": {
   "regulated": false,
@@ -3665,12 +3664,9 @@
   "locations": [
    "domicilio"
   ],
-  "notes": "CDC art. 40 (lido): orçamento prévio por escrito, com mão de obra, materiais e datas de início e término. Mudança na rede de gás: ART se for serviço de engenharia (Lei 6.496/1977, art. 1, lido); TRT e normas ABNT sem conferência.",
+  "notes": "Gás: só técnico habilitado, conforme normas ABNT; mudança na rede de gás exige responsável técnico (ART/TRT). Em domicílio: antecedentes. Orçamento prévio por escrito (CDC art. 40).",
   "confidence": "a_confirmar",
-  "sources": [
-   "http://legis.senado.leg.br/norma/549954/publicacao/15763242",
-   "http://legis.senado.leg.br/norma/548372/publicacao/15758785"
-  ]
+  "sources": []
  },
  "conserto-de-maquina-de-costura": {
   "regulated": false,
@@ -3964,9 +3960,14 @@
    "estabelecimento",
    "empresa_cliente"
   ],
-  "notes": "Equipamentos de telecomunicações devem ter homologação da Anatel. Linha e conexão com a operadora são da operadora. Gravações e registros de chamadas só com autorização do cliente.",
+  "notes": "Certificação de equipamentos pela Anatel (Lei 9.472/1997, art. 19, XIII; regulamento não lido). Interceptar sem ordem judicial é crime (Lei 9.296/1996, art. 10; CF, art. 5º, XII). Registros de chamadas: LGPD, art. 7º. Linha: operadora.",
   "confidence": "a_confirmar",
-  "sources": []
+  "sources": [
+   "https://www2.camara.gov.br/legin/fed/lei/1997/lei-9472-16-julho-1997-367735-publicacaooriginal-1-pl.html",
+   "https://www2.camara.gov.br/legin/fed/lei/1996/lei-9296-24-julho-1996-349049-publicacaooriginal-1-pl.html",
+   "https://legis.senado.leg.br/norma/579494/publicacao/16434817",
+   "https://www2.camara.leg.br/legin/fed/lei/2018/lei-13709-14-agosto-2018-787077-publicacaooriginal-156212-pl.html"
+  ]
  },
  "recarga-de-cartuchos-e-toners": {
   "regulated": false,
@@ -4438,11 +4439,9 @@
    "estabelecimento",
    "empresa_cliente"
   ],
-  "notes": "CDC art. 40 (lido): orçamento prévio por escrito, com mão de obra, materiais e datas de início e término. CO2 sob pressão e limpeza sanitária de linhas: sem norma conferida nesta fonte.",
+  "notes": "Chopeira usa CO2 sob pressão: manuseio por técnico treinado. Limpeza sanitária periódica de linhas e bicos. Contrato mensal comum. Orçamento prévio por escrito (CDC art. 40).",
   "confidence": "a_confirmar",
-  "sources": [
-   "http://legis.senado.leg.br/norma/549954/publicacao/15763242"
-  ]
+  "sources": []
  },
  "manutencao-de-lavadoras-e-secadoras-industriais": {
   "regulated": false,
@@ -4496,11 +4495,9 @@
    "estabelecimento",
    "empresa_cliente"
   ],
-  "notes": "CDC art. 40 (lido): orçamento prévio por escrito, com mão de obra, materiais e datas de início e término. Laser e radiofrequência: regra da Anvisa sem conferência (fonte não aberta). Técnico só repara: decisão de produto.",
+  "notes": "Aparelhos como laser e radiofrequência são regulados pela Anvisa (a confirmar); o técnico só repara, não aplica procedimentos. Orçamento prévio por escrito (CDC art. 40).",
   "confidence": "a_confirmar",
-  "sources": [
-   "http://legis.senado.leg.br/norma/549954/publicacao/15763242"
-  ]
+  "sources": []
  },
  "manutencao-de-equipamentos-medicos-e-odontologicos": {
   "regulated": false,
@@ -5059,12 +5056,9 @@
    "domicilio",
    "empresa_cliente"
   ],
-  "notes": "NR-10 se aplica ao uso de energia elétrica (item 10.1.1); trabalhador qualificado tem curso específico na área elétrica (item 10.8.1). ART por serviço de engenharia (Lei 6.496/1977, art. 1º). Distribuidora e antecedentes: sem conferência.",
+  "notes": "Segue a norma da distribuidora local (ex.: Enel, CPFL, Cemig, Energisa) e pode exigir projeto com ART/TRT; a ligação é da distribuidora. NR-10 exigida. Em domicílio: antecedentes.",
   "confidence": "a_confirmar",
-  "sources": [
-   "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-10-atualizada-2026-1.pdf",
-   "http://www2.camara.gov.br/legin/fed/lei/1970-1979/lei-6496-7-dezembro-1977-366461-publicacaooriginal-1-pl.html"
-  ]
+  "sources": []
  },
  "instalacao-de-lustres-e-pendentes": {
   "regulated": false,
@@ -5490,9 +5484,11 @@
    "domicilio",
    "empresa_cliente"
   ],
-  "notes": "Serviço preventivo (limpeza, filtros, dreno); defeitos entram em Conserto de ar-condicionado. Produtos devem ser regularizados na Anvisa; NR-35 para unidade externa. Em domicílio: antecedentes.",
-  "confidence": "a_confirmar",
-  "sources": []
+  "notes": "NR-35, item 35.2.1 (lido): aplica-se com diferença de nível acima de 2,0 m e risco de queda. Produtos regularizados na Anvisa: sem conferência. Antecedentes em domicílio: decisão de produto.",
+  "confidence": "conferido",
+  "sources": [
+   "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-35-atualizada-2025-1.pdf"
+  ]
  },
  "pmoc-e-climatizacao-de-edificacoes": {
   "regulated": true,
@@ -7718,9 +7714,11 @@
    "online",
    "estabelecimento"
   ],
-  "notes": "Qualquer matéria escolar ou universitária; aula particular não exige registro nem licenciatura. Crianças e adolescentes: antecedentes. Prova ou trabalho não são feitos pelo professor.",
+  "notes": "Qualquer matéria escolar ou universitária. Aula particular: sem conferência de registro ou licenciatura (LDB, art. 62, trata da educação básica). Menores: antecedentes (regra de catálogo). Prova ou trabalho: não feitos pelo professor.",
   "confidence": "a_confirmar",
-  "sources": []
+  "sources": [
+   "https://www2.camara.leg.br/legin/fed/lei/1996/lei-9394-20-dezembro-1996-362578-normaatualizada-pl.html"
+  ]
  },
  "aulas-de-matematica": {
   "regulated": false,
@@ -8937,9 +8935,11 @@
    "online",
    "estabelecimento"
   ],
-  "notes": "Aula livre, sem registro. Candidatos de 14 a 16 anos: antecedentes e responsável ciente. Prova ou trabalho não podem ser feitos pelo professor.",
+  "notes": "Aula livre, sem registro: sem conferência de ausência de exigência (LDB, art. 62, trata da educação básica). Candidatos de 14 a 16 anos: antecedentes e responsável ciente (regra de catálogo). Prova ou trabalho não são feitos pelo professor.",
   "confidence": "a_confirmar",
-  "sources": []
+  "sources": [
+   "https://www2.camara.leg.br/legin/fed/lei/1996/lei-9394-20-dezembro-1996-362578-normaatualizada-pl.html"
+  ]
  },
  "aulas-de-robotica-e-programacao-infantil": {
   "regulated": false,
@@ -13526,9 +13526,11 @@
    "online",
    "estabelecimento"
   ],
-  "notes": "Sem lei federal que regule a psicanálise. Não usa título de psicólogo ou médico, não diagnostica doença nem prescreve remédio. Formação em instituto é só registro informado.",
+  "notes": "Sem lei federal sobre psicanálise: sem conferência. Não usa título de psicólogo ou médico; não diagnostica doença nem prescreve remédio. Formação em instituto é só registro informado.",
   "confidence": "a_confirmar",
-  "sources": []
+  "sources": [
+   "https://www2.camara.leg.br/legin/fed/lei/1960-1969/lei-4119-27-agosto-1962-353841-normaatualizada-pl.html"
+  ]
  },
  "psiquiatra": {
   "regulated": true,
@@ -23830,9 +23832,11 @@
    "estabelecimento",
    "empresa_cliente"
   ],
-  "notes": "Técnica de massagem da medicina chinesa, sem lei específica; reabilitação e tratamento de lesões são atos de fisioterapia. Sem diagnóstico nem promessa de cura. Em casa, exige antecedentes.",
+  "notes": "Massagem chinesa; sem lei específica (sem conferência). Restaurar capacidade física: privativo do fisioterapeuta (Decreto-Lei 938/1969, art. 3º); lesões: sem conferência. Sem diagnóstico nem promessa de cura. Em casa, exige antecedentes.",
   "confidence": "a_confirmar",
-  "sources": []
+  "sources": [
+   "https://legis.senado.leg.br/norma/524501/publicacao/15708629"
+  ]
  },
  "qigong-tai-chi-e-lian-gong": {
   "regulated": false,
@@ -26993,9 +26997,11 @@
    "domicilio",
    "externo"
   ],
-  "notes": "Leva o pet à clínica, ao banho e tosa ou em viagem, com CNH válida e veículo adequado. Sem norma federal específica confirmada; regras municipais podem valer. Fauna silvestre fica fora.",
+  "notes": "Leva o pet a clínica, banho e tosa ou viagem; exige CNH válida e veículo adequado (regra da plataforma). Fauna silvestre fica fora (Lei 5.197/1967, art. 1º). Norma federal específica: não localizada; regras municipais podem valer.",
   "confidence": "a_confirmar",
-  "sources": []
+  "sources": [
+   "https://www2.camara.gov.br/legin/fed/lei/1960-1969/lei-5197-3-janeiro-1967-364679-publicacaooriginal-1-pl.html"
+  ]
  },
  "aquarismo": {
   "regulated": false,
@@ -28550,7 +28556,7 @@
   "regulated": false,
   "regulatorBody": "",
   "registryName": "",
-  "legalBasis": "Lei 13.709/2018, art. 7; Lei 7.102/1983, art. 10",
+  "legalBasis": "",
   "verification": [
    "documento_selfie",
    "cadastro_fiscal"
@@ -28573,10 +28579,7 @@
   ],
   "notes": "Contratada por diária ou evento para recepção, credenciamento e orientação de convidados. Não faz vigilância; dados de convidados seguem a LGPD.",
   "confidence": "a_confirmar",
-  "sources": [
-   "https://www2.camara.leg.br/legin/fed/lei/2018/lei-13709-14-agosto-2018-787077-normaatualizada-pl.html",
-   "https://www2.camara.leg.br/legin/fed/lei/1980-1987/lei-7102-20-junho-1983-356931-normaatualizada-pl.html"
-  ]
+  "sources": []
  },
  "cerimonialista-de-casamento": {
   "regulated": true,
@@ -29477,9 +29480,12 @@
    "empresa_cliente",
    "externo"
   ],
-  "notes": "Estrutura exige ART e autorização local para via pública e ruído (a confirmar). Condutor com CNH adequada; roteiro, horário e potência do som combinados em contrato.",
+  "notes": "Estrutura: ART se houver serviço de engenharia (Lei 6.496/1977, art. 1º). Autorização local para via pública e ruído: sem conferência. Condutor: CNH adequada (CTB, art. 143). Roteiro, horário e potência combinados em contrato.",
   "confidence": "a_confirmar",
-  "sources": []
+  "sources": [
+   "https://legis.senado.leg.br/norma/548372/publicacao/15758785",
+   "https://legis.senado.leg.br/norma/551379/publicacao/15716523"
+  ]
  },
  "dancarinos-e-shows-de-danca": {
   "regulated": true,
@@ -31262,9 +31268,11 @@
    "estabelecimento",
    "externo"
   ],
-  "notes": "Óleo lubrificante usado é resíduo perigoso: destinação a coletor autorizado para rerrefino (Conama 362/2005). Filtros e embalagens também têm descarte regulado.",
+  "notes": "Óleos lubrificantes, seus resíduos e embalagens seguem logística reversa (Lei 12.305/2010, art. 33, IV). Destinação a coletor para rerrefino (Conama 362/2005): sem conferência. Filtros: sem conferência.",
   "confidence": "a_confirmar",
-  "sources": []
+  "sources": [
+   "https://legis.senado.leg.br/norma/575947/publicacao/15755932"
+  ]
  },
  "chaveiro-automotivo": {
   "regulated": false,
@@ -31514,7 +31522,7 @@
    "estabelecimento"
   ],
   "notes": "Óleo lubrificante usado: logística reversa para fabricantes, importadores, distribuidores e comerciantes (Lei 12.305/2010, art. 33, IV). Destinação pela oficina, metais, solventes e licença local: sem conferência.",
-  "confidence": "conferido",
+  "confidence": "a_confirmar",
   "sources": [
    "http://www2.camara.gov.br/legin/fed/lei/2010/lei-12305-2-agosto-2010-607598-normaatualizada-pl.html"
   ]
@@ -32417,9 +32425,12 @@
    "domicilio",
    "externo"
   ],
-  "notes": "Atende na rua ou na garagem. Deve recolher a bateria usada para destinação ambiental (logística reversa, Lei 12.305/2010). Condutor com CNH.",
+  "notes": "Atende na rua ou na garagem. Bateria usada segue logística reversa (Lei 12.305/2010, art. 33, II); o retorno é obrigação de fabricantes, importadores, distribuidores e comerciantes. Condutor com CNH (CTB, art. 143).",
   "confidence": "a_confirmar",
-  "sources": []
+  "sources": [
+   "https://legis.senado.leg.br/norma/575947/publicacao/15755932",
+   "https://legis.senado.leg.br/norma/551379/publicacao/15716523"
+  ]
  },
  "desenvolvedor-web": {
   "regulated": false,
@@ -32477,9 +32488,11 @@
    "online",
    "empresa_cliente"
   ],
-  "notes": "Visita à casa e acesso a computadores e contas do cliente: exige certidão de antecedentes. Acesso remoto só com autorização do cliente, conforme a LGPD.",
+  "notes": "Acesso a computadores ou contas do cliente pode envolver dados pessoais (LGPD, art. 5º, I). Base legal: consentimento (art. 7º, I, na forma do art. 8º) ou contrato (art. 7º, V). Antecedentes e visita: regra da plataforma.",
   "confidence": "a_confirmar",
-  "sources": []
+  "sources": [
+   "https://www2.camara.leg.br/legin/fed/lei/2018/lei-13709-14-agosto-2018-787077-publicacaooriginal-156212-pl.html"
+  ]
  },
  "consultoria-de-ti": {
   "regulated": false,
@@ -32534,9 +32547,11 @@
    "online",
    "empresa_cliente"
   ],
-  "notes": "Entrega remota de protótipos e telas por projeto ou hora. Direitos autorais definidos em contrato (Lei 9.610/1998). Sem registro profissional.",
+  "notes": "Entrega remota de protótipos e telas por projeto ou hora. Cessão de direitos sempre por escrito (Lei 9.610/1998, art. 50). Sem registro profissional: sem conferência.",
   "confidence": "a_confirmar",
-  "sources": []
+  "sources": [
+   "https://legis.senado.leg.br/norma/551486/publicacao/15716667"
+  ]
  },
  "desenvolvedor-de-aplicativos-mobile": {
   "regulated": false,
@@ -32739,12 +32754,9 @@
    "online",
    "empresa_cliente"
   ],
-  "notes": "Dados sensíveis exigem antecedentes; testes, autorização escrita (regra da plataforma). Invasão sem autorização expressa ou tácita do usuário é crime (CP art. 154-A). Parecer jurídico é de advogado (Lei 8.906/1994, art. 1º, II).",
+  "notes": "Acesso a dados sensíveis: exige antecedentes. Teste de invasão só com autorização escrita (CP art. 154-A). Adequação à LGPD é outro serviço; parecer jurídico é de advogado.",
   "confidence": "a_confirmar",
-  "sources": [
-   "https://legis.senado.leg.br/norma/34016289/publicacao/34016562",
-   "https://legis.senado.leg.br/norma/550782/publicacao/15635070"
-  ]
+  "sources": []
  },
  "cabeamento-estruturado-e-redes": {
   "regulated": false,
@@ -32862,9 +32874,11 @@
    "online",
    "empresa_cliente"
   ],
-  "notes": "Contratação remota por hora ou projeto. O contratante libera acessos de teste, de preferência sem dados reais de clientes (LGPD).",
+  "notes": "Contratação remota por hora ou projeto. Dados pessoais de clientes em teste: LGPD, art. 7º, observado o princípio da necessidade (art. 6º, III). Dados fictícios ou anonimizados são preferidos (regra da plataforma).",
   "confidence": "a_confirmar",
-  "sources": []
+  "sources": [
+   "https://www2.camara.leg.br/legin/fed/lei/2018/lei-13709-14-agosto-2018-787077-publicacaooriginal-156212-pl.html"
+  ]
  },
  "instalador-de-internet-e-fibra-optica": {
   "regulated": false,
@@ -34100,9 +34114,11 @@
    "online",
    "estabelecimento"
   ],
-  "notes": "Produção e gravação sob encomenda. Brasões e símbolos oficiais exigem autorização do órgão titular. Instalação em fachada segue as regras do município.",
+  "notes": "Produção e gravação sob encomenda. Símbolos nacionais seguem a Lei 5.700/1971; brasões estaduais e municipais: autorização do órgão titular sem conferência. Instalação em fachada segue as regras do município.",
   "confidence": "a_confirmar",
-  "sources": []
+  "sources": [
+   "https://legis.senado.leg.br/norma/547573/publicacao/15810454"
+  ]
  },
  "caligrafia-e-lettering": {
   "regulated": false,
@@ -34551,9 +34567,11 @@
    "empresa_cliente",
    "externo"
   ],
-  "notes": "Prospecção, televendas e geração de leads, por mês, hora ou projeto. Dados de contatos seguem a LGPD; ligações a consumidores respeitam o CDC. Representante comercial tem item próprio.",
+  "notes": "Prospecção, televendas e geração de leads, por mês, hora ou projeto. Dados de contatos seguem a LGPD (Lei 13.709/2018, arts. 5º e 7º). Ligações ao consumidor pelo CDC: sem conferência. Representante comercial tem item próprio.",
   "confidence": "a_confirmar",
-  "sources": []
+  "sources": [
+   "https://legis.senado.leg.br/norma/27457334/publicacao/27457731"
+  ]
  },
  "panfleteiro-e-promotor-de-vendas": {
   "regulated": false,
@@ -35424,9 +35442,11 @@
   "locations": [
    "online"
   ],
-  "notes": "Cobrança por hora de áudio ou por projeto. Gravações com dados pessoais ou sigilosos seguem a LGPD e dependem de autorização de quem gravou.",
+  "notes": "Cobrança por hora de áudio ou por projeto. Gravações com dados pessoais seguem a LGPD (Lei 13.709/2018); em regra o prestador é operador, sob instruções do cliente controlador (arts. 5º, VI e VII, e 39).",
   "confidence": "a_confirmar",
-  "sources": []
+  "sources": [
+   "https://legis.senado.leg.br/norma/27457334/publicacao/27457731"
+  ]
  },
  "formatacao-de-trabalhos-academicos-abnt": {
   "regulated": false,
@@ -35540,9 +35560,11 @@
    "online",
    "estabelecimento"
   ],
-  "notes": "Transcrição de textos, cardápios e provas para braille, por página ou projeto. A formação do transcritor é informada no perfil. Dados pessoais seguem a LGPD.",
+  "notes": "Transcrição de textos, cardápios e provas para braille, por página ou projeto. A formação do transcritor é informada no perfil. Dados pessoais seguem a LGPD (Lei 13.709/2018, art. 3º); o operador segue instruções do controlador (art. 39).",
   "confidence": "a_confirmar",
-  "sources": []
+  "sources": [
+   "https://legis.senado.leg.br/norma/27457334/publicacao/27457731"
+  ]
  },
  "taquigrafo-e-estenotipista": {
   "regulated": false,
@@ -35569,9 +35591,12 @@
    "empresa_cliente",
    "externo"
   ],
-  "notes": "Registro em tempo real de reuniões, aulas e eventos. Sigilo e LGPD se aplicam. Para uso em processo judicial, a validade depende do tribunal. Sem conselho.",
+  "notes": "Registro em tempo real de reuniões, aulas e eventos. Taquigrafia e estenotipia são lícitas em juízo (CPC, art. 210). Dados pessoais: LGPD, art. 7º. Conselho profissional: não localizado em fonte aberta.",
   "confidence": "a_confirmar",
-  "sources": []
+  "sources": [
+   "https://www2.camara.gov.br/legin/fed/lei/2015/lei-13105-16-marco-2015-780273-publicacaooriginal-146341-pl.html",
+   "https://www2.camara.leg.br/legin/fed/lei/2018/lei-13709-14-agosto-2018-787077-publicacaooriginal-156212-pl.html"
+  ]
  },
  "guia-interprete-de-surdocegos": {
   "regulated": false,
@@ -35658,12 +35683,9 @@
   "locations": [
    "online"
   ],
-  "notes": "ISBN, ficha, distribuição. Catalogação: bacharel em Biblioteconomia (Lei 4.084/1962, art. 6º, e), registro no CRB; lei não dá exclusividade à ficha. Cessão: contrato escrito (Lei 9.610/1998, art. 50). Cobrança sem entrega: catálogo.",
+  "notes": "Cuida de ISBN, ficha catalográfica e distribuição. A ficha é de bibliotecário (CRB). Serviços que cobram sem entregar a obra não são aceitos; os direitos continuam com o autor.",
   "confidence": "a_confirmar",
-  "sources": [
-   "https://www2.camara.leg.br/legin/fed/lei/1960-1969/lei-4084-30-junho-1962-353848-normaatualizada-pl.html",
-   "https://www2.camara.leg.br/legin/fed/lei/1998/lei-9610-19-fevereiro-1998-365399-normaatualizada-pl.html"
-  ]
+  "sources": []
  },
  "redator-de-discursos-e-textos-sob-medida": {
   "regulated": false,
@@ -35718,9 +35740,11 @@
    "online",
    "empresa_cliente"
   ],
-  "notes": "Textos de botões, mensagens e fluxos de produtos digitais, por projeto, hora ou mês. Cessão de direitos em contrato (Lei 9.610/1998). Sem registro profissional.",
+  "notes": "Textos de botões, mensagens e fluxos de produtos digitais, por projeto, hora ou mês. Cessão de direitos sempre por escrito (Lei 9.610/1998, art. 50). Sem registro profissional: sem conferência.",
   "confidence": "a_confirmar",
-  "sources": []
+  "sources": [
+   "https://legis.senado.leg.br/norma/551486/publicacao/15716667"
+  ]
  },
  "interprete-comunitario-para-imigrantes-e-refugiados": {
   "regulated": false,
@@ -36627,9 +36651,13 @@
    "empresa_cliente",
    "externo"
   ],
-  "notes": "Entra em imóveis e comércios de terceiros: antecedentes exigidos. Publicação de interiores e de pessoas depende de autorização do responsável. Sem registro profissional obrigatório.",
+  "notes": "Uso da imagem de pessoa pode ser proibido, salvo se autorizado (CC, art. 20; CF, art. 5º, X). Dados pessoais: LGPD, art. 7º. Entrar em imóvel ou comércio de terceiro: antecedentes (plataforma). Interiores: sem fonte lida.",
   "confidence": "a_confirmar",
-  "sources": []
+  "sources": [
+   "https://www2.camara.gov.br/legin/fed/lei/2002/lei-10406-10-janeiro-2002-432893-publicacaooriginal-1-pl.html",
+   "https://legis.senado.leg.br/norma/579494/publicacao/16434817",
+   "https://www2.camara.leg.br/legin/fed/lei/2018/lei-13709-14-agosto-2018-787077-publicacaooriginal-156212-pl.html"
+  ]
  },
  "transmissao-ao-vivo-de-eventos-cultos-e-aulas": {
   "regulated": false,
@@ -36685,9 +36713,12 @@
   "locations": [
    "online"
   ],
-  "notes": "Montagem de vídeo com fotos e música do cliente, por projeto. Música de terceiros exige licença de uso; o cliente fornece as fotos e responde pela autorização de imagem.",
+  "notes": "Montagem por projeto, com fotos e música do cliente. Música de terceiros: autorização prévia do autor (Lei 9.610/1998, art. 29, V). Imagem: autorização, salvo exceções (Código Civil, art. 20). O cliente responde pela autorização de imagem.",
   "confidence": "a_confirmar",
-  "sources": []
+  "sources": [
+   "https://legis.senado.leg.br/norma/551486/publicacao/15716667",
+   "https://legis.senado.leg.br/norma/552282/publicacao/15676634"
+  ]
  },
  "animacao-e-motion-graphics": {
   "regulated": false,
@@ -36996,7 +37027,7 @@
    "estabelecimento"
   ],
   "notes": "Foco em música: contratado por hora de estúdio ou projeto, com titularidade das gravações e direitos conexos em contrato. Estúdio físico depende de alvará municipal e controle de ruído.",
-  "confidence": "conferido",
+  "confidence": "a_confirmar",
   "sources": [
    "https://www2.camara.leg.br/legin/fed/lei/1998/lei-9610-19-fevereiro-1998-365399-normaatualizada-pl.html"
   ]
@@ -37723,9 +37754,11 @@
    "estabelecimento",
    "externo"
   ],
-  "notes": "Mosaicos e painéis sob encomenda, por m² ou projeto. Instalação em altura segue a NR-35. Dentro de casas: antecedentes. Sem registro profissional obrigatório.",
+  "notes": "Mosaicos e painéis sob encomenda: sem conferência (descrição da plataforma). Instalação acima de 2 m segue a NR-35 (item 35.2.1, conferida na fonte). Antecedentes e registro: sem conferência.",
   "confidence": "a_confirmar",
-  "sources": []
+  "sources": [
+   "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/NR35atualizada2023.pdf"
+  ]
  },
  "tecelagem-artesanal-e-tapecaria": {
   "regulated": false,
@@ -38672,9 +38705,12 @@
   "locations": [
    "empresa_cliente"
   ],
-  "notes": "Montagem de vitrines e exposição de lojas, por projeto ou dia. Trabalho em altura segue a NR-35. Sem registro profissional obrigatório.",
+  "notes": "Montagem de vitrines e exposição de lojas, por projeto ou dia (sem conferência). Diferença de nível acima de 2 m e risco de queda segue a NR-35 (item 35.2.1, conferida na fonte). Sem registro profissional obrigatório (sem conferência).",
   "confidence": "a_confirmar",
-  "sources": []
+  "sources": [
+   "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-35-atualizada-2025-1.pdf",
+   "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/norma-regulamentadora-no-35-nr-35"
+  ]
  },
  "gemologo-e-avaliador-de-joias": {
   "regulated": false,
@@ -43174,9 +43210,11 @@
    "estabelecimento",
    "empresa_cliente"
   ],
-  "notes": "Treinamentos obrigatórios de segurança (NR) seguem requisitos de instrutor e carga da norma (a confirmar). Os demais são contratados por turma, hora ou projeto.",
+  "notes": "NR-35: carga mínima de 8 h no treinamento inicial (item 35.4.2.1) e instrutor com proficiência comprovada (35.4.3). Outras NRs: sem conferência. Os demais são contratados por turma, hora ou projeto.",
   "confidence": "a_confirmar",
-  "sources": []
+  "sources": [
+   "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-35-atualizada-2025-1.pdf"
+  ]
  },
  "consultoria-de-recursos-humanos": {
   "regulated": false,
@@ -46323,9 +46361,11 @@
    "domicilio",
    "externo"
   ],
-  "notes": "Vistoria de entrada e saída com fotos e laudo descritivo. Parecer técnico sobre estrutura ou patologias exige engenheiro ou arquiteto com ART ou RRT.",
+  "notes": "Vistoria de entrada e saída com fotos e laudo descritivo (sem conferência). Parecer técnico sobre estrutura ou patologias exige engenheiro ou arquiteto com ART ou RRT (ART conferida no CONFEA, Lei 6.496/1977; RRT sem conferência).",
   "confidence": "a_confirmar",
-  "sources": []
+  "sources": [
+   "https://www.confea.org.br/servicos-prestados/anotacao-de-responsabilidade-tecnica-art"
+  ]
  },
  "despachante-imobiliario": {
   "regulated": true,
@@ -46725,12 +46765,9 @@
    "online",
    "externo"
   ],
-  "notes": "Arquitetura paisagística (espaços externos) é campo do arquiteto e urbanista (Lei 12.378/2010, art. 2º, par. único, III). ART: Lei 6.496/1977, art. 1º. Engenheiro, RRT e jardins residenciais: sem conferência.",
+  "notes": "Projeto paisagístico com responsabilidade técnica cabe a arquiteto ou engenheiro com RRT ou ART; paisagista sem registro faz jardins residenciais sem assinar projeto.",
   "confidence": "a_confirmar",
-  "sources": [
-   "http://www2.camara.gov.br/legin/fed/lei/2010/lei-12378-31-dezembro-2010-609912-publicacaooriginal-131243-pl.html",
-   "http://www2.camara.gov.br/legin/fed/lei/1970-1979/lei-6496-7-dezembro-1977-366461-publicacaooriginal-1-pl.html"
-  ]
+  "sources": []
  },
  "poda-e-remocao-de-arvores": {
   "regulated": false,
@@ -46979,13 +47016,9 @@
    "domicilio",
    "empresa_cliente"
   ],
-  "notes": "Ambientes internos: campo da arquitetura e urbanismo (Lei 12.378/2010, art. 2º, par. único, II). Acima de 2 m: análise de risco e permissão (NR-35, itens 35.5.5 e 35.5.8). ART: Lei 6.496/1977, art. 1º. RRT e laje: sem conferência.",
+  "notes": "Projeto e manutenção de plantas internas, inclusive aluguel mensal de vasos. Instalação em altura ou peso em laje pede responsável técnico com ART ou RRT.",
   "confidence": "a_confirmar",
-  "sources": [
-   "http://www2.camara.gov.br/legin/fed/lei/2010/lei-12378-31-dezembro-2010-609912-publicacaooriginal-131243-pl.html",
-   "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/NR35atualizada2023.pdf",
-   "http://www2.camara.gov.br/legin/fed/lei/1970-1979/lei-6496-7-dezembro-1977-366461-publicacaooriginal-1-pl.html"
-  ]
+  "sources": []
  },
  "telhado-verde-e-jardim-de-laje": {
   "regulated": false,
@@ -47012,9 +47045,12 @@
    "empresa_cliente",
    "externo"
   ],
-  "notes": "Exige avaliação de carga da laje e impermeabilização por engenheiro ou arquiteto com ART ou RRT; instalação sem projeto pode causar infiltração e risco estrutural.",
+  "notes": "Contrato de engenharia ou arquitetura sujeito a ART (Lei 6.496/1977, art. 1º). Trabalho privativo ou compartilhado de arquitetura: RRT (Lei 12.378/2010, art. 45). Carga da laje e impermeabilização: sem norma lida.",
   "confidence": "a_confirmar",
-  "sources": []
+  "sources": [
+   "https://www2.camara.gov.br/legin/fed/lei/1970-1979/lei-6496-7-dezembro-1977-366461-publicacaooriginal-1-pl.html",
+   "https://www2.camara.gov.br/legin/fed/lei/2010/lei-12378-31-dezembro-2010-609912-publicacaooriginal-131243-pl.html"
+  ]
  },
  "horta-domestica-e-agricultura-urbana": {
   "regulated": false,
@@ -47106,9 +47142,11 @@
    "empresa_cliente",
    "externo"
   ],
-  "notes": "Manejo de plantas; agrotóxico exige produto registrado e receituário agronômico (Lei 7.802/1989). Controle de pragas urbanas (cupim, formiga) é só de empresa licenciada.",
+  "notes": "Manejo de plantas; agrotóxico exige registro prévio (Lei 7.802/1989, art. 3º) e venda por receituário prescrito por profissional habilitado (art. 13). Controle de pragas urbanas (cupim, formiga) só por empresa licenciada: sem conferência.",
   "confidence": "a_confirmar",
-  "sources": []
+  "sources": [
+   "https://legis.senado.leg.br/norma/549678/publicacao/15766306"
+  ]
  },
  "grama-sintetica": {
   "regulated": false,
@@ -48510,9 +48548,11 @@
    "estabelecimento",
    "externo"
   ],
-  "notes": "Tratador não medica nem prescreve (ato do veterinário). Haras e pensão exigem cadastro sanitário no órgão estadual e exame de AIE dos equinos, conforme a regra local.",
+  "notes": "Tratador não faz clínica: clínica e assistência técnica e sanitária aos animais são atividades privativas do médico veterinário (Lei 5.517/1968, art. 5º, a e c). Cadastro estadual de haras e pensão e exame AIE: sem conferência.",
   "confidence": "a_confirmar",
-  "sources": []
+  "sources": [
+   "https://legis.senado.leg.br/norma/547386/publicacao/15715666"
+  ]
  },
  "trabalhador-rural-peao-e-vaqueiro": {
   "regulated": false,
@@ -48539,9 +48579,12 @@
    "empresa_cliente",
    "externo"
   ],
-  "notes": "Só maiores de 18 anos. Eventual ou por empreitada; habitualidade e subordinação geram vínculo rural (Lei 5.889/1973). Intermediação de mão de obra rural: comissão em análise jurídica.",
+  "notes": "Só 18+: regra da plataforma. Lei: menores de 16 não trabalham, salvo aprendiz a partir de 14 (CF, art. 7º, XXXIII); noturno/perigoso/insalubre: só a partir de 18. Vínculo: não eventual, com dependência e salário (Lei 5.889/1973, art. 2º)",
   "confidence": "a_confirmar",
-  "sources": []
+  "sources": [
+   "https://legis.senado.leg.br/norma/579494/publicacao/16434817",
+   "https://www2.camara.gov.br/legin/fed/lei/1970-1979/lei-5889-8-junho-1973-357971-publicacaooriginal-1-pl.html"
+  ]
  },
  "reflorestamento-e-recuperacao-de-areas-degradadas": {
   "regulated": true,
@@ -50788,9 +50831,11 @@
    "estabelecimento",
    "empresa_cliente"
   ],
-  "notes": "Usinagem sob desenho ou amostra (torno, fresa e CNC), orçada por peça, hora ou lote. Sem registro profissional; a oficina responde pela conformidade das peças ao projeto.",
+  "notes": "Usinagem sob desenho ou amostra (torno, fresa, CNC), orçada por peça, hora ou lote. Conselho profissional: não localizado. Vício de qualidade: a oficina responde (CDC, art. 18). Conformidade ao projeto: regra contratual, não lida.",
   "confidence": "a_confirmar",
-  "sources": []
+  "sources": [
+   "https://www2.camara.leg.br/legin/fed/lei/1990/lei-8078-11-setembro-1990-365086-publicacaooriginal-1-pl.html"
+  ]
  },
  "galvanizador": {
   "regulated": true,
@@ -51641,9 +51686,12 @@
    "estabelecimento",
    "empresa_cliente"
   ],
-  "notes": "Equipamentos de movimentação seguem as NR-11 e NR-12; inspeção e laudo de ponte rolante exigem responsável técnico (ART/TRT). Trabalho elétrico exige NR-10. Orçamento após diagnóstico.",
+  "notes": "NR-10, item 10.1.1: trabalho elétrico. NR-11, item 11.1.3, cita pontes-rolantes, talhas e empilhadeiras. ART da inspeção (NR-11, Anexo I, item 1.3.1) vale para chapas de rochas ornamentais; outros casos sem conferência.",
   "confidence": "a_confirmar",
-  "sources": []
+  "sources": [
+   "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-10-atualizada-2026-1.pdf",
+   "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-11-atualizada-2016.pdf"
+  ]
  },
  "estruturas-metalicas-galpoes-e-mezaninos": {
   "regulated": true,
@@ -51705,9 +51753,15 @@
   "locations": [
    "empresa_cliente"
   ],
-  "notes": "Linhas de vapor e vasos seguem a NR-13; espaço confinado, a NR-33; altura, a NR-35. Exigirá soldador qualificado e responsável técnico (ART/TRT) em projetos.",
-  "confidence": "a_confirmar",
-  "sources": []
+  "notes": "Vasos de pressão (P.V > 8) e vapor: NR-13, 13.2.1, b e q. Espaço confinado: NR-33, 33.2.2. Queda > 2 m: NR-35, 35.2.1. Projetos: ART (Lei 6.496/1977, art. 1º); TRT se compartilhada (Lei 13.639/2018, art. 16). Soldador: sem conferência.",
+  "confidence": "conferido",
+  "sources": [
+   "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-13-atualizada-2023-b.pdf",
+   "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-33-atualizada-2022-_retificada.pdf",
+   "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-35-atualizada-2025-1.pdf",
+   "https://legis.senado.leg.br/norma/548372/publicacao/15758785",
+   "https://legis.senado.leg.br/norma/26382128/publicacao/26382158"
+  ]
  },
  "conserto-de-motobombas-e-bombas-dagua": {
   "regulated": false,
@@ -51765,9 +51819,11 @@
   "locations": [
    "empresa_cliente"
   ],
-  "notes": "Operação exige treinamento e autorização conforme a NR-11, com certificado informado. Contratação contínua e subordinada pode caracterizar vínculo de emprego.",
+  "notes": "Treinamento específico da empresa (NR-11, item 11.1.5) e cartão de identificação para transporte motorizado (item 11.1.6), conferidos na fonte. Certificado do Anexo I da NR-11 vale só para rochas ornamentais. Vínculo: sem conferência.",
   "confidence": "a_confirmar",
-  "sources": []
+  "sources": [
+   "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-11.pdf"
+  ]
  },
  "serraria-e-beneficiamento-de-madeira": {
   "regulated": true,
@@ -52581,7 +52637,7 @@
    "estabelecimento",
    "empresa_cliente"
   ],
-  "notes": "Contrato mensal com manutenção e troca de filtros em dia; água para consumo segue padrões da vigilância sanitária (a confirmar). Sem registro profissional.",
+  "notes": "Contrato mensal com manutenção e troca de filtros em dia; água para consumo segue padrões da vigilância sanitária (a confirmar). Registro profissional: sem conferência.",
   "confidence": "a_confirmar",
   "sources": []
  },
@@ -54106,9 +54162,13 @@
   "locations": [
    "externo"
   ],
-  "notes": "Visitas a terras indígenas exigem autorização da Funai (a confirmar). A condução turística segue o Cadastur quando houver guia. Respeito às regras definidas pela comunidade.",
+  "notes": "Visitas a terras indígenas: autorização da Funai sem conferência. Guia: cadastro (Lei 8.623/1993, art. 2º). Empresas prestadoras: cadastro no Ministério do Turismo (Lei 11.771/2008, arts. 21-22). Respeito às regras da comunidade.",
   "confidence": "a_confirmar",
-  "sources": []
+  "sources": [
+   "https://legis.senado.leg.br/norma/547877/publicacao/15715478",
+   "https://legis.senado.leg.br/norma/550499/publicacao/15648234",
+   "https://legis.senado.leg.br/norma/582193/publicacao/15743096"
+  ]
  },
  "turismo-aereo-voo-panoramico-balonismo-e-paraquedismo": {
   "regulated": true,
@@ -54808,7 +54868,7 @@
   "locations": [
    "externo"
   ],
-  "notes": "Limpeza, pintura simples e flores no jazigo, avulsas ou mensais. O cemitério pode limitar a entrada de terceiros; combine com a administração. Não exige registro.",
+  "notes": "Limpeza, pintura simples e flores no jazigo, avulsas ou mensais. O cemitério pode limitar a entrada de terceiros; combine com a administração. Registro profissional: sem conferência.",
   "confidence": "a_confirmar",
   "sources": []
  },
