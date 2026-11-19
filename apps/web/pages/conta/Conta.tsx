@@ -137,7 +137,7 @@ const CONSENTS: Array<{ purpose: ConsentPurpose; title: string; description: str
     purpose: 'background_check',
     title: 'Consulta de antecedentes',
     description:
-      'Para profissionais cuja ocupação exige certidão de antecedentes criminais no cadastro. Ao retirar o consentimento, a certidão já enviada é removida em até 30 dias depois da retirada. A retirada fica registrada e não muda quem pode vê-la até a remoção. Você remove a certidão no cadastro só enquanto ele está em rascunho e a certidão ainda não foi analisada. Depois do envio para análise, você não consegue removê-la; a exclusão da sua conta também apaga a certidão.',
+      'Para profissionais cuja ocupação exige certidão de antecedentes criminais no cadastro. Ao retirar o consentimento, a certidão já enviada é removida depois de 30 dias da retirada, na rotina diária. A retirada fica registrada e não muda quem pode vê-la até a remoção. Você remove a certidão no cadastro só enquanto ele está em rascunho e a certidão ainda não foi analisada. Depois do envio para análise, você não consegue removê-la; a exclusão da sua conta também apaga a certidão.',
     revocable: true,
   },
   {

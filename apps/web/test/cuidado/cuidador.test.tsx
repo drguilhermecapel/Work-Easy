@@ -110,10 +110,11 @@ describe('/pro/plantoes (caregiver)', () => {
       expect(await within(offers).findByText('ter., 15/01/2030, 08:00 às 20:00')).toBeInTheDocument();
       expect(within(offers).getByText('Cuidado de Lúcia · Bairro Lapa')).toBeInTheDocument();
       expect(within(offers).getByText('Valor: R$ 280,00')).toBeInTheDocument();
-      expect(within(offers).getByText(/Observações da família: Almoço já fica pronto/)).toBeInTheDocument();
-      // No contact, preferences, birth year, family value or house name reach the caregiver
+      // The family's notes reach only the caregiver a shift belongs to, so an offer does not show them
+      expect(within(offers).queryByText(/Observações da família/)).not.toBeInTheDocument();
+      // No contact, preferences, birth year, family value, house name or notes reach the caregiver
       const page = document.body.textContent ?? '';
-      expect(page).not.toMatch(/Filho 11|Gosta de rádio|1940|Casa da vó/);
+      expect(page).not.toMatch(/Filho 11|Gosta de rádio|1940|Casa da vó|Almoço já fica pronto/);
       expect(fake.tableCalls.some(call => call.table === 'shifts' || call.table === 'care_recipients' || call.table === 'households')).toBe(false);
     });
 

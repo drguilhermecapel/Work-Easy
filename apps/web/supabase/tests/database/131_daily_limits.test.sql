@@ -3,7 +3,7 @@
 -- has at most 20 granted consents of one purpose created on the same São Paulo day. Withdrawals
 -- (granted = false) are never counted nor refused, and a repeated decision adds no row, so it is not refused.
 begin;
-select plan(20);
+select plan(21);
 select has_function('tests', 'setup_fixture', 'test helpers are installed (run 00_helpers first)');
 select tests.setup_fixture();
 
@@ -46,6 +46,18 @@ select is((select count(*)::int from public.requests
             where client_id = tests.uid('client_b')
               and private.sp_date(created_at) = private.sp_date(now()) - 1), 20,
           'the twenty requests of the day before are dated yesterday in São Paulo');
+
+-- The first minute of today in São Paulo is dated today. If private.sp_date read the UTC date, this row would
+-- be dated yesterday while now() is in the São Paulo evening (21:00 to 24:00 is already tomorrow in UTC); the
+-- yesterday rows above catch the same regression during the rest of the day.
+insert into public.requests (client_id, status, occupation_slug, neighborhood_id, description, created_at)
+values (tests.uid('client_b'), 'closed'::public.request_status, 't-reparo', tests.neighborhood('t-bairro-1'),
+        'Pedido do primeiro minuto de hoje',
+        (date_trunc('day', now() at time zone 'America/Sao_Paulo') + interval '1 minute') at time zone 'America/Sao_Paulo');
+select is((select count(*)::int from public.requests
+            where client_id = tests.uid('client_b')
+              and private.sp_date(created_at) = private.sp_date(now())), 1,
+          'the request of the first minute of today is dated today in São Paulo, not in UTC');
 
 select tests.authenticate_as('client_b');
 select lives_ok($$insert into public.requests (occupation_slug, neighborhood_id, description)

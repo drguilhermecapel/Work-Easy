@@ -276,9 +276,10 @@ export const careRpcs = (world: CareWorld): FakeSupabase['rpcs'] => {
               status: shift.status,
               offer_status: offer?.status ?? null,
               caregiver_payout_cents: shift.caregiver_payout_cents,
-              // A canceled shift keeps its period and status as history; the notes, the neighborhood and the
-              // first name of the person cared for are withheld (migration 20261118600005).
-              notes: shift.status === 'canceled' ? null : shift.notes,
+              // The family's notes reach only the caregiver the shift belongs to (migration 20261110200005), and
+              // not once it is canceled. A canceled shift keeps its period and status as history; the neighborhood
+              // and the first name of the person cared for are withheld too (migration 20261118600005).
+              notes: mine && shift.status !== 'canceled' ? shift.notes : null,
               neighborhood_name:
                 shift.status === 'canceled'
                   ? null
