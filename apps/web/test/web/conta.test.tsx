@@ -196,7 +196,8 @@ describe('/conta with a backend (simulated Supabase client)', () => {
     fake.session = { access_token: 't', user: { id: USER_ID, email: 'maria@example.com' } };
     renderAt('/conta');
     const row = (await screen.findByText('Consulta de antecedentes')).closest('li') as HTMLElement;
-    expect(row).toHaveTextContent('Ao retirar o consentimento, a certidão já enviada é removida em até 30 dias depois da retirada.');
+    expect(row).toHaveTextContent('Ao retirar o consentimento, a certidão já enviada é removida depois de 30 dias da retirada, na rotina diária.');
+    expect(row).not.toHaveTextContent('em até 30 dias');
     expect(row).toHaveTextContent('A retirada fica registrada e não muda quem pode vê-la até a remoção.');
     expect(row).not.toHaveTextContent('não apaga a certidão');
     expect(row).toHaveTextContent('Você remove a certidão no cadastro só enquanto ele está em rascunho e a certidão ainda não foi analisada.');
