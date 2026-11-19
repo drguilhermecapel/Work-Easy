@@ -292,7 +292,8 @@ max_frequency = "5s"
 
 # Use pre-defined map of phone number to OTP for testing.
 # Local test phone: +55 11 99999-0000 (E.164 digits without "+"), code 123456. Use it on /entrar
-# to sign in by phone without an SMS provider. Never copy this block to a hosted project.
+# Auth still needs an enabled SMS provider for this number (see [auth.sms.twilio] below).
+# Never copy this block to a hosted project.
 [auth.sms.test_otp]
 5511999990000 = "123456"
 

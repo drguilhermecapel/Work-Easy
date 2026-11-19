@@ -58,6 +58,7 @@ export type ClientErrorCode =
   | 'user_banned'
   | 'captcha_failed'
   | 'rate_limited'
+  | 'active_bookings'
   | 'function_unavailable'
   | 'not_configured'
   | 'pro_required'
@@ -154,6 +155,7 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   user_banned: 'Esta conta está bloqueada. Fale com o suporte.',
   captcha_failed: 'Não foi possível confirmar que você não é um robô. Tente de novo.',
   rate_limited: 'Muitas tentativas seguidas. Aguarde alguns minutos e tente de novo.',
+  active_bookings: 'Você tem atendimento pago, em andamento ou em contestação. Conclua ou resolva antes de excluir a conta.',
   function_unavailable: 'Este serviço está indisponível no momento. Tente mais tarde.',
   not_configured: 'Este recurso depende de configuração no servidor e ainda não está disponível.',
   pro_required: 'Este recurso faz parte do plano Pro.',
@@ -271,6 +273,9 @@ const FUNCTION_CODES: Record<string, ErrorCode> = {
   internal: 'server_error',
   invalid_response: 'server_error',
   method_not_allowed: 'server_error',
+  assist_rate_limited: 'rate_limited',
+  payload_too_large: 'invalid_input',
+  active_bookings: 'active_bookings',
 };
 
 /** A code sent by an Edge Function → ours, or undefined when unknown (the HTTP status decides then). */

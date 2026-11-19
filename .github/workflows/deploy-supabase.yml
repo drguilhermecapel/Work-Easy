@@ -118,13 +118,13 @@ jobs:
           # user JWT, so they are published with --no-verify-jwt. Every other
           # function keeps JWT verification. config.toml has no [functions]
           # entries for this, so the flag is passed on every deploy.
-          for fn in asaas-webhook notify-dispatch; do
+          for fn in asaas-webhook notify-dispatch background-check-purge; do
             supabase functions deploy "$fn" --project-ref "$SUPABASE_PROJECT_ID" --no-verify-jwt
           done
           for dir in supabase/functions/*/; do
             fn="$(basename "$dir")"
             case "$fn" in
-              _*|asaas-webhook|notify-dispatch) continue ;; # _shared and _runtime are libraries
+              _*|asaas-webhook|notify-dispatch|background-check-purge) continue ;; # _shared and _runtime are libraries
             esac
             supabase functions deploy "$fn" --project-ref "$SUPABASE_PROJECT_ID"
           done
