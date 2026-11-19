@@ -13,6 +13,7 @@ const deps: SubscriptionsDeps = {
   now,
   logError,
   asaas: asaasClient(),
+  documentSecret: config.asaas.webhookToken,
   async session(req) {
     const caller = await authenticate(req);
     if (!caller) return null;
@@ -63,8 +64,24 @@ const deps: SubscriptionsDeps = {
       ) as { asaas_wallet_id: string | null; status: string | null } | null;
       return Boolean(row?.asaas_wallet_id) && row?.status === 'active';
     },
-    async claimTrial(cpfHash, providerId) {
-      const { error } = await serviceClient().from('trial_claims').insert({ cpf_hash: cpfHash, provider_id: providerId });
+    async getPaymentCpfHash(providerId) {
+      const row = must(
+        await serviceClient()
+          .from('provider_payment_accounts')
+          .select('cpf_hash')
+          .eq('provider_id', providerId)
+          .maybeSingle(),
+      ) as { cpf_hash: string | null } | null;
+      return row?.cpf_hash ?? null;
+    },
+    async claimTrial(cpfHash, providerId, legacyHash) {
+      const db = serviceClient();
+      // Claims made before the keyed fingerprint hold the unkeyed SHA-256 of the CPF: such a CPF had its trial
+      const used = must(
+        await db.from('trial_claims').select('cpf_hash').in('cpf_hash', [cpfHash, legacyHash]).limit(1),
+      ) as unknown[] | null;
+      if ((used?.length ?? 0) > 0) return false;
+      const { error } = await db.from('trial_claims').insert({ cpf_hash: cpfHash, provider_id: providerId });
       if (!error) return true;
       if (error.code === UNIQUE_VIOLATION) return false;
       throw new DbError(error.message, error.code);

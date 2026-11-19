@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { createHash } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { DbError, type AuditEntry } from '../../supabase/functions/_shared/handler-kit.ts';
 import { handler as onboard, type OnboardDeps, type PaymentAccount } from '../../supabase/functions/asaas-onboard/handler.ts';
@@ -26,6 +26,12 @@ const APPROVED: ProviderAccount = {
     { occupation_slug: 'eletricista', approved: true, registry_status: 'not_required' },
   ],
 };
+
+/** Platform token of the tests: the key of the CPF fingerprints and of the subaccount tokens. */
+const PLATFORM_SECRET = 'platform-token-0123456789abcdef0123456789';
+/** The fingerprint Edge Functions store for a CPF/CNPJ, written out with node:crypto to check the WebCrypto code. */
+const fingerprintOf = (digits: string, key = PLATFORM_SECRET) =>
+  createHmac('sha256', key).update(`document-fingerprint:${digits}`).digest('hex');
 
 const CLIENT_ID = '55555555-5555-4555-8555-555555555555';
 const OTHER_CLIENT_ID = '66666666-6666-4666-8666-666666666666';
@@ -719,9 +725,21 @@ describe('asaas-onboard', () => {
     expect(secrets).toEqual([[PROVIDER.id, '$aact_sub']]);
     expect(saved[0]).toEqual({
       provider_id: PROVIDER.id, asaas_account_id: 'acc_1', asaas_wallet_id: 'wal_1', api_key_secret_id: 'secret-uuid', status: 'active',
+      cpf_hash: fingerprintOf(VALID_CPF, TOKEN),
     });
     expect(JSON.stringify(res.body)).not.toContain('$aact_sub');
     expect(res.body.data).toMatchObject({ wallet_id: 'wal_1', webhook_registered: true, own_charges_enabled: true });
+  });
+
+  it('stores the keyed fingerprint of the validated CPF, never the CPF, and no fingerprint without the platform token', async () => {
+    const { deps, saved } = onboardDeps();
+    await onboard(post('asaas-onboard', fiscal), deps);
+    expect(saved[0].cpf_hash).toBe(fingerprintOf(VALID_CPF, TOKEN));
+    expect(JSON.stringify(saved[0])).not.toContain(VALID_CPF);
+
+    const unkeyed = onboardDeps();
+    await onboard(post('asaas-onboard', fiscal), { ...unkeyed.deps, webhookToken: undefined });
+    expect(unkeyed.saved[0].cpf_hash).toBeNull();
   });
 
   it('skips the webhook when no platform token is configured', async () => {
@@ -816,8 +834,10 @@ describe('subscriptions-manage', () => {
     claim = true,
     trialDays = 0,
     provider: ProviderAccount = APPROVED,
-    // onboarded: the Asaas receiving account is finished; trials: the trial claims (CPF hashes) already stored
-    options: { onboarded?: boolean; trials?: string[] } = {},
+    // onboarded: the Asaas receiving account is finished; trials: the trial claims already stored (keyed
+    // fingerprints, or the SHA-256 of earlier claims); accountHash: the account's CPF fingerprint (null: the
+    // account predates it; default: the fingerprint of VALID_CPF); secret: the platform secret (null: none)
+    options: { onboarded?: boolean; trials?: string[]; accountHash?: string | null; secret?: string | null } = {},
   ) {
     const saved: SubscriptionRow[] = [];
     const plans: string[] = [];
@@ -828,9 +848,11 @@ describe('subscriptions-manage', () => {
       'DELETE /v3/subscriptions/sub_1': { body: { deleted: true, id: 'sub_1' } },
       ...routes,
     });
+    const accountHash = options.accountHash === undefined ? fingerprintOf(VALID_CPF) : options.accountHash;
     const deps: SubscriptionsDeps = {
       ...baseDeps,
       asaas: client,
+      documentSecret: options.secret === undefined ? PLATFORM_SECRET : (options.secret ?? undefined),
       session: async () => ({ user: PROVIDER, getProvider: async () => provider }),
       admin: {
         getSubscription: async () => current,
@@ -841,8 +863,9 @@ describe('subscriptions-manage', () => {
         },
         setProviderPlan: async (_id, plan) => void plans.push(plan),
         isPaymentOnboardingComplete: async () => options.onboarded ?? true,
-        claimTrial: async hash => {
-          if (trials.includes(hash)) return false;
+        getPaymentCpfHash: async () => accountHash,
+        claimTrial: async (hash, _providerId, legacyHash) => {
+          if (trials.includes(hash) || trials.includes(legacyHash)) return false;
           trials.push(hash);
           return true;
         },
@@ -1029,7 +1052,10 @@ describe('subscriptions-manage', () => {
 
   // ---- free trial: finished Asaas receiving account, one trial per CPF ----
   const SUBSCRIBE = { action: 'subscribe', method: 'pix' };
+  // the unkeyed SHA-256 that claims made before the keyed fingerprint stored
   const trialSha = (cpf: string) => createHash('sha256').update(cpf).digest('hex');
+  // a valid CPF that is not VALID_CPF
+  const OTHER_CPF = '11144477735';
 
   it('refuses the free trial until the Asaas receiving account is finished, without calling Asaas', async () => {
     const { deps, calls, saved, trials } = subsDeps(null, {}, true, 30, APPROVED, { onboarded: false });
@@ -1057,7 +1083,7 @@ describe('subscriptions-manage', () => {
     expect(res.status).toBe(201);
     expect(res.body.data).toMatchObject({ status: 'trialing', plan: 'pro' });
     expect(saved[0]).toMatchObject({ status: 'trialing' });
-    expect(trials).toEqual([trialSha(VALID_CPF)]);
+    expect(trials).toEqual([fingerprintOf(VALID_CPF)]);
     expect(JSON.stringify(trials)).not.toContain(VALID_CPF);
   });
 
@@ -1073,6 +1099,55 @@ describe('subscriptions-manage', () => {
     expect(res.body.error).toMatchObject({ code: 'trial_already_used', message: 'Este CPF já usou o teste grátis.' });
     expect(again.calls).toEqual([]);
     expect(trials).toHaveLength(1);
+  });
+
+  it('claims the trial under the keyed fingerprint, which the unkeyed SHA-256 of the CPF does not match', async () => {
+    const { deps, trials } = subsDeps(null, {}, true, 30);
+    expect((await read(await subscriptions(post('subscriptions-manage', { ...SUBSCRIBE, cpf_cnpj: VALID_CPF }), deps))).status).toBe(201);
+    expect(trials).toEqual([fingerprintOf(VALID_CPF)]);
+    expect(trials).not.toContain(trialSha(VALID_CPF));
+  });
+
+  it('refuses a CPF that is not the one of the receiving account (409 trial_document_mismatch), and claims nothing', async () => {
+    // the account was validated by Asaas with another CPF
+    const { deps, calls, saved, trials } = subsDeps(null, {}, true, 30, APPROVED, { accountHash: fingerprintOf(OTHER_CPF) });
+    const res = await read(await subscriptions(post('subscriptions-manage', { ...SUBSCRIBE, cpf_cnpj: VALID_CPF }), deps));
+    expect(res.status).toBe(409);
+    expect(res.body.error).toMatchObject({
+      code: 'trial_document_mismatch', message: 'Para o teste grátis, informe o CPF do seu cadastro de recebimento.',
+    });
+    expect(calls).toEqual([]);
+    expect(saved).toEqual([]);
+    expect(trials).toEqual([]);
+  });
+
+  it('refuses a receiving account created before the CPF binding (no fingerprint), without calling Asaas', async () => {
+    const { deps, calls, trials } = subsDeps(null, {}, true, 30, APPROVED, { accountHash: null });
+    const res = await read(await subscriptions(post('subscriptions-manage', { ...SUBSCRIBE, cpf_cnpj: VALID_CPF }), deps));
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('trial_requires_payment_account');
+    expect(res.body.error.message).toContain('suporte');
+    expect(calls).toEqual([]);
+    expect(trials).toEqual([]);
+  });
+
+  it('refuses the trial when the platform secret is missing (503 trial_unavailable), without calling Asaas', async () => {
+    const { deps, calls, trials } = subsDeps(null, {}, true, 30, APPROVED, { secret: null });
+    const res = await read(await subscriptions(post('subscriptions-manage', { ...SUBSCRIBE, cpf_cnpj: VALID_CPF }), deps));
+    expect(res.status).toBe(503);
+    expect(res.body.error.code).toBe('trial_unavailable');
+    expect(calls).toEqual([]);
+    expect(trials).toEqual([]);
+  });
+
+  it('refuses a CPF that an earlier claim stored as unkeyed SHA-256 (409 trial_already_used), without calling Asaas', async () => {
+    const trials = [trialSha(VALID_CPF)];
+    const { deps, calls } = subsDeps(null, {}, true, 30, APPROVED, { trials });
+    const res = await read(await subscriptions(post('subscriptions-manage', { ...SUBSCRIBE, cpf_cnpj: VALID_CPF }), deps));
+    expect(res.status).toBe(409);
+    expect(res.body.error).toMatchObject({ code: 'trial_already_used', message: 'Este CPF já usou o teste grátis.' });
+    expect(calls).toEqual([]);
+    expect(trials).toEqual([trialSha(VALID_CPF)]);
   });
 
   it('gives the trial claim back when the Asaas subscription cannot be created', async () => {
@@ -1098,6 +1173,6 @@ describe('subscriptions-manage', () => {
 
     const retry = subsDeps(null, {}, true, 30, APPROVED, { trials });
     expect((await read(await subscriptions(post('subscriptions-manage', { ...SUBSCRIBE, cpf_cnpj: VALID_CPF }), retry.deps))).status).toBe(201);
-    expect(trials).toEqual([trialSha(VALID_CPF)]);
+    expect(trials).toEqual([fingerprintOf(VALID_CPF)]);
   });
 });
