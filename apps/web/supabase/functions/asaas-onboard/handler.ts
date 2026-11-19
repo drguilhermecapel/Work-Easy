@@ -34,6 +34,8 @@ export interface OnboardDeps extends BaseDeps {
   /** `${SUPABASE_URL}/functions/v1/asaas-webhook`, to register the subaccount webhook. */
   webhookUrl: string | null;
   webhookToken?: string;
+  /** Key of the CPF/CNPJ fingerprint used by the free trial (TRIAL_DOCUMENT_SECRET). */
+  trialDocumentSecret?: string;
   session(req: Request): Promise<{
     user: AuthUser;
     getProvider(): Promise<(ProviderApproval & { id: string; plan: string }) | null>;
@@ -160,7 +162,7 @@ export function handler(req: Request, deps: OnboardDeps): Promise<Response> {
     if (webhooks) account.webhooks = webhooks;
     // Computed before createAccount: the key Asaas returns once must not be lost to an error here.
     // The free trial later needs the same CPF/CNPJ (subscriptions-manage).
-    const cpfHash = deps.webhookToken ? await documentFingerprint(deps.webhookToken, input.cpf_cnpj) : null;
+    const cpfHash = deps.trialDocumentSecret ? await documentFingerprint(deps.trialDocumentSecret, input.cpf_cnpj) : null;
 
     if (!(await deps.admin.claimOnboarding(provider.id))) {
       throw errors.conflict('onboarding_in_progress', 'A ativação do recebimento já está em andamento. Aguarde alguns instantes.');

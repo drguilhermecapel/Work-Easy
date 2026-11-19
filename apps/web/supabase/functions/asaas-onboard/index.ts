@@ -15,6 +15,7 @@ const deps: OnboardDeps = {
   asaas: asaasClient(),
   webhookUrl: config.supabaseUrl ? `${config.supabaseUrl.replace(/\/+$/, '')}/functions/v1/asaas-webhook` : null,
   webhookToken: config.asaas.webhookToken,
+  trialDocumentSecret: config.asaas.trialDocumentSecret,
   async session(req) {
     const caller = await authenticate(req);
     if (!caller) return null;

@@ -13,7 +13,7 @@ const deps: SubscriptionsDeps = {
   now,
   logError,
   asaas: asaasClient(),
-  documentSecret: config.asaas.webhookToken,
+  documentSecret: config.asaas.trialDocumentSecret,
   async session(req) {
     const caller = await authenticate(req);
     if (!caller) return null;

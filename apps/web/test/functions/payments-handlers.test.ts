@@ -689,6 +689,7 @@ describe('asaas-onboard', () => {
       asaas: client,
       webhookUrl: 'https://proj.supabase.co/functions/v1/asaas-webhook',
       webhookToken: over.token ?? TOKEN,
+      trialDocumentSecret: over.token ?? TOKEN,
       sleep: async ms => void sleeps.push(ms),
       session: async () => ({ user: PROVIDER, getProvider: async () => over.provider ?? APPROVED }),
       admin: {
@@ -738,7 +739,7 @@ describe('asaas-onboard', () => {
     expect(JSON.stringify(saved[0])).not.toContain(VALID_CPF);
 
     const unkeyed = onboardDeps();
-    await onboard(post('asaas-onboard', fiscal), { ...unkeyed.deps, webhookToken: undefined });
+    await onboard(post('asaas-onboard', fiscal), { ...unkeyed.deps, trialDocumentSecret: undefined });
     expect(unkeyed.saved[0].cpf_hash).toBeNull();
   });
 
