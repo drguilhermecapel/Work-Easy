@@ -38,8 +38,9 @@ insert into public.shifts (id, household_id, period, rate_cents, status, provide
   (md5('in-progress-b')::uuid, (select id from ids where name = 'house_b'),
      tstzrange(now() + interval '1 hour', now() + interval '5 hours'), 100, 'checked_in', tests.uid('provider_c')),
   -- Past shifts: one assigned (never checked in), one completed.
+  -- Two weeks back, out of the week of the in-progress shift: a shift that ends after midnight counts two days in that week.
   (md5('past-c')::uuid, (select id from ids where name = 'house_b'),
-     tstzrange(now() - interval '3 days', now() - interval '3 days' + interval '4 hours'), 100, 'assigned', tests.uid('provider_c')),
+     tstzrange(now() - interval '14 days', now() - interval '14 days' + interval '4 hours'), 100, 'assigned', tests.uid('provider_c')),
   (md5('completed-a')::uuid, (select id from ids where name = 'house_a'),
      tstzrange(now() - interval '10 days', now() - interval '10 days' + interval '4 hours'), 100, 'completed', tests.uid('provider_c'));
 
