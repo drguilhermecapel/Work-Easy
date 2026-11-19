@@ -79,6 +79,7 @@ const Body = object({
   provider_client_id: optional(uuid()),
   method: oneOf(PAYMENT_METHODS),
   due_date: optional(isoDate()),
+  // Accepted for older clients and ignored: the statement text is always generic (DD10).
   description: optional(string({ max: 300 })),
 });
 
@@ -131,7 +132,7 @@ export function handler(req: Request, deps: ChargesCreateDeps): Promise<Response
       amount = booking.price_cents ?? 0;
       linkedClient = booking.provider_client_id;
       // Generic on purpose, as in payments-create: the processor and the payer's statement see this text
-      description = input.description ?? 'WorkEasy: atendimento';
+      description = 'WorkEasy: atendimento';
     } else {
       const quote = await session.getQuote(input.quote_id!);
       if (!quote || quote.provider_id !== provider.id) throw errors.notFound('Orçamento');
@@ -139,7 +140,7 @@ export function handler(req: Request, deps: ChargesCreateDeps): Promise<Response
       amount = quote.total_cents ?? 0;
       linkedClient = quote.provider_client_id;
       // Generic on purpose: the quote title is free text the provider typed, and the payer's statement shows it
-      description = input.description ?? 'WorkEasy: orçamento';
+      description = 'WorkEasy: orçamento';
     }
     const target = input.booking_id ? { bookingId: input.booking_id } : { quoteId: input.quote_id };
     if (await deps.admin.hasPaidCharge(target)) throw errors.conflict(ALREADY_PAID, ALREADY_PAID_MESSAGE);

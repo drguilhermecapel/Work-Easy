@@ -1078,3 +1078,25 @@ Os 51 blocos SQL deste documento correspondem a 50 consultas distintas, numerada
 | 10. Admin | S29 a S31 |
 | 11. Storage | S32, S33 |
 | 12. Alavancas | S35 a S39 |
+
+## Expurgo diário de retenção (`retention-purge-daily`)
+
+**O que faz.** A função `public.run_retention_purge()` roda todo dia às 03:00 (pg_cron, migração `20261118200002`, com as regras das migrações `20261118600002` e `20261118600010`). Ela apaga:
+
+- provas de consentimento cujo `retain_until` já passou (5 anos contados da exclusão, DD39);
+- eventos de acesso ao login com mais de 6 meses;
+- eventos de uso do assistente com mais de 1 dia (a cota de 60 minutos não depende deles depois disso).
+
+**Não faz.** Não remove o cadastro no Asaas (DD41: procedimento manual do operador) e não remove antecedentes retirados (essa é a rotina `background-check-purge`, ver `docs/operacao/11-agendamento-de-rotinas.md`).
+
+**Verificar em produção (ação do dono, uma vez por ambiente):**
+
+```sql
+select jobname, schedule, command, active
+  from cron.job
+ where jobname = 'retention-purge-daily';
+```
+
+Esperado: uma linha, `schedule = '0 3 * * *'`, `command = 'select public.run_retention_purge()'`, `active = true`.
+
+**Se falhar.** Consulte `cron.job_run_details` pelo `jobid` do job. Uma falha de execução aparece como `failed` com a mensagem do Postgres. Não há reprocessamento automático: depois de corrigir a causa, rode `select public.run_retention_purge();` manualmente, por quem tem acesso ao banco de produção, e registre a data.
