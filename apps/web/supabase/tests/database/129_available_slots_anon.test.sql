@@ -1,8 +1,11 @@
--- available_slots and care shifts: an anonymous visitor does not get the hours that a care shift holds
--- (assigned or checked in) as taken, while a signed-in user does, so a client does not ask for a held hour.
--- Occupation by reservations stays visible to anonymous visitors, as before.
+-- available_slots and care shifts (DD50): the occupation by a care shift (assigned or checked in) shows as
+-- taken only to the provider herself and to the accounts with a household that holds a care shift of this
+-- provider. An anonymous visitor and a signed-in account with no such link see those hours as free, so a
+-- visitor cannot infer a caregiver's schedule by probing hours. The write side still refuses the hour:
+-- book_direct checks the shifts for every caller (123_direct_booking_care_shift_overlap).
+-- Occupation by reservations stays visible to everyone, as before (DD29).
 begin;
-select plan(10);
+select plan(13);
 select has_function('tests', 'setup_fixture', 'test helpers are installed (run 00_helpers first)');
 select tests.setup_fixture();
 
@@ -29,16 +32,36 @@ select ok(not exists (select 1 from unnest(public.available_slots(tests.uid('pro
           'an anonymous visitor does not see the start at 15:00, inside the reservation');
 select tests.clear_authentication();
 
--- Signed-in user: the care-shift hours are held too (19 - 5 - 3 = 11 starts).
+-- Signed-in account with no link to provider C (client_a has no household with a shift of C): the care-shift
+-- hours are free, as for an anonymous visitor, and the reservation hours are taken (19 - 3 = 16 starts).
+-- Before DD50 this account saw the care-shift hours as taken (11 starts); that is the change this block records.
 select tests.authenticate_as('client_a');
-select is(cardinality(public.available_slots(tests.uid('provider_c'), tests.future_monday(42), 60)), 11,
-          'a signed-in user gets the care-shift hours and the reservation hours as taken');
-select ok(not exists (select 1 from unnest(public.available_slots(tests.uid('provider_c'), tests.future_monday(42), 60)) as s
-                       where lower(s) = tests.sp(tests.at(42, 0, '10:00'))),
-          'a signed-in user does not see the start at 10:00, inside the care shift');
+select is(cardinality(public.available_slots(tests.uid('provider_c'), tests.future_monday(42), 60)), 16,
+          'a signed-in account with no link to the provider gets the care-shift hours as free and the reservation hours as taken');
+select ok(exists (select 1 from unnest(public.available_slots(tests.uid('provider_c'), tests.future_monday(42), 60)) as s
+                   where lower(s) = tests.sp(tests.at(42, 0, '10:00'))),
+          'a signed-in account with no link sees the start at 10:00, inside the care shift');
 select ok(not exists (select 1 from unnest(public.available_slots(tests.uid('provider_c'), tests.future_monday(42), 60)) as s
                        where lower(s) = tests.sp(tests.at(42, 0, '15:00'))),
-          'a signed-in user does not see the start at 15:00, inside the reservation');
+          'a signed-in account with no link does not see the start at 15:00, inside the reservation');
+select tests.clear_authentication();
+
+-- Another signed-in provider with no link to provider C (provider_d): she does not see the care-shift occupation (16 starts).
+select tests.authenticate_as('provider_d');
+select is(cardinality(public.available_slots(tests.uid('provider_c'), tests.future_monday(42), 60)), 16,
+          'a signed-in provider with no link to the provider does not see the care-shift occupation');
+select tests.clear_authentication();
+
+-- The owner of the household that holds the shift (client_b) sees the care-shift hours held (19 - 5 - 3 = 11 starts).
+select tests.authenticate_as('client_b');
+select is(cardinality(public.available_slots(tests.uid('provider_c'), tests.future_monday(42), 60)), 11,
+          'the owner of a household with a care shift of the provider sees the care-shift hours and the reservation hours as taken');
+select tests.clear_authentication();
+
+-- The provider herself (provider_c) sees her own care-shift hours held (11 starts).
+select tests.authenticate_as('provider_c');
+select is(cardinality(public.available_slots(tests.uid('provider_c'), tests.future_monday(42), 60)), 11,
+          'the provider sees her own care-shift hours and the reservation hours as taken');
 select tests.clear_authentication();
 
 -- The function keeps its definition: security definer with an empty search_path, stable, executable by anon.
