@@ -11,7 +11,7 @@ o que ela informou.
 
 ## 1. Configurações da plataforma
 
-Tabela `platform_settings`, escrita apenas por `admin_set_setting(p_key, p_value)`. A função
+Tabela `platform_settings`, escrita pela API de usuário apenas por `admin_set_setting(p_key, p_value)`; o service role também grava. A migração `20261109400001_platform_settings_writes_admin_only.sql` tira de `authenticated` os privilégios de insert, update e delete. A função
 recusa com `invalid_setting` (classe 23514) quando o tipo ou a faixa não batem. A checagem
 existe no banco e também na tela (`NUMBER_LIMITS` em `services/admin.ts`).
 
@@ -34,7 +34,7 @@ antigo não foi editado) e passa a checar as três. Chaves desconhecidas continu
 Ligar a comissão ou a retenção exige digitar a frase de confirmação (`ENABLE_PHRASES`). As duas
 começam desligadas (`DEFAULT_SETTINGS`).
 
-A tela `pages/admin/Configuracoes.tsx` separa duas seções: "Valores e limites" e "Plano Pro, plano
+A tela `pages/admin/Configuracoes.tsx` tem a seção "Recursos com dinheiro" (comissão e pagamento retido) e separa os números em duas seções: "Valores e limites" e "Plano Pro, plano
 gratuito e teto da comissão". As chaves `commission_cap_cents`, `free_proposals_per_month` e
 `pro_trial_days` ficam na segunda, com o zero explicado em cada linha. Valores em reais são digitados
 com vírgula (`parseReaisToCents`) e guardados em centavos.
@@ -46,7 +46,7 @@ que quiser prometer um número deve ler o valor salvo, não o padrão.
 ## 2. Aprovação de ocupações
 
 Aprovar o prestador (`admin_set_provider_status`) e aprovar cada ocupação
-(`admin_set_occupation_approval`) são ações separadas. Só a ocupação aprovada aparece na busca e
+(`admin_set_occupation_approval`) são ações separadas, mas a primeira aprovação do prestador (a partir de rascunho ou em análise) também aprova as ocupações que já têm todos os documentos aceitos e registro não rejeitado. Só a ocupação aprovada aparece na busca e
 recebe pedidos e agendamentos.
 
 Regras do banco, que a tela repete para poupar uma ida ao servidor (`approvalCheck`):
@@ -63,7 +63,7 @@ Quando a política pede registro profissional e o prestador não informou o núm
 A tela de detalhe (`PrestadorDetalhe.tsx` e `OccupationCard.tsx`) mostra, para cada ocupação: o
 registro informado (ou "Sem número"), o conselho e a base legal da política, cada documento exigido
 com o estado (aceito, enviado, rejeitado ou faltando), e os botões de confirmar ou rejeitar o
-registro e de aprovar ou retirar a aprovação. Toda ação pede um motivo, que fica em `audit_log`.
+registro e de aprovar ou retirar a aprovação. As ações da ocupação (confirmar ou rejeitar o registro, aprovar ou retirar a aprovação) pedem um motivo, que fica em `audit_log`. Na lista de documentos, rejeitar e desfazer aceite também pedem motivo; aceitar pede só uma observação opcional.
 Retirar a aprovação de uma ocupação que já tem documentos faltando é permitido e a tela avisa.
 
 Tradução dos erros do banco (`explainAdminError`):
@@ -81,7 +81,7 @@ a aprovar" do Painel. A fila reúne os prestadores em análise e os aprovados co
 
 ## 3. Métricas e funil do Painel
 
-A view `admin_metrics` é a única fonte dos números do Painel. Ela é `security_invoker`, filtra por
+A view `admin_metrics` é a única fonte dos números do funil e das contagens por situação do Painel. As pendências (prestadores na fila, ocupações a aprovar e disputas abertas) vêm de `admin_provider_queue` e `admin_open_disputes`. Ela é `security_invoker`, filtra por
 `is_admin()` e não tem grant para `anon`. Um usuário comum recebe zero linhas, inclusive o
 prestador e o cliente dos próprios registros. Os testes `31_admin_metrics.test.sql` cobrem isso.
 
@@ -105,7 +105,7 @@ situação). Linhas do funil:
 
 O funil mostra pagamentos com situação `received`, `held` e `released`. O valor é o que os clientes
 pagaram, não a receita da WorkEasy. A assinatura Pro não entra nesse total. Quando não há dado,
-o cartão diz "Nenhum ... ainda" em vez de exibir zeros.
+o cartão diz "Nenhum ... ainda" em vez de exibir zeros. No cartão "No limite do plano gratuito" a frase é "Nenhum prestador chegou ao limite neste mês."
 
 Os cartões ficam em `components/admin/FunnelSection.tsx`, em tabelas simples, sem biblioteca de
 gráficos.

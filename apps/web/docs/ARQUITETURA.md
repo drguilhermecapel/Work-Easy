@@ -87,7 +87,7 @@ política explícita.
 user_role:            client | provider            (admin é tabela à parte)
 provider_status:      draft | pending_review | approved | suspended
 registry_status:      not_required | informed | confirmed | rejected
-document_status:      submitted | accepted | rejected
+document_status:      submitted | accepted | rejected | purged
 verification_step:    documento_selfie | cadastro_fiscal | registro_profissional | antecedentes
                       | certificado_curso | cnh | licenca_orgao | seguro_rc
 billing_model:        comissao_primeiro_servico | so_assinatura | sob_consulta_juridica
@@ -107,7 +107,7 @@ subscription_status:  pending | trialing | active | past_due | canceled
 notification_channel: whatsapp | email
 notification_status:  queued | sending | sent | failed | skipped
 shift_status:         open | offered | assigned | checked_in | completed | canceled | no_show
-consent_purpose:      terms | privacy | marketing | background_check | location
+consent_purpose:      terms | privacy | marketing | background_check | location | age_declaration
 data_request_kind:    export | delete
 ```
 
@@ -205,8 +205,8 @@ Colunas listadas sem `created_at timestamptz default now()`, que toda tabela tem
 - `provider_documents` (`id`, `provider_id`, `step verification_step`,
   `storage_path`, `status document_status default 'submitted'`, `reviewed_by`,
   `reviewed_at`, `expires_at date`, `rejection_reason`). Arquivos no bucket
-  privado `provider-documents/<provider_id>/...` (RLS de storage: dono e admin leem; só
-  quem já é prestador envia; **não há UPDATE**, então todo envio é um arquivo novo e um
+  privado `provider-documents/<provider_id>/...` (RLS de storage: dono e admin leem; ninguém envia direto:
+  só a função `provider-document-upload` grava (service role, migração `20261118100001`); **não há UPDATE**, então todo envio é um arquivo novo e um
   documento novo; o dono só apaga o arquivo de um documento enquanto o prestador está em `draft` e
   o documento está `submitted` (migração `20261109400003`, que vale também para o objeto no
   Storage). Depois de `submit_provider_for_review` ou de qualquer revisão, o arquivo fica travado
@@ -215,7 +215,7 @@ Colunas listadas sem `created_at timestamptz default now()`, que toda tabela tem
   `admin_review_document(accept)` exige que o arquivo exista no bucket. A foto é preparada no
   navegador antes do envio (`lib/imageMetadata.ts`): metadados saem, há limite de 10 MB, HEIC vira
   JPEG, WebP vira JPEG quando o navegador não grava WebP, e o tipo vem dos bytes. PDF vai sem
-  tratamento. Upload direto pela API de Storage não passa por essa etapa.
+  tratamento. No servidor, `provider-document-upload` confere o tipo pelos bytes, recusa HEIC (415 `heic_not_supported`) e remove de novo o metadado antes de gravar; não há outro caminho para o bucket.
 - `services` (`id`, `provider_id`, `occupation_slug`, `title`, `description`,
   `price_min_cents`, `price_max_cents`, `unit price_unit`, `duration_minutes`,
   `active bool`). Trigger: `unit` deve estar em `price_units` da política.
@@ -269,10 +269,10 @@ Colunas listadas sem `created_at timestamptz default now()`, que toda tabela tem
   `current_setting('role')` porque o trigger é `security definer`) são limitadas, não a service role.
   Um advisory lock por prestador impede que duas propostas simultâneas passem juntas.
 - `assist_usage_events` (`id` identity, `user_id → profiles on delete cascade`,
-  `used_at timestamptz`): uma linha por chamada concedida do assistente de pedidos; a cota é a
+  `used_at timestamptz`): uma linha por chamada concedida de qualquer um dos três assistentes (`request-assist`, `quote-assist`, `care-summary`); a cota é a
   contagem das linhas dos últimos 60 minutos. RLS ligada, **sem política e sem grant** para
   `anon`/`authenticated` (exceção declarada ao "toda tabela tem política" em `12_rls_matrix`);
-  só `take_assist_quota` a toca.
+  só `take_assist_quota` grava, e apaga as do próprio usuário com mais de 2 horas; `run_retention_purge` (pg_cron, diário às 03:00) apaga as com mais de 1 dia.
 - `assist_usage` (`user_id → profiles on delete cascade`, `window_start timestamptz`,
   `count int`, pk (`user_id`, `window_start`)): contador da cota por hora da versão anterior,
   sem gravação desde `20261118500001`; mesmas regras de RLS e grant.
@@ -290,7 +290,7 @@ Colunas listadas sem `created_at timestamptz default now()`, que toda tabela tem
     (`origin 'platform'`, `status 'accepted'`), cria/atualiza `provider_clients`.
     O pedido precisa estar `open` e dentro de `expires_at`; o período é futuro, de no
     máximo 24 horas e a até 2 anos (senão `slot_unavailable`). A disponibilidade do
-    prestador não é exigida (o horário vem combinado na proposta).
+    prestador não é exigida (o horário vem combinado na proposta), mas o período não pode sobrepor plantão atribuído ou em check-in do prestador (`slot_unavailable`).
   - `requests.expires_at` começa em 7 dias e o cliente não passa de 30 dias.
 - RLS: cliente vê os próprios pedidos e as propostas recebidas; prestador vê as
   próprias propostas e os pedidos por `open_requests_for_me()`.
@@ -342,8 +342,8 @@ Colunas listadas sem `created_at timestamptz default now()`, que toda tabela tem
   Cada transição grava `booking_events` e `audit_log`.
 - `book_direct(p_provider uuid, p_service uuid, p_period tstzrange, p_notes text)`
   (cliente): cria `requested` com `origin 'platform'` se o horário é futuro, está dentro
-  da disponibilidade e fora de `time_off`, e a ocupação do serviço está aprovada.
-  No máximo 3 `requested` abertos por cliente e prestador e 10 por cliente
+  da disponibilidade, fora de `time_off` e de plantão atribuído ou em check-in do prestador, e a ocupação do serviço está aprovada.
+  No máximo 3 `requested` abertos por cliente e prestador (cancelamentos das últimas 24 horas também contam), 10 por cliente e 20 no total por prestador
   (`booking_limit`).
 - `create_own_booking(p_provider_client uuid, p_occupation text, p_period tstzrange, p_price_cents int, p_notes text)`
   (prestador): cria `accepted` com `origin 'own'` (sem comissão nunca) para uma entrada
@@ -352,7 +352,7 @@ Colunas listadas sem `created_at timestamptz default now()`, que toda tabela tem
   avaliável e não zera comissão de atendimento da plataforma. A trava trabalhista o
   conta pela entrada do CRM.
 - `available_slots(p_provider uuid, p_day date, p_duration_minutes int)` →
-  `tstzrange[]` livres no dia.
+  `tstzrange[]` livres no dia. Visitante sem sessão não vê a ocupação por plantão (atribuído ou em check-in); usuário autenticado vê (migração `20261118600006`).
 - RLS: cliente e prestador veem os atendimentos de que participam; admin vê tudo.
 - **Contato (perfil):** `profiles_select_counterpart` usa `private.shares_contact`; a
   linha de `providers` usa `private.is_counterpart`. Ambas só olham dados escritos pelo
@@ -422,11 +422,11 @@ Colunas listadas sem `created_at timestamptz default now()`, que toda tabela tem
   `claimed_at timestamptz null` — horário da última reivindicação).
 - Triggers enfileiram: proposta recebida (cliente), atendimento aceito (os dois),
   lembrete 24 h antes (os dois), pagamento recebido (prestador, uma vez por pagamento,
-  também em `received → confirmed`), orçamento respondido (prestador), plantão oferecido
+  também em `received → confirmed`), pedido de agendamento direto (prestador, `agendamento_solicitado`), orçamento respondido (prestador), plantão oferecido
   (cuidador). **Só contato confirmado pelo Auth recebe mensagem:** WhatsApp para
   `auth.users.phone` com `phone_confirmed_at`, e-mail para `auth.users.email` com
   `email_confirmed_at`. O `profiles.phone` digitado pelo usuário nunca é destino; sem
-  contato confirmado nada é enfileirado. Em produção, o cadastro por senha fica desligado
+  contato confirmado nada é enfileirado. Há um teto de envios por destinatário e dia de São Paulo (`notification_daily_cap`, padrão 50; 0 desliga os envios). Em produção, o cadastro por senha fica desligado
   (login por código) ou exige confirmação.
 - `claim_notifications(p_limit int)` (service role): marca `sending`, grava
   `claimed_at = now()`, soma 1 em `attempts` e devolve um lote vencido, com
@@ -441,7 +441,7 @@ Colunas listadas sem `created_at timestamptz default now()`, que toda tabela tem
   que já começaram, e apaga contadores `assist_usage` com mais de 1 dia).
 - Templates (nomes que precisam existir no WhatsApp Business):
   `proposta_recebida`, `atendimento_confirmado`, `lembrete_atendimento`,
-  `pagamento_recebido`, `orcamento_respondido`, `plantao_oferecido`.
+  `pagamento_recebido`, `orcamento_respondido`, `plantao_oferecido`, `agendamento_solicitado`, `shift_canceled_by_deletion` e `booking_canceled_by_deletion` (estes dois vêm da exclusão de conta).
 
 **Linha de cuidado** (`09_care.sql`)
 
@@ -456,7 +456,7 @@ Colunas listadas sem `created_at timestamptz default now()`, que toda tabela tem
   nomeia assistido da própria casa.
 - `shift_offers` (`shift_id`, `provider_id`, `status text check in ('offered','accepted','declined','expired')`, pk composta).
 - `checkins` (`id`, `shift_id`, `provider_id`, `kind text check in ('in','out')`,
-  `at`, `lat numeric`, `lng numeric`).
+  `at`, `lat numeric`, `lng numeric`, gravados com 3 casas decimais e só com consentimento `location`).
 - `daily_reports` (`id`, `shift_id unique`, `provider_id`, `meals text`,
   `activities text`, `mood text`, `notes text`). Relatório não clínico.
 - **Ocupação de cuidado:** a política tem a unidade de preço `plantao`
@@ -464,7 +464,7 @@ Colunas listadas sem `created_at timestamptz default now()`, que toda tabela tem
   cuidado aprovada e registro não `rejected`.
 - Funções: `offer_shift(p_shift, p_providers uuid[])` (admin ou dono) oferece **só a
   prestadores de cuidado**, nunca ao dono da casa, com no máximo 10 ofertas por plantão e
-  30 ofertas novas por dia por família (`offer_limit`; o admin não tem o limite diário);
+  30 ofertas por família em qualquer janela de 24 horas (`offer_limit`; contam também as reenviadas a quem tinha oferta expirada; o admin não tem esse limite);
   `accept_shift_offer(p_shift)` (cuidador; primeiro que aceita leva, demais
   `expired`; passa pela trava trabalhista e pela exclusão de sobreposição),
   `check_in(p_shift, p_kind, p_lat, p_lng)` (cuidador designado, dentro de ±2 h do
@@ -495,16 +495,13 @@ Colunas listadas sem `created_at timestamptz default now()`, que toda tabela tem
 - `audit_log` (`id bigserial`, `actor_id`, `action text`, `entity text`,
   `entity_id text`, `data jsonb`, `at`). Só insert, via `log_event(...)` security
   definer e triggers; `update`/`delete` revogados de todos, inclusive authenticated;
-  leitura só admin. `log_event` com a service role grava qualquer ação; com um usuário do
-  app só aceita ações `client.<nome>`, `data` objeto de até 4 KB e no máximo 60 entradas
-  por minuto, para que uma entrada de usuário nunca pareça uma do sistema (`booking.*`,
-  `payment.*`, `provider.*`, `user.*`). O texto livre que entrou em `audit_log` (motivos de
+  leitura só admin. `log_event` com a service role grava qualquer ação. O papel `authenticated` não tem execução de `log_event` desde a migração `20261109100003`, então nenhum usuário do app grava no log por essa função. A regra da chamada sem service role (ações `client.<nome>`, `data` de até 4 KB, 60 entradas por minuto) continua no corpo da função, mas nenhum papel do app consegue chegar até ela. O texto livre que entrou em `audit_log` (motivos de
   admin) não é apagado: o log é imutável.
 - `anonymize_user(p_user uuid)` (service role): apaga dados pessoais de
   `profiles`, `providers`, `provider_clients`, casas e assistidos do usuário, apaga os
   registros de `provider_documents`, mantém pagamentos e atendimentos anonimizados
   (obrigação fiscal; `notes`, `canceled_reason` e `booking_events.reason` são apagados,
-  e `payments.raw` fica só com os campos fiscais, sem dados do pagador), grava
+  e `payments.raw` fica só com os campos fiscais, sem dados do pagador; zera o texto livre dos plantões e dos relatórios diários da família e troca o nome da casa e do assistido por um rótulo genérico; copia todas as decisões de `consents` para `consent_proofs`, sem o id da conta, com `retain_until` = exclusão + 5 anos, ligadas por `consent_proof_links` (prazo pendente de parecer jurídico), grava
   `audit_log`. **Ordem obrigatória da exclusão de conta:** (1) `account-delete` remove a
   pasta `provider-documents/<user_id>/` pela Storage API (o SQL não apaga objetos);
   (2) `anonymize_user`, que falha com `storage_not_empty` enquanto houver arquivo na
@@ -515,10 +512,7 @@ Colunas listadas sem `created_at timestamptz default now()`, que toda tabela tem
   da família (nenhum pagamento da plataforma está ligado a um plantão, então não são
   registro fiscal), orçamentos e estado de assinatura do prestador (as cobranças ficam em
   `payments`), documentos, notificações e consentimentos. O teste `10_privacy_audit` fixa
-  essa tabela de regras. **Apagar uma casa** leva junto os plantões dela, inclusive os que têm
-  cuidador confirmado e ainda não terminaram: o app não avisa o cuidador, que deixa de ver o
-  plantão. A tela da família avisa quantos são antes de confirmar e pede para cancelar antes
-  (cancelar libera o cuidador) e avisá-lo por fora.
+  essa tabela de regras. **Apagar uma casa** com plantão é recusado (`household_has_shifts`, trigger `households_10_keep_history`) enquanto a conta do titular existir, porque plantões, check-ins e relatórios são o histórico do cuidado. A tela não mostra o botão nesse caso. Só a exclusão da conta do titular apaga a casa junto (cascade), e antes disso `account-delete` cancela os plantões que ainda não terminaram, com aviso ao cuidador.
 
 **Administração** (`11_admin.sql`)
 
@@ -572,7 +566,7 @@ Funções e triggers sinalizam regras com `raise exception` e mensagens-código:
 `slug_taken` (endereço da página já usado),
 `checkin_window` (check-in/out fora de ±2 h), `booking_limit` (pedidos de agendamento
 abertos demais, inclusive o ciclo de cancelar e pedir de novo ao mesmo profissional),
-`request_limit` (5 pedidos abertos do cliente), `request_daily_limit` (20 pedidos por dia, provisório), `consent_daily_limit` (20 concessões de consentimento por finalidade e dia, provisório), `offer_limit` (ofertas de plantão demais),
+`request_limit` (5 pedidos abertos do cliente), `request_daily_limit` (20 pedidos por cliente por dia de São Paulo, cancelados contam, provisório), `consent_daily_limit` (20 concessões de consentimento por finalidade e dia, provisório), `offer_limit` (ofertas de plantão demais),
 `offer_declined` (cuidador que recusou o plantão), `shift_too_long` (plantão acima de 60 dias),
 `household_has_shifts` (casa com plantão não pode ser apagada), `client_has_history` (cliente do CRM com
 atendimento ou orçamento), `cpf_cnpj_invalid` (dígito verificador), `data_request_limit` (3 solicitações
@@ -580,8 +574,7 @@ pendentes do mesmo tipo), `availability_limit` (50 janelas) e `availability_over
 sobrepõem no mesmo dia da semana), `free_proposal_limit` (acabaram as propostas
 grátis do mês), `storage_not_empty` (a conta
 ainda tem arquivos no Storage; só a service role vê). Todos com `errcode P0001`.
-O limite de documentos do prestador (30 arquivos no bucket `provider-documents`) não tem código: o
-Storage recusa o envio com HTTP 403 e `services/providers.ts` conta a pasta para trocar a frase.
+O limite de documentos do prestador (60 arquivos na pasta do prestador no bucket `provider-documents`, contados pela função) responde 409 `document_limit` com a frase da própria função `provider-document-upload`, e `services/providers.ts` mostra essa frase; `lib/errors.ts` não traduz esse código.
 `lib/errors.ts` traduz cada código para uma frase em pt-BR: os do banco acima e os códigos de conflito das Edge Functions (`already_paid`,
 `booking_not_canceled`, `booking_not_chargeable`, `booking_not_payable`, `quote_not_accepted`,
 `platform_booking`, `own_booking`, `price_missing`, `payment_in_progress`,
@@ -607,7 +600,9 @@ usuário (exceto webhook e cron), responde JSON `{ ok, data | error }` e grava
 | `subscriptions-manage` | prestador | assina ou cancela o Pro (`POST /subscriptions`, ciclo mensal) e atualiza `subscriptions`/`providers.plan` |
 | `notify-dispatch` | agendador (`CRON_SECRET`) | consome `claim_notifications` e envia por WhatsApp Cloud API (template) ou Resend; sem credencial → `skipped` |
 | `account-export` | usuário | devolve JSON com os dados do próprio usuário |
-| `account-delete` | usuário | recusa (409 `active_bookings`) se há atendimento `paid`, `in_progress` ou `disputed`; cancela com aviso à outra parte os atendimentos `accepted` ainda não pagos (`cancel_unpaid_accepted_bookings_for_user`) e os plantões atribuídos ou ofertados (`cancel_shifts_for_user_deletion`; plantão em andamento termina), sem bloquear a exclusão; cancela a assinatura Pro e as cobranças `pending` no Asaas, e abre registro de suporte quando a subconta não tem chave (`open_support_task`); registra `data_requests`, chama `anonymize_user` e apaga o usuário do Auth |
+| `account-delete` | usuário | recusa (409 `active_bookings`) se há atendimento `paid`, `in_progress` ou `disputed`; cancela com aviso à outra parte os atendimentos `accepted` ainda não pagos (`cancel_unpaid_accepted_bookings_for_user`) e os plantões futuros ligados à conta, com aviso às partes (`cancel_shifts_for_user_deletion`; plantão em check-in que ainda não terminou também é cancelado, regra provisória pendente de parecer jurídico; plantão já encerrado fica como histórico), sem bloquear a exclusão; cancela a assinatura Pro e as cobranças `pending` no Asaas, e abre registro de suporte quando a subconta não tem chave (`open_support_task`); registra `data_requests`, chama `anonymize_user` e apaga o usuário do Auth |
+| `provider-document-upload` | prestador | recebe um documento de verificação (`step`, `file`, multipart), confere o tipo pelos bytes, recusa HEIC (415), remove o metadado no servidor e grava no bucket `provider-documents/<provider_id>/` com a service role, junto com o registro em `provider_documents`; conta excluída é recusada; 60 arquivos por pasta (409 `document_limit`) |
+| `background-check-purge` | agendador (`x-cron-secret`) | remove os arquivos de antecedentes cuja revogação de consentimento tem mais de 30 dias; a linha fica `purged` quando há revisão ou auditoria, senão é apagada; responde `{ purged, failed }`; o agendamento é ação do dono (`docs/operacao/11-agendamento-de-rotinas.md`) |
 | `request-assist` | cliente (fase 3) | transforma texto livre em pedido estruturado (ocupação, urgência, resumo) com Claude Haiku 5.5 no servidor; limite por usuário em qualquer janela de 60 minutos, compartilhado com `quote-assist` e `care-summary` (padrão 10; 429); responde 503 sem `ANTHROPIC_API_KEY`; nenhuma tela chama a função hoje |
 
 Asaas: autenticação pelo cabeçalho `access_token`; valores em reais com duas
@@ -787,9 +782,13 @@ banco. Mudou aqui, muda `supabase/functions` no mesmo commit.
 - Cancelar no Asaas vem antes de anonimizar e pode ser repetido (404 conta como
   feito). Cobrança paga nesse intervalo responde 409 `payment_in_progress`.
 
+**Expurgo diário (pg_cron, 03:00)**
+
+- `run_retention_purge()` (migrações `20261118200002` e `20261118600002`) apaga as provas de consentimento com `retain_until` vencido (`consent_proofs`), os eventos de acesso com mais de 6 meses (`access_events`, leitura só de administradores) e os eventos de uso do assistente com mais de 1 dia (`assist_usage_events`). A migração agenda `retention-purge-daily` quando o pg_cron existe; a verificação do agendamento em produção é ação do dono.
+
 **Auditoria**
 
-- Toda função grava por `log_event(p_action, p_entity, p_entity_id, p_data)`,
+- As funções SQL gravam por `private.audit(...)`, e as Edge Functions gravam por `log_event(p_action, p_entity, p_entity_id, p_data)` com a service role,
   nunca por insert direto em `audit_log`. Com a service role o `actor_id` fica
   nulo e `data.via = 'service'`; quem pediu a ação vai em `data.requested_by`.
 

@@ -9,8 +9,8 @@ Contrato das duas funções de IA opcional que o plano permite **somente no serv
 
 Ambas seguem o padrão de `request-assist` (assistente de pedidos, `docs/ARQUITETURA.md`, "Assistente"):
 `handler.ts` com dependências injetadas, `index.ts` que monta as dependências reais, saída estruturada,
-tratamento de recusa e de resposta incompleta, 503 sem `ANTHROPIC_API_KEY`, cota por usuário e por hora
-consumida de forma atômica **antes** de chamar o modelo, CORS pelo `handler-kit` e registro de auditoria sem o texto.
+tratamento de recusa e de resposta incompleta, 503 sem `ANTHROPIC_API_KEY`, cota por usuário em janela deslizante de 60 minutos
+consumida de forma atômica **antes** de chamar o modelo, CORS pelo `route` de `_shared/http.ts`, com as origens de `corsOf` (`_shared/handler-kit.ts`) e registro de auditoria sem o texto.
 
 Estado: protótipo, **não implantado** e **não testado contra a API real** (não há chave neste repositório). O que
 foi exercitado são os handlers com modelo simulado (Vitest), a checagem de tipos e o lint do Deno. Os limites
@@ -81,7 +81,7 @@ Unidades: `unidade` (peças e materiais) e as do catálogo (`price_unit`): `hora
 }
 ```
 
-Limites de cada item, espelhando `private.compute_quote_total` / `quote_items_invalid` (`07_quotes_reviews.sql`):
+Limites de cada item. O banco (`private.compute_quote_total` / `quote_items_invalid`, em `20261019000007_quotes_reviews.sql` e `20261110100005_quote_limits.sql`) aceita descrição de até 500 caracteres, quantidade maior que zero sem teto e até 200 itens; o servidor é mais estrito:
 
 - de 1 a 20 itens (a tabela aceita até 200; um rascunho não precisa de mais);
 - `description`: texto de 2 a 160 caracteres, sem link, marcação, contato, frase de instrução nem valor em reais;
@@ -105,7 +105,7 @@ Envelope `{ "ok": false, "error": { "code", "message", "details?" } }`.
 | 401 | `unauthorized` | sem sessão válida |
 | 405 | `method_not_allowed` | método diferente de POST (OPTIONS responde 204 com CORS) |
 | 422 | `assist_declined` | o modelo recusou (`stop_reason: refusal`) |
-| 429 | `assist_rate_limited` | a cota da hora acabou (ou `ASSIST_HOURLY_LIMIT=0`) |
+| 429 | `assist_rate_limited` | a cota dos últimos 60 minutos acabou (ou `ASSIST_HOURLY_LIMIT=0`) |
 | 502 | `assist_unavailable` | resposta cortada (`max_tokens`), sem texto, ou saída inválida pelas regras acima, ou falha da API |
 | 503 | `assist_not_configured` | sem `ANTHROPIC_API_KEY`, ou chave recusada pela API |
 | 503 | `assist_busy` | limite de taxa da API |
@@ -229,12 +229,12 @@ devolvido ao texto**. Se a resposta contiver um nome conhecido, é descartada.
 Texto suspeito **não é bloqueado na entrada** (um prestador pode escrever "ignore" sem querer mal); ele é tratado como dado
 e o que o modelo devolver passa pelas verificações acima.
 
-## 6. Cota por hora
+## 6. Cota de 60 minutos
 
 As três funções de IA (`request-assist`, `quote-assist`, `care-summary`) chamam a mesma `take_assist_quota(p_user, p_limit)`
-(`04_marketplace.sql`): **um contador por usuário e por hora cheia em UTC**, compartilhado, com o mesmo limite
-`ASSIST_HOURLY_LIMIT` (padrão 10; 0 desliga as três). Quem usa duas funções na mesma hora divide as chamadas. Separar
-por função pediria uma coluna no `assist_usage` (nova migração, não feita aqui). A cota só é consumida quando o modelo
+(migração `20261118500001_assist_quota_sliding_window.sql`): **um registro por chamada concedida, por usuário, nos últimos 60 minutos** (janela deslizante, não a hora cheia em UTC), compartilhado, com o mesmo limite
+`ASSIST_HOURLY_LIMIT` (padrão 10; 0 desliga as três). Quem usa duas funções na mesma janela de 60 minutos divide as chamadas. Separar
+por função pediria uma coluna em `assist_usage_events` (nova migração, não feita aqui). A cota só é consumida quando o modelo
 vai de fato ser chamado.
 
 ## 7. Variáveis de ambiente
@@ -244,11 +244,11 @@ Nenhuma variável nova. As funções usam as já descritas em `docs/ARQUITETURA.
 | Variável | Para quê |
 |---|---|
 | `ANTHROPIC_API_KEY` | chave da API; ausente = 503 `assist_not_configured`. Nunca em `VITE_*` nem no app |
-| `ASSIST_HOURLY_LIMIT` | chamadas de IA por usuário por hora, somando as três funções (padrão 10; 0 desliga) |
+| `ASSIST_HOURLY_LIMIT` | chamadas de IA por usuário em qualquer janela de 60 minutos, somando as três funções (padrão 10; 0 desliga) |
 | `SITE_URL`, `ALLOW_DEV_ORIGINS` | origens permitidas pelo CORS |
 | `SUPABASE_URL`, `SUPABASE_*_KEY` | injetadas pelo Supabase; a chave de serviço só consome a cota e grava a auditoria |
 
-`supabase/config.toml` não lista as funções existentes, então estas também não foram listadas. Deploy: `supabase functions deploy quote-assist care-summary`
+`supabase/config.toml` lista só `asaas-webhook`, `notify-dispatch` e `background-check-purge`, todas com `verify_jwt = false`; `quote-assist` e `care-summary` não estão lá, por isso também não foram listadas. Deploy: `supabase functions deploy quote-assist care-summary`
 (com JWT; não usam `--no-verify-jwt`).
 
 ## 8. Auditoria
@@ -312,7 +312,7 @@ curl "${H[@]}" -d '{"household_id":"<uuid de uma casa sua>"}' $BASE/care-summary
 - **A consulta por sobreposição de período** (`period=ov.[...)`) foi aceita pelo PostgREST local (200, e erro 22P02 para um valor
   malformado), mas a tabela `shifts` estava vazia: o casamento com linhas reais e o RLS de cuidador/perfil (nomes legíveis para a
   família) não foram exercitados de ponta a ponta. Os testes de handler usam leituras simuladas.
-- **A cota é única para as três funções** (seção 6) e a janela é a hora cheia em UTC, não uma janela deslizante.
+- **A cota é única para as três funções** (seção 6) e a janela é deslizante, de 60 minutos, não a hora cheia em UTC.
 - **Sem cache e sem histórico:** cada clique é uma chamada nova (e uma unidade de cota); o resumo não é guardado.
 - **Custo:** por preço de tabela do Haiku 5.5 (US$ 0,10 por milhão de tokens de entrada e US$ 0,50 de saída, até 100 mil tokens de
   prompt, conforme a documentação da API em 2026-10-06), cada chamada custa uma fração de centavo; é estimativa, não medida. Confira o preço vigente.

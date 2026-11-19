@@ -31,7 +31,7 @@ Regra desta frente: **com backend, nenhum dado fictício aparece em lugar nenhum
 | `/teleconsultation/:sessionId` | Sala fictícia | Página "Funcionalidade futura" |
 | `/medical-records` | Prontuários fictícios | Página "Funcionalidade futura" |
 
-As páginas "Funcionalidade futura" (`components/FutureFeature.tsx`, textos em `pages/prototype/FutureFeaturePage.tsx`) dizem que teleconsulta e prontuário exigem empresa registrada no CRM, responsável técnico e prontuário certificado (NGS2/ICP-Brasil), e têm link de volta. Nada de clínico é oferecido.
+As páginas "Funcionalidade futura" (`components/FutureFeature.tsx`, textos em `pages/prototype/FutureFeaturePage.tsx`) dizem que teleconsulta e prontuário exigem empresa registrada no CRM e responsável técnico, além de prontuário certificado (NGS2/ICP-Brasil) na teleconsulta e de sistema certificado (NGS2/ICP-Brasil) no prontuário, e têm link de volta. Nada de clínico é oferecido.
 
 ## 4. Rodapé e identificação da empresa
 
@@ -99,7 +99,7 @@ Todas vazias em `.env.example`. São informação pública (vão para o JavaScri
 - `pages/OccupationPage.tsx` (E4): `PolicyDetails` imprime "Nesta demonstração, nada é coletado ou conferido." também com backend, e "Procurar profissionais" leva a uma lista de serviços (a página já mostra os profissionais abaixo).
 - `pages/cliente/Pedido.tsx`: o link para `/search?q=` leva agora à busca do catálogo; conferir o texto.
 - `components/TermsGate.tsx` e `pages/conta/Entrar.tsx`: "Termos de Uso" e "Política de Privacidade" apontam os dois para `/legal`; trocar por `/termos` e `/privacidade`.
-- `scripts/prerender.mjs` (E4): as páginas jurídicas não são pré-renderizadas; devem sair de `content/legal/*.md` com o mesmo subconjunto de Markdown e `noindex` enquanto o status não for `vigente`.
+- `scripts/prerender.mjs` (E4): o build já gera as páginas jurídicas em `dist/legal/<doc>/index.html` a partir de `content/legal/*.md`, com `noindex` enquanto `VITE_LEGAL_STATUS` não for `vigente`. O conversor do script aceita tachado (`~~texto~~`), que o renderizador do app não suporta; os dois devem usar o mesmo subconjunto de Markdown.
 - Links das páginas de captação (E7) no rodapé: acrescentar em `components/SiteFooter.tsx`.
 - Tabela de variáveis do `README.md`: acrescentar as seis variáveis acima.
 

@@ -14,7 +14,7 @@
 1. Busca as linhas de `provider_documents` com `deletion_requested_at` há mais de 30 dias e que ainda têm arquivo.
 2. Remove cada arquivo do bucket `provider-documents`.
 3. Chama `mark_background_check_purged` para a linha. Se o documento tem revisão (`reviewed_at`) ou registro em `audit_log`, a linha fica, sem `storage_path` e com status `purged`. Caso contrário, a linha é apagada.
-4. Responde `{ "purged": n, "failed": m }`. Uma falha em um arquivo é registrada e não impede os demais; a linha continua candidata e tenta de novo na rodada seguinte.
+4. Responde `{ "ok": true, "data": { "purged": n, "failed": m } }`. Uma falha em um arquivo é registrada e não impede os demais; a linha continua candidata e tenta de novo na rodada seguinte.
 
 Cada expurgo grava `document.purged` em `audit_log`, com `kept` indicando se a linha foi mantida.
 
@@ -32,7 +32,7 @@ Não grave o valor no repositório.
 
 ### 2. Endereço da função no Vault
 
-No SQL do projeto de produção, por quem tem acesso ao banco, cadastre o endereço da função com `vault.create_secret`, como descrito em `docs/arquitetura/infra.md`:
+No SQL do projeto de produção, por quem tem acesso ao banco, cadastre o endereço da função com `vault.create_secret`, como descrito em `apps/web/docs/arquitetura/infra.md`:
 
 ```sql
 select vault.create_secret('https://<ref>.supabase.co/functions/v1/background-check-purge', 'background_check_purge_url');
