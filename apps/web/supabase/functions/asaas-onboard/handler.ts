@@ -16,7 +16,7 @@ import {
 import { errors, readJson, route } from '../_shared/http.ts';
 import { centsToReais } from '../_shared/money.ts';
 import { type ProviderApproval, requireApprovedProvider } from '../_shared/provider-approval.ts';
-import { deriveSubaccountToken } from '../_shared/secrets.ts';
+import { deriveSubaccountToken, documentFingerprint } from '../_shared/secrets.ts';
 import { email, int, isoDate, object, oneOf, optional, phoneBR, postalCode, string, cpfCnpj } from '../_shared/validate.ts';
 
 export interface PaymentAccount {
@@ -25,6 +25,8 @@ export interface PaymentAccount {
   asaas_wallet_id: string | null;
   api_key_secret_id: string | null;
   status: string | null;
+  /** documentFingerprint of the CPF/CNPJ Asaas validated; null when no platform token is configured. */
+  cpf_hash?: string | null;
 }
 
 export interface OnboardDeps extends BaseDeps {
@@ -32,6 +34,8 @@ export interface OnboardDeps extends BaseDeps {
   /** `${SUPABASE_URL}/functions/v1/asaas-webhook`, to register the subaccount webhook. */
   webhookUrl: string | null;
   webhookToken?: string;
+  /** Key of the CPF/CNPJ fingerprint used by the free trial (TRIAL_DOCUMENT_SECRET). */
+  trialDocumentSecret?: string;
   session(req: Request): Promise<{
     user: AuthUser;
     getProvider(): Promise<(ProviderApproval & { id: string; plan: string }) | null>;
@@ -156,6 +160,9 @@ export function handler(req: Request, deps: OnboardDeps): Promise<Response> {
     else account.companyType = input.company_type;
     const webhooks = await subaccountWebhook(deps.webhookUrl, deps.webhookToken, provider.id, input.email);
     if (webhooks) account.webhooks = webhooks;
+    // Computed before createAccount: the key Asaas returns once must not be lost to an error here.
+    // The free trial later needs the same CPF/CNPJ (subscriptions-manage).
+    const cpfHash = deps.trialDocumentSecret ? await documentFingerprint(deps.trialDocumentSecret, input.cpf_cnpj) : null;
 
     if (!(await deps.admin.claimOnboarding(provider.id))) {
       throw errors.conflict('onboarding_in_progress', 'A ativação do recebimento já está em andamento. Aguarde alguns instantes.');
@@ -185,6 +192,7 @@ export function handler(req: Request, deps: OnboardDeps): Promise<Response> {
       asaas_wallet_id: created.walletId,
       api_key_secret_id: secretId,
       status,
+      cpf_hash: cpfHash,
     });
     await auditSafely(deps, {
       actor_id: provider.id,

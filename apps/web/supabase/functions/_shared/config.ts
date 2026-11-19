@@ -31,7 +31,7 @@ export interface FunctionConfig {
   /** AI assist calls (request-assist, quote-assist, care-summary) per user in any 60-minute window, one shared count (ASSIST_HOURLY_LIMIT, default 10). */
   assistHourlyLimit: number;
   /** baseUrl is undefined only in production without ASAAS_BASE_URL; asaasBaseUrl() turns that into a ConfigError. */
-  asaas: { apiKey?: string; baseUrl?: string; webhookToken?: string };
+  asaas: { apiKey?: string; baseUrl?: string; webhookToken?: string; trialDocumentSecret?: string };
   whatsapp: { token?: string; phoneNumberId?: string; graphVersion: string };
   email: { resendApiKey?: string; from?: string };
   anthropicApiKey?: string;
@@ -104,6 +104,8 @@ export function readConfig(get: EnvGetter): FunctionConfig {
       apiKey: clean(get('ASAAS_API_KEY')),
       baseUrl: asaasBaseUrl,
       webhookToken: clean(get('ASAAS_WEBHOOK_TOKEN')),
+      // Keys the HMAC of CPF/CNPJ for the free trial. Its own secret, so rotating the webhook token does not break it.
+      trialDocumentSecret: clean(get('TRIAL_DOCUMENT_SECRET')),
     },
     whatsapp: {
       token: clean(get('WHATSAPP_TOKEN')),
