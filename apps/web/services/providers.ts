@@ -278,7 +278,10 @@ const refusalSentence = async (error: unknown): Promise<string | null> => {
 const uploadRefusal = async (error: unknown): Promise<AppError> => {
   const app = await toAppErrorAsync(error);
   const message = await refusalSentence(error);
-  return message ? new AppError(app.code, { cause: error, detail: app.detail, message }) : app;
+  if (message) return new AppError(app.code, { cause: error, detail: app.detail, message });
+  // A 404 from the function means it is not served here, not that a document is missing (QA P-01)
+  if (app.code === 'not_found') return new AppError('function_unavailable', { cause: error, detail: app.detail });
+  return app;
 };
 
 /**

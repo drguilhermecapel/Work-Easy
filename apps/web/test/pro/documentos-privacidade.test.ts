@@ -200,6 +200,18 @@ describe('the refusals of the upload function reach the provider', () => {
     await expect(upload(PHOTO)).rejects.toMatchObject({ message: 'Só prestadores podem enviar documentos.' });
   });
 
+  it('says the service is unavailable when the function is not served (404), not that the document is missing', async () => {
+    fake.functionsHandlers[UPLOAD] = () => ({
+      data: null,
+      error: { name: 'FunctionsHttpError', message: 'Edge Function returned a non-2xx status code', context: new Response('Function not found', { status: 404 }) },
+    });
+
+    await expect(upload(PHOTO)).rejects.toMatchObject({
+      code: 'function_unavailable',
+      message: 'Este serviço está indisponível no momento. Tente mais tarde.',
+    });
+  });
+
   it('falls back to the sentence of the app when the answer has no sentence of its own', async () => {
     fake.functionsHandlers[UPLOAD] = () => ({
       data: null,
