@@ -502,6 +502,10 @@ export const listCareOccupations = async (): Promise<CareOccupation[]> => {
       .filter(([, policy]) => policy.priceUnits.includes('plantao'))
       .map(([slug]) => slug);
   }
+  // DD45: occupations aimed at children and newborns are not offered in the care line (the care recipient is an adult).
+  // An occupation known only to the database has no audience entry here, so it stays (residual, noted in DECISOES).
+  const audience = await loadPolicies().catch(() => ({}) as Record<string, { audienceMinors?: boolean }>);
+  slugs = slugs.filter(slug => !audience[slug]?.audienceMinors);
   // An occupation that exists only in the database has no entry in the static catalog: its name is read from the table
   const names = await occupationNames(slugs);
   return slugs.map(slug => ({ slug, name: names.get(slug) ?? slug })).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));

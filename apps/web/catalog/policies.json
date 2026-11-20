@@ -54211,7 +54211,7 @@
   ],
   "backgroundCheck": true,
   "billing": "sob_consulta_juridica",
-  "ratingRanking": true,
+  "ratingRanking": false,
   "laborLock": false,
   "providerType": "autonomo_ou_empresa",
   "audienceMinors": false,
