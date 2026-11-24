@@ -9,7 +9,8 @@ Monorepo B2C/B2G. **O produto real é `apps/web`** (com backend em Supabase). `s
   taxa e devolve um Pix inventado; custódia na própria plataforma depende de parecer jurídico (Lei 12.865/2013;
   Res. BCB 150/2021). Veja `apps/web/docs/DECISOES.md`, seção "Pagamento retido".
 - **As rotas de custódia, SOS e reputação ficam desligadas por padrão** e só sobem com `ENABLE_DEMO_ROUTES=true` (uso
-  local). O SOS demo não notifica ninguém. Com `APP_ENV=production` a API se recusa a subir com a demo ligada.
+  local, com `APP_ENV` de desenvolvimento). O SOS demo não notifica ninguém. Com a demo ligada e `APP_ENV` fora da lista
+  `development`/`dev`/`local`/`test` (inclusive ausente), a API se recusa a subir; `/docs` só existe em desenvolvimento.
 - **O KYC com Gemini é experimental e só sobe com `ENABLE_DEMO_ROUTES=true`**: não é verificação oficial de identidade, envia
   as imagens ao Google e **não consulta antecedentes** (o resultado é sempre revisão manual). Sem autenticação nem limite de
   uso, ele não pode ficar exposto numa URL pública.
