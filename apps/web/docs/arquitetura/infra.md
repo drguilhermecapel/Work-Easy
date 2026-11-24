@@ -211,13 +211,28 @@ Ordem sugerida para a primeira publicação. Nenhum passo é automático.
 
 - Nenhum workflow novo foi executado: não há runner do GitHub Actions nesta sessão. Os YAML foram validados com `yaml.safe_load`. O `actionlint`
   não estava disponível para uma checagem mais profunda.
-- Os inputs de `actions/checkout@v4`, `actions/setup-node@v4` e
-  `supabase/setup-cli@v3.0.1` foram conferidos nos `action.yml` oficiais. A CLI
-  do Supabase foi conferida com `--help` na versão 2.121.0 (a do `package.json`):
-  `functions deploy --no-verify-jwt`, `db push --linked --dry-run --skip-vault --yes`.
-- O wrangler está fixado em `4.152.0`, publicado em 22/10/2026. A escolha segue
-  a regra de versão com pelo menos duas semanas. As flags `--project-name`,
-  `--branch` e `--commit-hash` foram conferidas com `wrangler pages deploy --help`.
+- Os inputs de `actions/checkout@v7`, `actions/setup-node@v7`, `actions/setup-java@v6` e
+  `supabase/setup-cli` v3.2.0 foram conferidos nos `action.yml` oficiais (as majors novas
+  rodam em Node 24; os inputs usados não mudaram). As actions de terceiros
+  (`supabase/setup-cli`, `denoland/setup-deno`, `Swatinem/rust-cache`, `dtolnay/rust-toolchain`)
+  ficam fixadas por SHA de commit, resolvido com `git ls-remote`, com a versão no comentário
+  `# vX.Y.Z`, que o Dependabot atualiza junto com o SHA; `dtolnay/rust-toolchain` aponta para a
+  ponta do branch `1.90.0` do action e segue fora do Dependabot. As `actions/*` ficam na major.
+  Todo `actions/checkout` tem `persist-credentials: false`.
+- A CLI do Supabase é a 3.4.0 (a do `package.json`), conferida com `--help`: na 3, `--remote`
+  substitui `--linked` (obsoleto) e `--project-ref` em `db push`, `db query` e `functions deploy`,
+  e mudança em projeto hospedado pede confirmação; por isso `db query` e `functions deploy` levam
+  `--yes`. Não ensaiado contra projeto real: a primeira execução com `dry_run` mostra.
+- O `dry_run` do `deploy-supabase.yml` não publica nada, com ou sem `ref` (nem migração, nem
+  catálogo, nem função); o resumo do job lista o que seria publicado. O catálogo só é aplicado
+  depois de `scripts/check-catalog-sql.mjs`: o arquivo tem de ser igual ao gerado por
+  `scripts/generate-seed.mjs` e ter só upserts nas quatro tabelas do catálogo, lido valor a valor.
+- O wrangler vem de um lock próprio, `apps/web/tools/wrangler` (versão exata 4.164.0, hashes
+  de integridade, `npm ci` só no job de publicação), não de `npx --yes`. Fica fora do
+  `package.json` do app para os outros jobs não baixarem o `workerd` (cerca de 130 MB, com
+  script de instalação). A 4.152.0 anterior trazia um `undici` com alertas do `npm audit`
+  (um alto); a 4.164.0 tem 0. As flags `--project-name`, `--branch` e `--commit-hash` foram
+  conferidas com `wrangler pages deploy --help` na 4.164.0.
 - O `supabase/config.toml` tem entradas `[functions]` com `verify_jwt = false` para
   `asaas-webhook`, `notify-dispatch` e `background-check-purge`. O workflow passa
   também `--no-verify-jwt` na publicação das três; a flag é redundante e fica como
@@ -240,7 +255,7 @@ Aplicadas em 24/11/2026: `persist-credentials: false` nos checkouts de `web-ci.y
 em `web-ci.yml` e em `deploy-web.yml` (a segunda recusa também JWT com papel `service_role`);
 Rust fixo em 1.90.0 em `web-release.yml`, a versão de `src-tauri/Cargo.toml`. As demais
 continuam como recomendação: filtro de caminhos mais estreito no job `database`, build sem
-pré-renderização em pull request, `check-headers.mjs` no CI, actions fixadas por SHA,
+pré-renderização em pull request, `check-headers.mjs` no CI,
 jobs de macOS e Windows só em tag e sob demanda, versão fixa dos runners e `npm test` fora
 dos pull requests de empacotamento.
 
@@ -253,10 +268,9 @@ dos pull requests de empacotamento.
   PR, `tsc` mais `vite build` bastam; o build completo fica para `main` e para a
   publicação. A checagem de segredo do bundle (`gemini|api_key`) pode passar a
   incluir `sb_secret_` e rodar `scripts/check-headers.mjs --dist dist`.
-- Os `checkout` podem receber `persist-credentials: false`, já que nenhum job
-  faz push.
-- Vale fixar as actions por SHA de commit, não só por tag, e testar
-  `npm ci --ignore-scripts` antes de adotar. Esta última não foi verificada.
+- Aplicado: `persist-credentials: false` em todos os `checkout` e actions de terceiros
+  por SHA. Fica a recomendação de testar `npm ci --ignore-scripts` antes de adotar (não
+  verificada).
 
 `web-release.yml`:
 

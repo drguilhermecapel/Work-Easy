@@ -29,6 +29,22 @@ updates:
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
 
+  # Wrangler of deploy-web.yml, with its own lock (apps/web/tools/wrangler): installed only by the
+  # publish job, so the other jobs do not download workerd.
+  - package-ecosystem: npm
+    directory: /apps/web/tools/wrangler
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 2
+    labels:
+      - dependencies
+      - web
+
+  # The third-party actions are pinned by commit SHA with the version in a "# vX.Y.Z" comment;
+  # Dependabot updates the SHA and the comment together. actions/* stay on their major tag.
   - package-ecosystem: github-actions
     directory: /
     schedule:
