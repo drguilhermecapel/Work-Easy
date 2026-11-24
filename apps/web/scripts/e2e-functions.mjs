@@ -512,10 +512,17 @@ async function flows(stack, fx, fake) {
 
   // notify-dispatch: only when every due row in the queue is from this run
   const mine = fx.users.map(user => user.id);
-  const { data: due } = await service.from('notifications').select('id, user_id').eq('status', 'queued').lte('scheduled_for', new Date().toISOString());
+  // The same predicate as public.claim_notifications: due queued rows AND `sending` rows that can be reclaimed
+  // (never claimed, or claimed more than 10 minutes ago). notify-dispatch has no user filter.
+  const nowIso = new Date().toISOString();
+  const staleIso = new Date(Date.now() - 10 * 60_000).toISOString();
+  const { data: due } = await service
+    .from('notifications')
+    .select('id, user_id')
+    .or(`and(status.eq.queued,scheduled_for.lte.${nowIso}),and(status.eq.sending,or(claimed_at.is.null,claimed_at.lt.${staleIso}))`);
   const foreign = (due ?? []).filter(row => !mine.includes(row.user_id));
   if (foreign.length > 0) {
-    log(`notify-dispatch não exercitado: a fila tem ${foreign.length} notificação(ões) de outros usuários`);
+    log(`notify-dispatch não exercitado: a fila tem ${foreign.length} notificação(ões) de outros usuários (na fila ou reivindicáveis)`);
   } else {
     ok(await service.from('profiles').update({ phone: '+5511987654321' }).eq('id', provider.id), 'telefone');
     const params = { amount_cents: 15000, client_name: 'Dona Maria' };
