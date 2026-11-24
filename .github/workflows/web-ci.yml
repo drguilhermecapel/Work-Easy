@@ -27,10 +27,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -42,6 +42,11 @@ jobs:
       - run: npm run build
       # Budgets of the initial load (scripts/check-bundle-size.mjs): a regression fails here, not in production
       - run: npm run check:size
+      # The site build is not a store build (VITE_STORE_BUILD unset): the Pro sale and the care line stay.
+      - run: npm run check:store-bundle -- --store none
+      # Deep links of the native apps coherent. Without --strict: the owner's placeholders (domain,
+      # fingerprint, Team ID) are listed but do not fail; a contradiction between the files does.
+      - run: npm run check:app-links
       - name: No secrets in the bundle
         run: |
           if grep -rIiE "gemini|api_key" dist/; then
@@ -56,19 +61,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: apps/web/package-lock.json
       - run: npm ci
       # Mesma versão do devDependency "supabase" do package.json (conferida abaixo).
-      - uses: supabase/setup-cli@v3.2.0
+      - uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3.2.0
         with:
-          version: 2.121.0
+          version: 3.4.0
       - name: A CLI do CI é a do package.json
         run: |
           expected="$(node -p "require('./package.json').devDependencies.supabase")"
@@ -92,7 +97,7 @@ jobs:
           npm run test:integration
       - name: Tipos do banco em dia (lib/database.types.ts)
         run: |
-          supabase gen types typescript --local > "$RUNNER_TEMP/database.types.ts"
+          supabase gen types typescript > "$RUNNER_TEMP/database.types.ts"
           if ! diff -u lib/database.types.ts "$RUNNER_TEMP/database.types.ts"; then
             echo "::error::lib/database.types.ts está desatualizado. Rode 'npm run db:types' e faça o commit."
             exit 1
@@ -108,11 +113,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       # Versão do Deno usada no desenvolvimento (deno --version).
-      - uses: denoland/setup-deno@v2.0.5
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
         with:
           deno-version: 2.9.6
       # O deno.lock fica fixo (--frozen): dependência nova entra com o lock atualizado.

@@ -700,7 +700,7 @@ select a.provider_id, a.status
 
 **Sintoma.** O workflow "Publicar Supabase" falhou no passo de migrações ou o banco ficou em estado que o código não espera.
 
-**Como o deploy funciona** (`.github/workflows/deploy-supabase.yml`): execução manual, dry run por padrão. Aplica com `supabase db push --linked --skip-vault --yes` e, depois, o catálogo de produção (`supabase/catalog.sql`, com `supabase db query --linked -f`, em uma transação). `supabase/seed.sql` (desenvolvimento) nunca é aplicado. O catálogo sobrescreve áreas, ocupações, políticas e bairros com os valores do repositório: altere o catálogo só no repositório. Publica funções em outro passo; `asaas-webhook` e `notify-dispatch` com `--no-verify-jwt`. Grupo de concorrência único, sem cancelar execução em andamento. O campo opcional `ref` publica as funções de novo a partir de um commit anterior (ver "Reverter Edge Functions", no fim deste documento). Sem `ref`, o `dry_run` cobre só as migrações e o catálogo: com `deploy_functions` ligado as funções são publicadas mesmo com `dry_run` ligado.
+**Como o deploy funciona** (`.github/workflows/deploy-supabase.yml`): execução manual, dry run por padrão. Aplica com `supabase db push --linked --skip-vault --yes` e, depois, o catálogo de produção (`supabase/catalog.sql`, com `supabase db query --linked -f`, em uma transação). `supabase/seed.sql` (desenvolvimento) nunca é aplicado. O catálogo sobrescreve áreas, ocupações, políticas e bairros com os valores do repositório: altere o catálogo só no repositório. Publica funções em outro passo; `asaas-webhook` e `notify-dispatch` com `--no-verify-jwt`. Grupo de concorrência único, sem cancelar execução em andamento. O campo opcional `ref` publica as funções de novo a partir de um commit anterior (ver "Reverter Edge Functions", no fim deste documento). Com `dry_run` ligado nada é publicado, com ou sem `ref`: nem migração, nem catálogo, nem função; o resumo da execução lista o que seria publicado.
 
 **Diagnóstico.**
 
@@ -1283,11 +1283,11 @@ Não há artefato versionado de função: o Supabase guarda a versão publicada,
 
 | Campo | Valor |
 |---|---|
-| Só listar as migrations pendentes (`dry_run`) | ligado |
+| Ensaio: não publica nada (`dry_run`) | ligado |
 | Publicar as Edge Functions (`deploy_functions`) | ligado |
 | `ref` | o SHA, a tag ou a branch do commit bom |
 
-O ambiente `production` pede aprovação; mesmo no ensaio o job só lê o repositório e vincula o projeto, e não publica nada. Confira no resumo da execução: modo "reversão de Edge Functions", o **SHA publicado** (deve ser o do commit bom, não o de `main`), o aviso de migrações novas, e a lista de funções que seriam publicadas. O ensaio falha, de propósito, se o `ref` não está no histórico de `main` ou se `deploy_functions` está desligado.
+O ambiente `production` pede aprovação; mesmo no ensaio o job só lê o repositório e vincula o projeto, e não publica nada (desde a decisão do coordenador de 24/11/2026 o `dry_run` vale também sem `ref`). Confira no resumo da execução: modo "reversão de Edge Functions", o **SHA publicado** (deve ser o do commit bom, não o de `main`), o aviso de migrações novas, a lista de funções que seriam publicadas (as três sem JWT marcadas) e a linha "Ensaio (dry_run): nada foi publicado". O ensaio falha, de propósito, se o `ref` não está no histórico de `main` ou se `deploy_functions` está desligado.
 
 **Reversão de verdade.** Os mesmos campos, com `dry_run` **desligado**. O workflow publica cada função do commit (`asaas-webhook`, `notify-dispatch` e `background-check-purge` com `--no-verify-jwt`; as demais com verificação de JWT) e registra no resumo o SHA e cada função publicada.
 
