@@ -1,4 +1,6 @@
 // @vitest-environment node
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ImageCodec } from '../../lib/imageMetadata';
 import { VERIFICATION_LABELS, PRICE_UNIT_LABELS } from '../../catalog/labels';
@@ -14,11 +16,11 @@ import {
 } from '../../supabase/functions/provider-document-upload/handler.ts';
 import { handler as quoteAssist, type QuoteAssistDeps } from '../../supabase/functions/quote-assist/handler.ts';
 import {
-  handler as subscriptions, TRIAL_USED_MESSAGE, type SubscriptionRow, type SubscriptionsDeps,
+  handler as subscriptions, TRIAL_ONBOARDING_MESSAGE, TRIAL_UNBOUND_ACCOUNT_MESSAGE, TRIAL_USED_MESSAGE, type SubscriptionRow, type SubscriptionsDeps,
 } from '../../supabase/functions/subscriptions-manage/handler.ts';
 import type { ModelResult } from '../../supabase/functions/_shared/ai-model.ts';
 import { slug as modelSlug } from '../../supabase/functions/_shared/ai-guard.ts';
-import { QUOTE_UNITS } from '../../supabase/functions/_shared/quote-assist.ts';
+import { MAX_REFERENCE_CENTS, QUOTE_UNITS } from '../../supabase/functions/_shared/quote-assist.ts';
 import { documentFingerprint } from '../../supabase/functions/_shared/secrets.ts';
 import type { FakeSupabase } from '../web/fakeSupabase';
 import { serveFunction } from './clientContract.ts';
@@ -56,6 +58,7 @@ const { subscribePro, cancelPro, activateReceiving } = await import('../../servi
 const { exportMyData, deleteMyAccount, DELETE_CONFIRMATION } = await import('../../services/account');
 const { uploadProviderDocument } = await import('../../services/providers');
 const { suggestQuote, summarizeWeek, QUOTE_ASSIST_LIMITS } = await import('../../services/aiAssist');
+const { createCharge: createOwnCharge } = await import('../../services/charges');
 const fake = supabase as unknown as FakeSupabase;
 
 /**
@@ -74,6 +77,36 @@ const sentBody = (): Record<string, unknown> => {
   expect(fake.functionCalls).toHaveLength(1);
   return fake.functionCalls[0].body as Record<string, unknown>;
 };
+
+const FUNCTIONS = join(__dirname, '../../supabase/functions');
+
+/**
+ * The fields a function names in its body schema (`const Body = object({ ... })`), read from its source. The
+ * handlers ignore a field they do not name, so a field the app renamed would be accepted and dropped without
+ * a sound. Each test below compares the WHOLE body the app sent (toEqual) and then checks that every field of
+ * it is named by the function: a rename on either side fails.
+ */
+const schemaKeys = (file: string, name = 'Body'): string[] => {
+  const source = readFileSync(join(FUNCTIONS, file), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  const declaration = new RegExp(`const ${name}\\b[^=\\n]*= object\\(\\{`).exec(source);
+  expect(declaration, `${name} in ${file}`).not.toBeNull();
+  let depth = 1;
+  let top = '';
+  for (let index = (declaration?.index ?? 0) + (declaration?.[0].length ?? 0); depth > 0 && index < source.length; index++) {
+    const char = source[index];
+    if ('{[('.includes(char)) depth++;
+    else if ('}])'.includes(char)) depth--;
+    else if (depth === 1) top += char;
+  }
+  return [...top.matchAll(/([a-z_]+)\s*:/g)].map(match => match[1]);
+};
+
+/** Every field of what the app sent is one the function names. */
+const expectNamedBy = (body: Record<string, unknown>, file: string, name?: string) => {
+  const named = schemaKeys(file, name);
+  for (const key of Object.keys(body)) expect(named, `"${key}" is not a field of ${file}`).toContain(key);
+};
+
 /** The method and headers of the only call: every function takes a POST, and the app sets no header of its own. */
 const sentOptions = () => {
   expect(fake.functionOptions).toHaveLength(1);
@@ -151,6 +184,7 @@ describe('payments-create: what createCharge sends and reads', () => {
     const calls = servePaymentsCreate({ customerId: null });
     await createCharge({ bookingId: BOOKING_ID, method: 'pix', cpfCnpj: '529.982.247-25' });
     expect(sentBody()).toEqual({ booking_id: BOOKING_ID, method: 'pix', cpf_cnpj: VALID_CPF });
+    expectNamedBy(sentBody(), 'payments-create/handler.ts');
     expect(calls.find(call => call.url.endsWith('/customers'))?.body).toMatchObject({ cpfCnpj: VALID_CPF });
 
     fake.reset();
@@ -187,6 +221,7 @@ describe('payments-void: what voidOpenCharges sends and reads', () => {
     // voidOpenCharges never throws: a body the handler refused would come back as the notice
     expect(await voidOpenCharges(BOOKING_ID)).toBeNull();
     expect(sentBody()).toEqual({ booking_id: BOOKING_ID });
+    expectNamedBy(sentBody(), 'payments-void/handler.ts');
     expect(sentOptions()).toEqual({ method: 'POST', headers: undefined });
   });
 
@@ -204,7 +239,9 @@ const APPROVED = {
 };
 const PLATFORM_SECRET = 'platform-token-0123456789abcdef0123456789';
 
-async function subscriptionsDeps(over: { current?: SubscriptionRow | null; trialDays?: number; claimedHashes?: string[] } = {}) {
+async function subscriptionsDeps(
+  over: { current?: SubscriptionRow | null; trialDays?: number; claimedHashes?: string[]; onboarded?: boolean; unboundAccount?: boolean } = {},
+) {
   const accountHash = await documentFingerprint(PLATFORM_SECRET, VALID_CPF);
   const claimed = over.claimedHashes ?? [];
   const { client, calls } = asaasWith({
@@ -222,8 +259,8 @@ async function subscriptionsDeps(over: { current?: SubscriptionRow | null; trial
       saveSubscription: async () => undefined,
       claimSubscription: async () => true,
       setProviderPlan: async () => undefined,
-      isPaymentOnboardingComplete: async () => true,
-      getPaymentCpfHash: async () => accountHash,
+      isPaymentOnboardingComplete: async () => over.onboarded !== false,
+      getPaymentCpfHash: async () => (over.unboundAccount ? null : accountHash),
       claimTrial: async hash => !claimed.includes(hash),
       releaseTrial: async () => undefined,
       getProPriceCents: async () => 4900,
@@ -267,6 +304,7 @@ describe('subscriptions-manage: what subscribePro and cancelPro send and read', 
     const result = await subscribePro({ method: 'pix', cpfCnpj: '529.982.247-25' });
 
     expect(sentBody()).toEqual({ action: 'subscribe', method: 'pix', cpf_cnpj: VALID_CPF });
+    expectNamedBy(sentBody(), 'subscriptions-manage/handler.ts');
     expect(result).toMatchObject({ status: 'trialing', plan: 'pro', awaiting_payment: false });
     expect(result.trial_ends_at).toMatch(/^\d{4}-\d{2}-\d{2}T23:59:59-03:00$/);
   });
@@ -279,6 +317,7 @@ describe('subscriptions-manage: what subscribePro and cancelPro send and read', 
     const result = await cancelPro();
 
     expect(sentBody()).toEqual({ action: 'cancel' });
+    expectNamedBy(sentBody(), 'subscriptions-manage/handler.ts');
     expect(result).toEqual({ status: 'canceled', plan: 'pro', pro_until: '2026-11-19T23:59:59-03:00' });
   });
 
@@ -290,6 +329,19 @@ describe('subscriptions-manage: what subscribePro and cancelPro send and read', 
     expect(error).toMatchObject({ message: TRIAL_USED_MESSAGE });
   });
 
+  // The server has two reasons for the same code and a sentence for each: the app shows the one it sent
+  it('shows the sentence of the server when the trial needs the receiving account (two reasons, one code)', async () => {
+    await serveSubscriptions({ trialDays: 7, onboarded: false });
+    const notFinished = await subscribePro({ method: 'pix', cpfCnpj: VALID_CPF }).catch((err: unknown) => err);
+    expect(notFinished).toMatchObject({ message: TRIAL_ONBOARDING_MESSAGE });
+
+    fake.reset();
+    await serveSubscriptions({ trialDays: 7, unboundAccount: true });
+    const unbound = await subscribePro({ method: 'pix', cpfCnpj: VALID_CPF }).catch((err: unknown) => err);
+    expect(unbound).toMatchObject({ message: TRIAL_UNBOUND_ACCOUNT_MESSAGE });
+    expect(TRIAL_ONBOARDING_MESSAGE).not.toBe(TRIAL_UNBOUND_ACCOUNT_MESSAGE);
+  });
+
   it('says there is nothing to cancel, in the app words', async () => {
     await serveSubscriptions();
     await expect(cancelPro()).rejects.toMatchObject({ code: 'no_subscription' });
@@ -298,9 +350,9 @@ describe('subscriptions-manage: what subscribePro and cancelPro send and read', 
 
 // ---- asaas-onboard (provider opens the receiving account) -------------------------------------------
 
-function onboardDeps(): OnboardDeps {
-  const { client } = asaasWith({ 'POST /v3/accounts': { body: { id: 'acc_1', walletId: 'wal_1', apiKey: '$aact_sub' } } });
-  return {
+function onboardDeps() {
+  const { client, calls } = asaasWith({ 'POST /v3/accounts': { body: { id: 'acc_1', walletId: 'wal_1', apiKey: '$aact_sub' } } });
+  const deps: OnboardDeps = {
     ...baseDeps,
     asaas: client,
     webhookUrl: 'https://proj.supabase.co/functions/v1/asaas-webhook',
@@ -317,6 +369,7 @@ function onboardDeps(): OnboardDeps {
       audit: async () => undefined,
     },
   };
+  return { deps, calls };
 }
 
 const PERSON = {
@@ -324,8 +377,18 @@ const PERSON = {
   address: 'Rua Teste', addressNumber: '100', province: 'Pinheiros', postalCode: '05422-000',
 };
 
+/** The account the handler asked Asaas to create: proof that a field of the request was used, not just accepted. */
+const serveOnboard = () => {
+  const { deps, calls } = onboardDeps();
+  serveFunction(fake, 'asaas-onboard', request => asaasOnboard(request, deps));
+  return () => calls.find(call => call.method === 'POST' && call.url.endsWith('/accounts'))?.body as Record<string, unknown>;
+};
+
 describe('asaas-onboard: what activateReceiving sends and reads', () => {
-  beforeEach(() => serveFunction(fake, 'asaas-onboard', request => asaasOnboard(request, onboardDeps())));
+  let createdAccount: ReturnType<typeof serveOnboard>;
+  beforeEach(() => {
+    createdAccount = serveOnboard();
+  });
 
   it('opens the account of a person (CPF, birth date) and reads what the Assinatura screen shows', async () => {
     const result = await activateReceiving(PERSON);
@@ -334,6 +397,8 @@ describe('asaas-onboard: what activateReceiving sends and reads', () => {
       name: 'Ana Souza', email: 'Ana@Example.com', cpf_cnpj: VALID_CPF, mobile_phone: '+5511987654321', income_value_cents: 500000, address: 'Rua Teste',
       address_number: '100', province: 'Pinheiros', postal_code: '05422000', birth_date: '1990-05-20',
     });
+    expectNamedBy(sentBody(), 'asaas-onboard/handler.ts');
+    expect(createdAccount()).toMatchObject({ birthDate: '1990-05-20', cpfCnpj: VALID_CPF });
     expect(sentOptions()).toEqual({ method: 'POST', headers: undefined });
     expect(result).toMatchObject({ status: 'active', own_charges_enabled: true });
   });
@@ -343,16 +408,24 @@ describe('asaas-onboard: what activateReceiving sends and reads', () => {
       ...PERSON, name: 'Ana Reformas', cpfCnpj: '11.222.333/0001-81', birthDate: undefined, companyType: 'MEI', complement: 'Sala 2',
     });
 
-    expect(sentBody()).toMatchObject({ cpf_cnpj: VALID_CNPJ, company_type: 'MEI', complement: 'Sala 2' });
-    expect(sentBody()).not.toHaveProperty('birth_date');
+    // The whole body, so that a renamed optional field (complement, company_type) cannot pass unseen
+    expect(sentBody()).toEqual({
+      name: 'Ana Reformas', email: 'Ana@Example.com', cpf_cnpj: VALID_CNPJ, mobile_phone: '+5511987654321', income_value_cents: 500000, address: 'Rua Teste',
+      address_number: '100', complement: 'Sala 2', province: 'Pinheiros', postal_code: '05422000', company_type: 'MEI',
+    });
+    expectNamedBy(sentBody(), 'asaas-onboard/handler.ts');
+    // ...and the function used them: the account asked of Asaas carries the complement and the company type
+    expect(createdAccount()).toMatchObject({ complement: 'Sala 2', companyType: 'MEI', cpfCnpj: VALID_CNPJ });
+    expect(createdAccount()).not.toHaveProperty('birthDate');
     expect(result.own_charges_enabled).toBe(true);
   });
 
   it('takes every company type of the form', async () => {
     for (const companyType of ['MEI', 'LIMITED', 'INDIVIDUAL', 'ASSOCIATION'] as const) {
       fake.reset();
-      serveFunction(fake, 'asaas-onboard', request => asaasOnboard(request, onboardDeps()));
+      const created = serveOnboard();
       await expect(activateReceiving({ ...PERSON, cpfCnpj: VALID_CNPJ, birthDate: undefined, companyType }), companyType).resolves.toMatchObject({ status: 'active' });
+      expect(created(), companyType).toMatchObject({ companyType });
     }
   });
 
@@ -431,6 +504,7 @@ describe('account-delete: what deleteMyAccount sends and reads', () => {
     await expect(deleteMyAccount(DELETE_CONFIRMATION)).resolves.toBeUndefined();
 
     expect(sentBody()).toEqual({ confirm: CONFIRMATION });
+    expectNamedBy(sentBody(), 'account-delete/handler.ts');
     expect(sentOptions()).toEqual({ method: 'POST', headers: undefined });
     expect(DELETE_CONFIRMATION).toBe(CONFIRMATION);
   });
@@ -571,6 +645,10 @@ describe('quote-assist: what suggestQuote sends and reads', () => {
     expect(sentBody()).toEqual({
       description: DESCRIPTION, occupation_slug: 'pintor', reference_prices: [{ label: 'Pintura de parede', unit_price_cents: 3500, unit: 'm2' }],
     });
+    expectNamedBy(sentBody(), '_shared/quote-assist.ts', 'QuoteAssistBody');
+    for (const reference of sentBody().reference_prices as Array<Record<string, unknown>>) {
+      expectNamedBy(reference, '_shared/quote-assist.ts', 'referencePrice');
+    }
     expect(sentOptions()).toEqual({ method: 'POST', headers: undefined });
     expect(suggestion.items).toEqual([
       { description: 'Pintura de parede, duas demãos', quantity: 40, unit: 'm2', unit_price_cents: 3500 },
@@ -612,6 +690,37 @@ describe('quote-assist: what suggestQuote sends and reads', () => {
     expect((sentBody().reference_prices as unknown[]).length).toBe(Math.min(units.length, QUOTE_ASSIST_LIMITS.referencePrices));
   });
 
+  it('states the same price limit as the function and never sends a reference price above it', async () => {
+    expect(QUOTE_ASSIST_LIMITS.referencePriceMaxCents).toBe(MAX_REFERENCE_CENTS);
+
+    // At the limit the function accepts the request; one cent above, it would refuse the whole request as a generic invalid_input
+    serveQuote(quoteAnswer('p1'));
+    const atLimit = await suggestQuote({
+      description: DESCRIPTION, referencePrices: [{ label: 'Projeto', unit_price_cents: MAX_REFERENCE_CENTS, unit: 'projeto' }],
+    });
+    expect(atLimit.items[0].unit_price_cents).toBe(MAX_REFERENCE_CENTS);
+
+    fake.reset();
+    serveQuote();
+    const above = await suggestQuote({
+      description: DESCRIPTION,
+      referencePrices: [
+        { label: 'Obra grande', unit_price_cents: MAX_REFERENCE_CENTS + 1, unit: 'projeto' },
+        { label: 'Pintura de parede', unit_price_cents: 3500, unit: 'm2' },
+      ],
+    });
+    // The expensive service is left out (the provider types that price); the other one still goes
+    expect(sentBody().reference_prices).toEqual([{ label: 'Pintura de parede', unit_price_cents: 3500, unit: 'm2' }]);
+    expect(above.items.map(item => item.unit_price_cents)).toEqual([null, null]);
+
+    // Only an expensive one: the request carries no reference_prices at all
+    fake.reset();
+    serveQuote();
+    await suggestQuote({ description: DESCRIPTION, referencePrices: [{ label: 'Obra grande', unit_price_cents: MAX_REFERENCE_CENTS + 1 }] });
+    expect(sentBody()).toEqual({ description: DESCRIPTION });
+    expectNamedBy(sentBody(), '_shared/quote-assist.ts', 'QuoteAssistBody');
+  });
+
   it('adds the instead-sentence to what the function refuses', async () => {
     serveQuote({ kind: 'refusal' });
     await expect(suggestQuote({ description: DESCRIPTION })).rejects.toMatchObject({ message: expect.stringContaining('Monte os itens manualmente.') });
@@ -619,6 +728,44 @@ describe('quote-assist: what suggestQuote sends and reads', () => {
     fake.reset();
     serveQuote(QUOTE_ANSWER, { consent: false });
     await expect(suggestQuote({ description: DESCRIPTION })).rejects.toMatchObject({ message: expect.stringContaining('concordância') });
+  });
+});
+
+// ---- charges-create (provider charges an own client) ---------------------------------------------------
+// The handler needs a database of bookings, quotes and CRM clients; its acceptance of a request is covered by
+// charges-client-contract.test.ts. What this adds: the optional fields (provider_client_id, due_date,
+// description) are compared whole and against the fields the function names, since the handler ignores a
+// field it does not know and a renamed one would pass.
+
+describe('charges-create: every optional field createCharge sends is one the function names', () => {
+  const serveRecorder = () => {
+    fake.functionsHandlers['charges-create'] = () => ({ data: { ok: true, data: {} }, error: null });
+  };
+  const QUOTE_ID = '66666666-6666-4666-8666-666666666666';
+  const CRM_CLIENT_ID = '77777777-7777-4777-8777-777777777777';
+
+  it('sends a quote charge with the client, the due date and the description', async () => {
+    serveRecorder();
+    await createOwnCharge({
+      target: { kind: 'quote', id: QUOTE_ID }, method: 'boleto', providerClientId: CRM_CLIENT_ID, dueDate: '2030-01-16', description: '  Pintura da sala  ',
+    });
+    expect(sentBody()).toEqual({
+      quote_id: QUOTE_ID, method: 'boleto', provider_client_id: CRM_CLIENT_ID, due_date: '2030-01-16', description: 'Pintura da sala',
+    });
+    expectNamedBy(sentBody(), 'charges-create/handler.ts');
+  });
+
+  it('sends a booking charge with its own id field', async () => {
+    serveRecorder();
+    await createOwnCharge({ target: { kind: 'booking', id: BOOKING_ID }, method: 'pix' });
+    expect(sentBody()).toEqual({ booking_id: BOOKING_ID, method: 'pix' });
+    expectNamedBy(sentBody(), 'charges-create/handler.ts');
+  });
+
+  it('reads the fields of the schema correctly (a control for the reader of the source)', () => {
+    expect(schemaKeys('charges-create/handler.ts').sort()).toEqual(['booking_id', 'description', 'due_date', 'method', 'provider_client_id', 'quote_id']);
+    expect(schemaKeys('asaas-onboard/handler.ts')).toContain('complement');
+    expect(schemaKeys('subscriptions-manage/handler.ts').sort()).toEqual(['action', 'cpf_cnpj', 'method']);
   });
 });
 
@@ -670,6 +817,7 @@ describe('care-summary: what summarizeWeek sends and reads', () => {
     const week = await summarizeWeek(HOUSE);
 
     expect(sentBody()).toEqual({ household_id: HOUSE });
+    expectNamedBy(sentBody(), 'care-summary/handler.ts');
     expect(sentOptions()).toEqual({ method: 'POST', headers: undefined });
     expect(week.summary).toMatchObject({ overview: expect.any(String), activities: expect.any(Array), routine: expect.any(Array), follow_up: expect.any(Array) });
     expect(week).toMatchObject({ shifts: 1, reports_used: 1, mentions_health: false, health_notice: null });

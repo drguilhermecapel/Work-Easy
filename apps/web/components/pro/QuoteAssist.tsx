@@ -28,7 +28,8 @@ const serviceLabel = (service: ServiceRow): string => {
     service.price_max_cents !== null && service.price_max_cents !== service.price_min_cents
       ? `${formatCents(service.price_min_cents)} a ${formatCents(service.price_max_cents)}`
       : formatCents(service.price_min_cents);
-  return `${service.title} · ${range} ${PRICE_UNIT_LABELS[service.unit]}`;
+  const note = service.price_min_cents > QUOTE_ASSIST_LIMITS.referencePriceMaxCents ? ` (acima de ${formatCents(QUOTE_ASSIST_LIMITS.referencePriceMaxCents)}: o preço não é enviado, você preenche)` : '';
+  return `${service.title} · ${range} ${PRICE_UNIT_LABELS[service.unit]}${note}`;
 };
 
 const Panel: React.FC<{ providerId: string; onApply: (suggestion: QuoteSuggestion) => void; onClose: () => void }> = ({

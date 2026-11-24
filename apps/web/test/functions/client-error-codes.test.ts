@@ -3,6 +3,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { toAppError } from '../../lib/errors';
+import { proError, SERVER_SENTENCE_CODES } from '../../services/proErrors';
 import { DB_RULE_CODES } from '../../supabase/functions/_shared/handler-kit.ts';
 
 // The app turns the `error.code` of a function into its own code and sentence (lib/errors.ts). A code it does
@@ -85,5 +86,66 @@ describe('error codes of the functions the app calls', () => {
       .filter(([code]) => toAppError({ error: { code } }).code === 'unknown')
       .map(([code, file]) => `${code} (${file})`);
     expect(unknown).toEqual([]);
+  });
+});
+
+/** What each function answers with a code: the sentences it sends, by function and code, for every `errors.conflict(code, sentence)`. */
+const sentencesByFunctionAndCode = (): Map<string, Set<string>> => {
+  const sources = sourcesOfCalledFunctions();
+  const constants = new Map<string, string>();
+  for (const { text } of sources) {
+    for (const match of text.matchAll(/export const ([A-Z_]+) =\s*'((?:[^'\\]|\\.)*)'/g)) constants.set(match[1], match[2]);
+  }
+  const out = new Map<string, Set<string>>();
+  for (const { file, text } of sources) {
+    for (const match of text.matchAll(/errors\.conflict\(\s*'([a-z_]+)',\s*('(?:[^'\\]|\\.)*'|[A-Z_]+)/g)) {
+      const sentence = match[2].startsWith("'") ? match[2].slice(1, -1) : constants.get(match[2]);
+      if (!sentence) continue;
+      const key = `${file.split('/')[0]}:${match[1]}`;
+      out.set(key, (out.get(key) ?? new Set()).add(sentence));
+    }
+  }
+  return out;
+};
+
+describe('a code that one function answers with more than one sentence', () => {
+  // Two functions may word a code for their own audience (payments-create for the payer, charges-create for the provider)
+  // and the screen picks its own sentence for them. Inside ONE function, two sentences for a code mean two situations
+  // that the single sentence of the app cannot tell apart: the app has to show the one the function sent.
+  it('is shown by the app with the sentence the function sent', () => {
+    const many = [...sentencesByFunctionAndCode()].filter(([, sentences]) => sentences.size > 1).map(([key]) => key);
+    // The scan finds the case that motivated this rule
+    expect(many).toContain('subscriptions-manage:trial_requires_payment_account');
+    expect(many.map(key => key.split(':')[1]).filter(code => !SERVER_SENTENCE_CODES.has(code))).toEqual([]);
+  });
+});
+
+describe('proError: the sentence of the server is shown only for the codes listed for it', () => {
+  const failed = (status: number, code: string, message: string) => ({
+    name: 'FunctionsHttpError',
+    message: 'Edge Function returned a non-2xx status code',
+    context: new Response(JSON.stringify({ ok: false, error: { code, message } }), { status }),
+  });
+
+  it('shows the sentence of the server for trial_requires_payment_account, whichever of the two it sent', async () => {
+    const one = await proError(failed(409, 'trial_requires_payment_account', 'Conclua o cadastro de recebimento pelo Asaas para começar o teste grátis.'));
+    expect(one.message).toBe('Conclua o cadastro de recebimento pelo Asaas para começar o teste grátis.');
+    expect(one.code).toBe('trial_requires_payment_account');
+    const other = await proError(failed(409, 'trial_requires_payment_account', 'Este recebimento foi criado antes da verificação de CPF. Fale com o suporte.'));
+    expect(other.message).toBe('Este recebimento foi criado antes da verificação de CPF. Fale com o suporte.');
+  });
+
+  it('falls back to the sentence of the app when the server sent none, an empty one or a very long one', async () => {
+    const fallback = toAppError({ error: { code: 'trial_requires_payment_account' } }).message;
+    for (const message of ['', '   ', 'x'.repeat(301)]) {
+      expect((await proError(failed(409, 'trial_requires_payment_account', message))).message, `"${message.slice(0, 5)}"`).toBe(fallback);
+    }
+  });
+
+  it('keeps the sentence of the app for every other code, whatever text the server sends', async () => {
+    for (const code of ['trial_already_used', 'no_subscription', 'already_paid', 'invalid_input']) {
+      const own = toAppError({ error: { code } }).message;
+      expect((await proError(failed(409, code, 'Texto do servidor'))).message, code).toBe(own);
+    }
   });
 });
