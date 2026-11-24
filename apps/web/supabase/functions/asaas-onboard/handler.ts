@@ -85,6 +85,7 @@ export const SUBACCOUNT_WEBHOOK_EVENTS = [
 export const KEY_LOST_STATUSES = ['key_not_stored', 'key_not_returned'];
 
 const VAULT_ATTEMPTS = 3;
+const SAVE_ATTEMPTS = 3;
 
 /**
  * Webhook registered in the provider's subaccount. The URL names the provider
@@ -186,14 +187,27 @@ export function handler(req: Request, deps: OnboardDeps): Promise<Response> {
     } else {
       status = 'key_not_returned';
     }
-    await deps.admin.savePaymentAccount({
-      provider_id: provider.id,
-      asaas_account_id: created.id,
-      asaas_wallet_id: created.walletId,
-      api_key_secret_id: secretId,
-      status,
-      cpf_hash: cpfHash,
-    });
+    // The account exists in Asaas: losing this write would leave a claim that, once stale, is taken
+    // over and creates a second subaccount. A few attempts, and a trail if none of them works.
+    try {
+      await saveAccount(deps, {
+        provider_id: provider.id,
+        asaas_account_id: created.id,
+        asaas_wallet_id: created.walletId,
+        api_key_secret_id: secretId,
+        status,
+        cpf_hash: cpfHash,
+      });
+    } catch (error) {
+      await auditSafely(deps, {
+        actor_id: provider.id,
+        action: 'payment_account.orphan',
+        entity: 'provider_payment_accounts',
+        entity_id: provider.id,
+        data: { asaas_account_id: created.id, asaas_wallet_id: created.walletId, key_stored: secretId !== null },
+      });
+      throw error;
+    }
     await auditSafely(deps, {
       actor_id: provider.id,
       action: 'payment_account.create',
@@ -216,6 +230,21 @@ export function handler(req: Request, deps: OnboardDeps): Promise<Response> {
       },
     };
   });
+}
+
+/** Writes the account row with a few attempts; throws the last error if none works. */
+async function saveAccount(deps: OnboardDeps, row: Parameters<OnboardDeps['admin']['savePaymentAccount']>[0]): Promise<void> {
+  const sleep = deps.sleep ?? wait;
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await deps.admin.savePaymentAccount(row);
+      return;
+    } catch (error) {
+      deps.logError(error);
+      if (attempt >= SAVE_ATTEMPTS) throw error;
+      await sleep(250 * attempt);
+    }
+  }
 }
 
 /** Vault write with a few attempts; null (never throws) so the account is still saved. */

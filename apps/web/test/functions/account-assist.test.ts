@@ -326,6 +326,8 @@ describe('account-delete', () => {
     expect(res.status).toBe(500);
     expect(res.body.error.code).toBe('auth_delete_failed');
     expect(steps).not.toContain('status:completed');
+    // The request does not stay "processing" forever
+    expect(steps).toContain('status:failed');
   });
 });
 

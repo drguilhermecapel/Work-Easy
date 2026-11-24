@@ -39,7 +39,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export async function deriveSubaccountToken(platformToken: string, providerId: string): Promise<string> {
   if (!platformToken) throw new Error('platform webhook token is missing');
   if (!UUID.test(providerId)) throw new Error('provider id must be a uuid');
-  return hmacSha256Hex(platformToken, `asaas-subaccount:${providerId.toLowerCase()}`);
+  return await hmacSha256Hex(platformToken, `asaas-subaccount:${providerId.toLowerCase()}`);
 }
 
 /** HMAC-SHA256 of the UTF-8 `message` keyed with `key`, in lowercase hex. */
@@ -62,7 +62,7 @@ const DOCUMENT_DIGITS = /^(\d{11}|\d{14})$/;
 export async function documentFingerprint(platformToken: string, digits: string): Promise<string> {
   if (!platformToken) throw new Error('platform webhook token is missing');
   if (!DOCUMENT_DIGITS.test(digits)) throw new Error('document must be a CPF or CNPJ with digits only');
-  return hmacSha256Hex(platformToken, `document-fingerprint:${digits}`);
+  return await hmacSha256Hex(platformToken, `document-fingerprint:${digits}`);
 }
 
 /** SHA-256 of the UTF-8 text in hex: the stored form of a document that must not be kept in clear. */

@@ -179,6 +179,16 @@ export function handler(req: Request, deps: DeleteDeps): Promise<Response> {
       await deps.admin.deleteAuthUser(user.id);
     } catch (error) {
       deps.logError(error);
+      // The request must not stay "processing" forever: the data is anonymized and the login is not
+      // removed, which is a failed request the user (or support) runs again.
+      await deps.admin.updateRequest(requestId, { status: 'failed' }).catch(deps.logError);
+      await auditSafely(deps, {
+        actor_id: user.id,
+        action: 'account.delete_auth_failed',
+        entity: 'profiles',
+        entity_id: user.id,
+        data: { data_request_id: requestId },
+      });
       throw new HttpError(
         500,
         'auth_delete_failed',

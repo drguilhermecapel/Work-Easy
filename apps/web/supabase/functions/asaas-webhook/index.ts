@@ -13,6 +13,12 @@ const deps: WebhookDeps = {
   subaccountAsaas,
   proGraceDays: config.proGraceDays,
   store: {
+    async graceDays() {
+      const row = must(await serviceClient().from('platform_settings').select('value').eq('key', 'pro_grace_days').maybeSingle()) as
+        | { value: unknown }
+        | null;
+      return typeof row?.value === 'number' && Number.isInteger(row.value) ? row.value : null;
+    },
     async recordEvent(event) {
       const db = serviceClient();
       const inserted = await db.from('payment_events').insert(event).select('id').single();

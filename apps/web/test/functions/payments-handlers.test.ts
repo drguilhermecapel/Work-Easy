@@ -668,6 +668,8 @@ describe('asaas-onboard', () => {
     existing?: PaymentAccount | null;
     /** how many Vault writes fail before one works (Infinity: all of them) */
     vaultFailures?: number;
+    /** how many writes of the account row fail before one works (Infinity: all of them) */
+    saveFailures?: number;
     token?: string;
     busy?: boolean;
     noKey?: boolean;
@@ -679,6 +681,8 @@ describe('asaas-onboard', () => {
     const released: string[] = [];
     const sleeps: number[] = [];
     let vaultCalls = 0;
+    let saveCalls = 0;
+    const audits: Array<{ action: string; data?: Record<string, unknown> }> = [];
     const { client, calls } = asaasWith({
       'POST /v3/accounts': over.asaasFails
         ? { status: 400, body: { errors: [{ code: 'invalid_cpfCnpj', description: 'CPF já cadastrado.' }] } }
@@ -701,12 +705,35 @@ describe('asaas-onboard', () => {
           secrets.push([providerId, secret]);
           return 'secret-uuid';
         },
-        savePaymentAccount: async row => void saved.push(row),
-        audit: async () => {},
+        savePaymentAccount: async row => {
+          if (saveCalls++ < (over.saveFailures ?? 0)) throw new Error('database down');
+          saved.push(row);
+        },
+        audit: async entry => void audits.push(entry),
       },
     };
-    return { deps, calls, saved, secrets, released, sleeps, vaultCalls: () => vaultCalls };
+    return { deps, calls, saved, secrets, released, sleeps, audits, vaultCalls: () => vaultCalls };
   }
+
+  it('tries again when the account row cannot be written right after Asaas created the account', async () => {
+    const { deps, saved, calls } = onboardDeps({ saveFailures: 2 });
+    const res = await read(await onboard(post('asaas-onboard', fiscal), deps));
+    expect(res.status).toBe(201);
+    expect(saved).toHaveLength(1);
+    // one account in Asaas, however many writes it took here
+    expect(calls.filter(call => call.method === 'POST')).toHaveLength(1);
+  });
+
+  it('leaves a trail with the Asaas ids when the account row is never written', async () => {
+    const { deps, saved, audits, released } = onboardDeps({ saveFailures: Infinity });
+    const res = await read(await onboard(post('asaas-onboard', fiscal), deps));
+    expect(res.status).toBe(500);
+    expect(saved).toEqual([]);
+    const orphan = audits.find(entry => entry.action === 'payment_account.orphan');
+    expect(orphan?.data).toMatchObject({ asaas_account_id: 'acc_1', asaas_wallet_id: 'wal_1', key_stored: true });
+    // the claim is not released: releasing it would let the next attempt create a second account
+    expect(released).toEqual([]);
+  });
 
   it('creates the subaccount, registers its own webhook and keeps the key out of the response', async () => {
     const { deps, calls, saved, secrets } = onboardDeps();
