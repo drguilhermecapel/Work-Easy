@@ -34,3 +34,5 @@
 
 /manifest.webmanifest
   Cache-Control: no-cache
+/.well-known/apple-app-site-association
+  Content-Type: application/json
