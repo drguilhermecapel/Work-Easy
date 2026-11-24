@@ -1,3 +1,8 @@
+"""DEMO. Protocolos de SOS e de avaliação FALSOS: nada é gravado, ninguém é notificado.
+
+Só é montada com ENABLE_DEMO_ROUTES=true. NÃO usar em produção: um botão SOS que não aciona
+ninguém é perigoso. Veja services/api/README.md.
+"""
 import uuid
 from datetime import datetime, timezone
 from typing import Literal, Optional

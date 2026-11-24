@@ -1,3 +1,8 @@
+"""DEMO. Custódia/escrow Pix FALSA: em memória, sem gateway, sem instituição autorizada.
+
+Só é montada com ENABLE_DEMO_ROUTES=true. NÃO usar em produção: custódia na própria plataforma
+exige parecer jurídico (Lei 12.865/2013; Res. BCB 150/2021). Veja apps/web/docs/DECISOES.md.
+"""
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal

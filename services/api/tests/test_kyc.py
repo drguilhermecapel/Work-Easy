@@ -1,12 +1,15 @@
 from fastapi.testclient import TestClient
-from app.main import app
+from app.main import create_app
 
-client = TestClient(app)
+# Os testes montam o app com um ambiente explícito, sem depender de os.environ.
+client = TestClient(create_app({}))
+demo_client = TestClient(create_app({"ENABLE_DEMO_ROUTES": "true"}))
 
 def test_health_check():
     res = client.get("/health")
     assert res.status_code == 200
     assert res.json()["repository"] == "work-easy"
+    assert res.json()["demo_routes"] is False
 
 def test_bloqueio_sem_consentimento_lgpd():
     files = {
@@ -17,6 +20,7 @@ def test_bloqueio_sem_consentimento_lgpd():
     assert res.status_code == 403
 
 def test_split_pix_escrow():
+    # Rota DEMO: só existe com ENABLE_DEMO_ROUTES=true.
     payload = {
         "contratante_id": "CLI-1",
         "prestador_id": "WE-2026-0891",
@@ -25,6 +29,6 @@ def test_split_pix_escrow():
         "valor_bruto_diaria": "180.00",
         "convenio_prefeitura": True,
     }
-    res = client.post("/v1/marketplace/ordens/criar-pix-escrow", json=payload)
+    res = demo_client.post("/v1/marketplace/ordens/criar-pix-escrow", json=payload)
     assert res.status_code == 201
     assert res.json()["repasse_liquido_prestador"] == "171.00"

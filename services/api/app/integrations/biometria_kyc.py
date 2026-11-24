@@ -8,6 +8,13 @@ from google.genai import types
 
 router = APIRouter(prefix="/v1/kyc", tags=["Biometria Facial, Liveness & Antecedentes"])
 
+AVISO_PROTOTIPO = (
+    "Protótipo. Não é verificação de identidade oficial: as imagens são enviadas à API Gemini "
+    "(Google) e a análise é uma estimativa de modelo de IA, não prova de vida certificada. "
+    "Os antecedentes criminais NÃO foram consultados: o resultado fica sempre em revisão manual."
+)
+
+
 class BiometricKycSchema(BaseModel):
     liveness_aprovado: bool
     liveness_score: float = Field(ge=0.0, le=1.0)
@@ -25,12 +32,15 @@ class BiometricKycResponse(BaseModel):
     status_antecedentes: Literal["APTO", "REVISAO_MANUAL"]
     protocolo_certidao: str
     imagens_descartadas_ram: bool
+    aviso: str = AVISO_PROTOTIPO
 
 def consultar_antecedentes_boolean(cpf: str) -> tuple[Literal["APTO", "REVISAO_MANUAL"], str]:
+    # Nenhuma base de antecedentes é consultada aqui. Nunca devolver "APTO" nem um protocolo de
+    # certidão inventado: o resultado honesto é revisão manual.
     apenas_digitos = "".join(filter(str.isdigit, cpf))
     if len(apenas_digitos) != 11:
         raise HTTPException(status_code=422, detail="CPF inválido.")
-    return "APTO", f"PF-{datetime.now(timezone.utc).year}-{uuid.uuid4().hex[:8].upper()}"
+    return "REVISAO_MANUAL", "NAO_CONSULTADO"
 
 @router.post("/liveness-face-match", response_model=BiometricKycResponse)
 async def validar_biometria_e_antecedentes(
@@ -47,6 +57,8 @@ async def validar_biometria_e_antecedentes(
         doc_bytes = await documento_img.read()
         selfie_bytes = await selfie_liveness_img.read()
         hash_combinado = hashlib.sha256(doc_bytes + selfie_bytes).hexdigest()
+        # Só a variável de servidor GEMINI_API_KEY. Nunca uma variável pública (NEXT_PUBLIC_*,
+        # EXPO_PUBLIC_*, VITE_*), que iria para o pacote do cliente.
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
             raise HTTPException(status_code=500, detail="GEMINI_API_KEY ausente.")
