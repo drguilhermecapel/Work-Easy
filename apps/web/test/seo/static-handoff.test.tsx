@@ -7,12 +7,19 @@ import { BrowserRouter } from 'react-router-dom';
 import type { Root } from 'react-dom/client';
 import { AuthProvider } from '../../contexts/AuthContext';
 import AppShell from '../../AppShell';
+import ErrorBoundary from '../../components/ErrorBoundary';
 import { HandoffPending, HandoffReady } from '../../components/HandoffMarks';
 import { mountWithStaticHandoff } from '../../lib/staticHandoff';
 import type { Inputs, Page, PrerenderModule } from './helpers';
 
 // Demo mode even when a developer's .env.local configures Supabase (Vitest loads it like Vite)
 vi.mock('../../lib/supabase', () => ({ supabase: null, backendEnabled: false }));
+
+const observability = vi.hoisted(() => ({ captureError: vi.fn() }));
+vi.mock('../../lib/observability', async importOriginal => ({
+  ...(await importOriginal<typeof import('../../lib/observability')>()),
+  captureError: observability.captureError,
+}));
 
 // The static page written by scripts/prerender.mjs stays on screen until React has the same route ready
 // (lib/staticHandoff.tsx). React is not hydrated over it: it is mounted in a hidden container that takes the page's place.
@@ -307,6 +314,119 @@ describe('mountWithStaticHandoff', () => {
     );
     expect(root.querySelector('h1')?.textContent).toBe('Sem página estática');
     expect(root.querySelector('div[hidden]')).toBeNull();
+  });
+});
+
+// A route chunk that does not load (or any crash the ErrorBoundary catches) while the static page is on screen:
+// the readable static page stays, with a discreet reload notice, instead of the error screen after the timeout.
+describe('mountWithStaticHandoff when React fails before the swap', () => {
+  /** A lazy page whose chunk fails to load, as React.lazy sees a network error on the dynamic import. */
+  const brokenChunk = () => {
+    let reject!: (error: Error) => void;
+    const chunk = new Promise<{ default: React.FC }>((_, no) => {
+      reject = no;
+    });
+    const Page = React.lazy(() => chunk);
+    return { fail: () => act(async () => reject(new TypeError('Failed to fetch dynamically imported module'))), Page };
+  };
+
+  const app = (Page: React.FC) => (
+    <ErrorBoundary>
+      <Suspense fallback={<p role="status">Carregando…</p>}>
+        <Page />
+        <HandoffReady />
+      </Suspense>
+    </ErrorBoundary>
+  );
+
+  afterEach(() => {
+    observability.captureError.mockReset();
+    vi.restoreAllMocks();
+  });
+
+  it('keeps the static page (same node, focus and scroll untouched), reports the error and shows a reload notice', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    const root = rootWith(STATIC_HTML);
+    const staticMain = root.querySelector(STATIC);
+    const link = root.querySelector<HTMLAnchorElement>(`${STATIC} a[href="/servicos/pedreiro"]`)!;
+    link.focus();
+    const { fail, Page } = brokenChunk();
+    await mount(root, app(Page), { timeoutMs: 50 });
+
+    await fail();
+    expect(observability.captureError).toHaveBeenCalledTimes(1);
+    expect(observability.captureError).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'Failed to fetch dynamically imported module' }),
+      { componentStack: expect.any(String) },
+    );
+    expect(root.querySelector(STATIC)).toBe(staticMain);
+    expect(document.activeElement).toBe(link);
+    expect(scrollTo).not.toHaveBeenCalled();
+
+    // The error screen stays in the hidden container, out of sight and out of the accessibility tree
+    const host = root.querySelector<HTMLElement>('div[hidden]')!;
+    expect(host.querySelector('[role="alert"]')).not.toBeNull();
+    const notice = root.querySelector<HTMLElement>('[data-handoff-notice]')!;
+    expect(notice.getAttribute('role')).toBe('status');
+    expect(notice.closest('[hidden]')).toBeNull();
+    expect(notice.textContent).toContain('Parte do site não carregou');
+    expect(notice.querySelector('button')?.textContent).toBe('Recarregar');
+
+    // The timeout no longer swaps: the static page is what the visitor keeps
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 80));
+    });
+    expect(root.querySelector(STATIC)).toBe(staticMain);
+    expect(root.querySelector('div[hidden]')).toBe(host);
+    expect(root.querySelectorAll('[data-handoff-notice]')).toHaveLength(1);
+    expect(document.activeElement).toBe(link);
+  });
+
+  it('reloads the page from the notice', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const reload = vi.fn();
+    const original = window.location;
+    Object.defineProperty(window, 'location', { configurable: true, value: { ...original, reload } });
+    try {
+      const root = rootWith(STATIC_HTML);
+      const { fail, Page } = brokenChunk();
+      await mount(root, app(Page));
+      await fail();
+      root.querySelector<HTMLButtonElement>('[data-handoff-notice] button')!.click();
+      expect(reload).toHaveBeenCalledTimes(1);
+    } finally {
+      Object.defineProperty(window, 'location', { configurable: true, value: original });
+    }
+  });
+
+  it('native shells (hash router, no handoff): the error screen shows as before, with no notice', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const root = rootWith('');
+    const { fail, Page } = brokenChunk();
+    await mount(root, app(Page), { enabled: false });
+    await fail();
+    expect(root.querySelector('[role="alert"]')?.textContent).toContain('Algo não funcionou como esperado');
+    expect(root.querySelector('[role="alert"]')?.closest('[hidden]')).toBeNull();
+    expect(root.querySelector('[data-handoff-notice]')).toBeNull();
+    expect(observability.captureError).toHaveBeenCalledTimes(1);
+  });
+
+  it('after the swap, an error shows the error screen as before, with no notice', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const root = rootWith(STATIC_HTML);
+    let crash!: () => void;
+    const Later: React.FC = () => {
+      const [broken, setBroken] = React.useState(false);
+      crash = () => setBroken(true);
+      if (broken) throw new Error('quebrou depois');
+      return <h1>Página do React</h1>;
+    };
+    await mount(root, app(Later));
+    await waitFor(() => expect(root.querySelector(STATIC)).toBeNull());
+    await act(async () => crash());
+    expect(root.querySelector('[role="alert"]')?.closest('[hidden]')).toBeNull();
+    expect(root.querySelector('[data-handoff-notice]')).toBeNull();
   });
 });
 
