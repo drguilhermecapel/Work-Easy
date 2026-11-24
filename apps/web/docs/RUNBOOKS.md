@@ -52,6 +52,9 @@ Não abertos ou não localizados (ficam como **[incerto]** no texto):
 | Documento de prestador apareceu fora do lugar | item 11 |
 | Desligar função ou recurso rápido | item 12 |
 | Manutenção planejada | item 13 |
+| Função publicada com defeito, voltar à versão anterior | "Reverter Edge Functions" (fim do documento) |
+| Rotina diária de checagem | "Checagens diárias" (fim do documento) e `docs/operacao/12-checagens-diarias.md` |
+| Site fora do ar ou sem os cabeçalhos de segurança | `docs/operacao/13-alertas-e-monitor.md` |
 
 ## Antes de qualquer procedimento
 
@@ -394,13 +397,15 @@ commit;
 
 **Diagnóstico.**
 
-1. Divergências entre `providers.plan` e a regra acima. Antes de rodar, troque `0` em `make_interval` pelo valor de `PRO_GRACE_DAYS` da função. A consulta aplica a carência também a `canceled` (a regra não tem carência) e não checa o fim do teste em `trialing`: trate cada divergência como sinal a conferir no Asaas, não como prova:
+1. Divergências entre `providers.plan` e a regra acima. A consulta lê a carência de `platform_settings.pro_grace_days` (o mesmo valor que o job de rebaixamento e o webhook usam, DD68); não é mais preciso trocar um `0` à mão. Ela aplica a carência também a `canceled` (a regra não tem carência) e não checa o fim do teste em `trialing`: trate cada divergência como sinal a conferir no Asaas, não como prova:
 
 ```sql
 with expected as (
   select p.id as provider_id, p.plan, s.status, s.current_period_end,
          (coalesce(s.status in ('active', 'trialing'), false)
-          or coalesce(s.current_period_end + make_interval(days => 0) > now(), false)) as should_be_pro
+          or coalesce(s.current_period_end
+                      + make_interval(days => greatest(private.setting_int('pro_grace_days', 0), 0)) > now(),
+                      false)) as should_be_pro
     from public.providers p
     left join public.subscriptions s on s.provider_id = p.id
 )
@@ -510,7 +515,7 @@ select status, channel, template, error, attempts, count(*) as n,
  order by n desc, last_created desc;
 ```
 
-5. Saúde do agendador. `succeeded` no cron não prova envio, porque o job retorna sem chamar a função se o Vault está vazio. O código HTTP real aparece em `net._http_response`:
+5. Saúde do agendador. `succeeded` no cron não prova envio, porque o job retorna sem chamar a função se o Vault está vazio. O código HTTP real aparece em `net._http_response`. Sem fila vencida (S18 igual a 0), a ausência de respostas é normal: o despachante só chama a função quando há mensagem a enviar. O sinal de agendador silencioso é fila vencida (S18 maior que 0) sem nenhuma resposta recente e sem as duas chaves no Vault (S21). O painel de `scripts/ops-daily-checks.sql` calcula esse sinal na linha S20:
 
 ```sql
 select j.jobname, d.status, d.return_message, d.start_time
@@ -695,7 +700,7 @@ select a.provider_id, a.status
 
 **Sintoma.** O workflow "Publicar Supabase" falhou no passo de migrações ou o banco ficou em estado que o código não espera.
 
-**Como o deploy funciona** (`.github/workflows/deploy-supabase.yml`): execução manual, dry run por padrão. Aplica com `supabase db push --linked --skip-vault --yes` e, depois, o catálogo de produção (`supabase/catalog.sql`, com `supabase db query --linked -f`, em uma transação). `supabase/seed.sql` (desenvolvimento) nunca é aplicado. O catálogo sobrescreve áreas, ocupações, políticas e bairros com os valores do repositório: altere o catálogo só no repositório. Publica funções em outro passo; `asaas-webhook` e `notify-dispatch` com `--no-verify-jwt`. Grupo de concorrência único, sem cancelar execução em andamento.
+**Como o deploy funciona** (`.github/workflows/deploy-supabase.yml`): execução manual, dry run por padrão. Aplica com `supabase db push --linked --skip-vault --yes` e, depois, o catálogo de produção (`supabase/catalog.sql`, com `supabase db query --linked -f`, em uma transação). `supabase/seed.sql` (desenvolvimento) nunca é aplicado. O catálogo sobrescreve áreas, ocupações, políticas e bairros com os valores do repositório: altere o catálogo só no repositório. Publica funções em outro passo; `asaas-webhook` e `notify-dispatch` com `--no-verify-jwt`. Grupo de concorrência único, sem cancelar execução em andamento. O campo opcional `ref` publica as funções de novo a partir de um commit anterior (ver "Reverter Edge Functions", no fim deste documento). Sem `ref`, o `dry_run` cobre só as migrações e o catálogo: com `deploy_functions` ligado as funções são publicadas mesmo com `dry_run` ligado.
 
 **Diagnóstico.**
 
@@ -1253,3 +1258,51 @@ Provado em 24/11/2026 (DD94). O edge-runtime 1.77.4 ignora `DENO_CERT` ao ler o 
 
 - **Via painel do Cloudflare:** acesse **Workers & Pages** -> selecione o projeto -> **Deployments** -> abra o menu do último deploy íntegro -> **Rollback to this deployment**.
 - **Alternativa via GitHub Actions:** reexecute o workflow `deploy-web.yml` no commit anterior íntegro.
+
+## Reverter Edge Functions
+
+Não há artefato versionado de função: o Supabase guarda a versão publicada, mas o repositório é a fonte. Reverter é **publicar de novo, a partir de um commit anterior**, com as mesmas flags. O workflow `deploy-supabase.yml` faz isso com o campo opcional `ref`. A reversão não toca o banco: migrações não têm volta (item 8), e o catálogo não é reaplicado.
+
+**Quando usar.** Uma função publicada passou a falhar (resposta 500, erro novo nos logs) e o commit anterior funcionava. Se o defeito está no banco ou numa migração, reverter a função não resolve: siga o item 8. Se a função precisa só parar, use o item 12.
+
+**Antes.**
+
+1. Ache o commit bom: o último que funcionava, em `git log --oneline -- apps/web/supabase/functions` ou no histórico do workflow "Publicar Supabase" (o resumo de cada execução registra o SHA publicado). O commit precisa estar no histórico de `main`: o workflow recusa qualquer outro.
+2. **Compatibilidade com o banco.** Migrações novas ficam aplicadas. A função antiga vai rodar contra o schema novo. Veja o que mudou entre o commit bom e `main`: `git diff --stat <sha> origin/main -- apps/web/supabase/migrations`. Migração que só adiciona coluna ou tabela costuma ser compatível; renomear ou remover coluna, mudar assinatura de função do banco ou apertar uma regra pode quebrar a função antiga. O workflow emite um aviso com a contagem de migrações novas. Na dúvida, não reverta: corrija para frente.
+3. **Funções criadas depois do commit bom não somem.** O workflow republica só as funções que existem no commit; as outras ficam como estão. Para tirar uma, use `supabase functions delete` (item 12).
+4. Registre o motivo no histórico de operação.
+
+**Ensaio (nada é publicado).** Execute **Actions, Publicar Supabase, Run workflow**, a partir de `main`, com:
+
+| Campo | Valor |
+|---|---|
+| Só listar as migrations pendentes (`dry_run`) | ligado |
+| Publicar as Edge Functions (`deploy_functions`) | ligado |
+| `ref` | o SHA, a tag ou a branch do commit bom |
+
+O ambiente `production` pede aprovação; mesmo no ensaio o job só lê o repositório e vincula o projeto, e não publica nada. Confira no resumo da execução: modo "reversão de Edge Functions", o **SHA publicado** (deve ser o do commit bom, não o de `main`), o aviso de migrações novas, e a lista de funções que seriam publicadas. O ensaio falha, de propósito, se o `ref` não está no histórico de `main` ou se `deploy_functions` está desligado.
+
+**Reversão de verdade.** Os mesmos campos, com `dry_run` **desligado**. O workflow publica cada função do commit (`asaas-webhook`, `notify-dispatch` e `background-check-purge` com `--no-verify-jwt`; as demais com verificação de JWT) e registra no resumo o SHA e cada função publicada.
+
+**Verificação.**
+
+1. O resumo da execução mostra o SHA esperado e a lista de funções.
+2. Chame a função afetada (ou espere o próximo evento real) e confirme que o erro parou: logs da função no painel do Supabase.
+3. Rode as checagens diárias (`scripts/ops-daily-checks.sql`): S01, S03 e S18 sem linhas novas.
+4. Para voltar à versão mais nova depois de corrigir o defeito: rode o workflow sem `ref`, com `deploy_functions` ligado.
+
+**Limites.**
+
+- Não foi executado em produção (não há conta Supabase de produção). O comportamento da lógica do `ref` (recusa de commit fora de `main`, SHA e aviso de migrações no resumo) foi ensaiado só com um repositório de teste local; o restante depende da primeira execução no GitHub Actions.
+- `supabase functions deploy` publica o código do commit, mas não restaura segredos (`supabase secrets`): eles não mudam com a reversão.
+- Funções que dependem de arquivos em `_shared` usam a versão de `_shared` do commit escolhido.
+
+## Checagens diárias
+
+As consultas S01, S03, S06, S07, S10, S14, S16, S17, S18 e S20 (mais S21, as chaves do agendador) estão reunidas, somente leitura, em `apps/web/scripts/ops-daily-checks.sql`, com um painel final de contagens. Como rodar e como ler cada linha: `docs/operacao/12-checagens-diarias.md`. Quando uma linha do painel diz ATENCAO, o runbook do item indicado no cabeçalho da consulta é o procedimento.
+
+Divergências encontradas ao reunir as consultas contra o schema de 24/11/2026 (109 migrações): todas executam sem erro. Duas diferem do texto antigo deste documento: a S14 agora lê a carência de `platform_settings.pro_grace_days` (antes pedia para trocar um `0` à mão; `PRO_GRACE_DAYS` da função só vale quando a chave não pode ser lida, DD68), e a S21 lê `vault.secrets` (só o nome) em vez de `vault.decrypted_secrets`, para nunca tocar o valor.
+
+## Verificar o site publicado
+
+`apps/web/scripts/healthcheck.mjs` confere se o site responde 200 e envia os cabeçalhos de `public/_headers`. Uso e ligação a um agendador ou monitor externo: `docs/operacao/13-alertas-e-monitor.md`.
