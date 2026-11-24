@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+		Universal Links: the app opens the https links of this domain, after the domain proves
+		ownership through /.well-known/apple-app-site-association (docs/lojas/app-store.md, section 3.2).
+
+		PLACEHOLDER: "app.workeasy.example" is a reserved example domain that does not resolve.
+		Replace it with the real host (without https:// and without a path), the same one of the
+		Android manifest, of public/.well-known/* and of VITE_SITE_URL, before any build for
+		TestFlight or the App Store. The strict mode of scripts/check-app-links.mjs fails while it
+		is still the example.
+	-->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:app.workeasy.example</string>
+	</array>
+</dict>
+</plist>
