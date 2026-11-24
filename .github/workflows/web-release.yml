@@ -57,7 +57,7 @@ jobs:
 
       - name: Website (PWA)
         run: npm run build
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: workeasy-web
           path: apps/web/dist/
@@ -71,7 +71,7 @@ jobs:
       - run: npm run build:native && npx cap sync android
       - run: ./gradlew assembleDebug --no-daemon
         working-directory: apps/web/android
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: workeasy-android-apk
           path: apps/web/android/app/build/outputs/apk/debug/*.apk
@@ -88,7 +88,7 @@ jobs:
           workspaces: apps/web/src-tauri
       - name: Linux desktop (deb, AppImage)
         run: npx tauri build --bundles deb,appimage
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: workeasy-linux
           path: |
@@ -117,7 +117,7 @@ jobs:
           workspaces: apps/web/src-tauri
       - name: Windows desktop (msi, exe)
         run: npx tauri build --bundles msi,nsis
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: workeasy-windows
           path: |
@@ -146,7 +146,7 @@ jobs:
           workspaces: apps/web/src-tauri
       - name: macOS desktop (dmg)
         run: npx tauri build --bundles app,dmg
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: workeasy-macos
           path: apps/web/src-tauri/target/release/bundle/dmg/*.dmg
@@ -161,7 +161,7 @@ jobs:
             -derivedDataPath ios/build CODE_SIGNING_ALLOWED=NO build
           cd ios/build/Build/Products/Debug-iphonesimulator
           zip -qr "$GITHUB_WORKSPACE/WorkEasy-ios-simulator.zip" App.app
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: workeasy-ios-simulator
           path: WorkEasy-ios-simulator.zip
