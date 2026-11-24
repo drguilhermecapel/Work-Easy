@@ -1,6 +1,6 @@
 import { AppError, toAppError } from '../lib/errors';
 import { formatTstzRange, parseTstzRange, type Period } from '../lib/tstzrange';
-import { db, unwrapMaybe } from './client';
+import { db, nullable, unwrapMaybe } from './client';
 import type { PriceUnit } from '../catalog/types';
 
 /** Registry states a public page may show (a rejected registry never reaches the page). */
@@ -35,7 +35,7 @@ export const searchProviders = async (input: SearchProvidersInput): Promise<Prov
   const data = unwrapMaybe<unknown>(
     await db().rpc('search_providers', {
       p_occupation: input.occupation,
-      p_neighborhood: input.neighborhoodId || null,
+      p_neighborhood: nullable(input.neighborhoodId || null),
       p_limit: input.limit ?? SEARCH_PAGE_SIZE,
       p_offset: input.offset ?? 0,
     }),
@@ -156,7 +156,7 @@ export const bookDirect = async (input: DirectBooking): Promise<string> => {
         p_provider: input.providerId,
         p_service: input.serviceId,
         p_period: range,
-        p_notes: notes || null,
+        p_notes: nullable(notes || null),
       }),
     );
     if (typeof data !== 'string') throw new AppError('server_error');

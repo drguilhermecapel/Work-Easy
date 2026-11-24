@@ -2,7 +2,7 @@ import { loadPolicies } from '../catalog';
 import { ACCEPT_REFUSED_MESSAGE, AppError, toAppError } from '../lib/errors';
 import { formatTstzRange, parseTstzRange, type Period } from '../lib/tstzrange';
 import type { Coordinates } from '../platform/geolocation';
-import { db, unwrap, unwrapMaybe } from './client';
+import { db, nullable, unwrap, unwrapMaybe } from './client';
 import { searchProviders, type ProviderSummary } from './discovery';
 import { occupationNames } from './occupationNames';
 
@@ -620,7 +620,7 @@ export const submitDailyReport = (input: ReportInput): Promise<string> =>
     tooLong(notes, LIMITS.reportNotes, 'Observações');
     assertNoHealthData(meals, activities, mood, notes);
     return unwrap<string>(
-      await db().rpc('submit_daily_report', { p_shift: input.shiftId, p_meals: meals, p_activities: activities, p_mood: mood, p_notes: notes }),
+      await db().rpc('submit_daily_report', { p_shift: input.shiftId, p_meals: nullable(meals), p_activities: nullable(activities), p_mood: nullable(mood), p_notes: nullable(notes) }),
     );
   }, REPORT_OVERRIDES);
 

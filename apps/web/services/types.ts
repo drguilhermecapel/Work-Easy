@@ -1,6 +1,7 @@
 // Row types written by hand from docs/ARQUITETURA.md, only for the columns
-// the screens use. They go away when lib/database.types.ts is generated
-// (see the TODO in lib/supabase.ts).
+// the screens use. The client itself is typed with the generated
+// lib/database.types.ts (lib/supabase.ts); these are the narrower shapes the
+// services return (see `unwrap` in services/client.ts).
 
 export type UserRole = 'client' | 'provider';
 export type ProviderStatus = 'draft' | 'pending_review' | 'approved' | 'suspended';

@@ -1,5 +1,5 @@
 import { AppError } from '../lib/errors';
-import { db, unwrapMaybe } from './client';
+import { db, nullable, unwrapMaybe } from './client';
 import { lineCents } from './quoteMath';
 
 export type PublicQuoteStatus = 'draft' | 'sent' | 'accepted' | 'declined' | 'expired';
@@ -52,7 +52,7 @@ export const respondQuote = async (
     await db().rpc('respond_quote', {
       p_token: token,
       p_accept: accept,
-      p_expected_total_cents: accept ? (shownTotalCents ?? null) : null,
+      p_expected_total_cents: nullable(accept ? (shownTotalCents ?? null) : null),
     }),
   );
   return data === 'accepted' || data === 'declined' ? data : accept ? 'accepted' : 'declined';

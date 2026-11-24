@@ -1,6 +1,6 @@
 import { AppError } from '../lib/errors';
 import { parseTstzRange, type Period } from '../lib/tstzrange';
-import { db, invokeFunction, unwrap, unwrapMaybe } from './client';
+import { db, invokeFunction, nullable, unwrap, unwrapMaybe } from './client';
 
 export type BookingStatus =
   | 'requested'
@@ -150,7 +150,7 @@ export const transitionBooking = async (
 ): Promise<TransitionResult> => {
   const text = reason?.trim();
   const data = unwrapMaybe<unknown>(
-    await db().rpc('transition_booking', { p_booking: bookingId, p_to: to, p_reason: text ? text : null }),
+    await db().rpc('transition_booking', { p_booking: bookingId, p_to: to, p_reason: nullable(text ? text : null) }),
   );
   const status = typeof data === 'string' ? (data as BookingStatus) : to;
   const notice = status === 'canceled' && from !== 'requested' ? await voidOpenCharges(bookingId) : null;

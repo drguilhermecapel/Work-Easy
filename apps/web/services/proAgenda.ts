@@ -4,7 +4,7 @@ import { formatTstzRange, parseTstzRange, type Period } from '../lib/tstzrange';
 import { saoPauloDateTime } from '../lib/timezone';
 import type { Tables } from '../lib/database.types';
 import { voidOpenCharges } from './bookings';
-import { db, unwrap, unwrapMaybe } from './client';
+import { db, nullable, unwrap, unwrapMaybe } from './client';
 import { guard } from './proErrors';
 import { addDays, shortTime, toPeriod } from './proFormat';
 
@@ -163,7 +163,7 @@ export const createOwnBooking = (input: NewOwnBooking): Promise<string | null> =
         p_occupation: input.occupationSlug,
         p_period: formatTstzRange(period),
         p_price_cents: input.priceCents,
-        p_notes: input.notes?.trim() || null,
+        p_notes: nullable(input.notes?.trim() || null),
       }),
     );
     return typeof data === 'string' ? data : null;
@@ -176,7 +176,7 @@ export const createOwnBooking = (input: NewOwnBooking): Promise<string | null> =
  */
 export const transitionBooking = (bookingId: string, to: BookingStatus, reason?: string, from?: BookingStatus): Promise<string | null> =>
   guard(async () => {
-    unwrapMaybe<unknown>(await db().rpc('transition_booking', { p_booking: bookingId, p_to: to, p_reason: reason?.trim() || null }));
+    unwrapMaybe<unknown>(await db().rpc('transition_booking', { p_booking: bookingId, p_to: to, p_reason: nullable(reason?.trim() || null) }));
     return to === 'canceled' && from !== 'requested' ? voidOpenCharges(bookingId) : null;
   });
 

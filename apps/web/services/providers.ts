@@ -3,7 +3,7 @@ import type { OccupationPolicy, PriceUnit, VerificationStep } from '../catalog/t
 import { AppError, toAppErrorAsync } from '../lib/errors';
 import { stripImageMetadata } from '../lib/imageMetadata';
 import type { Tables } from '../lib/database.types';
-import { db, unwrap, unwrapMaybe } from './client';
+import { db, nullable, unwrap, unwrapMaybe } from './client';
 import { guard } from './proErrors';
 import type { ProviderRow } from './types';
 
@@ -156,8 +156,8 @@ export const becomeProvider = (input: BecomeProviderInput): Promise<string | nul
         p_display_name: displayName,
         p_slug: slug,
         p_occupation: input.occupation,
-        p_registry_number: input.registryNumber?.trim() || null,
-        p_registry_uf: uf || null,
+        p_registry_number: nullable(input.registryNumber?.trim() || null),
+        p_registry_uf: nullable(uf || null),
       }),
     );
     return typeof data === 'string' ? data : null;

@@ -1,5 +1,5 @@
 import { AppError } from '../lib/errors';
-import { db, unwrap, unwrapMaybe } from './client';
+import { db, nullable, unwrap, unwrapMaybe } from './client';
 
 // Reporting content and blocking accounts (supabase/migrations/20261124100002_reports_and_blocks.sql).
 // Every write goes through a database function: the app never writes these tables.
@@ -32,12 +32,12 @@ export const reportContent = async (target: ReportTarget, reason: ReportReason, 
   const p_details = text || null;
   if (target.type === 'review') {
     unwrap<string>(
-      await db().rpc('report_review', { p_provider: target.providerId, p_created_at: target.createdAt, p_reason: reason, p_details }),
+      await db().rpc('report_review', { p_provider: target.providerId, p_created_at: target.createdAt, p_reason: reason, p_details: nullable(p_details) }),
     );
     return;
   }
   const p_target = target.type === 'provider' ? target.providerId : target.requestId;
-  unwrap<string>(await db().rpc('report_content', { p_type: target.type, p_target, p_reason: reason, p_details }));
+  unwrap<string>(await db().rpc('report_content', { p_type: target.type, p_target, p_reason: reason, p_details: nullable(p_details) }));
 };
 
 export const blockProvider = async (providerId: string): Promise<void> => {
