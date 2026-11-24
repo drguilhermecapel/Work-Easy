@@ -3,6 +3,6 @@
   "private": true,
   "description": "Wrangler for .github/workflows/deploy-web.yml only, with its own lock: the publish job installs it with npm ci and the other jobs never download it (workerd alone is about 130 MB, with install scripts).",
   "dependencies": {
-    "wrangler": "4.164.0"
+    "wrangler": "4.166.0"
   }
 }
