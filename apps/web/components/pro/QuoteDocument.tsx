@@ -33,7 +33,8 @@ const QuoteDocument: React.FC<Props> = ({ quote, providerName }) => (
       {quote.client_name && <p className="text-sm text-gray-600">Cliente: {quote.client_name}</p>}
       <p className="text-sm text-gray-600">Emitido em {formatDateBR(quote.created_at)}</p>
     </header>
-    <div className="overflow-x-auto">
+    {/* A scrollable area must be reachable by keyboard (WCAG 2.1.1): focusable and named */}
+    <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Itens do orçamento; role para o lado se a tabela não couber">
       <table className="w-full text-sm">
         <thead>
           <tr className="text-left text-gray-500 border-b border-gray-200">

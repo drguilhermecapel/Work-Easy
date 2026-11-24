@@ -57,10 +57,23 @@ ocupação, `/search`, `/legal`, `/termos`, `/privacidade`, `/excluir-conta`, `/
 Primeira passada: 22 nós (contraste em `/legal`, no perfil e no painel do protótipo, e um botão
 "voltar" sem nome em `/profile/1`). Corrigidos: `text-gray-400` e `text-yellow-600` pequenos viraram
 `text-gray-500` e `text-yellow-800`, o botão ganhou `aria-label="Voltar"` e o botão de menu do celular
-passou a `text-gray-600`. **Segunda passada: 0 nós.** O que isso não cobre: as telas com sessão
-(pro, cliente, cuidado, admin e conta), que precisam de backend e seguem só com os testes de
-`test/a11y/`, sem cálculo de contraste; os estados com modal aberto; e as regras de "boas práticas"
-do axe, que esta passada não ativou.
+passou a `text-gray-600`. **Segunda passada: 0 nós.**
+
+**Telas com sessão, também em 24/11/2026.** O app foi construído com backend (`VITE_SUPABASE_URL` e a
+chave publicável da stack local do Supabase, saída em pasta de rascunho) e aberto no Chromium com
+três contas de teste, criadas e apagadas pelo próprio script: um cliente (com um pedido e uma casa
+cadastrada), um prestador aprovado (com serviço e bairro) e um administrador. A sessão foi gravada no
+armazenamento local do navegador. Rotas do cliente (9: conta, pedido, pedidos, atendimentos, as três
+do Cuidado, exclusão de conta e uma categoria), do prestador (11: de `/pro` a `/pro/plantoes`, mais
+conta) e do admin (8: de `/admin` a `/admin/lgpd`), em 1280 e 390 px: 56 varreduras. Achado: 1 nó, a
+tabela rolável do funil por dia no painel do admin, no celular, não era alcançável pelo teclado.
+Corrigido nela e na tabela do documento de orçamento (`components/admin/DailyFunnel.tsx`,
+`components/pro/QuoteDocument.tsx`), que tinha o mesmo desenho: a área rolável ganhou `tabIndex`,
+`role="region"` e nome. **Nova passada: 0 nós.** O que isso não cobre: as Edge Functions não estavam
+de pé (as telas que dependem delas mostram o erro de indisponibilidade, e é esse estado que foi
+medido); só há dados mínimos (listas longas, estados de erro e de carregamento diversos não foram
+exercitados); os estados com modal aberto; e as regras de "boas práticas" do axe, que esta
+passada não ativou. A varredura não substitui teste com leitor de tela.
 
 ### O que foi feito
 

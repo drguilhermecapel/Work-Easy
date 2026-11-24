@@ -64,7 +64,8 @@ export const DailyFunnel: React.FC = () => {
         ) : !funnel.data || funnel.data.length === 0 ? (
           <p className="text-sm text-gray-500">Nenhum evento registrado nos últimos {days} dias.</p>
         ) : (
-          <div className="overflow-x-auto">
+          // A scrollable area must be reachable by keyboard (WCAG 2.1.1): focusable and named
+          <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Eventos por dia; role para o lado para ver todas as colunas">
             <table className="w-full text-sm">
               <caption className="sr-only">Eventos do produto por dia, do mais recente ao mais antigo</caption>
               <thead>
