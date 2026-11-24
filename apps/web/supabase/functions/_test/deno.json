@@ -1,0 +1,24 @@
+{
+  "nodeModulesDir": "none",
+  "lock": "./deno.lock",
+  "imports": {
+    "vitest": "./vitest.ts",
+    "@std/expect": "jsr:@std/expect@1.0.20",
+    "@std/testing/bdd": "jsr:@std/testing@1.0.21/bdd"
+  },
+  "compilerOptions": {
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  },
+  "test": {
+    "include": ["./", "../../../test/functions/"],
+    "exclude": [
+      "../../../test/functions/ai-assist-guard.test.ts",
+      "../../../test/functions/app-requests.test.ts",
+      "../../../test/functions/charges-client-contract.test.ts",
+      "../../../test/functions/client-contracts.test.ts",
+      "../../../test/functions/client-error-codes.test.ts"
+    ]
+  }
+}
