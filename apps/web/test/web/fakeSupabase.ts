@@ -36,18 +36,23 @@ export interface FakeSupabase {
   session: FakeSession | null;
   tables: Record<string, TableHandler>;
   rpcs: Record<string, (args: Record<string, unknown> | undefined) => Result>;
-  functionsHandlers: Record<string, (body: unknown) => Result>;
+  /** An answer may be a promise, so a handler can run the real Edge Function (test/functions/clientContract.ts). */
+  functionsHandlers: Record<string, (body: unknown) => Result | Promise<Result>>;
   /** Recorded calls */
   tableCalls: TableCall[];
   rpcCalls: Array<{ name: string; args: Record<string, unknown> | undefined }>;
   functionCalls: Array<{ name: string; body: unknown }>;
+  /** What each `functions.invoke` call passed besides the body (method, headers), in the same order as `functionCalls`. */
+  functionOptions: Array<{ method?: string; headers?: Record<string, string> }>;
   authCalls: Array<{ method: string; args: unknown }>;
   reset: () => void;
   signIn: (user: FakeUser) => void;
   // Client surface
   from: (table: string) => unknown;
   rpc: (name: string, args?: Record<string, unknown>) => Promise<Result>;
-  functions: { invoke: (name: string, options?: { body?: unknown }) => Promise<Result> };
+  functions: {
+    invoke: (name: string, options?: { body?: unknown; method?: string; headers?: Record<string, string> }) => Promise<Result>;
+  };
   auth: {
     getSession: () => Promise<{ data: { session: FakeSession | null }; error: null }>;
     onAuthStateChange: (cb: AuthListener) => { data: { subscription: { unsubscribe: () => void } } };
@@ -70,6 +75,7 @@ export const createFakeSupabase = (): FakeSupabase => {
     tableCalls: [],
     rpcCalls: [],
     functionCalls: [],
+    functionOptions: [],
     authCalls: [],
 
     reset() {
@@ -80,6 +86,7 @@ export const createFakeSupabase = (): FakeSupabase => {
       fake.tableCalls = [];
       fake.rpcCalls = [];
       fake.functionCalls = [];
+      fake.functionOptions = [];
       fake.authCalls = [];
       listeners = [];
     },
@@ -153,6 +160,7 @@ export const createFakeSupabase = (): FakeSupabase => {
     functions: {
       async invoke(name, options) {
         fake.functionCalls.push({ name, body: options?.body });
+        fake.functionOptions.push({ method: options?.method, headers: options?.headers });
         return fake.functionsHandlers[name]?.(options?.body) ?? ok({ ok: true, data: null });
       },
     },

@@ -84,6 +84,13 @@ export type ClientErrorCode =
   | 'onboarding_in_progress'
   | 'already_subscribed'
   | 'no_subscription'
+  | 'provider_not_approved'
+  | 'onboarding_ambiguous'
+  | 'payment_replace_failed'
+  | 'trial_unavailable'
+  | 'trial_requires_payment_account'
+  | 'trial_document_mismatch'
+  | 'trial_already_used'
   | 'auth_delete_failed'
   | 'timeout'
   | 'offline'
@@ -192,6 +199,15 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   onboarding_in_progress: 'A ativação do recebimento já está em andamento. Aguarde alguns instantes e atualize a página.',
   already_subscribed: 'Já existe uma assinatura Pro para esta conta.',
   no_subscription: 'Não há assinatura Pro ativa para cancelar.',
+  provider_not_approved: 'Esta conta ainda não está aprovada para cobranças e assinaturas. Aguarde a análise do cadastro.',
+  onboarding_ambiguous: 'Há mais de uma conta de recebimento para este documento. Fale com o suporte para concluir a ativação.',
+  payment_replace_failed:
+    'Não foi possível trocar a forma de pagamento agora. A cobrança anterior continua em aberto; tente de novo.',
+  trial_unavailable: 'O teste grátis está indisponível no momento.',
+  trial_requires_payment_account:
+    'Para o teste grátis, o recebimento precisa estar ativado com o seu CPF. Conclua o cadastro de recebimento ou, se já o fez antes, fale com o suporte.',
+  trial_document_mismatch: 'Para o teste grátis, informe o CPF do seu cadastro de recebimento.',
+  trial_already_used: 'Este CPF já usou o teste grátis.',
   auth_delete_failed:
     'Seus dados pessoais foram anonimizados, mas o login não pôde ser removido. Tente excluir de novo ou fale com o suporte.',
   timeout: 'O servidor demorou para responder. Tente de novo.',
