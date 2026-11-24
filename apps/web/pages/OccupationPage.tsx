@@ -1,7 +1,7 @@
 import React, { Suspense, use } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
-import { findArea, findOccupation, loadPolicies } from '../catalog';
+import { findArea, findOccupation, loadAreaPolicies } from '../catalog';
 import type { Area, Occupation } from '../catalog/types';
 import {
   LAUNCH_AREA_SLUGS,
@@ -25,7 +25,7 @@ import { useDocumentTitle } from '../lib/useDocumentTitle';
 // (catalog/prose.mjs), so nothing a crawler read there is missing once React takes over.
 
 const PolicyDetails: React.FC<{ occupation: Occupation; area: Area | undefined }> = ({ occupation, area }) => {
-  const policy = use(loadPolicies())[occupation.slug];
+  const policy = use(loadAreaPolicies(occupation.areaSlug))[occupation.slug];
   if (!policy) return null;
   const note = scopeNote(policy);
 

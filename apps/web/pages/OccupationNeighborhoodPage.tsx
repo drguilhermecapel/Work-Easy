@@ -1,7 +1,7 @@
 import React, { Suspense, use } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
-import { findArea, findOccupation, loadPolicies } from '../catalog';
+import { findArea, findOccupation, loadAreaPolicies } from '../catalog';
 import type { Area, Occupation } from '../catalog/types';
 import { DEFAULT_CITY, LOCAL_NEIGHBORHOODS } from '../config/neighborhoods';
 import type { LocalNeighborhood } from '../config/neighborhoods';
@@ -16,7 +16,7 @@ import { useDocumentTitle } from '../lib/useDocumentTitle';
 // navigating inside the app. Both say the same thing (catalog/prose.mjs).
 
 const Requirements: React.FC<{ occupation: Occupation; area: Area | undefined; neighborhood: LocalNeighborhood }> = ({ occupation, area, neighborhood }) => {
-  const policy = use(loadPolicies())[occupation.slug];
+  const policy = use(loadAreaPolicies(occupation.areaSlug))[occupation.slug];
   if (!policy) return null;
 
   return (

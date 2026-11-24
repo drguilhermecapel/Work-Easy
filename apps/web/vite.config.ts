@@ -5,6 +5,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import type { Plugin } from 'vite';
 import { pwaOptions } from './pwa.config.ts';
+import { policiesByArea } from './policiesByArea.ts';
 
 type MiddlewareStack = Array<{
   route: string;
@@ -46,6 +47,8 @@ export default defineConfig(({ mode }) => ({
     react(),
     tailwindcss(),
     blockEditorLauncher,
+    // The rules of the catalog, one module per area (catalog/index.ts)
+    policiesByArea(),
     // Manifest, service worker rules and update flow: pwa.config.ts
     VitePWA(pwaOptions(mode)),
   ],

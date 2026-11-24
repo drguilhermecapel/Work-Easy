@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from '../../contexts/AuthContext';
 import AppShell from '../../AppShell';
@@ -58,14 +58,19 @@ const staticFacts = (page: Page): Facts => {
   return factsOf(doc.body);
 };
 
-const mountAt = (path: string) =>
-  render(
-    <AuthProvider>
-      <MemoryRouter initialEntries={[path]}>
-        <AppShell />
-      </MemoryRouter>
-    </AuthProvider>,
-  );
+// Async act: a page that suspends on its first render (the rules of an area that no earlier test loaded) is
+// resumed by React only when the mount is awaited; a synchronous render() warns about it and never retries.
+const mountAt = async (path: string): Promise<void> => {
+  await act(async () => {
+    render(
+      <AuthProvider>
+        <MemoryRouter initialEntries={[path]}>
+          <AppShell />
+        </MemoryRouter>
+      </AuthProvider>,
+    );
+  });
+};
 
 /** The last thing each kind of page renders: the policies load lazily and the sections that need them come after. */
 const settled = async (path: string): Promise<void> => {
@@ -135,7 +140,7 @@ describe('the DOM after React mounts keeps what the static page said', () => {
       vi.stubEnv('VITE_CONCIERGE_WHATSAPP', canRequest ? '5511999999999' : '');
       const page = staticPages.get(path);
       expect(page, `static page for ${path}`).toBeDefined();
-      mountAt(path);
+      await mountAt(path);
       await settled(path);
       const lost = missing(staticFacts(page!), factsOf(document.body));
       expect(lost, `${path} lost after the mount:\n${lost.join('\n')}`).toEqual([]);
@@ -181,7 +186,7 @@ describe('the DOM after React mounts keeps what the static page said', () => {
 
   it('is not vacuous: a page that is not the static one does lose things', async () => {
     buildStatic(false);
-    mountAt('/servicos/diarista');
+    await mountAt('/servicos/diarista');
     await settled('/servicos/diarista');
     const lost = missing(staticFacts(staticPages.get('/servicos/encanador')!), factsOf(document.body));
     expect(lost.some(item => item.startsWith('link /servicos/encanador/'))).toBe(true);
@@ -203,8 +208,8 @@ describe('the DOM after React mounts keeps what the static page said', () => {
 });
 
 describe('the occupation page keeps its policy-independent parts before the policies arrive', () => {
-  it('shows the heading, the other names, the calls to action and the links at once', () => {
-    mountAt('/servicos/encanador');
+  it('shows the heading, the other names, the calls to action and the links at once', async () => {
+    await mountAt('/servicos/encanador');
     // Rendered synchronously apart from the lazy page chunk: wait for the heading only
     return screen.findByRole('heading', { level: 1, name: 'Encanador' }).then(() => {
       expect(screen.getByText(/^Também procurado como /)).toBeInTheDocument();

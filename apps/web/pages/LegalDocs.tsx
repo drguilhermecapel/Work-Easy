@@ -53,7 +53,7 @@ const LegalDocs: React.FC = () => {
                   </Link>
                 </h2>
                 <p className="text-sm text-gray-600 leading-relaxed">{doc.summary}</p>
-                <p className="text-xs text-gray-400 mt-3">Versão {doc.version}</p>
+                <p className="text-xs text-gray-500 mt-3">Versão {doc.version}</p>
               </li>
             );
           })}

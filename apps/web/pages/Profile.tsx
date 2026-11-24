@@ -32,7 +32,7 @@ const Profile: React.FC = () => {
     <div className="bg-white min-h-screen pb-20">
       {/* Header Image/Background */}
       <div className="h-40 bg-linear-to-r from-primary to-secondary relative">
-        <button onClick={() => navigate(-1)} className="absolute top-4 left-4 text-white bg-black/20 p-2 rounded-full backdrop-blur-xs">
+        <button type="button" aria-label="Voltar" onClick={() => navigate(-1)} className="absolute top-4 left-4 text-white bg-black/20 p-2 rounded-full backdrop-blur-xs">
            <X size={20} />
         </button>
       </div>
@@ -54,7 +54,7 @@ const Profile: React.FC = () => {
                 <div className="flex items-center gap-1 bg-yellow-50 px-3 py-1 rounded-lg">
                    <Star className="text-yellow-400 fill-yellow-400" size={16} />
                    <span className="font-bold text-yellow-700">{provider.rating}</span>
-                   <span className="text-xs text-yellow-600">({provider.totalReviews})</span>
+                   <span className="text-xs text-yellow-800">({provider.totalReviews})</span>
                 </div>
               </div>
             </div>
@@ -99,7 +99,7 @@ const Profile: React.FC = () => {
                           ? formatBRL(service.priceMin)
                           : `${formatBRL(service.priceMin)} – ${formatBRL(service.priceMax)}`}
                       </span>
-                      <span className="text-xs text-gray-400">/ {service.unit}</span>
+                      <span className="text-xs text-gray-500">/ {service.unit}</span>
                     </div>
                   </div>
                 ))}
@@ -143,7 +143,7 @@ const Profile: React.FC = () => {
             <div className="md:bg-white md:p-6 md:rounded-2xl md:shadow-xs md:border md:border-gray-100 md:sticky md:top-24">
                <div className="hidden md:block mb-4">
                  <span className="text-sm text-gray-500">Preço médio</span>
-                 <div className="text-2xl font-bold text-primary">{provider.services[0] ? formatBRL(provider.services[0].priceMin) : 'A combinar'} <span className="text-sm font-normal text-gray-400">/ {provider.services[0]?.unit}</span></div>
+                 <div className="text-2xl font-bold text-primary">{provider.services[0] ? formatBRL(provider.services[0].priceMin) : 'A combinar'} <span className="text-sm font-normal text-gray-500">/ {provider.services[0]?.unit}</span></div>
                </div>
                <button 
                  onClick={() => setIsModalOpen(true)}
@@ -154,7 +154,7 @@ const Profile: React.FC = () => {
                <button className="w-full mt-3 bg-white text-gray-700 border border-gray-200 font-medium py-3 rounded-xl hover:bg-gray-50 flex items-center justify-center gap-2">
                  <MessageCircle size={18} /> Chat (Dúvidas)
                </button>
-               <p className="text-center text-xs text-gray-400 mt-3 hidden md:block">
+               <p className="text-center text-xs text-gray-500 mt-3 hidden md:block">
                  Protótipo: pedidos e pagamentos ainda não são processados.
                </p>
             </div>
@@ -206,7 +206,7 @@ const Profile: React.FC = () => {
                 <button type="submit" className="w-full bg-primary text-white font-bold py-3 rounded-xl hover:bg-purple-700 transition-colors">
                   Enviar Solicitação
                 </button>
-                <p className="text-center text-xs text-gray-400 mt-2">
+                <p className="text-center text-xs text-gray-500 mt-2">
                   Demonstração: o pedido não é enviado ao profissional.
                 </p>
               </div>

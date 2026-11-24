@@ -47,8 +47,20 @@ Os 147 nós restantes estão **fora dos arquivos desta frente** (ver seção 5):
 **Atualização de 24/11/2026.** Os quatro grupos foram corrigidos no código: rodapé em
 `text-gray-500` (`components/SiteFooter.tsx`), alternador de papel em `text-gray-600`, link de
 perfil com o nome vindo do texto e não de `aria-label` (`components/Navbar.tsx`) e o aviso dentro
-de um marco `aside` com nome. **A varredura do axe não foi refeita depois disso**: a contagem de
-147 nós é a anterior, e o resultado novo não foi medido.
+de um marco `aside` com nome.
+
+**Remedição de 24/11/2026.** axe-core 4.10.2, instalado numa pasta de rascunho fora do repositório,
+contra o build de demonstração (`vite preview`) aberto no Chromium do Playwright, com as regras
+WCAG 2.0 A/AA, 2.1 A/AA e 2.2 AA. Foram 28 cenários: 14 rotas (`/`, `/categorias`, uma área, uma
+ocupação, `/search`, `/legal`, `/termos`, `/privacidade`, `/excluir-conta`, `/entrar`, `/pedido`,
+`/profile/1`, `/register-provider` e `/dashboard`) em desktop (1280 px) e em celular (390 px).
+Primeira passada: 22 nós (contraste em `/legal`, no perfil e no painel do protótipo, e um botão
+"voltar" sem nome em `/profile/1`). Corrigidos: `text-gray-400` e `text-yellow-600` pequenos viraram
+`text-gray-500` e `text-yellow-800`, o botão ganhou `aria-label="Voltar"` e o botão de menu do celular
+passou a `text-gray-600`. **Segunda passada: 0 nós.** O que isso não cobre: as telas com sessão
+(pro, cliente, cuidado, admin e conta), que precisam de backend e seguem só com os testes de
+`test/a11y/`, sem cálculo de contraste; os estados com modal aberto; e as regras de "boas práticas"
+do axe, que esta passada não ativou.
 
 ### O que foi feito
 
@@ -98,7 +110,7 @@ de um marco `aside` com nome. **A varredura do axe não foi refeita depois disso
 | home (initial + Home + catálogo)        | 281,1 | 226,3 | 325 |
 | route (maior página sob demanda)        | 6,9 (AtendimentoDetalhe) | 5,6 (admin) | 15 |
 | catalog (`areas.json`)                  | 114,7 | 114,7 | 135 |
-| policies (`policies.json`)              | 134,9 | 134,9 | 155 |
+| policies (`policies.json`; medição de 08/11, antes da divisão por área) | 134,9 | 134,9 | 155 |
 | css                                     | 11,9  | 11,9  | 16  |
 | total (todo o JavaScript)               | 594,6 | 515,6 | 680 |
 
@@ -122,8 +134,10 @@ demo não tem essas variáveis. Ambos passam.
 - Cada página é um chunk separado (`lazy`). O maior chunk de página mede 6,9 kB gz.
 - O prefetch começa quando o ponteiro ou o teclado chega a um link (`pointerover`, `focusin`,
   `touchstart`), uma vez por rota. Respeita `saveData` e conexões 2G. Links para área ou serviço
-  também pré-carregam `policies.json`, que é o maior arquivo.
-- `policies.json` e `areas.json` já são chunks separados; `policies.json` só carrega por `loadPolicies()`.
+  também pré-carregam as regras da área da página (desde 24/11/2026, só a área: `components/routePrefetch.ts`).
+- `areas.json` é um chunk separado. `policies.json` é cortado por área no build (`policiesByArea.ts`) e a
+  página carrega só `policies-<área>`, por `loadAreaPolicies()`; `loadPolicies()` junta as 44 áreas para
+  as poucas telas que precisam de todas as regras.
 - Ícones: há 64 linhas de import do `lucide-react`, todas por nome (nenhum `import * as`). O chunk
   compartilhado tem 3,9 kB gz. Nenhuma ação.
 - Imagens: o QR code do Pix tem largura e altura fixas (`35f6b93`). Os ícones do PWA em
@@ -132,9 +146,12 @@ demo não tem essas variáveis. Ambos passam.
 
 ### O que mais pesa (fora desta frente)
 
-1. **`policies.json` (134,9 kB gz) é um arquivo só.** As telas de área e de serviço carregam o
-   arquivo inteiro para mostrar as regras de uma ocupação. A solução é dividir por área.
-   O arquivo está em `catalog/`, que não é desta frente.
+1. **`policies.json` era um arquivo só (feito em 24/11/2026).** As telas de área e de serviço
+   carregavam o arquivo inteiro para mostrar as regras de uma ocupação (192,1 kB gz, depois da
+   rodada 4 do catálogo). Agora o Vite corta o arquivo por área no build, sem uma segunda cópia no
+   repositório: uma página paga no máximo 8,4 kB gz (a maior área, `health`). As 44 áreas somam 232,0 kB
+   gz, mais que o arquivo único porque arquivos pequenos comprimem pior, e só as telas que precisam de
+   todas as regras as baixam.
 2. **`areas.json` (114,7 kB gz) entra na home.** A home usa só as áreas em destaque e a busca.
    A solução é um índice leve (slug, nome, ícone, quantidade) e as ocupações por área. Também em `catalog/`.
 3. **O chunk inicial cresce 54,9 kB gz com as variáveis do Supabase** (de 109,4 para 164,3). Não

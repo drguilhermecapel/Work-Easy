@@ -3,16 +3,23 @@
 // both router flavours (clean URLs and hash URLs). The page chunks are the ones AppShell and the
 // routes.tsx files load with lazy(); the bundler shares them, so nothing is downloaded twice.
 
-type Loader = () => Promise<unknown>;
+/** Gets the path being prefetched, for the loaders that depend on it (the rules of one area). */
+type Loader = (path: string) => Promise<unknown>;
 
-// The data of the rules (policies.json, large) is fetched with the page that shows it
-const policies: Loader = () => import('../catalog').then(catalog => catalog.loadPolicies());
+// The rules of the catalog (large) are fetched with the page that shows them, and only the area it needs:
+// /categorias/<area> reads that area, /servicos/<service> the area of the service.
+const areaRules: Loader = path => import('../catalog').then(catalog => catalog.loadAreaPolicies(path.split('/')[2] ?? ''));
+const serviceRules: Loader = path =>
+  import('../catalog').then(catalog => {
+    const occupation = catalog.findOccupation(path.split('/')[2]);
+    return occupation ? catalog.loadAreaPolicies(occupation.areaSlug) : undefined;
+  });
 
 export const ROUTE_LOADERS: Array<[pattern: RegExp, load: Loader]> = [
   [/^\/$/, () => import('../pages/Home')],
   [/^\/categorias$/, () => import('../pages/Categories')],
-  [/^\/categorias\/[^/]+$/, () => Promise.all([import('../pages/AreaPage'), policies()])],
-  [/^\/servicos\/[^/]+$/, () => Promise.all([import('../pages/OccupationPage'), policies()])],
+  [/^\/categorias\/[^/]+$/, path => Promise.all([import('../pages/AreaPage'), areaRules(path)])],
+  [/^\/servicos\/[^/]+$/, path => Promise.all([import('../pages/OccupationPage'), serviceRules(path)])],
   [/^\/servicos\/[^/]+\/[^/]+$/, () => import('../pages/OccupationNeighborhoodPage')],
   [/^\/pedido$/, () => import('../pages/cliente/Pedido')],
   [/^\/entrar$/, () => import('../pages/conta/Entrar')],
@@ -41,7 +48,7 @@ export const prefetchRoute = (href: string | null): void => {
   const match = ROUTE_LOADERS.find(([pattern]) => pattern.test(path));
   if (!match) return;
   started.add(path);
-  match[1]().catch(() => started.delete(path));
+  match[1](path).catch(() => started.delete(path));
 };
 
 /** The in-app link under an event target, if any. */

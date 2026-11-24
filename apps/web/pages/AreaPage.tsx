@@ -1,7 +1,7 @@
 import React, { Suspense, use } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
-import { findArea, loadPolicies } from '../catalog';
+import { findArea, loadAreaPolicies } from '../catalog';
 import type { Area, Occupation, OccupationPolicy } from '../catalog/types';
 import { LAUNCH_AREA_SLUGS, SECTION, areaFacts, areaMeta, policyBadges } from '../catalog/prose.mjs';
 import { MOCK_PROVIDERS } from '../constants';
@@ -21,14 +21,14 @@ const OccupationList: React.FC<{ occupations: Occupation[]; policies?: Record<st
   </ul>
 );
 
-const OccupationListWithPolicies: React.FC<{ occupations: Occupation[] }> = ({ occupations }) => {
-  const policies = use(loadPolicies());
+const OccupationListWithPolicies: React.FC<{ areaSlug: string; occupations: Occupation[] }> = ({ areaSlug, occupations }) => {
+  const policies = use(loadAreaPolicies(areaSlug));
   return <OccupationList occupations={occupations} policies={policies} />;
 };
 
 /** How many of the services are regulated and whether the area is a launch one: the same sentences as the static page, which needs the policies. */
 const AreaFacts: React.FC<{ area: Area }> = ({ area }) => {
-  const policies = use(loadPolicies());
+  const policies = use(loadAreaPolicies(area.slug));
   const regulated = area.occupations.filter(o => policies[o.slug]?.regulated).length;
   const launch = LAUNCH_AREA_SLUGS.includes(area.slug) && LAUNCH_NEIGHBORHOODS.length > 0;
   return (
@@ -84,12 +84,11 @@ const AreaPage: React.FC = () => {
       )}
 
       <h2 className="font-bold text-gray-800 mb-3">{SECTION.areaServices}</h2>
+      {/* One boundary for both: they wait for the same rules, so the list with its badges and the facts under
+          it appear together (two boundaries resolved one after the other). The facts come after the list, so
+          nothing above them moves when the rules arrive. */}
       <Suspense fallback={<OccupationList occupations={occupations} />}>
-        <OccupationListWithPolicies occupations={occupations} />
-      </Suspense>
-
-      {/* After the list, so that nothing above it moves when the policies arrive */}
-      <Suspense fallback={null}>
+        <OccupationListWithPolicies areaSlug={area.slug} occupations={occupations} />
         <AreaFacts area={area} />
       </Suspense>
 

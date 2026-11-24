@@ -31,17 +31,21 @@
 //   measured (kB gz)   initial 164.3 | home 281.1 | route 6.9 | catalog 114.7 | policies 134.9
 //                      css 11.9 | total 594.6
 //   budget   (kB gz)   initial 190   | home 325   | route 15  | catalog 135   | policies 155
-//                      css 16   | total 680
+//                      css 16   | total 680   (first revision; see the one of 2026-11-24 below)
 //
 // Revision of 2026-11-24. Two things were found when this script started to run in CI:
 //   - initial measured 229.4 kB: pages/prototype/redirects.tsx imported the catalog statically and
 //     pulled areas.json into the entry chunk. The redirects are now a lazy chunk and initial is back
 //     to 114.7 kB on the demo build (the catalog is its own chunk again: 114.6 kB). Budget unchanged.
 //   - policies measured 192.1 kB against 155: the fourth verification round of the catalog added the
-//     list of sources to each policy (about 338 kB of the 1.8 MB of JSON). That growth was a decision,
-//     the chunk is still loaded only by the pages that show the rules of a service, and nothing on the
-//     first load depends on it, so the budget follows the data: 192.1 kB plus about 15% = 220 kB.
-//     Splitting policies.json by area would make each page load only its own rules; it is not done.
+//     list of sources to each policy (about 338 kB of the 1.8 MB of JSON). Instead of raising the
+//     budget, policies.json is now cut per area at build time (policiesByArea.ts): a page loads the
+//     chunk policies-<area> of its own area. The figure is the largest area, 8.4 kB gzip, which is
+//     what any page pays; all 44 together are 232.0 kB (more than the 192.1 kB of the single file,
+//     because small files compress worse) and are fetched only by the few screens that need every
+//     rule. Budget: 8.4 kB plus about 15%, 10 kB. `total` no longer counts the area chunks: it was
+//     632.0 kB with the single file and is 441.7 kB without them (budget 510 kB). `policiesAll`
+//     is reported by --json and has no budget.
 //
 // No dependencies. Exit code 0 = within budget, 1 = over budget, 2 = no build to read.
 
@@ -55,9 +59,9 @@ export const BUDGETS_KB = {
   home: 325,
   route: 15,
   catalog: 135,
-  policies: 220,
+  policies: 10,
   css: 16,
-  total: 680,
+  total: 510,
 };
 
 const LABELS = {
@@ -65,7 +69,7 @@ const LABELS = {
   home: 'início (carga inicial + Home + catálogo)',
   route: 'maior página carregada sob demanda',
   catalog: 'dados do catálogo (areas.json)',
-  policies: 'regras dos serviços (policies.json)',
+  policies: 'regras de uma área (maior policies-*)',
   css: 'css',
   total: 'todo o JavaScript',
 };
@@ -93,8 +97,11 @@ export const measureDist = dist => {
 export const summarize = ({ files, initial }) => {
   const sum = names => [...names].reduce((total, name) => total + (files.get(name) ?? 0), 0);
   const named = name => [...files.keys()].filter(file => chunkName(file) === name && file.endsWith('.js'));
-  const data = new Set(['catalog', 'policies']);
-  const lazy = [...files.keys()].filter(file => file.endsWith('.js') && !initial.has(file) && !data.has(chunkName(file)));
+  // policies-<area>: the rules of one area (policiesByArea.ts), data like the catalog
+  const isPolicies = file => file.endsWith('.js') && chunkName(file).startsWith('policies-');
+  const policyFiles = [...files.keys()].filter(isPolicies);
+  const isData = file => chunkName(file) === 'catalog' || isPolicies(file);
+  const lazy = [...files.keys()].filter(file => file.endsWith('.js') && !initial.has(file) && !isData(file));
   const largest = lazy.reduce((best, file) => (files.get(file) > (files.get(best) ?? 0) ? file : best), '');
   const js = [...files.keys()].filter(file => file.endsWith('.js'));
   return {
@@ -102,9 +109,12 @@ export const summarize = ({ files, initial }) => {
     home: sum(initial) + sum(named('Home').filter(file => !initial.has(file))) + sum(named('catalog').filter(file => !initial.has(file))),
     route: files.get(largest) ?? 0,
     catalog: sum(named('catalog')),
-    policies: sum(named('policies')),
+    // what a page pays for the rules of its area: the largest area, not the sum of the 44
+    policies: Math.max(0, ...policyFiles.map(file => files.get(file))),
+    policiesAll: sum(policyFiles),
     css: sum([...files.keys()].filter(file => file.endsWith('.css'))),
-    total: sum(js),
+    // every script but the rules, which have their own two figures (the sum of all areas is not a download)
+    total: sum(js.filter(file => !isPolicies(file))),
     largestRoute: largest,
   };
 };

@@ -228,7 +228,7 @@ desempenho: diferenças menores que isso são ruído.
 - Nas páginas de conteúdo, o HTML estático pinta em cerca de 5,6 a 6,1 s (FCP) no perfil simulado. Quando o React
   monta, o maior bloco de texto é trocado, e o LCP vai para cerca de 12 s nas áreas, ocupações e bairros. O custo é de
   JavaScript: o pacote de entrada tem cerca de 135 a 146 KiB de código não usado, e o pacote de políticas
-  (`policies-*.js`) tem 1,2 MB sem compactação e é carregado para montar as rotas.
+  (`policies-*.js`) tem 1,2 MB sem compactação e é carregado para montar as rotas (medição anterior à divisão por área de 24/11/2026: hoje a página carrega só o módulo da sua área, no máximo 8,4 kB gz; ver `acessibilidade-desempenho.md`).
 - O SEO fica em 92 nas páginas indexáveis porque o canonical é relativo neste build (sem `VITE_SITE_URL`). Com a variável
   definida, o auditor deveria passar, mas isso não foi medido. Os 58 do bairro e os 63 de `/entrar` vêm de decisões
   deliberadas: o bairro é `noindex`, e `/entrar` está no `robots.txt`.

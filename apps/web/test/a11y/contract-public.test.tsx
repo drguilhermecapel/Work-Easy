@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from '../../contexts/AuthContext';
@@ -78,7 +78,10 @@ describe('public catalog pages', () => {
   });
 
   it('occupation: the rules load and every link says where it goes', async () => {
-    renderAt('/servicos/diarista');
+    // The page suspends on the rules of its area, so the mount is awaited (a synchronous render() never resumes it)
+    await act(async () => {
+      renderAt('/servicos/diarista');
+    });
     expect(await screen.findByRole('heading', { level: 1, name: 'Diarista' })).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: /Como se contrata/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /planalto\.gov\.br/ })).toHaveAttribute('rel', 'noopener noreferrer');
