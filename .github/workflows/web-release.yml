@@ -26,8 +26,6 @@ on:
       - 'apps/web/package-lock.json'
       - 'apps/web/.env.native'
       - '.github/workflows/web-release.yml'
-  push:
-    tags: ['v*']
 
 permissions:
   contents: read
