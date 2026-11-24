@@ -6,6 +6,7 @@ import { useAsync } from '../../lib/useAsync';
 import { QUOTE_ASSIST_LIMITS, suggestQuote, type QuoteSuggestion, type ReferencePrice } from '../../services/aiAssist';
 import { listMyOccupations } from '../../services/providers';
 import { listMyServices, type ServiceRow } from '../../services/proServices';
+import { features } from '../../config/features';
 import AiConsent from '../AiConsent';
 import ErrorAlert from '../ErrorAlert';
 import { inputClass, primaryButton, secondaryButton } from './styles';
@@ -135,6 +136,7 @@ const Panel: React.FC<{ providerId: string; onApply: (suggestion: QuoteSuggestio
  */
 const QuoteAssist: React.FC<{ providerId: string; onApply: (suggestion: QuoteSuggestion) => void }> = ({ providerId, onApply }) => {
   const [open, setOpen] = useState(false);
+  if (!features.aiAssistInBuild) return null;
   if (!open) {
     return (
       <div>

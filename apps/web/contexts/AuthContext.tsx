@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import type { Session, User } from '@supabase/supabase-js';
 import { UserType, UserProfile } from '../types';
 import { supabase, type AppSupabaseClient } from '../lib/supabase';
+import { features } from '../config/features';
 import { useAsync } from '../lib/useAsync';
 import { fetchCareAccess, fetchIsAdmin, getMyProvider, getProfile } from '../services/account';
 import { clearRequestDraft } from '../lib/requestDraft';
@@ -125,7 +126,8 @@ const loadDetails = async (userId: string | undefined): Promise<AccountDetails> 
   const providerRow = provider.status === 'fulfilled' ? provider.value : null;
   const admin = isAdmin.status === 'fulfilled' ? isAdmin.value : false;
   // Hidden on any failure: the menu entry is a convenience, the link still works
-  const careAccess = admin || (await fetchCareAccess().catch(() => false));
+  // A store build leaves the care line out altogether (features.careLineInBuild)
+  const careAccess = features.careLineInBuild && (admin || (await fetchCareAccess().catch(() => false)));
   return { profile: profile.status === 'fulfilled' ? profile.value : null, provider: providerRow, isAdmin: admin, careAccess };
 };
 

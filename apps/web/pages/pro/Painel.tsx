@@ -1,3 +1,4 @@
+import { features } from '../../config/features';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { CalendarDays, CheckCircle2, ClipboardList, Inbox } from 'lucide-react';
@@ -106,7 +107,9 @@ const Panel: React.FC = () => {
         <div className="flex flex-wrap gap-4 mt-3 text-sm">
           <Link to="/pro/cadastro" className={linkClass}>Cadastro</Link>
           {approved && <Link to={`/p/${provider.slug}`} className={linkClass}>Ver minha página</Link>}
-          <Link to="/pro/assinatura" className={linkClass}>{provider.plan === 'pro' ? 'Minha assinatura' : 'Conhecer o plano Pro'}</Link>
+          <Link to="/pro/assinatura" className={linkClass}>
+            {!features.proSalesEnabled ? 'Plano e recebimento' : provider.plan === 'pro' ? 'Minha assinatura' : 'Conhecer o plano Pro'}
+          </Link>
         </div>
       </Card>
 

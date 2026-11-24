@@ -1,3 +1,4 @@
+import { features } from '../../config/features';
 import React, { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Download } from 'lucide-react';
@@ -281,9 +282,11 @@ const Charges: React.FC = () => {
                 <p className="text-sm text-gray-700">
                   Cobrar clientes seus por Pix, boleto ou cartão faz parte do plano Pro. Seu plano atual é o grátis.
                 </p>
-                <Link to="/pro/assinatura" className={`${primaryButton} mt-3`}>
-                  Ver o plano Pro
-                </Link>
+                {features.proSalesEnabled && (
+                  <Link to="/pro/assinatura" className={`${primaryButton} mt-3`}>
+                    Ver o plano Pro
+                  </Link>
+                )}
               </Card>
             ) : !data.data.accountActive ? (
               <Card>

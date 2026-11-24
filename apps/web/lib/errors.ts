@@ -92,6 +92,9 @@ export type ClientErrorCode =
 
 export type ErrorCode = DatabaseErrorCode | ClientErrorCode;
 
+/** VITE_STORE_BUILD names an app store (read here, not from config/features, to keep this file free of the data client). */
+const inStoreBuild = (): boolean => ['android', 'ios'].includes((import.meta.env.VITE_STORE_BUILD ?? '').trim().toLowerCase());
+
 export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   report_limit: 'Você já fez muitas denúncias hoje. Tente de novo amanhã ou fale com o atendimento.',
   block_limit: 'Você chegou ao limite de bloqueios. Remova algum em Minha conta para bloquear outro.',
@@ -140,8 +143,12 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   storage_not_empty:
     'Ainda há arquivos enviados na sua conta. Tente excluir a conta de novo; se o erro continuar, fale com o suporte.',
   // The monthly allowance comes from platform_settings, so the sentence does not state a number
-  free_proposal_limit:
-    'Você usou as propostas grátis deste mês. No plano Pro (menu Assinatura) as propostas são ilimitadas; as grátis voltam no mês que vem.',
+  // A store build does not point to the paid plan (the stores forbid steering to another way of paying)
+  get free_proposal_limit() {
+    return inStoreBuild()
+      ? 'Você usou as propostas grátis deste mês. As grátis voltam no mês que vem.'
+      : 'Você usou as propostas grátis deste mês. No plano Pro (menu Assinatura) as propostas são ilimitadas; as grátis voltam no mês que vem.';
+  },
   // App, auth, data access and network
   backend_disabled: 'Esta função ainda não está disponível nesta versão do app.',
   not_authenticated: 'Entre na sua conta para continuar.',

@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { KeyRound, Mail, Smartphone } from 'lucide-react';
 import { useAuth, type OtpTarget } from '../../contexts/AuthContext';
 import { backendEnabled } from '../../lib/supabase';
+import { features } from '../../config/features';
 import { safeNext } from '../../lib/navigation';
 import { formatPhoneBR, toE164BR } from '../../lib/phone';
 import { acceptCurrentTerms } from '../../services/account';
@@ -25,7 +26,8 @@ const Entrar: React.FC = () => {
   const [params] = useSearchParams();
   const next = safeNext(params.get('next'));
 
-  const [channel, setChannel] = useState<Channel>('email');
+  const methods = features.loginMethods;
+  const [channel, setChannel] = useState<Channel>(methods[0] ?? 'email');
   const [contact, setContact] = useState('');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [declaredAge, setDeclaredAge] = useState(false);
@@ -156,13 +158,14 @@ const Entrar: React.FC = () => {
               Receba um código de 6 dígitos para entrar ou criar sua conta. Não há senha.
             </p>
 
-            <div role="group" aria-label="Receber o código por" className="grid grid-cols-2 gap-2 bg-gray-100 rounded-xl p-1">
+            {/* One way of signing in needs no choice (VITE_LOGIN_METHODS) */}
+            {methods.length > 1 && <div role="group" aria-label="Receber o código por" className="grid grid-cols-2 gap-2 bg-gray-100 rounded-xl p-1">
               {(
                 [
                   ['email', 'E-mail', Mail],
                   ['phone', 'Celular', Smartphone],
                 ] as const
-              ).map(([value, label, Icon]) => (
+              ).filter(([value]) => methods.includes(value)).map(([value, label, Icon]) => (
                 <button
                   key={value}
                   type="button"
@@ -173,13 +176,13 @@ const Entrar: React.FC = () => {
                     setError(null);
                   }}
                   className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium ${
-                    channel === value ? 'bg-white shadow-sm text-primary' : 'text-gray-500'
+                    channel === value ? 'bg-white shadow-sm text-primary' : 'text-gray-600'
                   }`}
                 >
                   <Icon size={16} aria-hidden="true" /> {label}
                 </button>
               ))}
-            </div>
+            </div>}
 
             <div>
               <label htmlFor="entrar-contato" className="block text-sm font-medium text-gray-700 mb-1">

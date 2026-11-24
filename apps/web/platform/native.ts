@@ -1,4 +1,5 @@
 import { Capacitor } from '@capacitor/core';
+import { routeFromAppUrl } from './deepLinks';
 
 /**
  * Native-shell wiring for Android and iOS (Capacitor). On the website and in
@@ -16,5 +17,12 @@ export const initNativeShell = async (): Promise<void> => {
     } else {
       App.exitApp();
     }
+  });
+
+  // A link to the site that the system opened in the app (App Links, Universal Links) goes to
+  // its route. The native build uses hash URLs, so the route is set after "#".
+  await App.addListener('appUrlOpen', ({ url }) => {
+    const route = routeFromAppUrl(url, (import.meta.env.VITE_SITE_URL ?? '').trim() || null);
+    if (route) window.location.hash = route;
   });
 };

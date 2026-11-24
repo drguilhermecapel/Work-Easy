@@ -10,6 +10,25 @@ const conciergeNumber = (): string | null => {
   return digits.length >= 12 && digits.length <= 15 ? digits : null;
 };
 
+export type StoreBuild = 'android' | 'ios';
+export type LoginMethod = 'email' | 'phone';
+
+/** VITE_STORE_BUILD: the app store this build is made for; anything else is not a store build. */
+const storeBuild = (): StoreBuild | null => {
+  const value = (import.meta.env.VITE_STORE_BUILD ?? '').trim().toLowerCase();
+  return value === 'android' || value === 'ios' ? value : null;
+};
+
+/** VITE_LOGIN_METHODS: "email", "phone" or both separated by a comma. Empty or unreadable = both. */
+const loginMethods = (): LoginMethod[] => {
+  const listed = (import.meta.env.VITE_LOGIN_METHODS ?? '')
+    .split(',')
+    .map(item => item.trim().toLowerCase())
+    .filter((item): item is LoginMethod => item === 'email' || item === 'phone');
+  const unique = [...new Set(listed)];
+  return unique.length > 0 ? unique : ['email', 'phone'];
+};
+
 const siteUrl = (): string | null => {
   const value = (import.meta.env.VITE_SITE_URL ?? '').trim().replace(/\/+$/, '');
   return /^https?:\/\//.test(value) ? value : null;
@@ -24,6 +43,33 @@ export const features = {
   },
   get siteUrl(): string | null {
     return siteUrl();
+  },
+  /** "android" or "ios" in a build made for an app store; null on the site, the desktop apps and in development. */
+  get storeBuild(): StoreBuild | null {
+    return storeBuild();
+  },
+  /**
+   * Whether this build may sell the Pro plan. A store build may not: the stores require their own
+   * billing for features of the app and forbid pointing the user to another way of paying
+   * (docs/lojas/google-play.md B06, docs/lojas/app-store.md D1). There the plan is only shown.
+   */
+  get proSalesEnabled(): boolean {
+    return storeBuild() === null;
+  },
+  /** Whether the care line is part of this build. A store build leaves it out (docs/DECISOES.md, D12). */
+  get careLineInBuild(): boolean {
+    return storeBuild() === null;
+  },
+  /**
+   * Whether the AI assistants are part of this build. The first iOS version ships without them
+   * (docs/lojas/app-store.md, D6); every other build shows them, behind the recorded consent.
+   */
+  get aiAssistInBuild(): boolean {
+    return storeBuild() !== 'ios';
+  },
+  /** Ways of receiving the sign-in code this build offers, in the order of the tabs. */
+  get loginMethods(): LoginMethod[] {
+    return loginMethods();
   },
 };
 

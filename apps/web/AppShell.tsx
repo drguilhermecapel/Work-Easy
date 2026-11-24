@@ -55,8 +55,9 @@ const AppShell: React.FC = () => (
           {proRoutes}
           {publicoRoutes}
           {adminRoutes}
-          {cuidadoRoutes}
-          {plantoesRoutes}
+          {/* The care line is not part of a store build (docs/DECISOES.md, D12): its addresses fall to the catch-all */}
+          {features.careLineInBuild && cuidadoRoutes}
+          {features.careLineInBuild && plantoesRoutes}
           {captacaoRoutes}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

@@ -23,6 +23,10 @@ interface ImportMetaEnv {
   readonly VITE_SAC_WHATSAPP?: string;
   /** "vigente" once a lawyer approved the published legal texts; anything else keeps the draft notice. */
   readonly VITE_LEGAL_STATUS?: string;
+  /** "android" or "ios" in a build made for an app store: no sale of Pro in the app and no care line. Empty otherwise. */
+  readonly VITE_STORE_BUILD?: string;
+  /** Sign-in code channels offered: "email", "phone" or "email,phone" (default). */
+  readonly VITE_LOGIN_METHODS?: string;
 }
 
 interface ImportMeta {

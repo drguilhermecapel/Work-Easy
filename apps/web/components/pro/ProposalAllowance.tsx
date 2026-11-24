@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { features } from '../../config/features';
 import type { ProposalAllowance } from '../../services/proMarketplace';
 import { linkClass } from './styles';
 
@@ -16,8 +17,11 @@ const ProposalAllowanceNote: React.FC<{ allowance: ProposalAllowance | null; cla
   return (
     <p className={`text-sm text-gray-700 ${className}`}>
       Você usou {used} de {limit} {limit === 1 ? 'proposta grátis' : 'propostas grátis'} neste mês.
-      {used >= limit && ' A contagem recomeça no primeiro dia do mês; no plano Pro não há limite.'}{' '}
-      <Link to="/pro/assinatura" className={linkClass}>Ver o plano Pro</Link>
+      {used >= limit &&
+        (features.proSalesEnabled
+          ? ' A contagem recomeça no primeiro dia do mês; no plano Pro não há limite.'
+          : ' A contagem recomeça no primeiro dia do mês.')}{' '}
+      {features.proSalesEnabled && <Link to="/pro/assinatura" className={linkClass}>Ver o plano Pro</Link>}
     </p>
   );
 };
