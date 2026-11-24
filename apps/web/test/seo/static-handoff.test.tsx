@@ -161,6 +161,58 @@ describe('mountWithStaticHandoff', () => {
     expect(root.contains(document.activeElement)).toBe(true);
   });
 
+  it('looks for the twin of the focused link inside <main> first, not in the bar of the app that comes before it', async () => {
+    const root = rootWith('<main data-prerendered="area"><a href="/categorias">Categorias</a><a href="/servicos/diarista">Diarista</a></main>');
+    const { open, Suspender } = gate();
+    await mount(
+      root,
+      <Suspense fallback={null}>
+        <Suspender>
+          <header>
+            <nav>
+              <a href="/categorias">Categorias</a>
+            </nav>
+          </header>
+          <main tabIndex={-1}>
+            <a href="/categorias">Categorias</a>
+            <a href="/servicos/diarista">Diarista</a>
+          </main>
+        </Suspender>
+        <HandoffReady />
+      </Suspense>,
+    );
+    root.querySelector<HTMLAnchorElement>(`${STATIC} a[href="/categorias"]`)!.focus();
+    await open();
+    await waitFor(() => expect(root.querySelector(STATIC)).toBeNull());
+    expect(document.activeElement?.getAttribute('href')).toBe('/categorias');
+    expect(document.activeElement?.closest('main')).not.toBeNull();
+    expect(document.activeElement?.closest('header')).toBeNull();
+  });
+
+  it('falls back to a twin outside <main> when <main> has none', async () => {
+    const root = rootWith('<main data-prerendered="area"><a href="/categorias">Categorias</a></main>');
+    const { open, Suspender } = gate();
+    await mount(
+      root,
+      <Suspense fallback={null}>
+        <Suspender>
+          <header>
+            <a href="/categorias">Categorias</a>
+          </header>
+          <main tabIndex={-1}>
+            <h1>Página do React</h1>
+          </main>
+        </Suspender>
+        <HandoffReady />
+      </Suspense>,
+    );
+    root.querySelector<HTMLAnchorElement>(`${STATIC} a`)!.focus();
+    await open();
+    await waitFor(() => expect(root.querySelector(STATIC)).toBeNull());
+    expect(document.activeElement?.tagName).toBe('A');
+    expect(document.activeElement?.closest('header')).not.toBeNull();
+  });
+
   it('puts the focus on <main> when the link it was on has no twin in the new page', async () => {
     const root = rootWith(STATIC_HTML);
     const { open, Suspender } = gate();

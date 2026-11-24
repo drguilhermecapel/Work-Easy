@@ -105,6 +105,13 @@ describe('prerender: pages of the real catalog', () => {
 });
 
 describe('prerender: content of a page', () => {
+  it('underlines the area links of the /categorias list, where each one sits inside a sentence (axe link-in-text-block)', () => {
+    const index = mod.buildPages({ ...smallInputs(), warn: () => {} }).find(p => p.path === '/categorias')!;
+    const links = [...index.body.matchAll(/<li><a [^>]*class="([^"]*)"/g)];
+    expect(links.length).toBeGreaterThan(0);
+    for (const match of links) expect(match[1].split(' ')).toContain('underline');
+  });
+
   it('writes real HTML into #root, with h1, area link, related links and the policy text', () => {
     const pages = mod.buildPages({ ...smallInputs(), warn: () => {} });
     const encanador = pages.find(p => p.path === '/servicos/encanador')!;
