@@ -151,23 +151,23 @@ carregamento do SDK.
 
 ## 6. Mapa dos eventos para os KPIs
 
-`docs/operacao/08` não existe na árvore de trabalho desta frente (`apps/web`) e não foi lido.
-O mapa abaixo usa os nomes dos indicadores como descritos no pedido de trabalho. `[incerto]`:
-conferir cada linha contra `docs/operacao/08` quando o arquivo estiver disponível.
+As definições oficiais dos KPIs operacionais (`E`, `G1`–`G3`, `P1`–`P4`, `C1`) estão em `docs/operacao/08-metricas-e-portoes.md`, calculadas sobre as tabelas transacionais do banco. A tabela abaixo mapeia os eventos de funil (`admin_funnel_daily`) para apoio a esses indicadores:
 
-| Indicador (nome de trabalho) | Eventos usados | Como calcular |
+| Indicador (08-metricas-e-portoes.md) | Eventos de funil usados | Como interpretar |
 |---|---|---|
 | Demanda: pedidos por dia | `request_created` | contagem por `day` |
-| Oferta: propostas por pedido | `proposal_sent` por `subject_id` | propostas ÷ pedidos |
+| `G3` Liquidez (pedidos com proposta) | `request_created`, `proposal_sent` | propostas por pedido; `G3` oficial mede % com proposta em 2 h |
 | Agendamentos solicitados e aceitos | `booking_requested`, `booking_accepted` | aceitos ÷ solicitados, por `origin` |
-| Pagamentos recebidos | `payment_received` | contagem por dia e método |
+| `E` / `G2` Pagamentos recebidos | `payment_received` | contagem por dia e método; `E` e `G2` exigem atendimento concluído/liberado |
+| `P1` Parcela paga no app (`platform`) | `booking_accepted`, `payment_received` | pagos no app ÷ concluídos (somente `origin = platform`) |
 | Avaliações publicadas | `review_published` | avaliações ÷ agendamentos aceitos |
 | Entrada de prestadores | `provider_submitted`, `provider_approved` | aprovados ÷ enviados |
 | Ocupações habilitadas | `occupation_approved` | ocupações aprovadas por dia |
-| Início do Pro | `pro_trial_started` | contagem por dia |
-| Conversão para Pro pago | `pro_trial_started`, `pro_subscribed` | assinaturas ativas ÷ trials iniciados |
+| Início do Pro (`trialing`) | `pro_trial_started` | contagem por dia |
+| `P2` Conversão do teste do Pro | `pro_trial_started`, `pro_subscribed` | `P2` oficial: `active ÷ (active + past_due)` ao fim do teste |
+| `P4` Pagantes sobre aprovados | `provider_approved`, `pro_subscribed` | `subscriptions.status = 'active' ÷ providers.status = 'approved'` |
 
-Os cálculos são feitos com `admin_funnel_daily`. Nenhum número é publicado como resultado
+Os cálculos de funil são feitos com `admin_funnel_daily` e complementam os portões de `08-metricas-e-portoes.md`. Nenhum número é publicado como resultado 
 até que existam dados reais; o produto não foi implantado.
 
 ## 7. Limites conhecidos
