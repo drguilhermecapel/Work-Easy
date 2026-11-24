@@ -297,4 +297,16 @@ Estes pontos não bloqueiam a publicação, mas podem levar a uma decisão errad
 ## Notas sobre este documento
 
 - Os caminhos seguem a convenção do início. Os valores de segredos, IDs de projeto e identificadores de conta não aparecem aqui.
+
+---
+
+## Itens concluídos em 24/11/2026 (GitHub e documentação)
+
+- [x] Reporte privado de vulnerabilidades (Private vulnerability reporting) ativado
+- [x] Dependency graph, Dependabot alerts e Dependabot security updates ativados
+- [x] Ambiente `production` criado com revisor obrigatório `drguilhermecapel`
+- [x] Regra `Content-Type: application/json` para `/.well-known/apple-app-site-association` adicionada em `apps/web/public/_headers` (commit `e8ba931`)
+- [x] `apps/web/docs/RUNBOOKS.md` atualizado com 109 migrações e procedimento de reversão no Cloudflare Pages (commit `2afb1b3`)
+- [x] `apps/web/docs/ARQUITETURA.md` atualizado com agendamento `workeasy-background-check-purge` e referência ao contrato Pro (commit `c26f2c0`)
+- [x] `apps/web/docs/arquitetura/observabilidade.md` (§6) reconciliado com `08-metricas-e-portoes.md` (commit `c0fc203`)
 - A ausência de um item no repositório está marcada como pendente. Itens marcados como incertos não foram conferidos.
