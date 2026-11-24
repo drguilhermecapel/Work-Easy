@@ -22,7 +22,15 @@ export interface ClientInput {
   cpfCnpj?: string;
 }
 
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** 52998224725 → "529.982.247-25", 11222333000181 → "11.222.333/0001-81"; anything else is returned as it is. For display only. */
+export const formatCpfCnpj = (value: string | null | undefined): string => {
+  const digits = value ?? '';
+  if (/^\d{11}$/.test(digits)) return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+  if (/^\d{14}$/.test(digits)) return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+  return digits;
+};
+
+const EMAIL =/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** The provider's CRM, by name. */
 export const listClients = (providerId: string): Promise<ClientRow[]> =>
