@@ -460,7 +460,7 @@ As migrações criam oito agendamentos:
 | `product-events-retention` | 03:17 | apaga eventos de produto antigos |
 | `notification-counts-retention` | 03:23 | apaga contadores do teto diário de notificações |
 | `retention-purge-daily` | 03:00 | `run_retention_purge()` |
-
+ O agendamento `workeasy-background-check-purge` roda às 03:20 UTC (`20 3 * * *`, 00:20 em Brasília). O contrato do módulo Pro (incluindo `workeasy-booking-reminders` e demais pontos de manutenção) está em `docs/arquitetura/pro-lacunas.md` (§7).
 Os horários são os do banco (UTC no Supabase). A remoção de antecedentes retirados
 (`background-check-purge`) não é criada por migração: o dono a agenda
 (`docs/operacao/11-agendamento-de-rotinas.md`).
