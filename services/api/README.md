@@ -5,15 +5,17 @@
 ao código (o `db/schema.sql` não é usado por nenhuma rota) e não deve ser publicada na internet
 como serviço de pagamento, segurança ou identidade.
 
-Por isso ela **falha fechada**: sem configuração explícita, sobe somente com `/health` e o KYC
-experimental, sem CORS aberto.
+Por isso ela **falha fechada**: sem configuração explícita, sobe somente com `/health`, sem CORS aberto.
+O KYC com Gemini também só existe com `ENABLE_DEMO_ROUTES=true`: sem autenticação nem limite de uso, ele
+gastaria a cota da chave do Gemini de qualquer pessoa que achasse a URL e enviaria imagens de documento e
+selfie ao Google sem contrato de operador nem base legal registrados.
 
 ## O que existe
 
 | Rota | O que faz de verdade | O que NÃO faz |
 |---|---|---|
 | `GET /health` | Diz que a API está de pé e se as rotas demo estão ligadas. | |
-| `POST /v1/kyc/liveness-face-match` | Envia documento e selfie à API Gemini (Google) e devolve a estimativa do modelo. Exige consentimento LGPD no formulário. | Não é prova de vida certificada nem verificação oficial de identidade. **Não consulta antecedentes**: o resultado é sempre `REVISAO_MANUAL`, com protocolo `NAO_CONSULTADO`. As imagens saem do servidor para o Google. Não há autenticação nem limite de uso (qualquer um que alcance a rota gasta a cota da chave). |
+| `POST /v1/kyc/liveness-face-match` (**demo**) | Envia documento e selfie à API Gemini (Google) e devolve a estimativa do modelo. Exige consentimento LGPD no formulário. | Não é prova de vida certificada nem verificação oficial de identidade. **Não consulta antecedentes**: o resultado é sempre `REVISAO_MANUAL`, com protocolo `NAO_CONSULTADO`. As imagens saem do servidor para o Google. Não há autenticação nem limite de uso (qualquer um que alcance a rota gasta a cota da chave). |
 | `POST /v1/marketplace/ordens/criar-pix-escrow` (**demo**) | Calcula taxa (5% com convênio, 12% sem, valores fixos no código) e devolve um "Pix copia e cola" inventado. | Não cobra nada, não fala com gateway nem banco, não guarda dinheiro. O pedido fica num dicionário em memória e some ao reiniciar. |
 | `POST /v1/seguranca/sos/acionar` (**demo**) | Devolve um protocolo de SOS inventado. | **Não notifica ninguém.** Nenhuma central, nenhuma guarda. Um botão SOS que parece funcionar e não aciona ninguém é perigoso. |
 | `POST /v1/seguranca/avaliacoes/registrar` (**demo**) | Devolve um protocolo de avaliação inventado. | Não grava a avaliação nem publica em perfil algum. |

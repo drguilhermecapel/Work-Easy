@@ -1,3 +1,5 @@
+# O KYC (Gemini) também só sobe com ENABLE_DEMO_ROUTES=true: sem autenticação nem limite, qualquer um que achasse a URL
+# gastaria a cota da GEMINI_API_KEY e enviaria imagens de documento ao Google. Publicado assim, o serviço expõe só /health.
 # ATENÇÃO: este serviço é o protótipo antigo (services/api). O produto real é apps/web.
 # - Não defina ENABLE_DEMO_ROUTES aqui: as rotas de custódia Pix, SOS e reputação são FALSAS
 #   (a custódia na própria plataforma exige parecer jurídico; veja apps/web/docs/DECISOES.md,

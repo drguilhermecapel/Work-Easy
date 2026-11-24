@@ -10,8 +10,9 @@ Monorepo B2C/B2G. **O produto real é `apps/web`** (com backend em Supabase). `s
   Res. BCB 150/2021). Veja `apps/web/docs/DECISOES.md`, seção "Pagamento retido".
 - **As rotas de custódia, SOS e reputação ficam desligadas por padrão** e só sobem com `ENABLE_DEMO_ROUTES=true` (uso
   local). O SOS demo não notifica ninguém. Com `APP_ENV=production` a API se recusa a subir com a demo ligada.
-- **O KYC com Gemini é experimental**: não é verificação oficial de identidade, envia as imagens ao Google e **não consulta
-  antecedentes** (o resultado é sempre revisão manual).
+- **O KYC com Gemini é experimental e só sobe com `ENABLE_DEMO_ROUTES=true`**: não é verificação oficial de identidade, envia
+  as imagens ao Google e **não consulta antecedentes** (o resultado é sempre revisão manual). Sem autenticação nem limite de
+  uso, ele não pode ficar exposto numa URL pública.
 - **CORS fechado por padrão**: defina `CORS_ALLOWED_ORIGINS` com as origens exatas.
 - Detalhes, variáveis e como ligar a demo: [`services/api/README.md`](services/api/README.md).
 
@@ -19,7 +20,7 @@ Monorepo B2C/B2G. **O produto real é `apps/web`** (com backend em Supabase). `s
 
 | Pasta | O que é |
 |---|---|
-| `services/api` | Protótipo FastAPI: KYC experimental (Gemini); custódia Pix, reputação e SOS só como demo falsa, desligada por padrão |
+| `services/api` | Protótipo FastAPI: sobe só com `/health`; KYC experimental (Gemini), custódia Pix, reputação e SOS são demo, desligadas por padrão |
 | `apps/mobile` | Protótipo de app Expo (sem verificação real) |
 | `apps/web-prefeitura` | Protótipo do portal municipal (B2G), com dados fictícios |
 | `apps/web` | App React com o catálogo de serviços e profissões liberais de todas as áreas. Roda como site (PWA), Android, iOS, Windows, macOS e Linux, e tem backend próprio em Supabase (`apps/web/supabase`). Veja [`apps/web/README.md`](apps/web/README.md) |

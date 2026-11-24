@@ -1,11 +1,12 @@
 """API do Work Easy (PROTÓTIPO).
 
 Esta API é um protótipo antigo e NÃO é o produto em produção (o produto é `apps/web`).
-Ela falha fechada: sem configuração explícita, sobe só com `/health` e o KYC experimental.
+Ela falha fechada: sem configuração explícita, sobe só com `/health`. O KYC com Gemini, a custódia Pix
+e o SOS/reputação são todos de demonstração e dependem de `ENABLE_DEMO_ROUTES=true`.
 
 Variáveis de ambiente lidas aqui:
-- `ENABLE_DEMO_ROUTES`: "true" monta as rotas de demonstração (custódia Pix e SOS/reputação
-  FALSOS). Padrão: desligado. Veja `services/api/README.md`.
+- `ENABLE_DEMO_ROUTES`: "true" monta as rotas de demonstração (KYC experimental com Gemini, custódia Pix
+  e SOS/reputação FALSOS). Padrão: desligado. Veja `services/api/README.md`.
 - `APP_ENV`: "production" faz o processo se recusar a subir se `ENABLE_DEMO_ROUTES` estiver ligada.
 - `CORS_ALLOWED_ORIGINS`: origens permitidas, separadas por vírgula. Padrão vazio: nenhuma
   origem cruzada. "*" é recusado.
@@ -20,7 +21,6 @@ from collections.abc import Mapping
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.integrations.biometria_kyc import router as biometria_router
 
 logger = logging.getLogger("workeasy.api")
 
@@ -51,7 +51,7 @@ def create_app(environ: Mapping[str, str] | None = None) -> FastAPI:
     if demo and production:
         raise RuntimeError(
             "Recusando iniciar: ENABLE_DEMO_ROUTES=true com APP_ENV=production. As rotas demo "
-            "(custódia Pix, SOS e reputação) são falsas e não podem ir a produção. Remova "
+            "(KYC experimental, custódia Pix, SOS e reputação) não podem ir a produção. Remova "
             "ENABLE_DEMO_ROUTES. Veja apps/web/docs/DECISOES.md e services/api/README.md."
         )
 
@@ -66,18 +66,20 @@ def create_app(environ: Mapping[str, str] | None = None) -> FastAPI:
             allow_headers=["Authorization", "Content-Type"],
         )
 
-    app.include_router(biometria_router)
-
     if demo:
-        # Importadas só aqui: sem a variável, o código demo nem é carregado.
+        # Importadas só aqui: sem a variável, o código demo nem é carregado. O KYC entra junto: sem autenticação
+        # nem limite de uso, ele gasta a cota da GEMINI_API_KEY de quem alcançar a URL e envia imagens de documento
+        # e selfie ao Google sem contrato de operador nem base legal registrados (decisão DD92).
+        from app.integrations.biometria_kyc import router as biometria_router
         from app.routers.marketplace_pix import router as marketplace_router
         from app.routers.reputacao_sos import router as seguranca_router
 
+        app.include_router(biometria_router)
         app.include_router(marketplace_router)
         app.include_router(seguranca_router)
         logger.warning(
-            "ENABLE_DEMO_ROUTES=true: rotas DEMO montadas (custódia Pix, SOS e reputação "
-            "FALSOS, em memória, sem integração real). NÃO usar em produção."
+            "ENABLE_DEMO_ROUTES=true: rotas DEMO montadas (KYC experimental, custódia Pix, SOS e "
+            "reputação FALSOS, em memória, sem integração real). NÃO usar em produção."
         )
 
         @app.middleware("http")

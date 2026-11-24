@@ -11,12 +11,19 @@ def test_health_check():
     assert res.json()["repository"] == "work-easy"
     assert res.json()["demo_routes"] is False
 
+def test_kyc_nao_existe_sem_a_demo():
+    # Sem autenticação nem limite, o KYC gastaria a cota do Gemini de quem achasse a URL: só com a demo ligada
+    files = {"documento_img": ("rg.jpg", b"doc", "image/jpeg"), "selfie_liveness_img": ("selfie.jpg", b"selfie", "image/jpeg")}
+    res = client.post("/v1/kyc/liveness-face-match", data={"cpf": "12345678909", "consentimento_lgpd": "true"}, files=files)
+    assert res.status_code == 404
+
+
 def test_bloqueio_sem_consentimento_lgpd():
     files = {
         "documento_img": ("rg.jpg", b"doc", "image/jpeg"),
         "selfie_liveness_img": ("selfie.jpg", b"selfie", "image/jpeg"),
     }
-    res = client.post("/v1/kyc/liveness-face-match", data={"cpf": "12345678909", "consentimento_lgpd": "false"}, files=files)
+    res = demo_client.post("/v1/kyc/liveness-face-match", data={"cpf": "12345678909", "consentimento_lgpd": "false"}, files=files)
     assert res.status_code == 403
 
 def test_split_pix_escrow():
