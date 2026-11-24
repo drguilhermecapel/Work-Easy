@@ -85,6 +85,8 @@ const ChargeForm: React.FC<{ data: Data; initialTarget: string; onCreated: () =>
   const [dueDate, setDueDate] = useState('');
   const [description, setDescription] = useState('');
   const [pickedClient, setPickedClient] = useState('');
+  // The CRM entry made for this quote by a try that failed later: the next try uses it instead of registering the client again
+  const [createdClientId, setCreatedClientId] = useState<string | null>(null);
   const [cpfCnpj, setCpfCnpj] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -105,6 +107,7 @@ const ChargeForm: React.FC<{ data: Data; initialTarget: string; onCreated: () =>
   const pick = (value: string) => {
     setTarget(value);
     setPickedClient('');
+    setCreatedClientId(null);
     setCpfCnpj('');
   };
 
@@ -119,7 +122,10 @@ const ChargeForm: React.FC<{ data: Data; initialTarget: string; onCreated: () =>
       if (needsDocument && !cpfCnpj.trim()) throw new AppError('cpf_cnpj_required');
       // The payer's name and document come from the CRM record: save the document there first
       let clientId = chosenId;
-      if (creating) {
+      if (creating && createdClientId) {
+        clientId = createdClientId;
+        if (cpfCnpj.trim()) await saveClientDocument(createdClientId, cpfCnpj);
+      } else if (creating) {
         const created = await saveClient({
           providerId: provider.id,
           name: quote?.client_name ?? '',
@@ -127,6 +133,7 @@ const ChargeForm: React.FC<{ data: Data; initialTarget: string; onCreated: () =>
           cpfCnpj,
         });
         clientId = created.id;
+        setCreatedClientId(created.id);
       } else if (cpfCnpj.trim()) {
         await saveClientDocument(chosenId, cpfCnpj);
       }

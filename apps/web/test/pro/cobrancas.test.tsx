@@ -212,6 +212,26 @@ describe('/pro/cobrancas: charging', () => {
     expect(screen.queryByLabelText(/número do cartão|cvv/i)).not.toBeInTheDocument();
   });
 
+  it('does not register the same client twice when the charge fails and the provider tries again', async () => {
+    let attempts = 0;
+    fake.functionsHandlers['charges-create'] = () => {
+      attempts += 1;
+      return attempts === 1 ? functionError(409, 'provider_payment_account_missing', 'Ative o recebimento.') : functionData(CHARGE);
+    };
+    const user = userEvent.setup();
+    renderPro('/pro/cobrancas?orcamento=q-1');
+    await user.selectOptions(await screen.findByLabelText('Cliente do seu CRM'), 'new');
+    await user.type(screen.getByLabelText('CPF ou CNPJ do cliente'), '11.222.333/0001-81');
+    await user.click(screen.getByRole('button', { name: 'Criar cobrança' }));
+    await screen.findByRole('alert');
+
+    await user.click(screen.getByRole('button', { name: 'Criar cobrança' }));
+    expect(await screen.findByRole('heading', { name: 'Cobrança criada' })).toBeInTheDocument();
+
+    expect(fake.tableCalls.filter(call => call.table === 'provider_clients' && call.op === 'insert')).toHaveLength(1);
+    expect(fake.functionCalls[1].body).toMatchObject({ provider_client_id: 'cli-new' });
+  });
+
   it('lets an unlinked quote be charged to an existing CRM client that already has the document, without asking for it again', async () => {
     fake.functionsHandlers['charges-create'] = () => functionData(CHARGE);
     const user = userEvent.setup();
