@@ -3,7 +3,9 @@ import { createHash, createHmac } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { DbError, type AuditEntry } from '../../supabase/functions/_shared/handler-kit.ts';
 import { handler as onboard, type OnboardDeps, type PaymentAccount } from '../../supabase/functions/asaas-onboard/handler.ts';
-import { type ChargesCreateDeps, handler as chargesCreate } from '../../supabase/functions/charges-create/handler.ts';
+import {
+  type ChargesCreateDeps, handler as chargesCreate, type OpenCharge,
+} from '../../supabase/functions/charges-create/handler.ts';
 import {
   type BookingForPayment, handler as paymentsCreate, type NewPayment, type PaymentRecord, type PaymentsCreateDeps,
 } from '../../supabase/functions/payments-create/handler.ts';
@@ -389,7 +391,7 @@ describe('payments-create', () => {
 
 describe('charges-create', () => {
   function chargesDeps(over: {
-    plan?: string; quoteStatus?: string; apiKey?: string | null; open?: PaymentRecord | null; paid?: boolean;
+    plan?: string; quoteStatus?: string; apiKey?: string | null; open?: OpenCharge | null; paid?: boolean;
     provider?: ProviderAccount;
     /** CRM client linked to the quote (null: none) */
     quoteClient?: string | null;
@@ -438,10 +440,18 @@ describe('charges-create', () => {
   }
 
   const body = { quote_id: QUOTE_ID, method: 'boleto', provider_client_id: CLIENT_ID };
+  /** The Asaas customer of an open charge, created for CLIENT_ID (the reference charges-create gives it). */
+  const CUSTOMER_OF_CLIENT = {
+    'GET /v3/customers/cus_0': { body: { id: 'cus_0', name: 'Dona Maria', externalReference: `provider_client:${CLIENT_ID}` } },
+    'GET /v3/payments/pay_0': { body: { id: 'pay_0', status: 'PENDING' } },
+  };
 
   /** An own booking (the provider's own client) on top of the approved provider. */
-  function ownBooking(over: { provider?: ProviderAccount; clientId?: string | null; occupation?: string } = {}) {
-    const made = chargesDeps({ provider: over.provider });
+  function ownBooking(over: {
+    provider?: ProviderAccount; clientId?: string | null; occupation?: string; open?: OpenCharge;
+    routes?: Parameters<typeof asaasWith>[0];
+  } = {}) {
+    const made = chargesDeps({ provider: over.provider, open: over.open, routes: over.routes });
     const session = made.deps.session;
     made.deps.session = async req => ({
       ...(await session(req))!,
@@ -496,11 +506,13 @@ describe('charges-create', () => {
       id: 'p0', asaas_payment_id: 'pay_0', method: 'boleto', status: 'pending', amount_cents: 250050,
       invoice_url: 'u', pix_qr_code: null, pix_payload: null, due_date: '2026-10-25',
     };
-    const same = chargesDeps({ open });
+    const same = chargesDeps({ open: { ...open, asaas_customer_id: 'cus_0' }, routes: CUSTOMER_OF_CLIENT });
     const reused = await read(await chargesCreate(post('charges-create', body), same.deps));
     expect(reused.status).toBe(200);
     expect(reused.body.data).toMatchObject({ payment_id: 'p0', reused: true });
-    expect(same.calls).toHaveLength(0);
+    // Only the payer of the open charge is read: nothing is created or canceled
+    expect(same.calls.map(c => `${c.method} ${new URL(c.url).pathname}`)).toEqual(['GET /v3/customers/cus_0']);
+    expect(same.calls[0].headers.access_token).toBe('sub-key');
 
     const other = chargesDeps({ open });
     const res = await read(await chargesCreate(post('charges-create', { ...body, method: 'pix' }), other.deps));
@@ -510,6 +522,66 @@ describe('charges-create', () => {
     expect(cancel).toMatchObject({ method: 'DELETE' });
     expect(cancel.headers.access_token).toBe('sub-key');
     expect(other.canceled).toEqual(['p0']);
+  });
+
+  describe('an open charge of a booking or quote with no linked client (the provider picks the payer)', () => {
+    const open: OpenCharge = {
+      id: 'p0', asaas_payment_id: 'pay_0', method: 'boleto', status: 'pending', amount_cents: 1000,
+      invoice_url: 'u', pix_qr_code: null, pix_payload: null, due_date: '2026-10-25', asaas_customer_id: 'cus_0',
+    };
+    const pick = (clientId: string) => ({ booking_id: BOOKING_ID, method: 'boleto', provider_client_id: clientId });
+    const unlinked = (over: { open?: OpenCharge; routes?: Parameters<typeof asaasWith>[0] } = {}) => {
+      const made = ownBooking({ clientId: null, open: over.open ?? open, routes: { ...CUSTOMER_OF_CLIENT, ...over.routes } });
+      return made;
+    };
+    const paths = (calls: Array<{ method: string; url: string }>) => calls.map(c => `${c.method} ${new URL(c.url).pathname}`);
+
+    it('reuses it when the same client is picked again', async () => {
+      const made = unlinked();
+      const res = await read(await chargesCreate(post('charges-create', pick(CLIENT_ID)), made.deps));
+      expect(res.status).toBe(200);
+      expect(res.body.data).toMatchObject({ payment_id: 'p0', reused: true });
+      expect(paths(made.calls)).toEqual(['GET /v3/customers/cus_0']);
+      expect(made.inserted).toEqual([]);
+      expect(made.canceled).toEqual([]);
+    });
+
+    it('replaces it with a charge to the newly picked client (never returns the first client\'s charge)', async () => {
+      const made = unlinked();
+      const res = await read(await chargesCreate(post('charges-create', pick(OTHER_CLIENT_ID)), made.deps));
+      expect(res.status).toBe(201);
+      expect(res.body.data).toMatchObject({ reused: false });
+      expect(res.body.data.payment_id).not.toBe('p0');
+      expect(paths(made.calls)).toEqual([
+        'GET /v3/customers/cus_0', 'GET /v3/payments/pay_0', 'POST /v3/customers', 'POST /v3/payments', 'DELETE /v3/payments/pay_0',
+      ]);
+      expect(made.calls[2].body).toMatchObject({ externalReference: `provider_client:${OTHER_CLIENT_ID}` });
+      expect(made.canceled).toEqual(['p0']);
+      expect(made.inserted).toHaveLength(1);
+    });
+
+    it('refuses (409 already_paid) when the first client already paid it, before creating anything', async () => {
+      const made = unlinked({ routes: { 'GET /v3/payments/pay_0': { body: { id: 'pay_0', status: 'RECEIVED' } } } });
+      const res = await read(await chargesCreate(post('charges-create', pick(OTHER_CLIENT_ID)), made.deps));
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('already_paid');
+      expect(paths(made.calls)).toEqual(['GET /v3/customers/cus_0', 'GET /v3/payments/pay_0']);
+      expect(made.inserted).toEqual([]);
+      expect(made.canceled).toEqual([]);
+    });
+
+    it('does not reuse it when its payer cannot be told (no customer stored, or gone in Asaas)', async () => {
+      const unknown = unlinked({ open: { ...open, asaas_customer_id: null } });
+      const res = await read(await chargesCreate(post('charges-create', pick(CLIENT_ID)), unknown.deps));
+      expect(res.status).toBe(201);
+      expect(paths(unknown.calls)[0]).toBe('GET /v3/payments/pay_0');
+      expect(unknown.canceled).toEqual(['p0']);
+
+      const gone = unlinked({ routes: { 'GET /v3/customers/cus_0': { status: 404, body: { errors: [] } } } });
+      const res2 = await read(await chargesCreate(post('charges-create', pick(CLIENT_ID)), gone.deps));
+      expect(res2.status).toBe(201);
+      expect(gone.canceled).toEqual(['p0']);
+    });
   });
 
   it('refuses to replace a charge that Asaas already shows as paid (409 already_paid), before creating anything', async () => {

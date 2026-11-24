@@ -1,10 +1,24 @@
 import {
-  asaasClient, audit, authenticate, config, findOpenPayment, hasPaidPayment, insertPayment, logError, markPaymentCanceled, must, now,
-  readProviderAccount, readSecret, serve,
+  asaasClient, audit, authenticate, config, hasPaidPayment, insertPayment, logError, markPaymentCanceled, must, now,
+  PAYMENT_COLUMNS, readProviderAccount, readSecret, serve, serviceClient,
 } from '../_runtime/supabase.ts';
 import {
-  type ChargesCreateDeps, handler, type OwnBooking, type ProviderClient, type ProviderQuote,
+  type ChargesCreateDeps, handler, type OpenCharge, type OwnBooking, type ProviderClient, type ProviderQuote,
 } from './handler.ts';
+
+/** The pending charge of the booking or quote, with the Asaas customer it bills (from the stored payload). */
+async function findOpenCharge(column: 'booking_id' | 'quote_id', id: string): Promise<OpenCharge | null> {
+  const rows = must(
+    await serviceClient()
+      .from('payments')
+      .select(`${PAYMENT_COLUMNS}, asaas_customer_id:raw->>customer`)
+      .eq(column, id)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(1),
+  ) as OpenCharge[] | null;
+  return rows?.[0] ?? null;
+}
 
 const deps: ChargesCreateDeps = {
   siteUrl: config.siteUrl,
@@ -55,7 +69,7 @@ const deps: ChargesCreateDeps = {
     hasPaidCharge: target =>
       target.bookingId ? hasPaidPayment('booking_id', target.bookingId) : hasPaidPayment('quote_id', target.quoteId!),
     findOpenCharge: target =>
-      target.bookingId ? findOpenPayment('booking_id', target.bookingId) : findOpenPayment('quote_id', target.quoteId!),
+      target.bookingId ? findOpenCharge('booking_id', target.bookingId) : findOpenCharge('quote_id', target.quoteId!),
     insertPayment,
     markPaymentCanceled,
     audit,

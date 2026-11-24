@@ -3,7 +3,7 @@
 // platform fee and no split. The payer is a client of the provider's CRM: name,
 // e-mail, phone and CPF/CNPJ come from that stored record, never from the request.
 
-import type { AsaasClient } from '../_shared/asaas-client.ts';
+import { AsaasError, type AsaasClient } from '../_shared/asaas-client.ts';
 import { addDays, saoPauloDate } from '../_shared/dates.ts';
 import { redactAsaasPayload } from '../_shared/asaas-events.ts';
 import {
@@ -39,6 +39,15 @@ export interface ProviderQuote {
   status: string;
 }
 
+/**
+ * The open charge of the target. `asaas_customer_id` is the `customer` of the Asaas payload stored
+ * with it (payments.raw): the Asaas customer, created per charge with `provider_client:<id>`, tells
+ * which CRM client it bills. Null or missing when the stored payload has none.
+ */
+export interface OpenCharge extends PaymentRecord {
+  asaas_customer_id?: string | null;
+}
+
 /** A client of the provider's CRM: the only source of the payer's data. */
 export interface ProviderClient {
   provider_id: string;
@@ -64,7 +73,7 @@ export interface ChargesCreateDeps extends BaseDeps {
     getSubaccountApiKey(providerId: string): Promise<string | null>;
     /** True when the booking or quote already has a payment received/confirmed/held/released. */
     hasPaidCharge(target: { bookingId?: string; quoteId?: string }): Promise<boolean>;
-    findOpenCharge(target: { bookingId?: string; quoteId?: string }): Promise<PaymentRecord | null>;
+    findOpenCharge(target: { bookingId?: string; quoteId?: string }): Promise<OpenCharge | null>;
     /** Rejects with a unique violation (23505) when a pending charge already exists for the target. */
     insertPayment(row: NewPayment): Promise<{ id: string }>;
     markPaymentCanceled(id: string): Promise<void>;
@@ -91,6 +100,27 @@ function chooseClient(linked: string | null, picked: string | undefined): string
     throw errors.invalidInput(['provider_client_id: este atendimento já está vinculado a outro cliente']);
   }
   return linked ?? picked ?? null;
+}
+
+/**
+ * Whether the open charge bills this CRM client. A booking or quote with no client linked lets the
+ * provider pick one per attempt, so the open charge may be another client's: it is reused only when
+ * its Asaas customer carries this client's reference. Unknown or gone customer: not the same payer.
+ */
+async function billsClient(client: AsaasClient, open: OpenCharge, clientId: string): Promise<boolean> {
+  const customerId = open.asaas_customer_id;
+  if (!customerId) return false;
+  const customer = await callAsaas(async () => {
+    try {
+      return await client.request<{ externalReference?: string | null; deleted?: boolean }>(
+        'GET', `/customers/${encodeURIComponent(customerId)}`,
+      );
+    } catch (error) {
+      if (error instanceof AsaasError && error.status === 404) return null;
+      throw error;
+    }
+  });
+  return !!customer && customer.deleted !== true && customer.externalReference === `provider_client:${clientId}`;
 }
 
 export function handler(req: Request, deps: ChargesCreateDeps): Promise<Response> {
@@ -162,7 +192,10 @@ export function handler(req: Request, deps: ChargesCreateDeps): Promise<Response
 
     const today = saoPauloDate(deps.now());
     const open = await deps.admin.findOpenCharge(target);
-    if (open && canReuseCharge(open, { method: input.method, today })) return { data: paymentView(open, true) };
+    // Reused only for the same method and the same payer; otherwise replaced like a change of method
+    if (open && canReuseCharge(open, { method: input.method, today }) && (await billsClient(sub, open, clientId))) {
+      return { data: paymentView(open, true) };
+    }
     if (open) await refuseIfSettled(sub, open);
 
     const dueDate = input.due_date ?? addDays(today, 1);
