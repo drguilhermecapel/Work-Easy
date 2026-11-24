@@ -34,7 +34,7 @@ fazendo a custódia. Isto não é parecer jurídico; é o motivo de a rota estar
 | Variável | Efeito | Padrão |
 |---|---|---|
 | `ENABLE_DEMO_ROUTES` | `true` monta as rotas demo (custódia Pix, SOS, reputação). Com ela ligada, a API escreve um aviso no log e **toda resposta** leva o cabeçalho `X-Work-Easy-Demo: not-for-production`. | ausente = desligado (essas rotas respondem 404 e nem são carregadas) |
-| `APP_ENV` | Com `production` (ou `prod`), a API **se recusa a subir** se `ENABLE_DEMO_ROUTES` estiver ligada, com erro claro. O `render.yaml` já define `APP_ENV=production`. | ausente |
+| `APP_ENV` | Com `production` (ou `prod`), a API **se recusa a subir** se `ENABLE_DEMO_ROUTES` estiver ligada, com erro claro. Em qualquer ambiente publicado, defina `APP_ENV=production`. | ausente |
 | `CORS_ALLOWED_ORIGINS` | Origens permitidas, separadas por vírgula (ex.: `http://localhost:3000,https://app.exemplo.com`). Só elas recebem `access-control-allow-origin`. `*` é recusado com erro. | vazio = nenhuma origem cruzada |
 | `GEMINI_API_KEY` | Chave do KYC. Só variável de servidor; nunca `NEXT_PUBLIC_*`, `EXPO_PUBLIC_*` ou `VITE_*`. Sem ela o KYC responde 500. | ausente |
 
@@ -50,7 +50,7 @@ ENABLE_DEMO_ROUTES=true CORS_ALLOWED_ORIGINS=http://localhost:3000 \
 ```
 
 Nunca combine `ENABLE_DEMO_ROUTES=true` com `APP_ENV=production`, nem defina a variável em
-`render.yaml`, `cloudbuild.yaml` ou em qualquer ambiente publicado.
+em qualquer ambiente publicado. Os arquivos `render.yaml` e `cloudbuild.yaml` foram removidos (DD95): este serviço é protótipo e não tem destino de publicação.
 
 ## Testes
 
