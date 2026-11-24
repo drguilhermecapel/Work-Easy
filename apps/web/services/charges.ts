@@ -1,3 +1,4 @@
+import { formatCents } from '../lib/money';
 import { AppError } from '../lib/errors';
 import { toE164BR } from '../lib/phone';
 import type { Tables } from '../lib/database.types';
@@ -74,3 +75,19 @@ export const listMyPayments = (providerId: string): Promise<PaymentRow[]> =>
       await db().from('payments').select(PAYMENT_COLUMNS).eq('provider_id', providerId).order('created_at', { ascending: false }),
     ),
   );
+
+// ---- Sharing ------------------------------------------------------------------
+
+/**
+ * Text the provider sends to the client with a charge: the invoice link when there is one (it
+ * shows Pix, boleto or card on the Asaas page), else the Pix "copia e cola" code on its own line.
+ */
+export const chargeShareText = (charge: { amountCents: number | null; invoiceUrl: string | null; pixPayload: string | null }): string => {
+  const amount = charge.amountCents !== null ? ` de ${formatCents(charge.amountCents)}` : '';
+  if (charge.invoiceUrl) return `Olá! Segue a cobrança${amount}. Para pagar, abra: ${charge.invoiceUrl}`;
+  return `Olá! Segue a cobrança${amount}. Pix copia e cola:\n${charge.pixPayload ?? ''}`;
+};
+
+/** wa.me link with the text ready and no number (the provider picks the chat); the platform sends nothing. */
+export const chargeWhatsAppUrl = (charge: Parameters<typeof chargeShareText>[0]): string =>
+  `https://wa.me/?text=${encodeURIComponent(chargeShareText(charge))}`;

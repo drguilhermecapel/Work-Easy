@@ -68,7 +68,7 @@ const ChargeResultCard: React.FC<{ result: ChargeResult }> = ({ result }) => (
       <Badge className={PAYMENT_STATUS_STYLES[result.status]}>{PAYMENT_STATUS_LABELS[result.status]}</Badge>
     </p>
     {result.reused && <p className="text-xs text-gray-500">Já havia uma cobrança aberta para este item; ela foi mantida.</p>}
-    <PixBox idPrefix="nova" pixPayload={result.pix?.payload ?? null} pixQrCode={result.pix?.qr_code_base64 ?? null} invoiceUrl={result.invoice_url} />
+    <PixBox idPrefix="nova" pixPayload={result.pix?.payload ?? null} pixQrCode={result.pix?.qr_code_base64 ?? null} invoiceUrl={result.invoice_url} amountCents={result.amount_cents} />
     {result.method === 'credit_card' && (
       <p className="text-xs text-gray-500">O cliente paga o cartão na página do Asaas. O WorkEasy não recebe nem guarda dados de cartão.</p>
     )}
@@ -234,7 +234,7 @@ const PaymentItem: React.FC<{ payment: PaymentRow }> = ({ payment }) => (
       <details className="mt-3">
         <summary className="cursor-pointer text-sm text-primary font-medium">Pix e link da fatura</summary>
         <div className="mt-3">
-          <PixBox idPrefix={`pag-${payment.id}`} pixPayload={payment.pix_payload} pixQrCode={payment.pix_qr_code} invoiceUrl={payment.invoice_url} />
+          <PixBox idPrefix={`pag-${payment.id}`} pixPayload={payment.pix_payload} pixQrCode={payment.pix_qr_code} invoiceUrl={payment.invoice_url} amountCents={payment.amount_cents} />
         </div>
       </details>
     )}
