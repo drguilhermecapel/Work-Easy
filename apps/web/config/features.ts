@@ -40,6 +40,10 @@ export interface PublicSettings {
   freeProposalsPerMonth: number;
   /** Free days of Pro on the first subscription of an account; 0 = no trial. */
   proTrialDays: number;
+  /** Care line shown in the menu to everyone (D12); off = only accounts already in it and admins. */
+  careLineOpen: boolean;
+  /** Slugs of the neighborhoods the pilot serves; empty = every neighborhood. */
+  pilotNeighborhoods: string[];
 }
 
 /**
@@ -58,6 +62,8 @@ export const DEFAULT_SETTINGS: PublicSettings = {
   commissionCapCents: 0,
   freeProposalsPerMonth: 5,
   proTrialDays: 0,
+  careLineOpen: false,
+  pilotNeighborhoods: [],
 };
 
 const SETTING_KEYS: Record<string, keyof PublicSettings> = {
@@ -70,6 +76,8 @@ const SETTING_KEYS: Record<string, keyof PublicSettings> = {
   commission_cap_cents: 'commissionCapCents',
   free_proposals_per_month: 'freeProposalsPerMonth',
   pro_trial_days: 'proTrialDays',
+  care_line_open: 'careLineOpen',
+  pilot_neighborhoods: 'pilotNeighborhoods',
 };
 
 /** Turns platform_settings rows into typed settings, ignoring unknown keys and wrong types. */
@@ -81,6 +89,9 @@ export const parseSettings = (rows: Array<{ key: string; value: unknown }>): Pub
     const fallback = DEFAULT_SETTINGS[field];
     if (typeof fallback === 'boolean' && typeof value === 'boolean') (settings[field] as boolean) = value;
     if (typeof fallback === 'number' && typeof value === 'number' && Number.isFinite(value)) (settings[field] as number) = value;
+    if (Array.isArray(fallback) && Array.isArray(value)) {
+      (settings[field] as string[]) = value.filter((item): item is string => typeof item === 'string' && item.trim() !== '');
+    }
   }
   return settings;
 };

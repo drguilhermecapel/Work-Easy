@@ -17,6 +17,7 @@ import {
   parseQuantity,
   quoteShareUrl,
   quoteTotalCents,
+  markQuoteCompleted,
   quoteWhatsAppUrl,
   saveQuote,
   setQuoteStatus,
@@ -430,11 +431,40 @@ const Quotes: React.FC = () => {
                   <MessageCircle size={16} aria-hidden="true" /> Enviar por WhatsApp
                 </a>
               )}
+              {quote.status === 'accepted' && <CompletedToggle quote={quote} onChanged={data.reload} />}
             </div>
           </Card>
         ))}
       </ul>
     </div>
+  );
+};
+
+/** The provider says the job of an accepted quote was done; the date feeds the owner's metrics and the provider's own record. */
+const CompletedToggle: React.FC<{ quote: QuoteRow; onChanged: () => void }> = ({ quote, onChanged }) => {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const done = Boolean(quote.completed_at);
+  const toggle = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await markQuoteCompleted(quote.id, !done);
+      onChanged();
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      {done && quote.completed_at && <span className="text-sm text-green-700">Serviço concluído em {formatDateBR(quote.completed_at)}</span>}
+      <button type="button" className={secondaryButton} disabled={busy} onClick={toggle} aria-label={`${done ? 'Desfazer conclusão' : 'Marcar como concluído'}: ${quote.title}`}>
+        {done ? 'Desfazer conclusão' : 'Marcar como concluído'}
+      </button>
+      <ErrorAlert error={error} />
+    </>
   );
 };
 

@@ -18,7 +18,7 @@ export const DESCRIPTION_MAX = 2000;
 
 const REQUEST_COLUMNS =
   'id, client_id, occupation_slug, neighborhood_id, description, preferred_dates, urgent, status, expires_at, created_at';
-const PROPOSAL_COLUMNS = 'id, request_id, provider_id, price_cents, message, valid_until, status, created_at';
+const PROPOSAL_COLUMNS = 'id, request_id, provider_id, price_cents, message, valid_until, available_from, status, created_at';
 
 export const createRequest = async (input: NewRequest): Promise<RequestRow> => {
   const description = input.description.trim();
@@ -32,6 +32,20 @@ export const createRequest = async (input: NewRequest): Promise<RequestRow> => {
     urgent: input.urgent ?? false,
   };
   return unwrap<RequestRow>(await db().from('requests').insert(row).select(REQUEST_COLUMNS).single());
+};
+
+/**
+ * Puts the account on the waiting list of a neighborhood the pilot does not serve yet. Asking
+ * twice for the same neighborhood and service is the same entry (the database ignores the repeat).
+ */
+export const joinWaitlist = async (input: { userId: string; neighborhoodId: string; occupationSlug: string | null }): Promise<void> => {
+  const { error } = await db()
+    .from('waitlist_entries')
+    .upsert(
+      { user_id: input.userId, neighborhood_id: input.neighborhoodId, occupation_slug: input.occupationSlug },
+      { onConflict: 'user_id,neighborhood_id,occupation_key', ignoreDuplicates: true },
+    );
+  if (error) throw toAppError(error);
 };
 
 /** The signed-in client's requests (RLS returns only theirs), newest first. */

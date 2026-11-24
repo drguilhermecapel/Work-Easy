@@ -178,6 +178,9 @@ const RequestDetail: React.FC<{ id: string }> = ({ id }) => {
                     </div>
                     <p className="text-lg font-bold text-gray-900">{formatCents(proposal.price_cents)}</p>
                   </div>
+                  {proposal.available_from && (
+                    <p className="text-sm text-gray-700 mt-2">Pode ir a partir de {formatDate(proposal.available_from)}.</p>
+                  )}
                   {proposal.message && <p className="text-sm text-gray-700 mt-2 whitespace-pre-line break-words">{proposal.message}</p>}
                   {proposal.provider_slug && (
                     <Link to={`/p/${proposal.provider_slug}`} className="text-xs text-primary underline mt-2 inline-block">

@@ -3,7 +3,7 @@ import type { Session, User } from '@supabase/supabase-js';
 import { UserType, UserProfile } from '../types';
 import { supabase, type AppSupabaseClient } from '../lib/supabase';
 import { useAsync } from '../lib/useAsync';
-import { fetchIsAdmin, getMyProvider, getProfile } from '../services/account';
+import { fetchCareAccess, fetchIsAdmin, getMyProvider, getProfile } from '../services/account';
 import { clearRequestDraft } from '../lib/requestDraft';
 import { sendOtp, signOut as signOutService, verifyOtp as verifyOtpService, type OtpTarget } from '../services/auth';
 import type { ProfileRow, ProviderRow } from '../services/types';
@@ -34,6 +34,7 @@ export interface DemoAuth extends AuthCommon {
   profile?: undefined;
   provider?: undefined;
   isAdmin?: undefined;
+  careAccess?: undefined;
   signInWithOtp?: undefined;
   verifyOtp?: undefined;
   signOut?: undefined;
@@ -49,6 +50,8 @@ export interface BackendAuth extends AuthCommon {
   profile: ProfileRow | null;
   provider: ProviderRow | null;
   isAdmin: boolean;
+  /** The care line appears in this account's menu (services/account fetchCareAccess). */
+  careAccess: boolean;
   signInWithOtp: (target: OtpTarget) => Promise<void>;
   /** Resolves to the signed-in user id. */
   verifyOtp: (target: OtpTarget, code: string) => Promise<string | null>;
@@ -110,19 +113,20 @@ interface AccountDetails {
   profile: ProfileRow | null;
   provider: ProviderRow | null;
   isAdmin: boolean;
+  careAccess: boolean;
 }
 
-const NO_DETAILS: AccountDetails = { profile: null, provider: null, isAdmin: false };
+const NO_DETAILS: AccountDetails = { profile: null, provider: null, isAdmin: false, careAccess: false };
 
 const loadDetails = async (userId: string | undefined): Promise<AccountDetails> => {
   if (!userId) return NO_DETAILS;
   // Each part may fail on its own (e.g. RLS); the session stays usable
   const [profile, provider, isAdmin] = await Promise.allSettled([getProfile(userId), getMyProvider(userId), fetchIsAdmin()]);
-  return {
-    profile: profile.status === 'fulfilled' ? profile.value : null,
-    provider: provider.status === 'fulfilled' ? provider.value : null,
-    isAdmin: isAdmin.status === 'fulfilled' ? isAdmin.value : false,
-  };
+  const providerRow = provider.status === 'fulfilled' ? provider.value : null;
+  const admin = isAdmin.status === 'fulfilled' ? isAdmin.value : false;
+  // Hidden on any failure: the menu entry is a convenience, the link still works
+  const careAccess = admin || (await fetchCareAccess().catch(() => false));
+  return { profile: profile.status === 'fulfilled' ? profile.value : null, provider: providerRow, isAdmin: admin, careAccess };
 };
 
 /** Backend mode: real Supabase Auth session, profile, provider record and admin flag. */
@@ -157,7 +161,7 @@ const BackendAuthProvider: React.FC<{ client: AppSupabaseClient; children: React
   const authUser = session?.user ?? null;
   const userId = authUser?.id;
   const details = useAsync(() => loadDetails(userId), userId ?? 'anonymous');
-  const { profile, provider, isAdmin } = details.data ?? NO_DETAILS;
+  const { profile, provider, isAdmin, careAccess } = details.data ?? NO_DETAILS;
 
   const signInWithOtp = useCallback((target: OtpTarget) => sendOtp(target), []);
   const verifyOtp = useCallback((target: OtpTarget, code: string) => verifyOtpService(target, code), []);
@@ -179,12 +183,13 @@ const BackendAuthProvider: React.FC<{ client: AppSupabaseClient; children: React
       profile,
       provider,
       isAdmin,
+      careAccess,
       signInWithOtp,
       verifyOtp,
       signOut,
       refreshProfile: details.reload,
     };
-  }, [user, switchRole, authUser, userId, profile, provider, isAdmin, session, sessionReady, details.loading, details.data, details.reload, signInWithOtp, verifyOtp, signOut]);
+  }, [user, switchRole, authUser, userId, profile, provider, isAdmin, careAccess, session, sessionReady, details.loading, details.data, details.reload, signInWithOtp, verifyOtp, signOut]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

@@ -1010,3 +1010,112 @@ export const listDataRequests = async ({ status, page = 0 }: { status?: DataRequ
   result.rows = result.rows.map(row => ({ ...row, user_name: row.user_id ? names.get(row.user_id) ?? null : null }));
   return result;
 };
+
+// ---------------------------------------------------------------------------
+// Reports (content_reports, read through admin_list_reports)
+// ---------------------------------------------------------------------------
+
+export const REPORT_STATUSES = ['open', 'actioned', 'dismissed'] as const;
+export type ReportStatus = (typeof REPORT_STATUSES)[number];
+export type ReportTargetType = 'provider' | 'review' | 'request';
+
+export interface ReportRow {
+  id: string;
+  created_at: string;
+  status: ReportStatus;
+  target_type: ReportTargetType;
+  target_id: string;
+  target_user_id: string | null;
+  /** Provider name (profile and review) or occupation slug (request); null once the target is gone. */
+  target_label: string | null;
+  /** The text that was reported, as it is now. */
+  target_text: string | null;
+  reason: string;
+  details: string | null;
+  reporter_id: string | null;
+  resolution_note: string | null;
+  resolved_at: string | null;
+  open_reports_on_target: number;
+}
+
+export const REPORTS_PAGE_SIZE = 20;
+
+export const listReports = async ({ status, page = 0 }: { status?: ReportStatus | ''; page?: number } = {}): Promise<{ rows: ReportRow[]; hasMore: boolean }> => {
+  const rows = unwrap<ReportRow[]>(
+    await db().rpc('admin_list_reports', { p_status: status || null, p_limit: REPORTS_PAGE_SIZE + 1, p_offset: page * REPORTS_PAGE_SIZE }),
+  );
+  return { rows: rows.slice(0, REPORTS_PAGE_SIZE), hasMore: rows.length > REPORTS_PAGE_SIZE };
+};
+
+export const RESOLUTION_NOTE_MAX = 1000;
+
+/** Closes a report as acted on or dismissed. The action itself (unpublish, suspend) is done with the other admin tools. */
+export const resolveReport = async (id: string, status: Exclude<ReportStatus, 'open'>, note: string): Promise<void> => {
+  const text = note.trim();
+  if (text.length > RESOLUTION_NOTE_MAX) throw new AppError('invalid_input', { message: `A anotação pode ter até ${RESOLUTION_NOTE_MAX} caracteres.` });
+  unwrapMaybe<unknown>(await db().rpc('admin_resolve_report', { p_report: id, p_status: status, p_note: text || null }));
+};
+
+export const countOpenReports = async (): Promise<number> => {
+  const { count, error } = await db().from('content_reports').select('id', { count: 'exact', head: true }).eq('status', 'open');
+  if (error) throw toAppError(error);
+  return count ?? 0;
+};
+
+// ---------------------------------------------------------------------------
+// Waiting list and daily funnel
+// ---------------------------------------------------------------------------
+
+export interface WaitlistSummaryRow {
+  neighborhood_id: string;
+  neighborhood_name: string;
+  occupation_slug: string | null;
+  entries: number;
+  last_entry_at: string;
+}
+
+/** Demand outside the pilot neighborhoods, most asked first. */
+export const getWaitlistSummary = async (): Promise<WaitlistSummaryRow[]> =>
+  unwrap<WaitlistSummaryRow[]>(await db().rpc('admin_waitlist_summary')).map(row => ({ ...row, entries: Number(row.entries) }));
+
+/** Steps of the product funnel, in the order a request travels (events of public.product_events). */
+export const FUNNEL_EVENTS = [
+  'request_created',
+  'proposal_sent',
+  'booking_requested',
+  'booking_accepted',
+  'payment_received',
+  'review_published',
+  'provider_submitted',
+  'provider_approved',
+  'occupation_approved',
+  'pro_trial_started',
+  'pro_subscribed',
+] as const;
+export type FunnelEvent = (typeof FUNNEL_EVENTS)[number];
+
+export interface DailyFunnelRow {
+  /** "YYYY-MM-DD", São Paulo. */
+  day: string;
+  counts: Partial<Record<FunnelEvent, number>>;
+}
+
+const isFunnelEvent = (value: unknown): value is FunnelEvent => (FUNNEL_EVENTS as readonly unknown[]).includes(value);
+
+/** One row per day of the window that had any event, newest first; a day without events has no row. */
+export const groupDailyFunnel = (rows: Array<{ day: string; event: string; events: number | string }>): DailyFunnelRow[] => {
+  const days = new Map<string, DailyFunnelRow>();
+  for (const row of rows) {
+    if (!isFunnelEvent(row.event)) continue;
+    const entry = days.get(row.day) ?? { day: row.day, counts: {} };
+    entry.counts[row.event] = (entry.counts[row.event] ?? 0) + Number(row.events);
+    days.set(row.day, entry);
+  }
+  return [...days.values()].sort((a, b) => b.day.localeCompare(a.day));
+};
+
+/** Events per day between two São Paulo dates, both included (admin_funnel_daily accepts up to 400 days). */
+export const getDailyFunnel = async (fromDay: string, toDay: string): Promise<DailyFunnelRow[]> =>
+  groupDailyFunnel(
+    unwrap<Array<{ day: string; event: string; events: number | string }>>(await db().rpc('admin_funnel_daily', { p_from: fromDay, p_to: toDay })),
+  );

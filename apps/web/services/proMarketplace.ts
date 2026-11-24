@@ -23,7 +23,7 @@ export interface OpenRequest {
   my_proposal_status: Tables<'proposals'>['status'] | null;
 }
 
-const PROPOSAL_COLUMNS = 'id, request_id, provider_id, price_cents, message, valid_until, status, created_at';
+const PROPOSAL_COLUMNS = 'id, request_id, provider_id, price_cents, message, valid_until, available_from, status, created_at';
 
 /** Open requests for the occupations and neighborhoods of an approved provider; empty for any other status. */
 export const listOpenRequests = (): Promise<OpenRequest[]> =>
@@ -43,6 +43,8 @@ export interface NewProposal {
   message?: string;
   /** Last day the offer holds ("YYYY-MM-DD", São Paulo); empty = no deadline. */
   validUntilDay?: string;
+  /** First day the provider can go ("YYYY-MM-DD", São Paulo); empty = not said. */
+  availableFromDay?: string;
 }
 
 export const MESSAGE_MAX = 1000;
@@ -63,10 +65,19 @@ export const sendProposal = (input: NewProposal): Promise<ProposalRow> =>
       if (end.getTime() <= Date.now()) throw new AppError('invalid_input', { message: 'A validade precisa ser uma data futura.' });
       validUntil = end.toISOString();
     }
+    const availableFrom = input.availableFromDay?.trim() || null;
+    if (availableFrom && !/^\d{4}-\d{2}-\d{2}$/.test(availableFrom)) throw new AppError('invalid_input', { message: 'Confira a data em que você pode ir.' });
     return unwrap<ProposalRow>(
       await db()
         .from('proposals')
-        .insert({ request_id: input.requestId, provider_id: input.providerId, price_cents: input.priceCents, message: message || null, valid_until: validUntil })
+        .insert({
+          request_id: input.requestId,
+          provider_id: input.providerId,
+          price_cents: input.priceCents,
+          message: message || null,
+          valid_until: validUntil,
+          available_from: availableFrom,
+        })
         .select(PROPOSAL_COLUMNS)
         .single(),
     );

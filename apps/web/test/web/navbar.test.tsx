@@ -23,6 +23,7 @@ const backend = (patch: Partial<BackendAuth>): AuthContextType =>
     profile: null,
     provider: null,
     isAdmin: false,
+    careAccess: false,
     signInWithOtp: async () => {},
     verifyOtp: async () => null,
     signOut: async () => {},
@@ -51,13 +52,21 @@ describe('navModelFor', () => {
 
   it('shows a signed-in client the client areas and the way to become a provider', () => {
     const model = navModelFor(backend({ session }));
-    expect(model.items.map(i => i.to)).toEqual(['/categorias', '/pedido', '/pedidos', '/atendimentos', '/cuidado']);
+    expect(model.items.map(i => i.to)).toEqual(['/categorias', '/pedido', '/pedidos', '/atendimentos']);
     expect(model.cta?.to).toBe('/pro/cadastro');
+  });
+
+  it('lists the care line only for accounts already in it (D12)', () => {
+    expect(labels(backend({ session }))).not.toContain('Cuidado');
+    expect(labels(backend({ session, careAccess: true }))).toContain('Cuidado');
+    const caregiver = { session, provider: { id: 'p' } as BackendAuth['provider'] };
+    expect(labels(backend(caregiver))).not.toContain('Plantões');
+    expect(navModelFor(backend({ ...caregiver, careAccess: true })).items.map(i => i.to)).toContain('/pro/plantoes');
   });
 
   it('shows a provider the Pro tools and no more call to action', () => {
     const model = navModelFor(backend({ session, provider: { id: 'p' } as BackendAuth['provider'] }));
-    expect(model.items.map(i => i.to)).toEqual(['/pro', '/pro/pedidos', '/pro/agenda', '/atendimentos', '/pro/plantoes', '/pedido']);
+    expect(model.items.map(i => i.to)).toEqual(['/pro', '/pro/pedidos', '/pro/agenda', '/atendimentos', '/pedido']);
     expect(model.cta).toBeNull();
   });
 

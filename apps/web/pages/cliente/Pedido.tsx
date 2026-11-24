@@ -4,7 +4,7 @@ import { Check, ChevronLeft, MessageCircle, Search, Send } from 'lucide-react';
 import { OCCUPATIONS, findArea, findOccupation } from '../../catalog';
 import { searchOccupations } from '../../utils/search';
 import { useAuth } from '../../contexts/AuthContext';
-import { features } from '../../config/features';
+import { features, loadPublicSettings } from '../../config/features';
 import { DEFAULT_CITY, LOCAL_NEIGHBORHOODS } from '../../config/neighborhoods';
 import { backendEnabled } from '../../lib/supabase';
 import { AppError } from '../../lib/errors';
@@ -17,6 +17,7 @@ import { updateProfile } from '../../services/account';
 import BackendNotice from '../../components/BackendNotice';
 import ErrorAlert from '../../components/ErrorAlert';
 import TermsGate from '../../components/TermsGate';
+import PilotWaitlist from '../../components/cliente/PilotWaitlist';
 import { externalLinkProps } from '../../platform/external';
 import { buildConciergeMessage, conciergeLink } from './concierge';
 
@@ -94,10 +95,18 @@ const Pedido: React.FC = () => {
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   const remote = useAsync(() => (online ? listNeighborhoods() : Promise.resolve([])), online ? 'remote' : 'local');
-  const options: NeighborhoodOption[] = useMemo(
-    () => (online ? (remote.data ?? []).map(n => ({ value: n.id, name: n.name, zone: n.zone ?? '' })) : LOCAL_OPTIONS),
-    [online, remote.data],
-  );
+  // The pilot serves a few neighborhoods (platform_settings.pilot_neighborhoods); empty = all of them.
+  // The filter is a convenience of this form: the operation can still register a request anywhere.
+  const settings = useAsync(() => (online ? loadPublicSettings() : Promise.resolve(null)), online ? 'settings' : 'none');
+  const pilot = settings.data?.pilotNeighborhoods;
+  const [options, outside] = useMemo((): [NeighborhoodOption[], NeighborhoodOption[]] => {
+    if (!online) return [LOCAL_OPTIONS, []];
+    const all = (remote.data ?? []).map(n => ({ value: n.id, name: n.name, zone: n.zone ?? '', slug: n.slug }));
+    if (!pilot || pilot.length === 0) return [all, []];
+    const served = all.filter(n => pilot.includes(n.slug));
+    // A list that matches nothing (a typo in the setting) must not empty the form
+    return served.length > 0 ? [served, all.filter(n => !pilot.includes(n.slug))] : [all, []];
+  }, [online, remote.data, pilot]);
 
   useEffect(() => saveRequestDraft(draft), [draft]);
 
@@ -340,6 +349,9 @@ const Pedido: React.FC = () => {
               )}
               <ErrorAlert error={online ? remote.error : null} className="mt-2" />
             </div>
+            {outside.length > 0 && (
+              <PilotWaitlist options={outside} occupationSlug={occupation?.slug ?? null} userId={auth.authUser?.id ?? null} />
+            )}
             {stepAlert}
             <div className="flex justify-between gap-3">
               {backButton}
@@ -498,6 +510,15 @@ const Pedido: React.FC = () => {
                       <Send size={16} aria-hidden="true" /> {busy ? 'Enviando…' : 'Enviar pedido'}
                     </button>
                   </div>
+                  {whatsappLink && (
+                    <p className="text-sm text-gray-600">
+                      Prefere combinar por mensagem?{' '}
+                      <a {...whatsappLink} className="text-primary underline inline-flex items-center gap-1">
+                        <MessageCircle size={14} aria-hidden="true" /> Enviar o pedido pelo WhatsApp
+                      </a>
+                      . Nada é enviado até você tocar em enviar no WhatsApp.
+                    </p>
+                  )}
                 </form>
               </TermsGate>
             )}

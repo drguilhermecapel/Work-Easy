@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
-import { CheckCircle2, Download, FileCheck2, LogOut, Trash2, UserRound } from 'lucide-react';
+import { Ban, CheckCircle2, Download, FileCheck2, LogOut, Trash2, UserRound } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { backendEnabled } from '../../lib/supabase';
 import { useAsync } from '../../lib/useAsync';
 import { downloadJson } from '../../lib/download';
 import { clearRequestDraft } from '../../lib/requestDraft';
 import { formatPhoneBR } from '../../lib/phone';
-import { APP_TIME_ZONE, todayInSaoPaulo } from '../../lib/timezone';
+import { APP_TIME_ZONE, formatDateBR, todayInSaoPaulo } from '../../lib/timezone';
 import { CONSENT_VERSIONS } from '../../config/legal';
 import {
   DELETE_CONFIRMATION,
@@ -19,6 +19,7 @@ import {
   updateProfile,
   withdrawBackgroundCheck,
 } from '../../services/account';
+import { listMyBlocks, unblockUser } from '../../services/safety';
 import type { ConsentPurpose, ConsentRow, ProfileRow } from '../../services/types';
 import BackendNotice from '../../components/BackendNotice';
 import ErrorAlert from '../../components/ErrorAlert';
@@ -329,6 +330,58 @@ const DeleteSection: React.FC<{ onDeleted: () => void }> = ({ onDeleted }) => {
   );
 };
 
+const BlocksSection: React.FC = () => {
+  const blocks = useAsync(listMyBlocks, 'blocks');
+  const [error, setError] = useState<unknown>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const remove = async (blockedId: string) => {
+    setBusy(blockedId);
+    setError(null);
+    try {
+      await unblockUser(blockedId);
+      blocks.reload();
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-gray-600">
+        Quem você bloqueou não aparece nas suas buscas e não troca pedidos nem propostas com você. A pessoa não é avisada.
+      </p>
+      <ErrorAlert error={blocks.error ?? error} />
+      {blocks.data && blocks.data.length === 0 && <p className="text-sm text-gray-500">Você não bloqueou ninguém.</p>}
+      {blocks.data && blocks.data.length > 0 && (
+        <ul className="divide-y divide-gray-100">
+          {blocks.data.map(block => {
+            const name = block.label ?? (block.origin === 'request' ? 'Cliente de um pedido' : 'Profissional');
+            return (
+              <li key={block.blocked_id} className="py-2 flex flex-wrap items-center justify-between gap-3">
+                <span className="text-sm text-gray-800">
+                  {name} <span className="text-gray-500">· desde {formatDateBR(block.created_at)}</span>
+                </span>
+                <button
+                  type="button"
+                  className={secondaryButton}
+                  disabled={busy === block.blocked_id}
+                  onClick={() => remove(block.blocked_id)}
+                  aria-label={`Desbloquear ${name}`}
+                >
+                  Desbloquear
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+};
+
 // ---- Page ------------------------------------------------------------------
 
 const Conta: React.FC = () => {
@@ -425,6 +478,13 @@ const Conta: React.FC = () => {
           Cada decisão fica registrada com data e versão do texto. Revogar não apaga o histórico.
         </p>
         <ConsentsSection key={consentsVersion} userId={authUser.id} />
+      </section>
+
+      <section className={card} aria-labelledby="conta-bloqueios">
+        <h2 id="conta-bloqueios" className="font-bold text-gray-800 flex items-center gap-2 mb-2">
+          <Ban size={18} className="text-primary" aria-hidden="true" /> Bloqueios
+        </h2>
+        <BlocksSection />
       </section>
 
       <section className={card} aria-labelledby="conta-exportar">

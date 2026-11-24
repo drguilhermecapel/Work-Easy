@@ -26,7 +26,8 @@ export type TemplateName =
   | 'orcamento_respondido'
   | 'plantao_oferecido'
   | 'shift_canceled_by_deletion'
-  | 'booking_canceled_by_deletion';
+  | 'booking_canceled_by_deletion'
+  | 'pedido_novo';
 
 interface TemplateSpec {
   /** Ordered keys of `notifications.params`; they fill {{1}}, {{2}}, ... */
@@ -85,6 +86,12 @@ export const TEMPLATES: Record<TemplateName, TemplateSpec> = {
     params: [],
     subject: 'Reserva cancelada',
     body: 'Uma reserva com você foi cancelada porque a conta da outra parte foi excluída.',
+  },
+  // To a provider that can answer the request. The description is free text typed by the client, so it stays out.
+  pedido_novo: {
+    params: ['occupation_name', 'neighborhood_name'],
+    subject: 'Novo pedido na sua região',
+    body: 'Há um pedido novo de {occupation_name} em {neighborhood_name}. Abra o WorkEasy para ver e enviar a sua proposta.',
   },
 };
 

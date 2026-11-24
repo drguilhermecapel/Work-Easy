@@ -1,3 +1,4 @@
+import { loadPublicSettings } from '../config/features';
 import { CONSENT_VERSIONS } from '../config/legal';
 import { AppError } from '../lib/errors';
 import { toE164BR } from '../lib/phone';
@@ -35,6 +36,19 @@ export const getMyProvider = async (userId: string): Promise<ProviderRow | null>
 export const fetchIsAdmin = async (): Promise<boolean> => {
   const data = unwrapMaybe<unknown>(await db().rpc('is_admin'));
   return data === true;
+};
+
+/**
+ * Whether the care line appears in this account's menu (docs/DECISOES.md, D12: the line is not
+ * advertised before its prerequisites). True when the owner opened it (care_line_open), or when the
+ * account is already in it (care_access(): a family with a house, or a caregiver that was offered a
+ * shift). The
+ * routes stay reachable by link, which is how the concierge operation invites a family; the
+ * database decides what each account reads and writes either way.
+ */
+export const fetchCareAccess = async (): Promise<boolean> => {
+  if ((await loadPublicSettings()).careLineOpen) return true;
+  return unwrapMaybe<unknown>(await db().rpc('care_access')) === true;
 };
 
 /** Consent history, newest first. */

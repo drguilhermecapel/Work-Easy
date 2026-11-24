@@ -74,6 +74,8 @@ export interface ProposalRow {
   price_cents: number;
   message: string | null;
   valid_until: string | null;
+  /** First day the provider can do the job (\"YYYY-MM-DD\"); optional, and absent in rows read before the column existed. */
+  available_from?: string | null;
   status: ProposalStatus;
   created_at: string;
 }

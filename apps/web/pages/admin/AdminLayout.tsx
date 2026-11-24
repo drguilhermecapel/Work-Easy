@@ -6,6 +6,7 @@ const LINKS = [
   { to: '/admin', label: 'Painel', end: true },
   { to: '/admin/prestadores', label: 'Prestadores', end: false },
   { to: '/admin/disputas', label: 'Disputas', end: false },
+  { to: '/admin/denuncias', label: 'Denúncias', end: false },
   { to: '/admin/pagamentos', label: 'Pagamentos', end: false },
   { to: '/admin/configuracoes', label: 'Configurações', end: false },
   { to: '/admin/auditoria', label: 'Auditoria', end: false },

@@ -11,6 +11,9 @@ import { getFreeProposalsPerMonth } from '../../services/proBilling';
 import { listMyProposals, listOpenRequests, proposalAllowance, sendProposal, withdrawProposal, type OpenRequest } from '../../services/proMarketplace';
 import { parseReaisToCents } from '../../services/proFormat';
 import type { ProposalRow, ProviderRow } from '../../services/types';
+import ReportButton from '../../components/ReportButton';
+import BlockButton from '../../components/BlockButton';
+import { blockRequestAuthor } from '../../services/safety';
 import ErrorAlert from '../../components/ErrorAlert';
 import PageStatus from '../../components/PageStatus';
 import ProPage from '../../components/pro/ProPage';
@@ -49,6 +52,7 @@ const ProposalForm: React.FC<{ providerId: string; request: OpenRequest; today: 
   const [price, setPrice] = useState('');
   const [message, setMessage] = useState('');
   const [validUntil, setValidUntil] = useState('');
+  const [availableFrom, setAvailableFrom] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const prefix = `prop-${request.id}`;
@@ -60,7 +64,7 @@ const ProposalForm: React.FC<{ providerId: string; request: OpenRequest; today: 
     try {
       const priceCents = parseReaisToCents(price);
       if (priceCents === null) throw new AppError('invalid_input', { message: 'Informe o preço em reais, por exemplo 180,00.' });
-      await sendProposal({ providerId, requestId: request.id, priceCents, message, validUntilDay: validUntil });
+      await sendProposal({ providerId, requestId: request.id, priceCents, message, validUntilDay: validUntil, availableFromDay: availableFrom });
       onSent();
     } catch (err) {
       setError(err);
@@ -76,6 +80,9 @@ const ProposalForm: React.FC<{ providerId: string; request: OpenRequest; today: 
         </Field>
         <Field id={`${prefix}-validade`} label="Proposta válida até (opcional)">
           <input id={`${prefix}-validade`} type="date" min={today} className={inputClass} value={validUntil} onChange={e => setValidUntil(e.target.value)} />
+        </Field>
+        <Field id={`${prefix}-disponivel`} label="Posso ir a partir de (opcional)">
+          <input id={`${prefix}-disponivel`} type="date" min={today} className={inputClass} value={availableFrom} onChange={e => setAvailableFrom(e.target.value)} />
         </Field>
       </div>
       <Field id={`${prefix}-mensagem`} label="Mensagem para o cliente (opcional)" hint="Diga o que está incluso e quando você pode ir. Não coloque telefone ou e-mail.">
@@ -132,6 +139,15 @@ const RequestCard: React.FC<{ providerId: string; request: OpenRequest; data: Da
           Enviar proposta
         </button>
       )}
+      <div className="flex flex-wrap gap-x-6 gap-y-2 mt-3">
+        <ReportButton target={{ type: 'request', requestId: request.id }} label="Denunciar este pedido" />
+        <BlockButton
+          onBlock={() => blockRequestAuthor(request.id)}
+          label="Bloquear este cliente"
+          consequence="Você deixa de ver e de receber aviso dos pedidos deste cliente, e ele deixa de encontrar você na busca. Atendimentos já combinados não mudam."
+          onBlocked={onChanged}
+        />
+      </div>
     </Card>
   );
 };
@@ -161,6 +177,7 @@ const SentProposals: React.FC<{ data: Data; onWithdraw: (proposal: ProposalRow) 
                 )}
                 {proposal.message && <p className="text-sm text-gray-700 mt-1 whitespace-pre-line break-words">{proposal.message}</p>}
                 {proposal.valid_until && <p className="text-xs text-gray-500 mt-1">Válida até {formatDateBR(proposal.valid_until)}</p>}
+                {proposal.available_from && <p className="text-xs text-gray-500 mt-1">Você pode ir a partir de {formatDateBR(proposal.available_from)}</p>}
                 {proposal.status === 'accepted' && (
                   <p className="text-sm mt-2">
                     O cliente escolheu a sua proposta.{' '}

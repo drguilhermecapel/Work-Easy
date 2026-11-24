@@ -91,6 +91,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"assist_usage_events": {
+                  Row: {
+                    "id": number,"used_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id"?: never,"used_at"?: string,"user_id": string
+                  }
+                  Update: {
+                    "id"?: never,"used_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "assist_usage_events_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"audit_log": {
                   Row: {
                     "action": string,"actor_id": string | null,"at": string,"created_at": string,"data": NonNullable<Json>,"entity": string,"entity_id": string | null,"id": number
@@ -325,6 +345,38 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"content_reports": {
+                  Row: {
+                    "created_at": string,"details": string | null,"id": string,"reason": string,"reporter_id": string | null,"resolution_note": string | null,"resolved_at": string | null,"resolved_by": string | null,"status": string,"target_id": string,"target_type": string,"target_user_id": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"details"?: string | null,"id"?: string,"reason": string,"reporter_id"?: string | null,"resolution_note"?: string | null,"resolved_at"?: string | null,"resolved_by"?: string | null,"status"?: string,"target_id": string,"target_type": string,"target_user_id"?: string | null
+                  }
+                  Update: {
+                    "created_at"?: string,"details"?: string | null,"id"?: string,"reason"?: string,"reporter_id"?: string | null,"resolution_note"?: string | null,"resolved_at"?: string | null,"resolved_by"?: string | null,"status"?: string,"target_id"?: string,"target_type"?: string,"target_user_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "content_reports_reporter_id_fkey"
+      columns: ["reporter_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "content_reports_resolved_by_fkey"
+      columns: ["resolved_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "content_reports_target_user_id_fkey"
+      columns: ["target_user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"customer_payment_profiles": {
                   Row: {
                     "asaas_customer_id": string,"created_at": string,"user_id": string
@@ -525,14 +577,14 @@ isOneToOne: false
                   ]
                 },"payments": {
                   Row: {
-                    "amount_cents": number,"asaas_payment_id": string | null,"booking_id": string | null,"created_at": string,"due_date": string | null,"escrow": boolean,"id": string,"invoice_url": string | null,"method": Database["public"]['Enums']["payment_method"],"payer_id": string | null,"pix_payload": string | null,"pix_qr_code": string | null,"platform_fee_cents": number,"provider_id": string | null,"quote_id": string | null,"raw": Json | null,"status": Database["public"]['Enums']["payment_status"],"updated_at": string
+                    "amount_cents": number,"asaas_payment_id": string | null,"booking_id": string | null,"created_at": string,"due_date": string | null,"escrow": boolean,"id": string,"invoice_url": string | null,"method": Database["public"]['Enums']["payment_method"],"payer_id": string | null,"pix_payload": string | null,"pix_qr_code": string | null,"platform_fee_cents": number,"provider_id": string | null,"quote_id": string | null,"raw": Json | null,"received_at": string | null,"status": Database["public"]['Enums']["payment_status"],"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "amount_cents": number,"asaas_payment_id"?: string | null,"booking_id"?: string | null,"created_at"?: string,"due_date"?: string | null,"escrow"?: boolean,"id"?: string,"invoice_url"?: string | null,"method"?: Database["public"]['Enums']["payment_method"],"payer_id"?: string | null,"pix_payload"?: string | null,"pix_qr_code"?: string | null,"platform_fee_cents"?: number,"provider_id"?: string | null,"quote_id"?: string | null,"raw"?: Json | null,"status"?: Database["public"]['Enums']["payment_status"],"updated_at"?: string
+                    "amount_cents": number,"asaas_payment_id"?: string | null,"booking_id"?: string | null,"created_at"?: string,"due_date"?: string | null,"escrow"?: boolean,"id"?: string,"invoice_url"?: string | null,"method"?: Database["public"]['Enums']["payment_method"],"payer_id"?: string | null,"pix_payload"?: string | null,"pix_qr_code"?: string | null,"platform_fee_cents"?: number,"provider_id"?: string | null,"quote_id"?: string | null,"raw"?: Json | null,"received_at"?: string | null,"status"?: Database["public"]['Enums']["payment_status"],"updated_at"?: string
                   }
                   Update: {
-                    "amount_cents"?: number,"asaas_payment_id"?: string | null,"booking_id"?: string | null,"created_at"?: string,"due_date"?: string | null,"escrow"?: boolean,"id"?: string,"invoice_url"?: string | null,"method"?: Database["public"]['Enums']["payment_method"],"payer_id"?: string | null,"pix_payload"?: string | null,"pix_qr_code"?: string | null,"platform_fee_cents"?: number,"provider_id"?: string | null,"quote_id"?: string | null,"raw"?: Json | null,"status"?: Database["public"]['Enums']["payment_status"],"updated_at"?: string
+                    "amount_cents"?: number,"asaas_payment_id"?: string | null,"booking_id"?: string | null,"created_at"?: string,"due_date"?: string | null,"escrow"?: boolean,"id"?: string,"invoice_url"?: string | null,"method"?: Database["public"]['Enums']["payment_method"],"payer_id"?: string | null,"pix_payload"?: string | null,"pix_qr_code"?: string | null,"platform_fee_cents"?: number,"provider_id"?: string | null,"quote_id"?: string | null,"raw"?: Json | null,"received_at"?: string | null,"status"?: Database["public"]['Enums']["payment_status"],"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -617,14 +669,14 @@ isOneToOne: false
                   ]
                 },"proposals": {
                   Row: {
-                    "created_at": string,"id": string,"message": string | null,"price_cents": number,"provider_id": string,"request_id": string,"status": Database["public"]['Enums']["proposal_status"],"valid_until": string | null
+                    "available_from": string | null,"created_at": string,"id": string,"message": string | null,"price_cents": number,"provider_id": string,"request_id": string,"status": Database["public"]['Enums']["proposal_status"],"valid_until": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"id"?: string,"message"?: string | null,"price_cents": number,"provider_id"?: string,"request_id": string,"status"?: Database["public"]['Enums']["proposal_status"],"valid_until"?: string | null
+                    "available_from"?: string | null,"created_at"?: string,"id"?: string,"message"?: string | null,"price_cents": number,"provider_id"?: string,"request_id": string,"status"?: Database["public"]['Enums']["proposal_status"],"valid_until"?: string | null
                   }
                   Update: {
-                    "created_at"?: string,"id"?: string,"message"?: string | null,"price_cents"?: number,"provider_id"?: string,"request_id"?: string,"status"?: Database["public"]['Enums']["proposal_status"],"valid_until"?: string | null
+                    "available_from"?: string | null,"created_at"?: string,"id"?: string,"message"?: string | null,"price_cents"?: number,"provider_id"?: string,"request_id"?: string,"status"?: Database["public"]['Enums']["proposal_status"],"valid_until"?: string | null
                   }
                   Relationships: [
                     {
@@ -777,14 +829,14 @@ isOneToOne: false
                   ]
                 },"provider_payment_accounts": {
                   Row: {
-                    "api_key_secret_id": string | null,"asaas_account_id": string | null,"asaas_wallet_id": string | null,"created_at": string,"provider_id": string,"status": string | null
+                    "api_key_secret_id": string | null,"asaas_account_id": string | null,"asaas_wallet_id": string | null,"cpf_hash": string | null,"created_at": string,"provider_id": string,"status": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "api_key_secret_id"?: string | null,"asaas_account_id"?: string | null,"asaas_wallet_id"?: string | null,"created_at"?: string,"provider_id": string,"status"?: string | null
+                    "api_key_secret_id"?: string | null,"asaas_account_id"?: string | null,"asaas_wallet_id"?: string | null,"cpf_hash"?: string | null,"created_at"?: string,"provider_id": string,"status"?: string | null
                   }
                   Update: {
-                    "api_key_secret_id"?: string | null,"asaas_account_id"?: string | null,"asaas_wallet_id"?: string | null,"created_at"?: string,"provider_id"?: string,"status"?: string | null
+                    "api_key_secret_id"?: string | null,"asaas_account_id"?: string | null,"asaas_wallet_id"?: string | null,"cpf_hash"?: string | null,"created_at"?: string,"provider_id"?: string,"status"?: string | null
                   }
                   Relationships: [
                     {
@@ -803,14 +855,14 @@ isOneToOne: true
                   ]
                 },"providers": {
                   Row: {
-                    "accepts_platform_requests": boolean,"avatar_path": string | null,"base_neighborhood_id": string | null,"bio": string | null,"created_at": string,"display_name": string,"id": string,"plan": Database["public"]['Enums']["plan_code"],"slug": string,"status": Database["public"]['Enums']["provider_status"]
+                    "accepts_platform_requests": boolean,"approved_at": string | null,"avatar_path": string | null,"base_neighborhood_id": string | null,"bio": string | null,"created_at": string,"display_name": string,"id": string,"plan": Database["public"]['Enums']["plan_code"],"slug": string,"status": Database["public"]['Enums']["provider_status"]
                   }
                   ComputedFields: never
                   Insert: {
-                    "accepts_platform_requests"?: boolean,"avatar_path"?: string | null,"base_neighborhood_id"?: string | null,"bio"?: string | null,"created_at"?: string,"display_name": string,"id": string,"plan"?: Database["public"]['Enums']["plan_code"],"slug": string,"status"?: Database["public"]['Enums']["provider_status"]
+                    "accepts_platform_requests"?: boolean,"approved_at"?: string | null,"avatar_path"?: string | null,"base_neighborhood_id"?: string | null,"bio"?: string | null,"created_at"?: string,"display_name": string,"id": string,"plan"?: Database["public"]['Enums']["plan_code"],"slug": string,"status"?: Database["public"]['Enums']["provider_status"]
                   }
                   Update: {
-                    "accepts_platform_requests"?: boolean,"avatar_path"?: string | null,"base_neighborhood_id"?: string | null,"bio"?: string | null,"created_at"?: string,"display_name"?: string,"id"?: string,"plan"?: Database["public"]['Enums']["plan_code"],"slug"?: string,"status"?: Database["public"]['Enums']["provider_status"]
+                    "accepts_platform_requests"?: boolean,"approved_at"?: string | null,"avatar_path"?: string | null,"base_neighborhood_id"?: string | null,"bio"?: string | null,"created_at"?: string,"display_name"?: string,"id"?: string,"plan"?: Database["public"]['Enums']["plan_code"],"slug"?: string,"status"?: Database["public"]['Enums']["provider_status"]
                   }
                   Relationships: [
                     {
@@ -829,14 +881,14 @@ isOneToOne: true
                   ]
                 },"quotes": {
                   Row: {
-                    "client_name": string | null,"client_phone": string | null,"created_at": string,"id": string,"items": NonNullable<Json>,"notes": string | null,"provider_client_id": string | null,"provider_id": string,"public_token": string,"status": Database["public"]['Enums']["quote_status"],"title": string,"total_cents": number,"updated_at": string,"valid_until": string | null
+                    "client_name": string | null,"client_phone": string | null,"completed_at": string | null,"created_at": string,"id": string,"items": NonNullable<Json>,"notes": string | null,"provider_client_id": string | null,"provider_id": string,"public_token": string,"status": Database["public"]['Enums']["quote_status"],"title": string,"total_cents": number,"updated_at": string,"valid_until": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "client_name"?: string | null,"client_phone"?: string | null,"created_at"?: string,"id"?: string,"items"?: NonNullable<Json>,"notes"?: string | null,"provider_client_id"?: string | null,"provider_id"?: string,"public_token"?: string,"status"?: Database["public"]['Enums']["quote_status"],"title": string,"total_cents"?: number,"updated_at"?: string,"valid_until"?: string | null
+                    "client_name"?: string | null,"client_phone"?: string | null,"completed_at"?: string | null,"created_at"?: string,"id"?: string,"items"?: NonNullable<Json>,"notes"?: string | null,"provider_client_id"?: string | null,"provider_id"?: string,"public_token"?: string,"status"?: Database["public"]['Enums']["quote_status"],"title": string,"total_cents"?: number,"updated_at"?: string,"valid_until"?: string | null
                   }
                   Update: {
-                    "client_name"?: string | null,"client_phone"?: string | null,"created_at"?: string,"id"?: string,"items"?: NonNullable<Json>,"notes"?: string | null,"provider_client_id"?: string | null,"provider_id"?: string,"public_token"?: string,"status"?: Database["public"]['Enums']["quote_status"],"title"?: string,"total_cents"?: number,"updated_at"?: string,"valid_until"?: string | null
+                    "client_name"?: string | null,"client_phone"?: string | null,"completed_at"?: string | null,"created_at"?: string,"id"?: string,"items"?: NonNullable<Json>,"notes"?: string | null,"provider_client_id"?: string | null,"provider_id"?: string,"public_token"?: string,"status"?: Database["public"]['Enums']["quote_status"],"title"?: string,"total_cents"?: number,"updated_at"?: string,"valid_until"?: string | null
                   }
                   Relationships: [
                     {
@@ -1025,6 +1077,32 @@ isOneToOne: false
       referencedColumns: ["id","household_id"]
     }
                   ]
+                },"subscription_status_history": {
+                  Row: {
+                    "changed_at": string,"from_status": Database["public"]['Enums']["subscription_status"] | null,"id": number,"provider_id": string,"to_status": Database["public"]['Enums']["subscription_status"]
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "changed_at"?: string,"from_status"?: Database["public"]['Enums']["subscription_status"] | null,"id"?: never,"provider_id": string,"to_status": Database["public"]['Enums']["subscription_status"]
+                  }
+                  Update: {
+                    "changed_at"?: string,"from_status"?: Database["public"]['Enums']["subscription_status"] | null,"id"?: never,"provider_id"?: string,"to_status"?: Database["public"]['Enums']["subscription_status"]
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "subscription_status_history_provider_id_fkey"
+      columns: ["provider_id"]
+isOneToOne: false
+      referencedRelation: "admin_provider_queue"
+      referencedColumns: ["provider_id"]
+    },{
+      foreignKeyName: "subscription_status_history_provider_id_fkey"
+      columns: ["provider_id"]
+isOneToOne: false
+      referencedRelation: "providers"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"subscriptions": {
                   Row: {
                     "asaas_subscription_id": string | null,"canceled_at": string | null,"created_at": string,"current_period_end": string | null,"plan": Database["public"]['Enums']["plan_code"],"provider_id": string,"status": Database["public"]['Enums']["subscription_status"]
@@ -1094,6 +1172,78 @@ isOneToOne: false
       columns: ["provider_id"]
 isOneToOne: false
       referencedRelation: "providers"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"trial_claims": {
+                  Row: {
+                    "claimed_at": string,"cpf_hash": string,"provider_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "claimed_at"?: string,"cpf_hash": string,"provider_id": string
+                  }
+                  Update: {
+                    "claimed_at"?: string,"cpf_hash"?: string,"provider_id"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"user_blocks": {
+                  Row: {
+                    "blocked_id": string,"blocker_id": string,"created_at": string,"origin": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "blocked_id": string,"blocker_id"?: string,"created_at"?: string,"origin": string
+                  }
+                  Update: {
+                    "blocked_id"?: string,"blocker_id"?: string,"created_at"?: string,"origin"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "user_blocks_blocked_id_fkey"
+      columns: ["blocked_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "user_blocks_blocker_id_fkey"
+      columns: ["blocker_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"waitlist_entries": {
+                  Row: {
+                    "created_at": string,"id": string,"neighborhood_id": string,"occupation_key": string | null,"occupation_slug": string | null,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"id"?: string,"neighborhood_id": string,"occupation_key"?: never,"occupation_slug"?: string | null,"user_id"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: string,"neighborhood_id"?: string,"occupation_key"?: never,"occupation_slug"?: string | null,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "waitlist_entries_neighborhood_id_fkey"
+      columns: ["neighborhood_id"]
+isOneToOne: false
+      referencedRelation: "neighborhoods"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "waitlist_entries_occupation_slug_fkey"
+      columns: ["occupation_slug"]
+isOneToOne: false
+      referencedRelation: "occupations"
+      referencedColumns: ["slug"]
+    },{
+      foreignKeyName: "waitlist_entries_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
       referencedColumns: ["id"]
     }
                   ]
@@ -1203,11 +1353,19 @@ isOneToOne: true
 "admin_get_payment_raw":
 { Args: { "p_payment": string }; Returns: Json
                            },
+"admin_list_reports":
+{ Args: { "p_limit"?: number,"p_offset"?: number,"p_status"?: string }; Returns: {
+              "created_at": string,"details": string,"id": string,"open_reports_on_target": number,"reason": string,"reporter_id": string,"resolution_note": string,"resolved_at": string,"status": string,"target_id": string,"target_label": string,"target_text": string,"target_type": string,"target_user_id": string
+            }[]
+                           },
 "admin_log_document_view":
 { Args: { "p_storage_path": string }; Returns: undefined
                            },
 "admin_resolve_dispute":
 { Args: { "p_booking": string,"p_reason": string,"p_to": Database["public"]['Enums']["booking_status"] }; Returns: Database["public"]['Enums']["booking_status"]
+                           },
+"admin_resolve_report":
+{ Args: { "p_note"?: string,"p_report": string,"p_status": string }; Returns: undefined
                            },
 "admin_review_document":
 { Args: { "p_accept": boolean,"p_document": string,"p_reason"?: string }; Returns: Database["public"]['Enums']["document_status"]
@@ -1226,6 +1384,11 @@ isOneToOne: true
                            },
 "admin_set_setting":
 { Args: { "p_key": string,"p_value": Json }; Returns: Json
+                           },
+"admin_waitlist_summary":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "entries": number,"last_entry_at": string,"neighborhood_id": string,"neighborhood_name": string,"occupation_slug": string
+            }[]
                            },
 "anonymize_user":
 { Args: { "p_user": string }; Returns: undefined
@@ -1256,6 +1419,12 @@ isOneToOne: true
 "become_provider":
 { Args: { "p_display_name": string,"p_occupation": string,"p_registry_number"?: string,"p_registry_uf"?: string,"p_slug": string }; Returns: string
                            },
+"block_provider":
+{ Args: { "p_provider": string }; Returns: undefined
+                           },
+"block_request_author":
+{ Args: { "p_request": string }; Returns: undefined
+                           },
 "book_direct":
 { Args: { "p_notes"?: string,"p_period": unknown,"p_provider": string,"p_service": string }; Returns: string
                            },
@@ -1267,6 +1436,9 @@ isOneToOne: true
                            },
 "cancel_unpaid_accepted_bookings_for_user":
 { Args: { "p_user": string }; Returns: number
+                           },
+"care_access":
+{ Args: Record<PropertyKey, never>; Returns: boolean
                            },
 "caregiver_shifts":
 { Args: Record<PropertyKey, never>; Returns: {
@@ -1329,6 +1501,14 @@ isOneToOne: true
 "mark_background_check_purged":
 { Args: { "p_id": string }; Returns: undefined
                            },
+"mark_quote_completed":
+{ Args: { "p_done"?: boolean,"p_quote": string }; Returns: string
+                           },
+"my_blocks":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "blocked_id": string,"created_at": string,"label": string,"origin": string
+            }[]
+                           },
 "offer_shift":
 { Args: { "p_providers": (string)[],"p_shift": string }; Returns: number
                            },
@@ -1340,8 +1520,14 @@ isOneToOne: true
 "open_support_task":
 { Args: { "p_kind": string,"p_payload": Json }; Returns: string
                            },
+"report_content":
+{ Args: { "p_details"?: string,"p_reason": string,"p_target": string,"p_type": string }; Returns: string
+                           },
 "respond_quote":
 { Args: { "p_accept": boolean,"p_expected_total_cents"?: number,"p_token": string }; Returns: Database["public"]['Enums']["quote_status"]
+                           },
+"run_retention_purge":
+{ Args: Record<PropertyKey, never>; Returns: Json
                            },
 "search_providers":
 { Args: { "p_limit"?: number,"p_neighborhood"?: string,"p_occupation": string,"p_offset"?: number }; Returns: {
@@ -1365,6 +1551,9 @@ isOneToOne: true
                            },
 "transition_booking":
 { Args: { "p_booking": string,"p_reason"?: string,"p_to": Database["public"]['Enums']["booking_status"] }; Returns: Database["public"]['Enums']["booking_status"]
+                           },
+"unblock_user":
+{ Args: { "p_blocked": string }; Returns: undefined
                            },
 "withdraw_background_check":
 { Args: { "p_version": string }; Returns: number

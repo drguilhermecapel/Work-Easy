@@ -11,6 +11,7 @@ const Pagamentos = lazy(() => import('./Pagamentos'));
 const Configuracoes = lazy(() => import('./Configuracoes'));
 const Auditoria = lazy(() => import('./Auditoria'));
 const Lgpd = lazy(() => import('./Lgpd'));
+const Denuncias = lazy(() => import('./Denuncias'));
 
 /** Administration routes, placed inside <Routes> in AppShell.tsx. */
 export const adminRoutes = (
@@ -19,6 +20,7 @@ export const adminRoutes = (
     <Route path="prestadores" element={<Prestadores />} />
     <Route path="prestadores/:id" element={<PrestadorDetalhe />} />
     <Route path="disputas" element={<Disputas />} />
+    <Route path="denuncias" element={<Denuncias />} />
     <Route path="pagamentos" element={<Pagamentos />} />
     <Route path="configuracoes" element={<Configuracoes />} />
     <Route path="auditoria" element={<Auditoria />} />

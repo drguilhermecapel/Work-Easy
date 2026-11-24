@@ -97,6 +97,8 @@ describe('/pro/pedidos', () => {
       message: 'Posso ir no sábado às 8h.',
       // The whole last day counts: until 23:59:59 in São Paulo
       valid_until: '2031-03-11T02:59:59.000Z',
+      // Not filled in on the form: the first day the provider can go is optional
+      available_from: null,
     });
     // The list of sent proposals shows it
     expect(await screen.findByText('R$ 180,00', { selector: 'span.font-semibold' })).toBeInTheDocument();

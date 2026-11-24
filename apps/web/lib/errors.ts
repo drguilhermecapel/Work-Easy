@@ -27,6 +27,9 @@ export const DATABASE_ERROR_CODES = [
   'shift_too_long',
   'offer_declined',
   'household_has_shifts',
+  'report_limit',
+  'block_limit',
+  'waitlist_limit',
   'client_has_history',
   'cpf_cnpj_invalid',
   'quote_daily_limit',
@@ -90,6 +93,9 @@ export type ClientErrorCode =
 export type ErrorCode = DatabaseErrorCode | ClientErrorCode;
 
 export const ERROR_MESSAGES: Record<ErrorCode, string> = {
+  report_limit: 'Você já fez muitas denúncias hoje. Tente de novo amanhã ou fale com o atendimento.',
+  block_limit: 'Você chegou ao limite de bloqueios. Remova algum em Minha conta para bloquear outro.',
+  waitlist_limit: 'Você já está em muitas listas de espera. Não é preciso entrar de novo.',
   // Database rules
   // The weekly limit comes from platform_settings, so the sentence does not state a number
   labor_lock:

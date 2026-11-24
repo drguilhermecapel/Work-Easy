@@ -66,11 +66,18 @@ describe('WhatsApp template payload', () => {
   it('has text for every contract template', () => {
     expect(Object.keys(TEMPLATES).sort()).toEqual([
       'agendamento_solicitado', 'atendimento_confirmado', 'booking_canceled_by_deletion', 'lembrete_atendimento',
-      'orcamento_respondido', 'pagamento_recebido', 'plantao_oferecido', 'proposta_recebida', 'shift_canceled_by_deletion',
+      'orcamento_respondido', 'pagamento_recebido', 'pedido_novo', 'plantao_oferecido', 'proposta_recebida', 'shift_canceled_by_deletion',
     ]);
     for (const [name, spec] of Object.entries(TEMPLATES)) {
       for (const key of spec.params) expect(spec.body, `${name}.${key}`).toContain(`{${key}}`);
     }
+  });
+
+  it('tells a provider of a new request without quoting what the client wrote', () => {
+    expect(renderTemplateText('pedido_novo', { occupation_name: 'Diarista', neighborhood_name: 'Moema' })).toBe(
+      'Há um pedido novo de Diarista em Moema. Abra o WorkEasy para ver e enviar a sua proposta.',
+    );
+    expect(TEMPLATES.pedido_novo.params).toEqual(['occupation_name', 'neighborhood_name']);
   });
 
   it('has the account-deletion texts for the people left with a canceled shift or booking', () => {

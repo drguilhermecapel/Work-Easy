@@ -1,7 +1,7 @@
 -- Providers: RLS per role, registry rule, protected status, service units, documents
 -- and storage, review submission, search ordering and the public page.
 begin;
-select plan(111);
+select plan(112);
 select has_function('tests', 'setup_fixture', 'test helpers are installed (run 00_helpers first)');
 select tests.setup_fixture();
 
@@ -340,11 +340,20 @@ begin
 end;
 $$;
 
+-- Providers with fewer than 3 reviews rotate by day (never by name), so the test derives the
+-- expected order of the two of them from the same key the function uses.
+create temp table expected_order as
+  select row_number() over () as position, slug
+    from (select 't-davi' as slug union all select 't-carla' union all
+          (select pr.slug from public.providers pr where pr.slug in ('t-ana', 't-eva')
+            order by md5(pr.id::text || private.sp_date(now())::text), pr.id)) o;
+grant select on expected_order to anon, authenticated;
+
 select tests.authenticate_anon();
 select results_eq(
   $$select slug from public.search_providers('t-reparo', tests.neighborhood('t-bairro-1'))$$,
-  array['t-davi', 't-carla', 't-ana', 't-eva'],
-  'with rating_ranking: rated providers by average, then the rest by name');
+  $$select slug from expected_order order by position$$,
+  'with rating_ranking: rated providers by average, then the rest in the rotation of the day, not by name');
 select is((select rating_avg from public.search_providers('t-reparo') where slug = 't-davi'), 5.00::numeric,
           'search returns the average rating');
 select is((select count(*)::int from public.search_providers('t-reparo', tests.neighborhood('t-bairro-2'))), 0,
@@ -353,8 +362,11 @@ select is((select rating_avg from public.search_providers('t-medico')), null,
           'without rating_ranking no rating is returned');
 select is((select count(*)::int from public.search_providers('t-domestica')), 1,
           'draft and pending providers are not listed');
-select results_eq($$select slug from public.search_providers('t-reparo', null, 2, 1)$$, array['t-carla', 't-ana'],
+select results_eq($$select slug from public.search_providers('t-reparo', null, 2, 1)$$,
+                  $$select slug from public.search_providers('t-reparo', null, 100, 0) offset 1 limit 2$$,
                   'limit and offset page through the ranking');
+select is((select slug from public.search_providers('t-reparo', null, 1, 1)), 't-carla',
+          'the second place of the ranking is still the second best average');
 select is((select rating_count from public.search_providers('t-reparo') where slug = 't-eva'), 2,
           'fewer than 3 reviews are counted but do not rank (Eva stays below Carla with a 5.0 average)');
 select is(public.get_provider_page('t-ana') -> 'provider' ->> 'display_name', 'Ana Teste', 'anon reads the public page');

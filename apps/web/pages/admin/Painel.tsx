@@ -1,13 +1,14 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, ListChecks, UserCheck } from 'lucide-react';
+import { AlertTriangle, Flag, ListChecks, UserCheck } from 'lucide-react';
+import { DailyFunnel, WaitlistCard } from '../../components/admin/DailyFunnel';
 import FunnelSection from '../../components/admin/FunnelSection';
 import { METRIC_ENTITY_LABELS, METRIC_STATUS_LABELS } from '../../components/admin/labels';
 import { Card, EmptyState } from '../../components/admin/ui';
 import ErrorAlert from '../../components/ErrorAlert';
 import PageStatus from '../../components/PageStatus';
 import { useAsync } from '../../lib/useAsync';
-import { getMetrics, groupMetrics, listOpenDisputes, listProviderQueue, METRIC_ENTITIES, type MetricRow } from '../../services/admin';
+import { countOpenReports, getMetrics, groupMetrics, listOpenDisputes, listProviderQueue, METRIC_ENTITIES, type MetricRow } from '../../services/admin';
 
 const MetricsTable: React.FC<{ title: string; rows: MetricRow[] }> = ({ title, rows }) => {
   const sum = (pick: (row: MetricRow) => number) => rows.reduce((total, row) => total + pick(row), 0);
@@ -54,16 +55,18 @@ const MetricsTable: React.FC<{ title: string; rows: MetricRow[] }> = ({ title, r
 const Pending: React.FC = () => {
   const queue = useAsync(listProviderQueue, 'queue');
   const disputes = useAsync(listOpenDisputes, 'disputes');
+  const reports = useAsync(countOpenReports, 'reports');
   const toApprove = queue.data?.reduce((total, row) => total + row.occupations_to_approve, 0);
   const items = [
     { to: '/admin/prestadores', icon: UserCheck, label: 'Prestadores na fila', state: queue, value: queue.data?.length, noun: 'na fila' },
     { to: '/admin/prestadores', icon: ListChecks, label: 'Ocupações a aprovar', state: queue, value: toApprove, noun: 'a aprovar' },
     { to: '/admin/disputas', icon: AlertTriangle, label: 'Disputas abertas', state: disputes, value: disputes.data?.length, noun: 'abertas' },
+    { to: '/admin/denuncias', icon: Flag, label: 'Denúncias abertas', state: reports, value: reports.data, noun: 'abertas' },
   ];
   return (
     <section aria-labelledby="admin-pendencias" className="space-y-3">
       <h2 id="admin-pendencias" className="text-lg font-bold text-gray-800">Pendências</h2>
-      <ul className="grid gap-3 sm:grid-cols-3">
+      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {items.map(({ to, icon: Icon, label, state, value, noun }) => (
           <li key={label}>
             <Link to={to} className="flex items-center gap-3 bg-white border border-gray-100 rounded-2xl p-4 shadow-xs hover:shadow-md transition-shadow">
@@ -79,7 +82,7 @@ const Pending: React.FC = () => {
           </li>
         ))}
       </ul>
-      <ErrorAlert error={queue.error ?? disputes.error} />
+      <ErrorAlert error={queue.error ?? disputes.error ?? reports.error} />
     </section>
   );
 };
@@ -102,6 +105,7 @@ const Painel: React.FC = () => {
       {!empty && metrics.data && (
         <>
           <FunnelSection rows={metrics.data} />
+          <DailyFunnel />
           <section aria-labelledby="painel-contagens" className="space-y-3">
             <h2 id="painel-contagens" className="text-lg font-bold text-gray-800">Contagens por situação</h2>
             <div className="grid gap-4 md:grid-cols-2">
@@ -112,6 +116,7 @@ const Painel: React.FC = () => {
           </section>
         </>
       )}
+      <WaitlistCard />
     </div>
   );
 };
