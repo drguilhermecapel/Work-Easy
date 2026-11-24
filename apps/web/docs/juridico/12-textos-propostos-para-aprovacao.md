@@ -289,6 +289,73 @@ Opção A: dois textos de dica por campo. Os textos evitam a expressão "não gu
 
 ---
 
+## Itens novos da rodada de 24/11/2026 para o advogado
+
+Textos e tratamentos que entraram no app em 24/11/2026 (`docs/DECISOES.md`, DD59 a DD74). Estão no código como proposta; nenhum foi validado. Os documentos 03 (Política de Privacidade) e 07 (registro das operações) **não foram alterados**: a lista do item N3 diz o que falta neles.
+
+### N1. Aceite antes de usar um assistente de IA (DD62)
+
+**Onde aparece.** Na primeira vez que a conta abre a sugestão de itens do orçamento ou o resumo da semana, antes de qualquer envio (`components/AiConsent.tsx`). O botão é "Concordo e quero usar". O aceite fica no histórico de consentimentos como finalidade `ai_assist`, versão `2026-11`. O aviso específico de cada assistente (o que é enviado) continua aparecendo depois do aceite.
+
+**Texto do aceite:**
+
+> Esta ajuda envia o que você escrever a um serviço de inteligência artificial de terceiros, que devolve uma sugestão. O uso é opcional: tudo o que ela faz você também pode fazer à mão. Você pode retirar este consentimento quando quiser em Minha conta.
+
+**Texto em Minha conta, na lista de consentimentos** (título "Ajuda com inteligência artificial"):
+
+> Enviar o texto que você escreve nos assistentes (sugestão de orçamento, resumo da semana) a um serviço de inteligência artificial de terceiros. Sem este consentimento os assistentes ficam desligados para você; o resto do app funciona igual.
+
+**Limites.** O texto não nomeia o provedor. A conferência do aceite é feita na tela; as funções de servidor não a repetem. O assistente de pedidos (`request-assist`) não tem tela e segue desligado.
+
+**Perguntas para o advogado.** (a) O consentimento é a base adequada, ou o tratamento cabe em outra base e o aceite é só transparência? (b) O texto precisa nomear o provedor e o país? (c) Para o resumo da semana, que lê relatórios sobre a pessoa cuidada, o aceite da família basta, já que a pessoa cuidada e o cuidador não aceitam nada? (d) A retirada do consentimento precisa apagar algo além de desligar o uso?
+
+### N2. Página pública "Excluir a conta do WorkEasy" (DD72)
+
+**Onde aparece.** `/excluir-conta`, sem login, com link no rodapé (`pages/conta/ExcluirConta.tsx`). As lojas exigem um endereço público que explique a exclusão. Texto da página:
+
+> **Excluir a conta do WorkEasy**
+>
+> Você pode excluir a sua conta a qualquer momento, pelo site ou pelo aplicativo, sem falar com ninguém.
+>
+> **Como excluir**
+>
+> 1. Entre na sua conta com o código enviado ao seu e-mail ou celular.
+> 2. Abra a página “Minha conta”.
+> 3. Na seção “Excluir minha conta”, digite a palavra de confirmação e toque em “Excluir minha conta”.
+>
+> **O que é apagado**
+>
+> - Nome, telefone, e-mail de acesso, cidade e localização.
+> - Documentos enviados e textos escritos por você, como descrições de pedidos e mensagens.
+> - Casas, pessoas cuidadas, notas de plantões e textos do relatório diário da linha de cuidado.
+>
+> **O que continua guardado**
+>
+> - Valores e datas de pagamentos e atendimentos já realizados, sem os seus dados de identificação, porque a lei fiscal obriga a guardar esses registros.
+> - O registro de que você aceitou os termos, guardado sem identificação direta, como prova do consentimento.
+>
+> Os prazos e os detalhes estão na Política de Privacidade. Atendimentos e plantões ainda em aberto são cancelados, e a outra parte é avisada.
+>
+> **Não consegue entrar na conta?**
+>
+> Peça a exclusão pelo atendimento ao consumidor. Vamos confirmar que a conta é sua antes de excluir.
+
+**Pontos a conferir.** (a) A lista "O que é apagado" foi escrita a partir do texto de Minha conta e de DD37; não foi conferida linha a linha contra `anonymize_user`. "Mensagens" e "localização" precisam de confirmação técnica antes de publicar [incerto]. (b) "A lei fiscal obriga" não cita norma (ver T5 e DD41). (c) Atendimento pago, em andamento ou em disputa **bloqueia** a exclusão (DD12), e a página não diz isso. (d) A exclusão pedida pelo SAC, sem login, não tem procedimento escrito de confirmação de identidade.
+
+### N3. Tratamentos novos que faltam na Política de Privacidade (03) e no registro (07)
+
+| Tratamento | Dados | Quem vê | Guarda hoje | O que falta decidir |
+|---|---|---|---|---|
+| Denúncias (`content_reports`) | quem denunciou, o que foi denunciado, motivo, relato em texto livre, decisão do operador | quem denunciou (as suas) e administradores; o denunciado não vê | sem prazo de expurgo; na exclusão da conta de quem denunciou, o relato e a autoria são apagados | base legal, prazo de guarda, se o denunciado tem direito de saber e de responder, prazo de resposta do operador |
+| Bloqueios (`user_blocks`) | quem bloqueou, quem foi bloqueado, origem (perfil ou pedido), data | só quem bloqueou e administradores | até o desbloqueio ou a exclusão de uma das contas (apagados na anonimização) | se precisa constar da Política; efeito sobre atendimentos em curso |
+| Lista de espera (`waitlist_entries`) | conta, bairro, serviço desejado, data | a própria conta e administradores | sem prazo de expurgo; sai quando o login é removido no fim da exclusão da conta (cascata do banco), não pela anonimização | base legal, prazo, e se usar a lista para avisar a pessoa depende do consentimento de comunicações |
+| Histórico de estados da assinatura (`subscription_status_history`) | prestador, estado anterior, estado novo, data | o próprio prestador e administradores | sem prazo de expurgo; sai quando o login do prestador é removido no fim da exclusão (cascata do banco) | prazo de guarda (registro financeiro?) |
+| Datas operacionais | data de recebimento do pagamento, primeira aprovação do prestador, conclusão do orçamento, data em que o prestador pode ir | as partes do atendimento e administradores | junto com a linha a que pertencem | nenhum ponto novo conhecido; listar no registro |
+| Aviso de pedido novo (`pedido_novo`) | ocupação e bairro do pedido, enviados por e-mail ou WhatsApp a até 30 prestadores | os prestadores avisados | como as demais notificações | o nome da ocupação vai ao provedor de mensagens, inclusive em saúde e cuidado (mesmo ponto das outras notificações) |
+| Consentimento `ai_assist` | finalidade, versão, decisão, data | a própria conta e administradores | como os demais consentimentos (prova pseudonimizada depois da exclusão, DD39) | ver N1 |
+
+---
+
 ## Antes de publicar
 
 1. Escolher uma opção por tema (T1 a T6) e registrar a decisão em `docs/DECISOES.md` ou no `00`.

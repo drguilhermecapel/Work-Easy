@@ -55,7 +55,9 @@ pages/<área>/...              telas novas por área (pro, cliente, admin, cuida
 | `VITE_SUPABASE_URL` | app (pública) | URL do projeto; vazia = modo demonstração |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | app (pública) | chave publicável |
 | `VITE_CONCIERGE_WHATSAPP` | app (pública) | número da operação concierge, só dígitos com DDI (ex.: 5511999999999) |
-| `VITE_SITE_URL` | app (pública) | URL canônica para SEO (ex.: https://workeasy.com.br) |
+| `VITE_SITE_URL` | app (pública) | URL canônica para SEO (ex.: https://workeasy.com.br); também decide quais links abertos no app nativo são nossos (`platform/deepLinks.ts`) |
+| `VITE_STORE_BUILD` | app (pública) | `android` ou `ios` em build feito para loja: sem venda do Pro no app e sem a linha Cuidado (menu e rotas). Vazia nos demais |
+| `VITE_LOGIN_METHODS` | app (pública) | abas de login: `email`, `phone` ou `email,phone` (padrão) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Edge Functions | já injetada pelo Supabase |
 | `ASAAS_API_KEY` | Edge Functions | chave da conta raiz da plataforma |
 | `ASAAS_BASE_URL` | Edge Functions | obrigatória em produção, sem padrão (ausente = funções de pagamento respondem 503; o sandbox é recusado): `https://api.asaas.com/v3`. Fora de produção, padrão `https://api-sandbox.asaas.com/v3` |
@@ -64,7 +66,7 @@ pages/<área>/...              telas novas por área (pro, cliente, admin, cuida
 | `RESEND_API_KEY`, `EMAIL_FROM` | Edge Functions | e-mail transacional; ausentes = `skipped` |
 | `ANTHROPIC_API_KEY` | Edge Functions | IA opcional (fase 3); ausente = função responde 503 |
 | `CRON_SECRET` | Edge Functions | protege funções chamadas pelo agendador |
-| `PRO_GRACE_DAYS` | Edge Functions | dias que um Pro com cobrança atrasada mantém o plano depois do fim do período pago (padrão 0, máximo 60) |
+| `PRO_GRACE_DAYS` | Edge Functions | reserva de `platform_settings.pro_grace_days`, que é a fonte única da carência do Pro (o job de expiração e o webhook leem a chave do banco). Só vale quando a chave não pode ser lida (padrão 0, máximo 60) |
 | `ASSIST_HOURLY_LIMIT` | Edge Functions | chamadas do assistente por usuário em qualquer janela de 60 minutos, num limite só para `request-assist`, `quote-assist` e `care-summary` (padrão 10; 0 desliga os três) |
 | `APP_ENV` | Edge Functions | `production` (padrão quando `SITE_URL` é um endereço público e a variável não existe), ou `development`, `staging`, `test`. Qualquer outro valor conta como produção. Em produção: `ASAAS_BASE_URL` obrigatória, sandbox recusado, localhost fechado no CORS |
 | `ALLOW_DEV_ORIGINS` | Edge Functions | `true` libera `http://localhost:3000` e `http://127.0.0.1:3000` no CORS fora de produção; já vale com o Asaas sandbox; em produção é ignorado |
@@ -422,7 +424,7 @@ Colunas listadas sem `created_at timestamptz default now()`, que toda tabela tem
   `claimed_at timestamptz null` — horário da última reivindicação).
 - Triggers enfileiram: proposta recebida (cliente), atendimento aceito (os dois),
   lembrete 24 h antes (os dois), pagamento recebido (prestador, uma vez por pagamento,
-  também em `received → confirmed`), pedido de agendamento direto (prestador, `agendamento_solicitado`), orçamento respondido (prestador), plantão oferecido
+  também em `received → confirmed`), pedido de agendamento direto (prestador, `agendamento_solicitado`), pedido novo do marketplace (trigger `requests_60_notify_providers`: até 30 prestadores que podem responder o pedido, em ordem aleatória, nunca o cliente nem quem tem bloqueio com ele; modelo `pedido_novo`), orçamento respondido (prestador), plantão oferecido
   (cuidador). **Só contato confirmado pelo Auth recebe mensagem:** WhatsApp para
   `auth.users.phone` com `phone_confirmed_at`, e-mail para `auth.users.email` com
   `email_confirmed_at`. O `profiles.phone` digitado pelo usuário nunca é destino; sem
@@ -438,10 +440,72 @@ Colunas listadas sem `created_at timestamptz default now()`, que toda tabela tem
 - Agendador (`pg_cron`): `workeasy-dispatch-notifications` (chama a função `notify-dispatch`
   se o Vault tem `notify_dispatch_url` e `cron_secret`) e `workeasy-expire-stale` (a cada
   15 min fecha pedidos vencidos, expira orçamentos `sent` vencidos e ofertas de plantão
-  que já começaram, e apaga contadores `assist_usage` com mais de 1 dia).
+  que já começaram, e apaga contadores `assist_usage` com mais de 1 dia). A lista completa dos
+  agendamentos está em "Agendamentos (pg_cron)", mais abaixo.
 - Templates (nomes que precisam existir no WhatsApp Business):
   `proposta_recebida`, `atendimento_confirmado`, `lembrete_atendimento`,
-  `pagamento_recebido`, `orcamento_respondido`, `plantao_oferecido`, `agendamento_solicitado`, `shift_canceled_by_deletion` e `booking_canceled_by_deletion` (estes dois vêm da exclusão de conta).
+  `pagamento_recebido`, `orcamento_respondido`, `plantao_oferecido`, `agendamento_solicitado`, `pedido_novo` (duas variáveis: ocupação e bairro), `shift_canceled_by_deletion` e `booking_canceled_by_deletion` (estes dois vêm da exclusão de conta). São 10 modelos.
+
+**Agendamentos (pg_cron)**
+
+As migrações criam oito agendamentos:
+
+| Nome | Quando | O que faz |
+|---|---|---|
+| `workeasy-dispatch-notifications` | a cada minuto | chama `notify-dispatch` (precisa de `notify_dispatch_url` e `cron_secret` no Vault) |
+| `workeasy-expire-stale` | a cada 15 min | fecha pedidos, orçamentos e ofertas vencidos |
+| `workeasy-booking-reminders` | a cada 15 min | enfileira os lembretes de atendimento |
+| `workeasy-expire-booking-requests` | a cada 15 min | expira pedidos de agendamento sem resposta |
+| `workeasy-expire-pro-plans` | minuto 17 de cada hora | rebaixa o Pro cujo período (mais `pro_grace_days`) acabou |
+| `product-events-retention` | 03:17 | apaga eventos de produto antigos |
+| `notification-counts-retention` | 03:23 | apaga contadores do teto diário de notificações |
+| `retention-purge-daily` | 03:00 | `run_retention_purge()` |
+
+Os horários são os do banco (UTC no Supabase). A remoção de antecedentes retirados
+(`background-check-purge`) não é criada por migração: o dono a agenda
+(`docs/operacao/11-agendamento-de-rotinas.md`).
+
+**Rodada de 24/11/2026** (`20261124100001` a `20261124100006`)
+
+- Chaves novas de `platform_settings`, públicas: `care_line_open` (false: a linha Cuidado só
+  aparece no menu de administradores e de contas que já estão nela) e `pilot_neighborhoods`
+  (`[]`: lista de slugs dos bairros que o formulário de pedido oferece; vazia = todos).
+  `admin_set_setting` aceita as duas sem conferir tipo; a tela lê só booleano e lista de textos.
+- `care_access()` (authenticated): verdadeiro para quem tem casa, oferta de plantão ou plantão.
+- `waitlist_entries` (`id`, `user_id`, `neighborhood_id`, `occupation_slug null`,
+  `occupation_key` gerada, `created_at`; única por conta, bairro e serviço). RLS: a conta lê,
+  insere e apaga as suas; admin lê. Trigger: no máximo 20 por conta (`waitlist_limit`).
+  `admin_waitlist_summary()` (admin): pessoas por bairro e serviço.
+- `shifts_insert_admin`: admin insere plantão em qualquer casa; o trigger
+  `shifts_60_audit_admin_insert` grava `shift.created_by_admin`.
+- `user_blocks` (`blocker_id`, `blocked_id`, `origin` `provider` ou `request`, `created_at`).
+  Só quem bloqueou (e admin) lê; escrita só por função: `block_provider(uuid)`,
+  `block_request_author(uuid)` (o prestador nunca recebe o id do cliente), `unblock_user(uuid)`,
+  `my_blocks()`. Limite de 200 por conta (`block_limit`). O bloqueio vale nos dois sentidos em
+  `search_providers`, `open_requests_for_me`, no aviso de pedido novo e nos triggers
+  `proposals_15_blocked` e `bookings_15_blocked` (reserva de origem `platform`), que recusam com
+  `not_allowed`.
+- `search_providers`: com ranking, quem tem 3 ou mais avaliações vem primeiro pela média; os
+  demais giram por dia (`md5(id || dia de São Paulo)`), não mais por nome.
+- `content_reports` (`id`, `reporter_id null`, `target_type` `provider`, `review` ou `request`,
+  `target_id`, `target_user_id null`, `reason`, `details`, `status` `open`, `actioned` ou
+  `dismissed`, `resolution_note`, `resolved_by`, `resolved_at`, `created_at`). Quem denunciou lê as
+  suas; admin lê todas; escrita só por função: `report_content(tipo, alvo, motivo, detalhes)`,
+  `report_review(prestador, criado_em, motivo, detalhes)` (a página pública não envia o id da
+  avaliação), `admin_list_reports(status, limite, deslocamento)` e
+  `admin_resolve_report(denúncia, status, anotação)`, que grava `report.resolved`. Dez denúncias por
+  conta em 24 horas (`report_limit`); uma aberta por alvo e denunciante.
+- O trigger `profiles_70_clear_reports_and_blocks` apaga, na exclusão da conta, os bloqueios dela
+  e o texto e a autoria das denúncias que ela fez.
+- Colunas novas: `payments.received_at` (primeira vez que o pagamento ficou pago; trigger),
+  `providers.approved_at` (primeira aprovação; trigger), `quotes.completed_at`
+  (`mark_quote_completed(orçamento, feito)`, só o dono do orçamento e só em `accepted`) e
+  `proposals.available_from` (data, opcional). Nenhuma é gravável direto pelo cliente, exceto
+  `available_from` na criação da proposta.
+- `subscription_status_history` (`id`, `provider_id`, `from_status null`, `to_status`,
+  `changed_at`): uma linha por estado da assinatura, gravada por trigger; o prestador lê as suas
+  e admin lê todas.
+- `consent_purpose` ganha `ai_assist` (aceite antes de usar um assistente de IA).
 
 **Linha de cuidado** (`09_care.sql`)
 
@@ -572,7 +636,7 @@ abertos demais, inclusive o ciclo de cancelar e pedir de novo ao mesmo profissio
 atendimento ou orçamento), `cpf_cnpj_invalid` (dígito verificador), `data_request_limit` (3 solicitações
 pendentes do mesmo tipo), `availability_limit` (50 janelas) e `availability_overlap` (janelas que se
 sobrepõem no mesmo dia da semana), `free_proposal_limit` (acabaram as propostas
-grátis do mês), `storage_not_empty` (a conta
+grátis do mês), `report_limit` (10 denúncias em 24 horas), `block_limit` (200 bloqueios por conta), `waitlist_limit` (20 entradas na lista de espera por conta), `storage_not_empty` (a conta
 ainda tem arquivos no Storage; só a service role vê). Todos com `errcode P0001`.
 O limite de documentos do prestador (60 arquivos na pasta do prestador no bucket `provider-documents`, contados pela função) responde 409 `document_limit` com a frase da própria função `provider-document-upload`, e `services/providers.ts` mostra essa frase; `lib/errors.ts` não traduz esse código.
 `lib/errors.ts` traduz cada código para uma frase em pt-BR: os do banco acima e os códigos de conflito das Edge Functions (`already_paid`,
@@ -844,7 +908,8 @@ banco. Mudou aqui, muda `supabase/functions` no mesmo commit.
 | Rota | Quem | Tela |
 |---|---|---|
 | `/entrar` | todos | login por código (e-mail ou WhatsApp/SMS) |
-| `/conta` | logado | dados, consentimentos, exportar dados, excluir conta |
+| `/conta` | logado | dados, consentimentos, bloqueios, exportar dados, excluir conta |
+| `/excluir-conta` | público | como excluir a conta e o que acontece com os dados (exigência das lojas); a exclusão em si é em `/conta` |
 | `/pedido` | cliente | pedido guiado: ocupação (busca), bairro, descrição, datas; sem backend gera mensagem de WhatsApp para a operação |
 | `/pedidos`, `/pedidos/:id` | cliente | meus pedidos, propostas recebidas, aceitar |
 | `/atendimentos`, `/atendimentos/:id` | cliente/prestador | detalhes, pagar, cancelar, concluir, avaliar |
@@ -860,6 +925,7 @@ banco. Mudou aqui, muda `supabase/functions` no mesmo commit.
 | `/admin/prestadores` | admin | lista pesquisável de prestadores (nome, situação, ocupações): fila de análise (padrão) ou todos, por situação |
 | `/admin/prestadores/:id` | admin | detalhe: documentos que a política exige por ocupação e o estado de cada um, registro informado, aprovar ocupação, aprovar, suspender e reativar prestador (motivo obrigatório), revisar documentos |
 | `/admin/disputas`, `/admin/pagamentos`, `/admin/auditoria`, `/admin/lgpd` | admin | contestações, cobranças (no topo, "Exigem atenção": reembolso recusado e pagamento recebido depois do cancelamento ainda sem tratamento, com link para o pagamento e a ação "marcar como tratado" com motivo), histórico de ações (o prestador de cada linha leva ao detalhe), pedidos de dados |
+| `/admin/denuncias` | admin | fila de denúncias de perfis, avaliações e pedidos; encerrar com providência ou arquivar, com anotação |
 | `/admin/configuracoes` | admin | `platform_settings`; comissão e pagamento retido ficam desligados e dependem de parecer jurídico e de conta Asaas configurada |
 | `/servicos/:slug/:bairro` | público | página de SEO por ocupação e bairro (pré-renderizada) |
 
@@ -908,5 +974,12 @@ As rotas de demonstração atuais continuam. Telas novas vivem em
   `npm run test:integration` com as variáveis de `supabase status -o env`, e a conferência de que
   `lib/database.types.ts` é igual ao que `supabase gen types typescript --local` gera agora; o
   teste falha com a diferença) e `functions` (`deno check --frozen` e `deno lint` com
-  `supabase/functions/deno.json`, Deno 2.9.6). Mudou assinatura no banco: edite a migration, rode
-  `supabase db reset`, `supabase test db` e `npm run db:types`, e faça o commit do arquivo gerado.
+  `supabase/functions/deno.json`, Deno 2.9.6). O job `web` roda também
+  `npm run check:size` e `scripts/check-bundle-secrets.mjs` depois do build.
+- **Regra de migração (única).** Migração já aplicada ou mesclada não se edita. Mudou algo no
+  banco: crie uma migração nova, rode `npx supabase db reset`, `npm run db:test` e
+  `npm run db:types`, e faça o commit do arquivo gerado. Editar a migração só vale enquanto ela
+  ainda está no próprio branch e nunca foi aplicada fora da máquina de quem a escreveu.
+- **"Fase" tem dois sentidos.** Neste documento, "fase 3" é etapa de construção (SEO pré-renderizado
+  e IA no servidor, já implementados). Nos documentos de operação (`docs/operacao/01` e `08`),
+  "Fase 1" a "Fase 4" são etapas de lançamento. Um não corresponde ao outro.

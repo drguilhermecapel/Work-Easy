@@ -110,7 +110,7 @@ Os testes simulam o Supabase (`test/web/fakeSupabase.ts`). Ainda não há verifi
 - **Citação não conferida.** As páginas **não citam lei nem artigo**, e nesta frente não foi aberta nenhuma fonte primária. Qualquer norma sobre o trabalho doméstico fica `[incerto]` até o advogado confirmar na fonte oficial. Se confirmada, o ponto de inclusão é o parágrafo 3 de `/para-familias` e o componente `LimitDetail`.
 - **Textos para revisão jurídica:** o limite semanal e a contratação direta (`LimitDetail`, FAQ "Posso contratar o cuidador diretamente?"), "linha ainda não aberta ao público", "o WorkEasy não cobra comissão" (só quando a plataforma diz que está desligada), a lista do que o WorkEasy não promete.
 - **Sitemap:** as três rotas entram pelo prerender (frente E4) assim que o JSON for lido; nada a fazer aqui.
-- **Rodapé:** `/para-profissionais` e `/como-funciona` podem ser linkados no rodapé de outra frente; `/para-familias` só depois do portão D12 (seção 5).
+- **Rodapé:** `/para-profissionais` e `/como-funciona` podem ser linkados no rodapé de outra frente; `/para-familias` só depois do portão D12 (seção 5). Desde 24/11/2026 o menu só lista "Cuidado" para quem já está na linha (DD59), e um build de loja (`VITE_STORE_BUILD`) não tem a rota `/cuidado`: lá o botão de `/para-familias` cai na página inicial.
 - **Pendências de dado:** `PlatformFacts` não traz o preço do Pro pelo `loadPublicSettings` (usa `getProPriceCents`, que devolve `null` se ilegível). Se `config/features.ts` passar a expor teste e limite grátis, `usePlatformFacts` pode ler tudo de lá.
 
 ## 9. Limites desta verificação

@@ -1039,26 +1039,26 @@ select cron.schedule('workeasy-dispatch-notifications', '* * * * *', 'select pri
 
 ---
 
-## Apêndice A. Lacunas e defeitos encontrados (não corrigidos, exceto o item 1)
+## Apêndice A. Lacunas e defeitos encontrados (estado de cada item no fim da linha)
 
 Estes pontos foram encontrados ao ler o código e conferir o banco. Não foram corrigidos, porque a tarefa é documentação; a exceção é o item 1, já corrigido no código (`75bb6d1`). Cada um vai para a fila de correção.
 
 1. **Exportação do titular omitia pagamentos (corrigido no código).** Até o commit `75bb6d1`, `account-export` lia `payments` e `provider_payment_accounts` com `select *`. O papel `authenticated` não tem esse privilégio (conferido: `permission denied for table payments`), e a consulta falhava mesmo sem linhas, então a exportação saía com essas tabelas em `unavailable`. Hoje `EXPORT_PLAN` lista as colunas concedidas (`PAYMENT_COLUMNS`, sem `raw`; `PROVIDER_PAYMENT_ACCOUNT_COLUMNS`, sem `api_key_secret_id`) em `supabase/functions/_shared/lgpd-export.ts`.
-2. **Evento sem cobrança não se reaplica.** Quando a cobrança ainda não existe no banco, o webhook responde 200 como `unknown_payment` e marca o evento como concluído. A corrida é real: `payments-create` grava a linha **depois** do `POST /payments` no Asaas. Não há reprocessamento automático nem alerta.
-3. **Transição recusada some.** Em `asaas-webhook`, quando a regra do banco recusa a transição do atendimento, a função só registra no log e na resposta. Não grava `payment_event` nem `audit_log`. O pagamento fica `received` e o atendimento fica para trás sem trilha no banco.
-4. **Exclusão de conta pode parar em `processing`.** Se `deleteAuthUser` falha depois da anonimização, a função responde 500 e não marca `failed`. A linha de `data_requests` fica em `processing`. A anonimização já aconteceu.
-5. **Ativação de conta pode criar subconta duplicada.** Se a função cai depois de `createAccount` e antes de `savePaymentAccount`, a chave se perde e a reserva é retomada depois de 5 minutos, chamando `createAccount` de novo. Comportamento do Asaas para CPF ou CNPJ repetido **[incerto]**.
+2. **Evento sem cobrança não se reaplica.** Quando a cobrança ainda não existe no banco, o webhook responde 200 como `unknown_payment` e marca o evento como concluído. A corrida é real: `payments-create` grava a linha **depois** do `POST /payments` no Asaas. Não há reprocessamento automático nem alerta. **Corrigido em 24/11/2026 (DD67).** O evento de dinheiro sem cobrança local continua respondido com 200, mas não é mais marcado como concluído: fica com `processed_at` nulo e grava `payment_event.unknown_payment` no `audit_log`. Uma nova entrega do Asaas (ou o reenvio pelo painel) é aplicada. Continua sem reprocessamento automático: ver "Procedimentos da rodada de 24/11/2026", item 3.
+3. **Transição recusada some.** Em `asaas-webhook`, quando a regra do banco recusa a transição do atendimento, a função só registra no log e na resposta. Não grava `payment_event` nem `audit_log`. O pagamento fica `received` e o atendimento fica para trás sem trilha no banco. **Corrigido em 24/11/2026 (DD67).** A recusa grava `booking.transition_refused` no `audit_log` (entidade `bookings`, com a regra, o pagamento e o evento).
+4. **Exclusão de conta pode parar em `processing`.** Se `deleteAuthUser` falha depois da anonimização, a função responde 500 e não marca `failed`. A linha de `data_requests` fica em `processing`. A anonimização já aconteceu. **Corrigido em 24/11/2026 (DD69).** A função marca o pedido como `failed` e grava `account.delete_auth_failed`; a resposta continua 500 `auth_delete_failed`.
+5. **Ativação de conta pode criar subconta duplicada.** Se a função cai depois de `createAccount` e antes de `savePaymentAccount`, a chave se perde e a reserva é retomada depois de 5 minutos, chamando `createAccount` de novo. Comportamento do Asaas para CPF ou CNPJ repetido **[incerto]**. **Parcial em 24/11/2026 (DD70).** A gravação da conta é tentada 3 vezes; se nenhuma funciona, `payment_account.orphan` guarda os ids do Asaas e a reserva não é liberada. Se o processo cair entre `createAccount` e a gravação, a retomada da reserva depois de 5 minutos ainda pode chamar `createAccount` de novo: corrigir isso exige consultar as subcontas no Asaas, chamada ainda não conferida (R5 e T3 de `docs/pesquisa/asaas.md`).
 6. **Pro não rebaixa sem job.** Em `ed8aa38`, `providers.plan` não volta a `free` quando o período pago acaba e nenhum evento chega. O job que faz isso (`workeasy-expire-pro-plans`) está no HEAD `5805947` e na base local, mas não em `ed8aa38`; não verifiquei a aplicação em produção.
-7. **Duas fontes para a carência do Pro.** `PRO_GRACE_DAYS` (função) e `platform_settings.pro_grace_days` (job [SEG-S1]) precisam ser iguais, e nada as sincroniza.
+7. **Duas fontes para a carência do Pro.** `PRO_GRACE_DAYS` (função) e `platform_settings.pro_grace_days` (job [SEG-S1]) precisam ser iguais, e nada as sincroniza. **Corrigido em 24/11/2026 (DD68).** O webhook lê `platform_settings.pro_grace_days`; `PRO_GRACE_DAYS` vale só quando a chave não pode ser lida.
 8. **Duplicata de notificação.** Se a gravação do resultado falha depois do envio, a linha fica em `sending` e é reenviada depois de 10 minutos. Não confirmei se a Cloud API do WhatsApp aceita chave de idempotência **[incerto]**.
 9. **Agendador silencioso.** O job de disparo aparece como `succeeded` mesmo com o Vault vazio (conferido localmente: execuções `succeeded` sem chaves). Só `net._http_response` mostra a chamada real.
 10. **Aprovação sobrevive a arquivo perdido.** Restauro ou sumiço de arquivo não revoga a aprovação. O trigger `provider_documents_revoke_approvals` (disparado por mudança de `status`, `step` ou `provider_id`, e por exclusão) revoga só quando o passo deixa de estar coberto por documento aceito.
-11. **Reregistro de webhook de subconta não existe.** Trocar `ASAAS_WEBHOOK_TOKEN` exige atualizar cada subconta, e nada no código faz isso.
-12. **Documentação desatualizada.** `supabase/functions/README.md` está correto: `verify_jwt = false` para `asaas-webhook` e `notify-dispatch` está em `supabase/config.toml` (linhas 408 a 411). Errado é o comentário do workflow `deploy-supabase.yml` ("config.toml has no [functions] entries"); a flag `--no-verify-jwt` é redundante, mas não quebra. `ARQUITETURA.md` (linhas 438 a 441) lista dois agendamentos; o banco local tem sete: `notification-counts-retention`, `product-events-retention`, `workeasy-booking-reminders`, `workeasy-dispatch-notifications`, `workeasy-expire-booking-requests`, `workeasy-expire-pro-plans` e `workeasy-expire-stale`. Cinco não estão listados no `ARQUITETURA.md`, todos com migração no HEAD.
+11. **Reregistro de webhook de subconta não existe.** Trocar `ASAAS_WEBHOOK_TOKEN` exige atualizar cada subconta, e nada no código faz isso. **Não feito em 24/11/2026.** Depende de `GET` e `POST /v3/webhooks` com a chave da subconta, caminho ainda não conferido contra o Asaas (T3 de `docs/pesquisa/asaas.md`).
+12. **Documentação desatualizada.** `supabase/functions/README.md` está correto: `verify_jwt = false` para `asaas-webhook` e `notify-dispatch` está em `supabase/config.toml` (linhas 408 a 411). Errado é o comentário do workflow `deploy-supabase.yml` ("config.toml has no [functions] entries"); a flag `--no-verify-jwt` é redundante, mas não quebra. `ARQUITETURA.md` (linhas 438 a 441) lista dois agendamentos; o banco local tem sete: `notification-counts-retention`, `product-events-retention`, `workeasy-booking-reminders`, `workeasy-dispatch-notifications`, `workeasy-expire-booking-requests`, `workeasy-expire-pro-plans` e `workeasy-expire-stale`. Cinco não estão listados no `ARQUITETURA.md`, todos com migração no HEAD. **Atualizado em 24/11/2026.** O comentário do workflow foi corrigido. `ARQUITETURA.md` agora lista os agendamentos numa tabela própria: as migrações criam oito (os sete acima e `retention-purge-daily`).
 13. **Entrega do Asaas.** `ARQUITETURA.md` afirma que o Asaas "entrega ao menos uma vez e fora de ordem". A página "Sobre os webhooks" confirma entrega "at least once" (o mesmo evento pode chegar mais de uma vez). Sobre ordem, ela só remete à página de tipos de envio (sequencial ou não sequencial), não aberta **[incerto]**.
 14. **Deriva da base local.** O banco local tem as 36 migrações de HEAD `5805947`; em `ed8aa38` faltam 20 (`20261109000001` a `20261109300006`). Testes e consultas feitos nele refletem o HEAD, não necessariamente o `main` nem a produção.
 15. **Verificação de MFA para admin não conferida.** A configuração local desliga MFA TOTP. Não verifiquei a exigência em produção.
-16. **Regra de migração contraditória.** O plano de trabalho diz para nunca editar migração aplicada. `ARQUITETURA.md`, na seção "Testes e CI", diz para editar a migração, rodar `supabase db reset` e gerar os tipos quando a assinatura do banco muda. Vale definir uma regra única.
+16. **Regra de migração contraditória.** O plano de trabalho diz para nunca editar migração aplicada. `ARQUITETURA.md`, na seção "Testes e CI", diz para editar a migração, rodar `supabase db reset` e gerar os tipos quando a assinatura do banco muda. Vale definir uma regra única. **Resolvido em 24/11/2026.** `ARQUITETURA.md`, seção "Testes e CI", traz a regra única: migração aplicada ou mesclada não se edita; a mudança entra em migração nova.
 
 ## Apêndice B. Lista de consultas
 
@@ -1100,3 +1100,89 @@ select jobname, schedule, command, active
 Esperado: uma linha, `schedule = '0 3 * * *'`, `command = 'select public.run_retention_purge()'`, `active = true`.
 
 **Se falhar.** Consulte `cron.job_run_details` pelo `jobid` do job. Uma falha de execução aparece como `failed` com a mensagem do Postgres. Não há reprocessamento automático: depois de corrigir a causa, rode `select public.run_retention_purge();` manualmente, por quem tem acesso ao banco de produção, e registre a data.
+
+## Procedimentos da rodada de 24/11/2026
+
+Conferidos contra o banco local desta rodada (migrações `20261124100001` a `20261124100006`). Nenhum foi executado em produção.
+
+### 1. Abrir ou fechar a linha Cuidado e definir os bairros do piloto
+
+**O que são.** Duas chaves públicas de `platform_settings`: `care_line_open` (booleano; `false` deixa a linha fora do menu de quem ainda não está nela) e `pilot_neighborhoods` (lista JSON de slugs de `neighborhoods`; `[]` oferece todos os bairros no formulário de pedido).
+
+**Logado como admin** (grava `audit_log` pela função):
+
+```sql
+select public.admin_set_setting('pilot_neighborhoods', '["moema","vila-mariana","saude","campo-belo","jabaquara"]'::jsonb);
+select public.admin_set_setting('care_line_open', 'true'::jsonb);
+```
+
+A tela `/admin/configuracoes` (seção "Lançamento") edita as duas chaves e é o caminho preferido; as chamadas acima fazem o mesmo. `admin_set_setting` confere as duas (migração `20261124100007`): `care_line_open` só aceita verdadeiro ou falso, e `pilot_neighborhoods` só aceita lista de slugs de bairros que existem, então um slug digitado errado é recusado em vez de esconder o filtro. No app, uma lista que não bate com nenhum bairro não esvazia o formulário.
+
+**Conferir os slugs antes:**
+
+```sql
+select slug, name from public.neighborhoods where slug in ('moema','vila-mariana','saude','campo-belo','jabaquara');
+```
+
+**Efeito.** A configuração pública é lida uma vez por sessão do navegador: quem está com o app aberto vê a mudança ao recarregar. Abrir a linha Cuidado depende dos pré-requisitos de `docs/DECISOES.md`, seção 5. Em build de loja (`VITE_STORE_BUILD`) a linha não existe, qualquer que seja a chave.
+
+**Lista de espera.** Quem escolhe um bairro fora da lista entra em `waitlist_entries`. O painel `/admin` mostra as 20 maiores combinações de bairro e serviço; a consulta completa é `select * from public.admin_waitlist_summary();` (como admin). Não há aviso automático a quem está na lista.
+
+### 2. Tratar a fila de denúncias
+
+1. Abra `/admin/denuncias` (padrão: abertas). Cada cartão traz o que foi denunciado como está agora, o motivo, o relato e quantas denúncias abertas existem sobre o mesmo conteúdo.
+2. Decida a providência com as ferramentas que já existem: ocultar a avaliação (moderação de avaliações, `docs/operacao/07`), suspender o profissional em `/admin/prestadores/:id`, ou nenhuma.
+3. Encerre a denúncia: "Encerrar com providência" ou "Arquivar sem providência", com anotação. Isso só registra a decisão (`report.resolved` no `audit_log`); não muda o conteúdo.
+
+Denúncia de pedido não tem link para o cliente: a conta por trás do pedido está em `content_reports.target_user_id`, visível só a admin. Quando a conta que denunciou é excluída, o relato e a autoria são apagados e a denúncia continua na fila.
+
+### 3. Evento de pagamento sem cobrança (`payment_event.unknown_payment`)
+
+**Sintoma.** O webhook recebeu um evento que muda dinheiro (por exemplo `PAYMENT_RECEIVED`) de uma cobrança que não está em `payments`. Causas: o evento chegou antes de `payments-create` gravar a linha, ou a linha nunca foi gravada.
+
+```sql
+select at, entity_id as asaas_event_id, data
+  from public.audit_log
+ where action = 'payment_event.unknown_payment'
+ order by at desc
+ limit 20;
+
+select asaas_event_id, event_type, created_at
+  from public.payment_events
+ where processed_at is null
+ order by created_at desc;
+```
+
+**O que fazer.**
+
+1. Procure a cobrança (`data ->> 'asaas_payment_id'`) em `payments.asaas_payment_id`. Se a linha existe agora, basta o evento chegar de novo: o Asaas reentrega por conta própria em caso de falha, mas aqui ele recebeu 200, então reenvie o evento pelo painel do Asaas (o caminho no painel não foi conferido [incerto]).
+2. Se a linha não existe, a cobrança foi criada no Asaas e não foi gravada aqui. Não crie a linha à mão sem conferir no Asaas valor, pagador e a que atendimento ou orçamento ela pertence; trate como o caso 2 deste documento (cobrança paga, atendimento não avançou).
+
+Um evento que fica sem processar não bloqueia a fila do Asaas e não é reaplicado sozinho.
+
+### 4. Subconta criada e não gravada (`payment_account.orphan`)
+
+**Sintoma.** `asaas-onboard` respondeu 500 depois que o Asaas criou a subconta. O `audit_log` tem `payment_account.orphan` com `asaas_account_id`, `asaas_wallet_id` e `key_stored`.
+
+```sql
+select at, entity_id as provider_id, data
+  from public.audit_log
+ where action = 'payment_account.orphan'
+ order by at desc;
+
+select provider_id, status, asaas_account_id, asaas_wallet_id, created_at
+  from public.provider_payment_accounts
+ where provider_id = '<provider_id>';
+```
+
+**O que conferir.** A linha de `provider_payment_accounts` deve estar em `creating`, sem carteira. Confira no painel do Asaas que a subconta existe com os ids do registro. Se `key_stored` é `true`, a chave está no Vault e a linha pode ser completada com os ids e `status = 'active'` (com a service role; siga o caso 3 deste documento). Se é `false`, a chave se perdeu: o estado certo é `key_not_stored` e o suporte do Asaas precisa emitir chave nova. Não apague a linha `creating` sem conferir: a próxima tentativa do prestador criaria outra subconta.
+
+### 5. Remoção do cadastro no Asaas depois do prazo (DD41)
+
+Não há automação: depois da exclusão da conta, a chave da subconta pode não existir mais, e o prazo é fiscal.
+
+1. Liste as contas excluídas há mais de 5 anos que tiveram conta de recebimento. A data é a de `data_requests.completed_at` do pedido `delete`; o vínculo com a subconta está em `provider_payment_accounts.asaas_account_id` enquanto a linha existir.
+2. Confirme com o contador que o prazo de guarda acabou para aquele cadastro (DD14 e DD41; o prazo exato depende de validação).
+3. Peça a remoção da subconta ao Asaas. O caminho (painel, API ou atendimento) não foi conferido [incerto]; registre no `audit_log`, com a service role, o que foi pedido e a resposta.
+4. Não remova enquanto houver cobrança em aberto, disputa ou obrigação fiscal pendente na subconta.
+

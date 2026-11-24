@@ -78,3 +78,10 @@ Os nomes e a ordem das variáveis de `notifications.params` estão em
 `_shared/notifications.ts` (`TEMPLATES`). Cada template precisa ser aprovado
 no WhatsApp Manager com o mesmo nome, idioma `pt_BR` e as variáveis nessa ordem.
 Chaves terminadas em `_cents` viram valor em reais; em `_at`, data e hora de São Paulo.
+
+São 10 modelos. O mais novo é `pedido_novo` (24/11/2026): avisa o prestador de um pedido
+que ele pode responder, com duas variáveis (`occupation_name`, `neighborhood_name`),
+preenchidas por `_shared/notification-context.ts` a partir de `params.request_id`.
+
+`PRO_GRACE_DAYS` é reserva: a carência do Pro vem de `platform_settings.pro_grace_days`
+(a mesma chave do job de expiração), e a variável só vale quando a chave não pode ser lida.

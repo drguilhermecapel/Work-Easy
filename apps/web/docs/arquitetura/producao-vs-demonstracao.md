@@ -95,10 +95,10 @@ Todas vazias em `.env.example`. São informação pública (vão para o JavaScri
 
 ## 8. Pendências de outros donos
 
-- `pages/AreaPage.tsx` (E4): com backend ainda imprime "Ver profissionais de demonstração" e "Buscar profissionais de saúde". Esconder os dois quando `features.backendEnabled`. A rota `/search?category=` já redireciona para a área.
+- `pages/AreaPage.tsx` (E4): com backend ainda imprime "Ver profissionais de demonstração" e "Buscar profissionais de saúde". Esconder os dois quando `features.backendEnabled`. A rota `/search?category=` já redireciona para a área. **Feito em 24/11/2026**; o teste `prod-vs-demo-backend` passou a varrer a página de área. As três metas de `index.html` também deixaram de dizer "Protótipo de demonstração".
 - `pages/OccupationPage.tsx` (E4): `PolicyDetails` imprime "Nesta demonstração, nada é coletado ou conferido." também com backend, e "Procurar profissionais" leva a uma lista de serviços (a página já mostra os profissionais abaixo).
 - `pages/cliente/Pedido.tsx`: o link para `/search?q=` leva agora à busca do catálogo; conferir o texto.
-- `components/TermsGate.tsx` e `pages/conta/Entrar.tsx`: "Termos de Uso" e "Política de Privacidade" apontam os dois para `/legal`; trocar por `/termos` e `/privacidade`.
+- `components/TermsGate.tsx` e `pages/conta/Entrar.tsx`: "Termos de Uso" e "Política de Privacidade" apontam os dois para `/legal`; trocar por `/termos` e `/privacidade`. **Feito em 24/11/2026.**
 - `scripts/prerender.mjs` (E4): o build já gera as páginas jurídicas em `dist/legal/<doc>/index.html` a partir de `content/legal/*.md`, com `noindex` enquanto `VITE_LEGAL_STATUS` não for `vigente`. O conversor do script aceita tachado (`~~texto~~`), que o renderizador do app não suporta; os dois devem usar o mesmo subconjunto de Markdown.
 - Links das páginas de captação (E7) no rodapé: acrescentar em `components/SiteFooter.tsx`.
 - Tabela de variáveis do `README.md`: acrescentar as seis variáveis acima.

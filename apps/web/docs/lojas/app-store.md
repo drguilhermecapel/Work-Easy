@@ -24,12 +24,12 @@ Fontes são citadas como **[A1]** a **[A16]** (seção 16). Caminhos de arquivo 
 |---|---|---|---|
 | B1 | Termos de Uso, Política de Privacidade e SAC são rascunhos "em elaboração" (`content/legal/*.md`). A ficha exige link da política no App Store Connect e no app. | 5.1.1(i), 1.5 | 3.5 |
 | B2 | Backend não implantado. Sem conta de demonstração para o revisor. O login é só por código; o SMS depende de um provedor que não existe. | 2.1(a) | 7 |
-| B3 | O plano Pro (R$ 49/mês) é cobrado por fora do app (Asaas, `subscriptions-manage`). Recurso digital tem de usar compra no app. | 3.1.1 | 3.2 |
-| B4 | Avaliações, pedidos e propostas são conteúdo de usuário sem denúncia, bloqueio nem filtro. | 1.2 | 9 |
+| B3 | O plano Pro (R$ 49/mês) é cobrado por fora do app (Asaas, `subscriptions-manage`). Recurso digital tem de usar compra no app. | 3.1.1 | 3.2 **Estado em 24/11/2026:** com `VITE_STORE_BUILD=ios` a build não vende, não anuncia e não aponta para o pagamento do Pro (DD71). Vender no iOS continua dependendo da decisão D1. |
+| B4 | Avaliações, pedidos e propostas são conteúdo de usuário sem denúncia, bloqueio nem filtro. | 1.2 | 9 **Estado em 24/11/2026:** feito no repositório (DD63): denúncia de perfil, avaliação e pedido, bloqueio entre contas e fila no admin. Não há filtro automático de texto; propostas não têm botão de denúncia. |
 | B5 | A conta Apple precisa ser de **organização**: pessoa jurídica, D-U-N-S e site público no domínio da empresa. A pessoa jurídica ainda não existe. | Inscrição; 5.1.1(ix) | 2 |
-| B6 | A build com backend ainda contém rotas de funcionalidade futura (`/verification`, `/health`, `/doctor/:id`, `/teleconsultation/:sessionId`, `/medical-records`) e textos de protótipo. | 2.1(a), 2.5.19 | 3.9 |
+| B6 | A build com backend ainda contém rotas de funcionalidade futura (`/verification`, `/health`, `/doctor/:id`, `/teleconsultation/:sessionId`, `/medical-records`) e textos de protótipo. | 2.1(a), 2.5.19 | 3.9 **Estado em 24/11/2026:** os links de demonstração de `AreaPage` e os textos de protótipo de `index.html` saíram. As rotas de funcionalidade futura continuam na build. |
 | B7 | A ficha de privacidade e o `PrivacyInfo.xcprivacy` não batem com os fluxos reais (faltam endereço, dados financeiros, dados de produto e, se o Sentry for ligado, diagnósticos). | 5.1.1(i); precisão da ficha | 5 |
-| B8 | Recursos de IA de terceiros enviam texto ao provedor (resumo do Cuidado e rascunho de orçamento). Há aviso genérico na tela ("serviço de inteligência artificial de terceiros", sem nomear o provedor), sem aceite registrado. | 5.1.2(i) | 3.8 |
+| B8 | Recursos de IA de terceiros enviam texto ao provedor (resumo do Cuidado e rascunho de orçamento). Há aviso genérico na tela ("serviço de inteligência artificial de terceiros", sem nomear o provedor), sem aceite registrado. | 5.1.2(i) | 3.8 **Estado em 24/11/2026:** há aceite registrado (consentimento `ai_assist`, DD62) antes do primeiro uso. O provedor continua sem nome na tela e o texto depende do advogado. |
 
 **Riscos que podem reprovar mesmo com os bloqueios resolvidos:**
 
@@ -53,12 +53,12 @@ Fontes são citadas como **[A1]** a **[A16]** (seção 16). Caminhos de arquivo 
 
 | # | Decisão | Padrão sugerido aqui | Seção |
 |---|---|---|---|
-| D1 | Plano Pro no iOS | Primeira versão **sem** venda, upsell nem link de pagamento do Pro no iOS. Depois, escolher entre compra no app (StoreKit, [PLANEJADO]) e outra forma, com parecer. | 3.2 |
+| D1 | Plano Pro no iOS | Primeira versão **sem** venda, upsell nem link de pagamento do Pro no iOS. Depois, escolher entre compra no app (StoreKit, [PLANEJADO]) e outra forma, com parecer. | 3.2 **Estado em 24/11/2026:** o mecanismo existe: `VITE_STORE_BUILD=ios`. |
 | D2 | macOS | Só DMG notarizado, fora da loja. Sem Mac App Store na primeira versão. | 12 e 13 |
 | D3 | iPad | Manter (o projeto aceita iPhone e iPad: `TARGETED_DEVICE_FAMILY = "1,2"`). Isso obriga capturas de iPad 13 polegadas. Alternativa: restringir a iPhone. | 4.6 |
-| D4 | Linha Cuidado na primeira versão iOS | **Fora.** `docs/DECISOES.md` (seção 5) diz que o menu Cuidado não deve ser divulgado antes dos pré-requisitos. Fora da versão, saem a localização, os relatórios com texto livre e a IA de resumo. | 3, 5, 10 |
+| D4 | Linha Cuidado na primeira versão iOS | **Fora.** `docs/DECISOES.md` (seção 5) diz que o menu Cuidado não deve ser divulgado antes dos pré-requisitos. Fora da versão, saem a localização, os relatórios com texto livre e a IA de resumo. | 3, 5, 10 **Estado em 24/11/2026:** o mecanismo existe: `VITE_STORE_BUILD` tira o menu e as rotas da linha Cuidado. |
 | D5 | Área de Saúde na primeira versão iOS | **Fora** da descrição e das categorias. Evita a revisão extra de app médico (1.4.1). | 4.3 |
-| D6 | Assistente e resumo com IA na primeira versão iOS | **Fora**, até haver tela de consentimento específica e aceite registrado. | 3.8 |
+| D6 | Assistente e resumo com IA na primeira versão iOS | **Fora**, até haver tela de consentimento específica e aceite registrado. | 3.8 **Estado em 24/11/2026:** feito no repositório. Com `VITE_STORE_BUILD=ios` os assistentes não aparecem (`features.aiAssistInBuild`, DD78), e a linha Cuidado, onde fica o resumo da semana, já está fora de build de loja (DD71). O aceite registrado existe para as outras builds (DD62). |
 
 ### Ordem recomendada
 

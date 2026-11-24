@@ -223,14 +223,16 @@ Layout para a revisão de sexta (O01, seção 12). Uma tela, na ordem de leitura
 2. Seção 5.1, G1 e P1: incluir as exclusões da seção 2.3 deste documento.
 3. Seção 11.1: a parcela paga no app vale só para origem `platform`.
 
-### 8.2 Lacunas do produto (não corrigidas aqui)
+### 8.2 Lacunas do produto
 
-1. Não há data de recebimento em `payments` (só `updated_at`). Orçamento depende de aproximação.
-2. Orçamento aceito não tem estado de conclusão (`quotes.status` não vai além de `accepted`).
-3. Não há data de aprovação em `providers`. A primeira aprovação só existe no `audit_log` (`provider.status`).
-4. Assinatura não tem histórico de estados. `subscription.cancel` não guarda o estado anterior (`from`).
-5. Proposta não tem campo estruturado de disponibilidade ("quando pode ir").
-6. Não há aviso de pedido novo ao prestador: ele vê o pedido ao abrir `/pro/pedidos` (O01, 16.1, item 2). Os sete modelos de notificação do banco não cobrem esse caso: o sétimo, `agendamento_solicitado` (migração `20261109300006`), avisa só de agendamento direto, não de pedido do marketplace (`requests`). `ARQUITETURA.md` (Notificações) e o O01 (16.1, item 2) ainda dizem seis.
+Os itens 1 a 6 foram corrigidos no código em 24/11/2026 (migrações `20261124100003` e `20261124100004`; `docs/DECISOES.md`, DD65 e DD66). Linhas anteriores à migração ficam sem as datas novas: não houve backfill.
+
+1. Não há data de recebimento em `payments` (só `updated_at`). Orçamento depende de aproximação. **Feito:** `payments.received_at`, gravada pelo banco na primeira vez que o pagamento fica pago; `kpis.sql` usa a coluna e cai em `updated_at` quando ela é nula.
+2. Orçamento aceito não tem estado de conclusão (`quotes.status` não vai além de `accepted`). **Feito:** `quotes.completed_at`, marcada pelo prestador em `/pro/orcamentos` (`mark_quote_completed`); o status continua `accepted`. As consultas ainda não a usam.
+3. Não há data de aprovação em `providers`. A primeira aprovação só existe no `audit_log` (`provider.status`). **Feito:** `providers.approved_at` (primeira aprovação). As consultas ainda usam a situação atual; trocar quando houver dados.
+4. Assinatura não tem histórico de estados. `subscription.cancel` não guarda o estado anterior (`from`). **Feito:** tabela `subscription_status_history` (`from_status`, `to_status`, `changed_at`). As consultas de assinatura ainda leem o `audit_log`.
+5. Proposta não tem campo estruturado de disponibilidade ("quando pode ir"). **Feito:** `proposals.available_from` (data, opcional), no formulário da proposta e na tela do cliente.
+6. Não há aviso de pedido novo ao prestador: ele vê o pedido ao abrir `/pro/pedidos` (O01, 16.1, item 2). Os sete modelos de notificação do banco não cobrem esse caso: o sétimo, `agendamento_solicitado` (migração `20261109300006`), avisa só de agendamento direto, não de pedido do marketplace (`requests`). `ARQUITETURA.md` (Notificações) e o O01 (16.1, item 2) ainda dizem seis. **Feito:** modelo `pedido_novo` e gatilho `requests_60_notify_providers`; `ARQUITETURA.md` e o O01 foram corrigidos (10 modelos).
 7. A medição de eventos de produto (`product_events`, agregada por `admin_funnel_daily()`) está na migração `20261108100000_product_events.sql`, aplicada no banco local, mas não está implantada, e as consultas deste documento não a usam. Pode dar datas exatas de recebimento e de primeira proposta. `[PLANEJADO]` para a medição em produção.
 8. `ARQUITETURA.md` usa "fase" com sentido de construção, e o O01 com sentido de lançamento. Padronizar o termo.
 9. A lista de contas de teste é uma planilha. Nenhuma consulta a acessa; se a planilha não for completa, as métricas saem infladas.

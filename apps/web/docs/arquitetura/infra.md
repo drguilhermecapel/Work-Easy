@@ -2,7 +2,7 @@
 
 Este documento descreve a infraestrutura de entrega do WorkEasy: o que está no
 repositório, quais variáveis e segredos cada ambiente precisa e quais passos são
-manuais. O passo a passo de publicação fica no `DEPLOY.md` e não é repetido aqui.
+manuais. O passo a passo de publicação fica em `docs/pesquisa/supabase-producao.md` (banco e funções) e em `docs/operacao/10-checklist-de-publicacao.md`, e não é repetido aqui. (Até 24/11/2026 este parágrafo citava um `DEPLOY.md` que nunca existiu.)
 
 Estado: nada disto foi publicado. Não há ambiente de produção em uso, não há
 usuários reais e os workflows de publicação ainda não foram executados.
@@ -125,9 +125,11 @@ em Settings, Environments, com:
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | build do site | Chave publicável (`sb_publishable_...`). Pública por desenho; nunca a chave `sb_secret_` |
 | `VITE_SITE_URL` | build do site | Domínio canônico, por exemplo `https://<domínio>`. Obrigatória |
 | `VITE_CONCIERGE_WHATSAPP` | build do site | Número da operação, só dígitos com código do país |
-| `VITE_COMPANY_NAME`, `VITE_COMPANY_CNPJ`, `VITE_COMPANY_ADDRESS` | build do site | Dados da empresa. O código ainda não os lê (busca feita em 8/11/2026); o workflow já os repassa |
-| `VITE_SAC_EMAIL`, `VITE_SAC_WHATSAPP` | build do site | Canais de atendimento. Mesma observação |
-| `VITE_LEGAL_STATUS` | build do site | Situação jurídica exibida. Mesma observação |
+| `VITE_COMPANY_NAME`, `VITE_COMPANY_CNPJ`, `VITE_COMPANY_ADDRESS` | build do site | Dados da empresa, lidos por `config/legal.ts` (rodapé e páginas jurídicas); o workflow os repassa |
+| `VITE_SAC_EMAIL`, `VITE_SAC_WHATSAPP` | build do site | Canais de atendimento, lidos por `config/legal.ts` |
+| `VITE_LEGAL_STATUS` | build do site | Situação jurídica exibida, lida por `config/legal.ts` (`vigente` tira o aviso de rascunho) |
+| `VITE_SENTRY_DSN` | build do site | DSN do relato de erros; vazia = nada é enviado. Repassada pelo workflow desde 24/11/2026 |
+| `VITE_LOGIN_METHODS` | build do site | Abas de login: `email`, `phone` ou as duas (padrão) |
 | `CLOUDFLARE_ACCOUNT_ID` | publicação do site | ID da conta no Cloudflare |
 | `CLOUDFLARE_PAGES_PROJECT` | publicação do site | Nome do projeto Pages de tipo Direct Upload |
 | `SUPABASE_PROJECT_ID` | publicação do banco | Referência do projeto (`abcdefghijklmnopqrst`) |
@@ -215,11 +217,11 @@ Ordem sugerida para a primeira publicação. Nenhum passo é automático.
 - O wrangler está fixado em `4.152.0`, publicado em 22/10/2026. A escolha segue
   a regra de versão com pelo menos duas semanas. As flags `--project-name`,
   `--branch` e `--commit-hash` foram conferidas com `wrangler pages deploy --help`.
-- O `supabase/config.toml` não tem entradas `[functions]` com `verify_jwt`. Por
-  isso o workflow passa `--no-verify-jwt` a cada publicação das duas funções
-  públicas. Se alguém publicar a função sem a flag, o webhook do Asaas deve passar
-  a ser recusado, porque o Asaas não envia JWT. Vale registrar essas duas funções no `config.toml`, em mudança
-  própria.
+- O `supabase/config.toml` tem entradas `[functions]` com `verify_jwt = false` para
+  `asaas-webhook`, `notify-dispatch` e `background-check-purge`. O workflow passa
+  também `--no-verify-jwt` na publicação das três; a flag é redundante e fica como
+  segunda guarda. (Corrigido em 24/11/2026: este item dizia que o `config.toml` não
+  tinha essas entradas.)
 - O Docker estava parado nesta sessão, então a stack local do Supabase não subiu.
   O teste do modo com backend usou um build apontado para
   `http://127.0.0.1:54321` (com essa origem liberada só na cópia de teste do
@@ -230,7 +232,16 @@ Ordem sugerida para a primeira publicação. Nenhum passo é automático.
   dependem de configuração no GitHub e no Cloudflare. Nada disso é verificável
   pelo repositório.
 
-## Recomendações para os workflows existentes (não aplicadas)
+## Recomendações para os workflows existentes
+
+Aplicadas em 24/11/2026: `persist-credentials: false` nos checkouts de `web-ci.yml` e
+`web-release.yml`; `npm run check:size` e `scripts/check-bundle-secrets.mjs` depois do build
+em `web-ci.yml` e em `deploy-web.yml` (a segunda recusa também JWT com papel `service_role`);
+Rust fixo em 1.90.0 em `web-release.yml`, a versão de `src-tauri/Cargo.toml`. As demais
+continuam como recomendação: filtro de caminhos mais estreito no job `database`, build sem
+pré-renderização em pull request, `check-headers.mjs` no CI, actions fixadas por SHA,
+jobs de macOS e Windows só em tag e sob demanda, versão fixa dos runners e `npm test` fora
+dos pull requests de empacotamento.
 
 `web-ci.yml`:
 

@@ -7,7 +7,7 @@
   "send_endpoint": "POST https://graph.facebook.com/v26.0/{WHATSAPP_PHONE_NUMBER_ID}/messages",
   "notes": [
     "Cada item de templates[] é o corpo de uma requisição de criação. Troque {WABA_ID} pelo ID da conta do WhatsApp Business; o token fica em segredo do servidor, nunca no app.",
-    "Os seis modelos de utilidade usam as mesmas chaves, na mesma ordem, de TEMPLATES em supabase/functions/_shared/notifications.ts. Os valores de example.body_text foram gerados pela função de formatação real do código em 2026-10-23.",
+    "Os sete modelos de utilidade usam as mesmas chaves, na mesma ordem, de TEMPLATES em supabase/functions/_shared/notifications.ts. Os valores de example.body_text foram gerados pela função de formatação real do código em 2026-10-23.",
     "proposta_recebida e lembrete_atendimento têm texto diferente do e-mail porque a Meta rejeita corpo que começa ou termina com variável e exige as variáveis em ordem; orcamento_respondido ganhou uma frase final para não ficar curto demais para duas variáveis.",
     "Categoria UTILITY é o pedido; a Meta pode aprovar como MARKETING (confira o campo category depois da análise). plantao_oferecido é o que mais corre esse risco.",
     "message_send_ttl_seconds: utilidade aceita de 30 a 43200 s; autenticação, de 30 a 900 s. Mensagem não entregue nesse prazo é descartada pela Meta.",
@@ -15,7 +15,8 @@
     "send_examples: os seis primeiros são a saída real de buildWhatsAppTemplate (supabase/functions/_shared/notifications.ts) com os exemplos acima. O de codigo_de_verificacao segue a página 'Copy code authentication templates' da Meta e NÃO existe no código atual (PLANEJADO): o código aparece duas vezes, no corpo e no botão de índice 0, com no máximo 15 caracteres.",
     "O campo to dos exemplos de envio sai como o código monta (55 + DDD + número, sem '+'). A Meta recomenda o '+' e o código do país; teste com e sem '+' no primeiro envio (seção 2.3 do documento; dossiê I02, passo 26).",
     "planned_templates[] não existe no código nem na migração 08 (a lista de nomes é uma restrição check): não registre antes de implementar.",
-    "O rodapé 'Aviso automático do WorkEasy' não promete nenhum canal de resposta. Troque-o só depois de existir um caminho real para parar os avisos."
+    "O rodapé 'Aviso automático do WorkEasy' não promete nenhum canal de resposta. Troque-o só depois de existir um caminho real para parar os avisos.",
+    "pedido_novo foi acrescentado em 24/11/2026 (aviso ao prestador de pedido que ele pode responder). Como plantao_oferecido, corre risco de ser aprovado como MARKETING. Os modelos agendamento_solicitado, shift_canceled_by_deletion e booking_canceled_by_deletion existem no código e ainda não estão neste arquivo."
   ],
   "templates": [
     {
@@ -160,6 +161,31 @@
             "body_text": [
               [
                 "30/10/2026 às 07:00",
+                "Vila Mariana"
+              ]
+            ]
+          }
+        },
+        {
+          "type": "FOOTER",
+          "text": "Aviso automático do WorkEasy"
+        }
+      ]
+    },
+    {
+      "name": "pedido_novo",
+      "language": "pt_BR",
+      "category": "UTILITY",
+      "parameter_format": "POSITIONAL",
+      "message_send_ttl_seconds": 43200,
+      "components": [
+        {
+          "type": "BODY",
+          "text": "Há um pedido novo de {{1}} em {{2}}. Abra o WorkEasy para ver e enviar a sua proposta.",
+          "example": {
+            "body_text": [
+              [
+                "Eletricista",
                 "Vila Mariana"
               ]
             ]
@@ -403,6 +429,33 @@
               {
                 "type": "text",
                 "text": "30/10/2026 às 07:00"
+              },
+              {
+                "type": "text",
+                "text": "Vila Mariana"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "pedido_novo": {
+      "messaging_product": "whatsapp",
+      "recipient_type": "individual",
+      "to": "5511900000000",
+      "type": "template",
+      "template": {
+        "name": "pedido_novo",
+        "language": {
+          "code": "pt_BR"
+        },
+        "components": [
+          {
+            "type": "body",
+            "parameters": [
+              {
+                "type": "text",
+                "text": "Eletricista"
               },
               {
                 "type": "text",

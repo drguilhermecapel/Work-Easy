@@ -222,7 +222,12 @@ Sem `frame-ancestors`: em `<meta>` a diretiva é ignorada pelo navegador.
 ## 6. Pendências e itens não feitos
 
 1. **App Links no app**: tratar `appUrlOpen` do plugin `@capacitor/app` para levar o usuário
-   à rota certa (hoje o link abre a tela inicial).
+   à rota certa. **Feito em 24/11/2026:** `platform/native.ts` ouve `appUrlOpen` e
+   `platform/deepLinks.ts` (`routeFromAppUrl`) aceita só links `https` para o host de
+   `VITE_SITE_URL` e devolve a rota; o resto é ignorado. Testado em jsdom
+   (`test/platform/deep-links.test.ts`), não em aparelho. O build nativo precisa ter
+   `VITE_SITE_URL` definida, senão nenhum link é tratado. Os itens 2 e 3 abaixo continuam
+   pendentes: sem o domínio real, o sistema não entrega o link ao app.
 2. **Domínio real**: trocar o host de exemplo do manifesto Android e os valores de
    `public/.well-known/*` (`TODO`). Hospedagem exige `Content-Type: application/json` no
    arquivo `apple-app-site-association` (sem extensão), HTTPS e sem redirecionamento. O

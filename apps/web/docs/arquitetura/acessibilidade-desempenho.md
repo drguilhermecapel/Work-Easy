@@ -44,6 +44,12 @@ Os 147 nós restantes estão **fora dos arquivos desta frente** (ver seção 5):
   visível. Afeta o critério de rótulo no nome (WCAG 2.5.3).
 - 21 nós: aviso de demonstração em `DemoBanner.tsx`, fora de qualquer marco (`region`).
 
+**Atualização de 24/11/2026.** Os quatro grupos foram corrigidos no código: rodapé em
+`text-gray-500` (`components/SiteFooter.tsx`), alternador de papel em `text-gray-600`, link de
+perfil com o nome vindo do texto e não de `aria-label` (`components/Navbar.tsx`) e o aviso dentro
+de um marco `aside` com nome. **A varredura do axe não foi refeita depois disso**: a contagem de
+147 nós é a anterior, e o resultado novo não foi medido.
+
 ### O que foi feito
 
 - **Contraste** (`index.css`, `ff0086b`): a cor primária passou de `#667eea` (3,66:1 sobre branco)
@@ -78,7 +84,9 @@ Os 147 nós restantes estão **fora dos arquivos desta frente** (ver seção 5):
   axe (24 px, WCAG 2.2) está ativa na varredura e não reportou violação; o motivo dos links de 16 px
   não foi investigado.
 - Há um modal sem foco preso em `pages/Profile.tsx`, que é protótipo e está fora desta frente.
-  Nenhum modal das telas do escopo precisa de foco preso.
+  Nenhum modal das telas do escopo precisa de foco preso. Corrigido em 24/11/2026: o modal usa
+  `lib/useFocusTrap.ts` (foco entra, Tab circula, Esc fecha, foco volta ao botão que abriu),
+  com `role="dialog"` e nome. Sem teste automático próprio e sem conferência com leitor de tela.
 
 ## 2. Desempenho
 
@@ -106,9 +114,8 @@ demo não tem essas variáveis. Ambos passam.
   e o pull request explica por quê.
 - `test/check-bundle-size.test.ts` roda o script em pastas `dist` temporárias: dentro do orçamento,
   acima dele e sem build.
-- **Passo de CI proposto (não aplicado, a pedido da frente de CI):** depois de `npm run build`,
-  rodar `npm run check:size`. O script só lê `dist/`, então pode vir logo após o build do
-  workflow. Sugerido: `npm run build && npm run check:size`.
+- **Passo de CI (aplicado em 24/11/2026):** `web-ci.yml` e `deploy-web.yml` rodam
+  `npm run check:size` depois do build. O script só lê `dist/`.
 
 ### O que já está otimizado
 

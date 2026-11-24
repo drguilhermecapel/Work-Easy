@@ -441,21 +441,21 @@ Princípio: **nos 45 dias você não programa dentro das janelas de atendimento.
 
 | Necessidade | Fazer à mão (agora) | Construir? | Quando | Esforço | Estado hoje no produto |
 |---|---|---|---|:-:|---|
-| Entrada pelo WhatsApp | Número em cartaz, QR e locais autorizados; saudação e ausência | Mostrar o link do WhatsApp também com backend ligado | Semana 0 | S | Sem backend, `/pedido` abre o WhatsApp com a mensagem pronta; com backend, esse botão some de `/pedido` (`pages/cliente/Pedido.tsx`, bloco `!online`), mas o número aparece nas páginas de captação (`components/captacao/Cta.tsx`) `[PLANEJADO]` |
-| Avisar prestadores de pedido novo | Mensagem 1:1 no WhatsApp Business para 3 a 5 aptos | Modelo `pedido_novo`, gatilho e envio | Só se o CP3 mostrar proposta lenta por falta de aviso, e depois dos portões do O05 | M | Só existem 6 modelos e nenhum é de pedido novo; o prestador só vê o pedido ao abrir `/pro/pedidos` `[PLANEJADO]` |
+| Entrada pelo WhatsApp | Número em cartaz, QR e locais autorizados; saudação e ausência | Mostrar o link do WhatsApp também com backend ligado | Semana 0 | S | Sem backend, `/pedido` abre o WhatsApp com a mensagem pronta; com backend, esse botão some de `/pedido` (`pages/cliente/Pedido.tsx`, bloco `!online`), mas o número aparece nas páginas de captação (`components/captacao/Cta.tsx`). **Feito em 24/11/2026**: com backend, o passo final de `/pedido` mostra também o link "Enviar o pedido pelo WhatsApp" quando `VITE_CONCIERGE_WHATSAPP` está definida |
+| Avisar prestadores de pedido novo | Mensagem 1:1 no WhatsApp Business para 3 a 5 aptos | Modelo `pedido_novo`, gatilho e envio | Só se o CP3 mostrar proposta lenta por falta de aviso, e depois dos portões do O05 | M | **Feito em 24/11/2026** (DD65): modelo `pedido_novo` e gatilho no banco, até 30 prestadores aptos por pedido. São 10 modelos. Por WhatsApp, só depois do modelo aprovado no Meta; nada foi testado com envio real |
 | Registrar pedidos vindos do WhatsApp | Planilha `pedidos` | Formulário no admin gravando em tabela própria | Só com mais de 10 pedidos por dia, ou erro de registro acima de 5% `[proposta]` | M | Não existe `[PLANEJADO]` |
-| Manter o pedido dentro do piloto | Responder "ainda não atendemos esse bairro", anotar e oferecer lista de espera à mão | Filtro de distritos em `/pedido` e lista de espera | Se mais de 20% dos pedidos vierem de fora `[proposta]` | S ou M | `/pedido` oferece os 96 distritos `[PLANEJADO]` |
+| Manter o pedido dentro do piloto | Responder "ainda não atendemos esse bairro", anotar e oferecer lista de espera à mão | Filtro de distritos em `/pedido` e lista de espera | Se mais de 20% dos pedidos vierem de fora `[proposta]` | S ou M | **Feito em 24/11/2026** (DD60): `platform_settings.pilot_neighborhoods` limita os bairros do formulário e os demais vão para a lista de espera. A lista começa vazia (96 distritos) até você preencher (RUNBOOKS, procedimentos de 24/11/2026, item 1) |
 | Casamento entre pedido e prestador | Você escolhe de 3 a 5 por pedido (cobertura, seção 4) | Não construir | n/d | n/d | O banco aceita até 3 propostas por pedido e só de prestador apto |
 | Lembrete 24 h antes | Mensagem manual no dia anterior | Ligar `notify-dispatch` por e-mail (fase 1 do I02); WhatsApp automático só na fase 2, com modelos aprovados | Semana 5, depois de um teste de envio | S, de configuração | O gatilho existe; sem credencial a fila vira `skipped`; nada foi testado de verdade |
 | Cobrança | Trilha B (`/pro/orcamentos` e `/pro/cobrancas`) e Trilha A (`/atendimentos/:id`) | Nada | n/d | n/d | Existe; testado só contra banco local |
 | Aprovar prestadores | `/admin/prestadores` e `/admin/prestadores/:id` | Nada | n/d | n/d | Existe |
 | Métricas | `/admin` (contagens por situação), planilhas e `kpis.sql` (O08) | Painel de tempo de resposta e de agenda no admin | Depois do D45 | L | `admin_metrics` conta por entidade e situação, na semana, no mês e no total; não mede tempo nem agenda `[PLANEJADO]` |
-| Cuidado: plantão em nome da família | O responsável cria conta e plantão com você ao telefone | Admin cria plantão em nome da família | Se 2 ou mais famílias não conseguirem usar o app | M | Só o dono da casa insere em `shifts` (política `shifts_insert_own`); o admin lê e oferece `[PLANEJADO]` |
+| Cuidado: plantão em nome da família | O responsável cria conta e plantão com você ao telefone | Admin cria plantão em nome da família | Se 2 ou mais famílias não conseguirem usar o app | M | **Feito em 24/11/2026** (DD61): o admin cria o plantão pelas telas de `/cuidado`, com registro no `audit_log`. A casa ainda precisa existir na conta do responsável |
 | Cuidado: valor da família diferente do repasse; cobrança e repasse | Fora do app, com contador e advogado `[CONDICIONAL: depende de parecer]` | Modelar tarifa, repasse e pagamento de plantão | Depois do parecer; fora dos 45 dias | L | `createShift` grava o mesmo valor em `rate_cents` e `caregiver_payout_cents`; nenhum pagamento da plataforma se liga a plantão `[PLANEJADO]` |
-| Menu "Cuidado" | Convidar famílias por link direto | Esconder o item para quem não foi convidado | Semana 0 | S | O item aparece para todo cliente logado (`components/navItems.ts`); DECISOES, seção 5, manda não divulgar |
+| Menu "Cuidado" | Convidar famílias por link direto | Esconder o item para quem não foi convidado | Semana 0 | S | **Feito em 24/11/2026** (DD59): o item só aparece para admin e para quem já tem casa, oferta ou plantão; o convite continua por link direto |
 | Links para `/register-provider` | Mandar sempre `[SITE]/pro/cadastro` | Trocar os 3 links | Semana 0 | S | Só no modo demonstração; com backend redirecionam para `/pro/cadastro` (seção 2, P14) |
 | Avaliações | Pergunta única depois do serviço (seção 11) | Não construir | n/d | n/d | Avaliação só existe para atendimento de origem plataforma pago pelo app: a Trilha B não gera avaliação pública |
-| Ordem da busca pública | A busca não é canal no piloto; o casamento é manual | Corrigir a ordem | Depois do D45 | S | Com `rating_ranking` e menos de 3 avaliações, a busca ordena por nome (`search_providers`) `[PLANEJADO]` |
+| Ordem da busca pública | A busca não é canal no piloto; o casamento é manual | Corrigir a ordem | Depois do D45 | S | **Feito em 24/11/2026** (DD64): quem tem menos de 3 avaliações gira por dia |
 | Lojas, SEO por bairro, assistente de IA, comissão, pagamento retido | Nada | Nada nos 45 dias | n/d | n/d | Seção 1.2 |
 
 ---
@@ -742,19 +742,21 @@ P = probabilidade e I = impacto, em B (baixa), M (média) ou A (alta), por juíz
 
 ## 16. Lacunas do produto e pendências
 
-### 16.1 Lacunas do produto encontradas (não corrigidas aqui)
+### 16.1 Lacunas do produto encontradas
+
+Os itens 1, 2, 3, 4, 6 e 9 foram corrigidos no código em 24/11/2026 (`docs/DECISOES.md`, DD59 a DD65); o texto original fica como registro, com a nota no fim de cada um.
 
 Complementam as do O02 (seção 14.2) e do O05 (seção 11.4).
 
-1. **Sem WhatsApp dentro de `/pedido` com backend ligado.** O botão fica no bloco `!online` (`pages/cliente/Pedido.tsx`); com backend, `/pedido` exige login por código. `VITE_CONCIERGE_WHATSAPP` (`config/features.ts`) segue aparecendo nas páginas de captação (`components/captacao/Cta.tsx`).
-2. **Nenhum aviso de pedido novo ao prestador.** Só existem 6 modelos de notificação; o prestador só vê o pedido ao abrir `/pro/pedidos`. A meta de 2 h depende, hoje, do seu aviso manual.
-3. **`/pedido` oferece os 96 distritos,** sem filtro do piloto nem lista de espera.
-4. **Cuidado: o admin não cria plantão por uma família.** A inserção em `shifts` é só do dono da casa (`shifts_insert_own`).
+1. **Sem WhatsApp dentro de `/pedido` com backend ligado.** O botão fica no bloco `!online` (`pages/cliente/Pedido.tsx`); com backend, `/pedido` exige login por código. `VITE_CONCIERGE_WHATSAPP` (`config/features.ts`) segue aparecendo nas páginas de captação (`components/captacao/Cta.tsx`). **Corrigido em 24/11/2026:** o link aparece também no passo final de `/pedido` com backend.
+2. **Nenhum aviso de pedido novo ao prestador.** Só existem 6 modelos de notificação; o prestador só vê o pedido ao abrir `/pro/pedidos`. A meta de 2 h depende, hoje, do seu aviso manual. **Corrigido em 24/11/2026 (DD65):** modelo `pedido_novo` e gatilho; são 10 modelos. Enquanto o envio real não estiver configurado e testado, o aviso manual continua necessário.
+3. **`/pedido` oferece os 96 distritos,** sem filtro do piloto nem lista de espera. **Corrigido em 24/11/2026 (DD60):** filtro por `pilot_neighborhoods` e lista de espera.
+4. **Cuidado: o admin não cria plantão por uma família.** A inserção em `shifts` é só do dono da casa (`shifts_insert_own`). **Corrigido em 24/11/2026 (DD61).**
 5. **Cuidado: a margem do plano não existe no app.** `createShift` grava o mesmo valor em `rate_cents` e `caregiver_payout_cents`, e nenhum pagamento se liga a plantão.
-6. **O item "Cuidado" aparece no menu de todo cliente logado** (`components/navItems.ts`), contra DECISOES, seção 5.
+6. **O item "Cuidado" aparece no menu de todo cliente logado** (`components/navItems.ts`), contra DECISOES, seção 5. **Corrigido em 24/11/2026 (DD59).**
 7. **Links para `/register-provider` só levam à página de demonstração sem backend.** No modo demo há cinco pontos (`components/SiteFooter.tsx`, `components/navItems.ts`, `pages/OccupationPage.tsx`, `pages/OccupationNeighborhoodPage.tsx`, `pages/conta/Conta.tsx`; mesmo achado do O02). Com backend, redirecionam para `/pro/cadastro` (`pages/prototype/redirects.tsx`).
 8. **O painel `/admin` não mede tempo de resposta nem uso da agenda:** `admin_metrics` só conta por entidade e situação.
-9. **A busca ordena por nome os prestadores com menos de 3 avaliações** quando `rating_ranking` é verdadeiro; quem tem 3 ou mais vem antes (`search_providers`, `supabase/migrations/20261019000003_providers.sql`). Entre os de menos de 3, quem começa com "A" aparece primeiro.
+9. **A busca ordena por nome os prestadores com menos de 3 avaliações** quando `rating_ranking` é verdadeiro; quem tem 3 ou mais vem antes (`search_providers`, `supabase/migrations/20261019000003_providers.sql`). Entre os de menos de 3, quem começa com "A" aparece primeiro. **Corrigido em 24/11/2026 (DD64):** eles giram por dia.
 10. **A Trilha B não gera avaliação pública:** o banco só aceita avaliação de atendimento de origem plataforma, pago pelo app.
 11. **A regra dos 30% (DECISOES, seção 7) conta propostas no app** e subestima o concierge, em que a resposta sai por WhatsApp.
 12. **"Ativar recebimento" pede nove campos sempre e um a mais para CPF** (nome, e-mail, CPF ou CNPJ, celular, renda mensal, CEP, endereço, número, bairro; a data de nascimento é obrigatória quando é CPF, `supabase/functions/asaas-onboard/handler.ts`): atrito no cadastro assistido.

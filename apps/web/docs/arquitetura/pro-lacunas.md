@@ -146,4 +146,4 @@ privadas ficam de fora.
 - **Interface**: testada com um Supabase simulado e no jsdom; nada foi aberto num navegador real, nem em Android, iOS ou
   desktop.
 - **Pendências desta frente**: lembrete para o cliente próprio sem conta (ele não tem contato confirmado; seria um
-  aviso manual do profissional); envio da cobrança (Pix e fatura) por WhatsApp, que o orçamento já tem.
+  aviso manual do profissional); envio da cobrança (Pix e fatura) por WhatsApp, que o orçamento já tem (feito em 24/11/2026: botão "Enviar por WhatsApp" em `components/pro/PixBox.tsx`, com o link da fatura ou o Pix copia e cola; o profissional escolhe a conversa e a plataforma não envia nada).

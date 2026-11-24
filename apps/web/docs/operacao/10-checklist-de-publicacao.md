@@ -37,15 +37,15 @@ Todas são lidas no código. Para o build de produção, são definidas como var
 | `VITE_COMPANY_NAME`, `VITE_COMPANY_CNPJ`, `VITE_COMPANY_ADDRESS` | variável `production` | pública | Contador | Depende de ação (dados da pessoa jurídica) | `deploy-web.yml`; `config/legal.ts` (`company()`) |
 | `VITE_SAC_EMAIL`, `VITE_SAC_WHATSAPP` | variável `production` | pública | Dono | Depende de ação | `deploy-web.yml`; `config/legal.ts` |
 | `VITE_LEGAL_STATUS` | variável `production` | pública | Dono, com advogado | **Pendente** (parecer) | `deploy-web.yml`; `config/legal.ts` |
-| `VITE_SENTRY_DSN` | não repassada pelo workflow | pública (não é segredo, mas não se versiona) | Técnico e Dono (região) | **Pendente** | `lib/observability.ts`; `observabilidade.md` §5 |
-| `VITE_APP_VERSION` | não repassada pelo workflow | pública | Técnico | **Pendente** (opcional) | `lib/observability.ts` |
+| `VITE_SENTRY_DSN` | variável `production`, repassada pelo workflow desde 24/11/2026 | pública (não é segredo, mas não se versiona) | Dono (conta e região) | Feito no repositório; **depende de conta ou ação do dono** (criar a variável) | `lib/observability.ts`; `observabilidade.md` §5 |
+| `VITE_APP_VERSION` | o workflow envia o commit publicado (`github.sha`) | pública | Técnico | Feito no repositório | `lib/observability.ts` |
 | `VITE_ROUTER` | `.env.native` (nativos usam `hash`); padrão `browser` | pública | Técnico | Feito no repositório | `.env.native`; `vite-env.d.ts` |
 
 Achados:
 
-- `deploy-web.yml` não repassa `VITE_SENTRY_DSN` nem `VITE_APP_VERSION`. Mesmo que a variável seja criada no ambiente, o build de produção sai sem relato de erros. **Pendente.**
-- `apps/web/docs/arquitetura/infra.md` diz que o código ainda não lê `VITE_COMPANY_*`, `VITE_SAC_*` e `VITE_LEGAL_STATUS`. Isso está desatualizado: `config/legal.ts` lê todas elas. Atualizar o documento.
-- A checagem do workflow recusa só `sb_secret_` em `VITE_SUPABASE_PUBLISHABLE_KEY`, e o varrimento do bundle procura `sb_secret_` e `SUPABASE_SERVICE_ROLE`. Uma chave `service_role` legada (JWT) passa pelas duas checagens. O app a recusa em tempo de execução (`lib/supabaseKey.ts`), mas a chave já estaria no JavaScript público. Estender a checagem do workflow para ler o papel do JWT. Responsável: Técnico. **Pendente.**
+- `deploy-web.yml` não repassa `VITE_SENTRY_DSN` nem `VITE_APP_VERSION`. Mesmo que a variável seja criada no ambiente, o build de produção sai sem relato de erros. **Corrigido em 24/11/2026:** o workflow repassa as duas, e também `VITE_LOGIN_METHODS`. Falta o dono criar `VITE_SENTRY_DSN` no ambiente.
+- `apps/web/docs/arquitetura/infra.md` diz que o código ainda não lê `VITE_COMPANY_*`, `VITE_SAC_*` e `VITE_LEGAL_STATUS`. Isso está desatualizado: `config/legal.ts` lê todas elas. Atualizar o documento. **Corrigido em 24/11/2026.**
+- A checagem do workflow recusa só `sb_secret_` em `VITE_SUPABASE_PUBLISHABLE_KEY`, e o varrimento do bundle procura `sb_secret_` e `SUPABASE_SERVICE_ROLE`. Uma chave `service_role` legada (JWT) passa pelas duas checagens. O app a recusa em tempo de execução (`lib/supabaseKey.ts`), mas a chave já estaria no JavaScript público. Estender a checagem do workflow para ler o papel do JWT. Responsável: Técnico. **Corrigido em 24/11/2026:** `scripts/check-bundle-secrets.mjs` recusa `sb_secret_`, o nome `SUPABASE_SERVICE_ROLE` e qualquer JWT com papel `service_role`, na variável (antes do build) e nos arquivos de `dist/`; roda em `web-ci.yml` e em `deploy-web.yml`.
 
 ### 1.2 Segredos e variáveis do GitHub (ambiente `production`)
 
@@ -72,7 +72,7 @@ Definidos com `supabase secrets set` ou pelo painel. Os workflows nunca os defin
 | `SITE_URL` | sim | origem permitida no CORS | Técnico | Depende de domínio | `_shared/config.ts`; `infra.md` |
 | `ALLOW_DEV_ORIGINS` | não definir em produção | libera `localhost:3000` no CORS | Técnico | Feito no repositório: em produção é ignorado; fora dela, liga com o sandbox ou com `true` | `_shared/config.ts` |
 | `APP_ENV` | recomendado em produção (`production`) | define o ambiente: em produção, sem sandbox e sem localhost no CORS | Técnico | Depende de ação (definir `production`) | `_shared/config.ts` (`isProductionEnv`); `.env.example` |
-| `PRO_GRACE_DAYS` | opcional (padrão 0; máximo 60) | carência do Pro em atraso | Dono (decisão) | **Pendente**: há outra fonte, `platform_settings.pro_grace_days` | `.env.example`; migração `20261109000007_pro_plan_expiry.sql` |
+| `PRO_GRACE_DAYS` | opcional (padrão 0; máximo 60) | carência do Pro em atraso | Dono (decisão) | Feito no repositório (24/11/2026): a fonte única é `platform_settings.pro_grace_days`; a variável só vale quando a chave não pode ser lida | `.env.example`; migração `20261109000007_pro_plan_expiry.sql` |
 | `ASSIST_HOURLY_LIMIT` | opcional (padrão 10; 0 desliga) | cota de IA por usuário em janela deslizante de 60 minutos, com uma contagem só para `request-assist`, `quote-assist` e `care-summary` | Dono (custo) | Decisão do dono | `_shared/config.ts`; `_shared/assist.ts` |
 | `ANTHROPIC_API_KEY` | opcional (sem ela: 503) | `request-assist`, `quote-assist`, `care-summary` | Dono (conta e custo) e Técnico | Depende de conta. Chamada real não testada | `request-assist/index.ts`; `care-summary/index.ts` (comentário) |
 | `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` | opcionais (sem elas: `skipped`) | envio por WhatsApp Cloud API | Dono (conta Meta) | Depende de conta e de templates aprovados | `_shared/config.ts`; `supabase/functions/README.md` |
@@ -173,14 +173,14 @@ Configuração de Auth (o que o `config.toml` descreve x o que deve existir no p
 | Item | Status | Evidência e detalhe |
 |---|---|---|
 | Identificadores | Feito no repositório | `br.com.workeasy` em `capacitor.config.ts` (`appId`), `src-tauri/tauri.conf.json` (`identifier`), `android/app/build.gradle` (`applicationId`) e no projeto Xcode (`PRODUCT_BUNDLE_IDENTIFIER`). Consistente. Não mudar depois do primeiro envio às lojas (`google-play.md`, D7). Confirmação do dono. |
-| Versões | **Pendente** (técnico) | Android: `versionCode 1` e `versionName "1.0"`. iOS: `MARKETING_VERSION 1.0` e `CURRENT_PROJECT_VERSION 1`. Desktop: `0.1.0` (`package.json`, `tauri.conf.json`, `Cargo.toml`). Não há política de versão. |
+| Versões | Parcial (técnico) | Android: desde 24/11/2026 o build aceita `-PappVersionCode` e `-PappVersionName` e assina com `android/keystore.properties` quando o arquivo existe (fora do repositório; `*.jks`, `*.keystore` e `keystore.properties` estão no `.gitignore`); sem as propriedades continuam `versionCode 1` e `versionName "1.0"`. iOS: `MARKETING_VERSION 1.0` e `CURRENT_PROJECT_VERSION 1`. Desktop: `0.1.0` (`package.json`, `tauri.conf.json`, `Cargo.toml`). Não há política de versão. |
 | Assinatura Android | Depende de conta | `android/app/build.gradle` não tem `signingConfig` de release, e a chave de upload não está no repositório. O CI gera só APK de depuração (`web-release.yml`). Depende de conta Google Play de organização e de chave guardada fora do repositório. |
 | Assinatura iOS | Depende de conta | Projeto sem `DEVELOPMENT_TEAM`, com assinatura automática. O CI gera build de simulador sem assinatura. Depende de conta Apple Developer de organização e de Xcode 26 (`app-store.md`, seção 2 e R3). |
 | Desktop | Decisão do dono | Instaladores de Windows e macOS sem assinatura de código e sem atualizador automático (`desktop-e-assinatura.md`, seção 0). Linux gera `.deb` e `.AppImage`. O documento recomenda não publicar nas lojas no lançamento. |
 | Chave do atualizador | **Pendente** | Gerar fora do repositório antes do primeiro lançamento público. Chave perdida impede atualizar quem já instalou (`desktop-e-assinatura.md`, 5.4). |
 | App Links (Android) | **Pendente** | `android/app/src/main/AndroidManifest.xml`, linha 33, com host de exemplo (`app.workeasy.example`). `public/.well-known/assetlinks.json` com `TODO` na impressão digital do certificado de assinatura do Google Play. |
 | Universal Links (iOS) | **Pendente** | `public/.well-known/apple-app-site-association` com `TODO-TEAM-ID`. Não há arquivo de entitlements (`nativo.md`, 3.4). |
-| Permissões Android | **Pendente** (decisão) | `INTERNET`, `CAMERA`, localização fina e grosseira (`nativo.md`, 2.2). A câmera é pedida sem uso real hoje (`google-play.md`, B12). |
+| Permissões Android | **Pendente** (decisão) | `INTERNET`, `CAMERA`, localização fina e grosseira (`nativo.md`, 2.2). A câmera é pedida sem uso real hoje (`google-play.md`, B12). Desde 24/11/2026 o build `release` tira `CAMERA` e localização (`android/app/src/release/AndroidManifest.xml`); não verificado por build `release`. |
 | Privacidade iOS | Feito parcialmente | `PrivacyInfo.xcprivacy` existe e está no alvo do Xcode. Lista de dados depende de revisão do advogado e do encarregado (`nativo.md`, 3.2). `ITSAppUsesNonExemptEncryption` não declarado: decisão do responsável pela loja. |
 | Rede nativa | Feito no repositório | `cleartext: false` no Capacitor; origens de CORS fixas nas funções (`docs/ARQUITETURA.md`, "CORS"). |
 | Bloqueios de loja | **Pendente** (dono e técnico) | Apple: B1 a B8 (`app-store.md`, seção 0). Google Play: B01 a B14 (`google-play.md`, seção 1). Os principais: textos legais, backend de produção, venda do Pro dentro do app, denúncia e bloqueio de conteúdo, conteúdo de demonstração no build, página web de exclusão de conta e login do revisor. |
@@ -269,15 +269,15 @@ Estes pontos não bloqueiam a publicação, mas podem levar a uma decisão errad
 
 | Documento | Afirmação | Situação neste commit |
 |---|---|---|
-| `apps/web/docs/arquitetura/infra.md` | `config.toml` não tem entradas `[functions]` | Tem, nas linhas 407 a 415 (inclui `background-check-purge`) |
-| `apps/web/docs/arquitetura/infra.md` | Código não lê `VITE_COMPANY_*`, `VITE_SAC_*` e `VITE_LEGAL_STATUS` | `config/legal.ts` lê todas |
-| `apps/web/docs/arquitetura/infra.md` | Passo a passo de publicação em `DEPLOY.md` | O arquivo não existe no repositório |
+| `apps/web/docs/arquitetura/infra.md` | `config.toml` não tem entradas `[functions]` | Tem, nas linhas 407 a 415 (inclui `background-check-purge`). Documento corrigido em 24/11/2026 |
+| `apps/web/docs/arquitetura/infra.md` | Código não lê `VITE_COMPANY_*`, `VITE_SAC_*` e `VITE_LEGAL_STATUS` | `config/legal.ts` lê todas. Documento corrigido em 24/11/2026 |
+| `apps/web/docs/arquitetura/infra.md` | Passo a passo de publicação em `DEPLOY.md` | O arquivo não existe no repositório. Referência corrigida em 24/11/2026 |
 | `.github/workflows/deploy-supabase.yml` (comentário) | Seed tem "dados de demonstração" | Corrigido: o comentário agora diz que `supabase/seed.sql` é o seed de desenvolvimento e nunca é aplicado aqui; o catálogo de produção é `supabase/catalog.sql` |
-| `.github/workflows/deploy-supabase.yml` (comentário) | `config.toml` sem entradas de função | Tem |
-| `apps/web/docs/ARQUITETURA.md` ("Notificações") | Dois agendamentos | Oito em `pg_cron` nas migrações (inclui `retention-purge-daily`) |
+| `.github/workflows/deploy-supabase.yml` (comentário) | `config.toml` sem entradas de função | Tem. Comentário corrigido em 24/11/2026 |
+| `apps/web/docs/ARQUITETURA.md` ("Notificações") | Dois agendamentos | Oito em `pg_cron` nas migrações (inclui `retention-purge-daily`). `ARQUITETURA.md` ganhou a tabela dos oito em 24/11/2026 |
 | `apps/web/docs/operacao/08` (citado em `observabilidade.md`, §6) | Arquivo não existe na árvore de trabalho | Existe neste commit |
 | `apps/web/docs/RUNBOOKS.md` | 36 migrações, commit `5805947` | 95 migrações no HEAD `cef8acc` (40 em `329b0cd`) |
-| `apps/web/docs/ARQUITETURA.md` ("Testes e CI") x `RUNBOOKS` (apêndice A, item 16) | Editar migração aplicada x criar migração nova | Regra conflitante |
+| `apps/web/docs/ARQUITETURA.md` ("Testes e CI") x `RUNBOOKS` (apêndice A, item 16) | Editar migração aplicada x criar migração nova | Resolvido em 24/11/2026: regra única em `ARQUITETURA.md` (migração aplicada não se edita) |
 | `apps/web/docs/lojas/google-play.md`, B05 | Faixa de protótipo em toda tela | `producao-vs-demonstracao.md` registra a correção com backend, com pendências na seção 8. Conferir no build |
 
 ---

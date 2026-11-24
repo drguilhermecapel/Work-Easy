@@ -56,6 +56,14 @@ Só existem estes seis; a migração 08 limita `notifications.template` a esta l
 
 Um atendimento aceito gera até **4** mensagens (2 confirmações + 2 lembretes).
 
+**Atualização de 24/11/2026.** A lista do banco hoje tem **10** modelos (`notifications_template_check`, migração `20261124100004`). Além dos seis acima: `agendamento_solicitado` (prestador, pedido de agendamento direto), `shift_canceled_by_deletion` e `booking_canceled_by_deletion` (contraparte, na exclusão de conta, sem variáveis) e `pedido_novo` (seção 4.6-A). Os três primeiros ainda não têm ficha neste documento nem entrada no JSON.
+
+| # | Nome | Quem recebe | Quando é enfileirado | Variáveis, na ordem do código |
+|---|---|---|---|---|
+| 10 | `pedido_novo` | até 30 prestadores que podem responder o pedido (aprovados, aceitando pedidos da plataforma, com a ocupação aprovada e atendendo o bairro), em ordem aleatória; nunca o cliente nem quem tem bloqueio com ele | `INSERT` em `requests` com status `open` (gatilho `requests_60_notify_providers`) | `occupation_name`, `neighborhood_name` |
+
+Um pedido novo gera, portanto, até 30 mensagens, uma por prestador. O teto diário por destinatário (`notification_daily_cap`) continua valendo.
+
 ### 2.2 De onde vem cada variável
 
 | Chave | Origem | Formato final |
@@ -129,6 +137,7 @@ Os valores de texto passam por `formatParam`: máximo de 300 caracteres, quebras
 | 4.4 | `pagamento_recebido` | UTILITY | profissional | 2 | igual ao código |
 | 4.5 | `orcamento_respondido` | UTILITY | profissional | 2 | com frase final acrescentada |
 | 4.6 | `plantao_oferecido` | UTILITY, com risco alto de virar MARKETING | cuidador | 2 | igual ao código |
+| 4.6-A | `pedido_novo` (24/11/2026) | UTILITY, com risco alto de virar MARKETING | profissional | 2 | igual ao código |
 
 Valores comuns a todos: idioma `pt_BR`; formato `POSITIONAL`; sem cabeçalho; sem botões; rodapé `Aviso automático do WorkEasy` (28 caracteres, estático, não promete canal de resposta); validade `message_send_ttl_seconds: 43200`.
 
@@ -271,6 +280,23 @@ Esperado: `status` = `APPROVED`, `category` = `UTILITY`, `correct_category` vazi
 | `{{2}}` | `neighborhood_name` | Vila Mariana |
 
 **Por que utilidade, e por que o risco.** A oferta é individual, ligada ao cadastro do cuidador, sem desconto nem propaganda. Mas a Meta trata como marketing (retargeting) mensagens que recomendam ou oferecem algo: o exemplo "We found a {{car}} that meets your saved search. Log in to our app to view." está nessa lista, que diz "These are marketing even if requested by users." [M4]. Uma oferta de trabalho se parece mais com isso do que com a atualização de um pedido. Outro ponto: a política de comércio da Meta diz "Commerce content may not promote job opportunities" [P2]; ela fala de conteúdo de comércio (anúncios de produtos), então `[incerto]` se alcança um aviso de plantão. Registrar como UTILITY, aceitar o resultado e seguir 4.8.
+
+### 4.6-A `pedido_novo` (acrescentado em 24/11/2026)
+
+| Campo | Valor |
+|---|---|
+| Categoria | **UTILITY**, com risco alto de ser aprovada como MARKETING |
+| Corpo | `Há um pedido novo de {{1}} em {{2}}. Abra o WorkEasy para ver e enviar a sua proposta.` |
+| Aparece assim | Há um pedido novo de Eletricista em Vila Mariana. Abra o WorkEasy para ver e enviar a sua proposta. |
+| E-mail, assunto | `Novo pedido na sua região` |
+| E-mail, corpo | igual ao WhatsApp |
+
+| Variável | Chave no código | Exemplo para a Meta |
+|---|---|---|
+| `{{1}}` | `occupation_name` | Eletricista |
+| `{{2}}` | `neighborhood_name` | Vila Mariana |
+
+**Risco de categoria.** É o mesmo de `plantao_oferecido` (4.6): a mensagem oferece uma oportunidade de trabalho, e a Meta pode tratá-la como marketing. Não li de novo as páginas da Meta para este modelo; vale o que está na seção 3, conferido em 23/10/2026 `[incerto]` para a data de hoje. A descrição do pedido é texto livre do cliente e não entra na mensagem. O nome da ocupação vai para a Meta, inclusive nas áreas de saúde e cuidado (lacuna 9 da seção 11.4). Antes de ligar: registrar o modelo com 2 variáveis, conferir `status` e `category` aprovados e cumprir os portões da seção 11.1.
 
 ### 4.7 Cabeçalho, rodapé e botões
 

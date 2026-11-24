@@ -62,7 +62,8 @@ begin read only;
 --     origem 'agendamento_plataforma' = Trilha A (cobrança com split);
 --     origem 'agendamento_proprio'    = agendamento do CRM do prestador (cobrança pela conta dele).
 --   Orçamento aceito e pago (Trilha B): não tem ocupação nem etapa de conclusão no banco.
---     Conta-se pelo mês do pagamento (payments.updated_at), uma aproximação.
+--     Conta-se pelo mês do pagamento: payments.received_at (desde 24/11/2026); linhas
+--     anteriores não têm essa data e caem em payments.updated_at, uma aproximação.
 -- =============================================================================
 with teste as (
   select :'contas_teste'::uuid[] as ids
@@ -90,7 +91,7 @@ agendamentos as (
      and not coalesce((b.provider_id = any (t.ids)) or (b.client_id = any (t.ids)), false)
 ),
 orcamentos as (
-  select 'orcamento_pago'::text as origem, min(p.updated_at) as em
+  select 'orcamento_pago'::text as origem, min(coalesce(p.received_at, p.updated_at)) as em
     from quotes q
     join payments p on p.quote_id = q.id and p.status in ('received', 'confirmed')
    cross join teste t
@@ -114,8 +115,8 @@ select to_char(date_trunc('month', x.em at time zone 'America/Sao_Paulo'), 'YYYY
 --   Um serviço conta uma vez (atendimento ou orçamento com ao menos um pagamento recebido
 --   ou confirmado). Reembolso ou estorno tira o serviço, porque o status deixa de ser
 --   recebido/confirmado.
---   Momento do pagamento: evento 'paid' em booking_events (atendimento); payments.updated_at
---   (orçamento, aproximação). Valor = soma dos pagamentos recebidos do serviço.
+--   Momento do pagamento: evento 'paid' em booking_events (atendimento); payments.received_at
+--   (orçamento; cai em payments.updated_at, aproximação, nas linhas sem a data). Valor = soma dos pagamentos recebidos do serviço.
 --   Não exclui testes de R$ 1,00, familiares ou o próprio prestador como pagador: isso é da
 --   planilha (O01, 5.1). Aqui só saem as contas listadas em contas_teste.
 --   Categoria = categoria de lançamento da ocupação. Orçamento sai como "sem categoria de
@@ -156,7 +157,7 @@ servicos as (
   union all
   select 'B (conta do prestador)'::text, 'orcamento'::text,
          q.provider_id, null::uuid, null::text,
-         (select min(p.updated_at) from payments p
+         (select min(coalesce(p.received_at, p.updated_at)) from payments p
            where p.quote_id = q.id and p.status in ('received', 'confirmed')),
          (select sum(p.amount_cents) from payments p
            where p.quote_id = q.id and p.status in ('received', 'confirmed'))
@@ -328,6 +329,8 @@ select to_char(date_trunc('week', (r.created_at at time zone 'America/Sao_Paulo'
 --   Não conta: ação do cliente, eventos de atendimentos de contas de teste (cliente ou prestador
 --   na lista), plantão do Cuidado (shifts), evento feito por você no aparelho do prestador.
 --   Aprovação é a atual (providers.status = 'approved'): não há histórico.
+--   Desde 24/11/2026 existe providers.approved_at (primeira aprovação); a consulta ainda usa a
+--   situação atual, porque as linhas antigas não têm a data.
 --   G1 passa com 30 ou mais prestadores nas semanas 5 (07/12) e 6 (14/12) do D1 ao D45.
 -- =============================================================================
 with teste as (
@@ -406,6 +409,7 @@ select p.id as prestador_id,
 -- Q05. FUNIL DE PRESTADORES (O01, 5.2), acumulado até ate.
 --   Cadastro enviado: audit_log 'provider.submitted' no período (distinto por prestador).
 --   Aprovado: providers.status = 'approved' hoje (sem histórico de datas).
+--   Para coorte por data de aprovação, usar providers.approved_at (desde 24/11/2026).
 --   Agenda ativa: 5 dos 6 itens do checklist, os que o banco vê:
 --     (1) availability; (2) services ativo com duração; (3) distrito do piloto em
 --     provider_neighborhoods; (5) ao menos 3 provider_clients; (6) ao menos 1 atendimento
@@ -528,6 +532,8 @@ select to_char(date_trunc('week', (c.em at time zone 'America/Sao_Paulo')), 'YYY
 --   subscription.status (de/para) e subscription.cancel. A base atual vem de subscriptions.
 --   Taxa de conversão do teste = virou pagante / (virou pagante + não pagou ao fim do teste).
 --   Cancelou sem pagar = cancelamento de prestador sem nenhum 'active' no audit (aproximação).
+--   Desde 24/11/2026, subscription_status_history guarda cada estado com o anterior; a consulta
+--   ainda lê o audit_log, que cobre também as linhas antigas.
 -- =============================================================================
 with teste as (
   select :'contas_teste'::uuid[] as ids

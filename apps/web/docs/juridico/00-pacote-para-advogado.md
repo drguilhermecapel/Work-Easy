@@ -4,6 +4,8 @@
 
 Consolidado em 2026-11-09 a partir de `apps/web/docs/juridico/`: documentos 01 a 11 e `MATRIZ_CONSELHOS.md`. O arquivo `07-registro-das-operacoes-de-tratamento.csv` não foi lido.
 
+**Acréscimo de 2026-11-24.** Os textos e tratamentos que entraram no app depois desta consolidação (aceite de IA, página de exclusão de conta, denúncias, bloqueios, lista de espera) estão em `12-textos-propostos-para-aprovacao.md`, seção "Itens novos da rodada de 24/11/2026 para o advogado" (N1 a N3). Não foram incorporados às tabelas abaixo. A linha B09 está superada no código: o menu "Cuidado" só aparece para quem já está na linha (`docs/DECISOES.md`, DD59).
+
 Convenções:
 - Ordem de risco: alto, médio e baixo.
 - "O que o app faz hoje" traz o caminho do código (a partir de `apps/web/`) quando foi conferido nesta data. Quando a informação vem só de um rascunho, a célula diz "(rascunho)".

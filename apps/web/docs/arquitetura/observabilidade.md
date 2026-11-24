@@ -82,8 +82,10 @@ A coluna `day` é o dia do calendário de São Paulo, calculado a partir de `occ
   leitura apenas quando `is_admin()` é verdadeiro. Anônimos não leem nem escrevem.
 - `public.admin_funnel_daily(p_from, p_to)` devolve a contagem por dia e por evento, no máximo
   para 400 dias por chamada. Só administradores podem executá-la.
-- Não há painel nesta frente. A tela de administração (`admin_metrics`) será estendida em outro
-  trabalho.
+- Painel: desde 24/11/2026 o `/admin` mostra "Funil por dia" (`components/admin/DailyFunnel.tsx`,
+  `getDailyFunnel` em `services/admin.ts`), com janelas de 7, 14 e 30 dias. Só aparecem os dias e
+  as colunas com algum evento. A mesma tela mostra a lista de espera por bairro
+  (`admin_waitlist_summary`).
 
 ## 3. O que não é medido e por quê
 
