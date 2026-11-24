@@ -230,7 +230,7 @@ export function handler(req: Request, deps: OnboardDeps): Promise<Response> {
         action: 'payment_account.orphan',
         entity: 'provider_payment_accounts',
         entity_id: provider.id,
-        data: { asaas_account_id: created.id, asaas_wallet_id: created.walletId, key_stored: secretId !== null },
+        data: { asaas_account_id: created.id, asaas_wallet_id: created.walletId, key_stored: secretId !== null, api_key_secret_id: secretId },
       });
       throw error;
     }

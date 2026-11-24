@@ -21,8 +21,17 @@ export const initNativeShell = async (): Promise<void> => {
 
   // A link to the site that the system opened in the app (App Links, Universal Links) goes to
   // its route. The native build uses hash URLs, so the route is set after "#".
-  await App.addListener('appUrlOpen', ({ url }) => {
+  const open = (url: string) => {
     const route = routeFromAppUrl(url, (import.meta.env.VITE_SITE_URL ?? '').trim() || null);
     if (route) window.location.hash = route;
-  });
+  };
+  await App.addListener('appUrlOpen', ({ url }) => open(url));
+  // appUrlOpen only fires while the app is running: a link tapped with the app closed (a cold start) arrives
+  // as the launch URL
+  try {
+    const launch = await App.getLaunchUrl();
+    if (launch?.url) open(launch.url);
+  } catch {
+    // No launch link, or the platform cannot say: the app simply opens on its first screen
+  }
 };

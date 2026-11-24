@@ -37,17 +37,32 @@ type Policies = Record<string, OccupationPolicy>;
 // service or an area reads one small module instead of the 1.8 MB of every rule.
 const areaPolicies = new Map<string, Promise<Policies>>();
 
+// The table of loaders (one per area), imported once
+let loaderTable: Promise<(typeof import('virtual:policies-by-area'))['default']> | undefined;
+const loaders = () => {
+  if (!loaderTable) {
+    const table = import('virtual:policies-by-area').then(module => module.default);
+    table.catch(() => {
+      loaderTable = undefined;
+    });
+    loaderTable = table;
+  }
+  return loaderTable;
+};
+
 /**
  * The policies of the occupations of one area, loaded once on demand. Pair with React's `use` inside a
- * Suspense boundary. An unknown area gives an empty set.
+ * Suspense boundary. An unknown area gives an empty set. A failed load is forgotten: the next ask tries again.
  */
 export const loadAreaPolicies = (areaSlug: string): Promise<Policies> => {
   let promise = areaPolicies.get(areaSlug);
   if (!promise) {
-    promise = import('virtual:policies-by-area').then(async ({ default: loaders }) => {
-      const load = loaders[areaSlug];
+    promise = loaders().then(async table => {
+      const load = table[areaSlug];
       return load ? (await load()).default : {};
     });
+    // A chunk that failed to load (offline, a deploy in the middle) must not stay failed for the whole session
+    promise.catch(() => areaPolicies.delete(areaSlug));
     areaPolicies.set(areaSlug, promise);
   }
   return promise;
@@ -60,8 +75,16 @@ let allPolicies: Promise<Policies> | undefined;
  * occupations of several areas (the care line, the registry of a provider); a page about one area or
  * one service uses loadAreaPolicies.
  */
-export const loadPolicies = (): Promise<Policies> =>
-  (allPolicies ??= import('virtual:policies-by-area').then(async ({ default: loaders }) => {
-    const parts = await Promise.all(Object.keys(loaders).map(slug => loadAreaPolicies(slug)));
-    return Object.assign({}, ...parts) as Policies;
-  }));
+export const loadPolicies = (): Promise<Policies> => {
+  if (!allPolicies) {
+    const promise = loaders().then(async table => {
+      const parts = await Promise.all(Object.keys(table).map(slug => loadAreaPolicies(slug)));
+      return Object.assign({}, ...parts) as Policies;
+    });
+    promise.catch(() => {
+      allPolicies = undefined;
+    });
+    allPolicies = promise;
+  }
+  return allPolicies;
+};

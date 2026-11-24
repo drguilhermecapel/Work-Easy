@@ -1092,10 +1092,12 @@ describe('fluxo do produto contra o Supabase real', () => {
       expect((await openForPro()).map(row => row.id)).toContain(askedId);
 
       expect((await asker.client.rpc('block_provider', { p_provider: pro.user.id })).error).toBeNull();
-      const mine = must(await asker.client.rpc('my_blocks'), 'meus bloqueios') as Array<{ blocked_id: string; label: string | null }>;
-      expect(mine.map(row => row.blocked_id)).toEqual([pro.user.id]);
+      const mine = must(await asker.client.rpc('my_blocks'), 'meus bloqueios') as Array<{ ref: string; label: string | null }>;
+      expect(mine.map(row => row.ref)).toEqual([pro.user.id]);
       // O bloqueado não fica sabendo
-      expect(must(await pro.user.client.from('user_blocks').select('blocker_id'), 'leitura do bloqueado')).toEqual([]);
+      // A tabela não é lida pelo app: nem o bloqueado nem o bloqueador a enxergam por ela
+      expect((await pro.user.client.from('user_blocks').select('blocker_id')).error?.code).toBe('42501');
+      expect((await asker.client.from('user_blocks').select('blocked_id')).error?.code).toBe('42501');
 
       expect((await searchAsAsker()).map(row => row.provider_id)).not.toContain(pro.user.id);
       expect((await openForPro()).map(row => row.id)).not.toContain(askedId);

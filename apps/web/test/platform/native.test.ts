@@ -7,7 +7,7 @@ const shell = vi.hoisted(() => ({
 }));
 
 vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: shell.isNativePlatform } }));
-vi.mock('@capacitor/app', () => ({ App: { addListener: shell.addListener, exitApp: shell.exitApp } }));
+vi.mock('@capacitor/app', () => ({ App: { addListener: shell.addListener, exitApp: shell.exitApp, getLaunchUrl: () => Promise.resolve(undefined) } }));
 
 import { initNativeShell } from '../../platform/native';
 

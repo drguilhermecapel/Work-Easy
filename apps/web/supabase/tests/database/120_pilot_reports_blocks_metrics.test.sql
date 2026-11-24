@@ -1,7 +1,7 @@
 -- Launch round of 24/11/2026: care line visibility, waiting list, shifts created by the operation,
 -- new request notice, blocks, reports, search rotation and the dates the metrics needed.
 begin;
-select plan(62);
+select plan(75);
 select has_function('tests', 'setup_fixture', 'test helpers are installed (run 00_helpers first)');
 select tests.setup_fixture();
 
@@ -86,7 +86,8 @@ select tests.authenticate_as('provider_c');
 select is((select count(*)::int from public.open_requests_for_me()), 0, 'and does not see the client''s requests');
 select throws_ok($$insert into public.proposals (request_id, price_cents) values ((select id from ids where name = 'req2'), 9000)$$,
                  'P0001', 'not_allowed', 'nor sends a proposal to them');
-select is((select count(*)::int from public.user_blocks), 0, 'the blocked side cannot read the block');
+select throws_ok($$select count(*) from public.user_blocks$$, '42501', null,
+                 'the table of blocks is not readable by the app: the blocked side learns nothing and the blocker gets no ids from it');
 select tests.clear_authentication();
 
 select tests.authenticate_anon();
@@ -100,6 +101,11 @@ select lives_ok($$select public.block_request_author((select id from ids where n
                 'a provider blocks the author of a request it can answer');
 select is((select count(*)::int from public.open_requests_for_me()), 0, 'and stops seeing that client''s requests');
 select is((select label from public.my_blocks()), null, 'the list does not name a client');
+select isnt((select ref from public.my_blocks()), tests.uid('client_a'), 'and its handle is not the id of the client');
+select lives_ok(format($$select public.unblock_user(%L)$$, tests.uid('client_a')), 'asking to unblock by the id of the client is accepted');
+select is((select count(*)::int from public.my_blocks()), 1, 'but it removes nothing: the id of a client is not a way to refer to a block');
+select lives_ok($$select public.unblock_user((select ref from public.my_blocks()))$$, 'the handle removes the block');
+select is((select count(*)::int from public.my_blocks()), 0, 'and the list is empty again');
 select tests.clear_authentication();
 select tests.authenticate_as('provider_b');
 select throws_ok($$select public.block_request_author((select id from ids where name = 'req1'))$$, 'P0001', 'not_found',
@@ -207,6 +213,59 @@ select lives_ok(format($$insert into public.shifts (household_id, period, rate_c
                 'the administration creates a shift for the family');
 select tests.clear_authentication();
 select is((select count(*)::int from public.audit_log where action = 'shift.created_by_admin'), 1, 'and that is audited');
+
+-- ---------------------------------------------------------------------------
+-- Review fixes (migration 20261124100009)
+-- ---------------------------------------------------------------------------
+-- pedido_novo has a cap of its own: provider_a already has 10 of them today, so a new request does not reach
+-- that provider, and still reaches another one
+insert into public.notifications (user_id, email, channel, template, params)
+select tests.uid('provider_a'), 'a@test.local', 'email', 'pedido_novo', '{}' from generate_series(1, 10);
+select tests.authenticate_as('client_b');
+with r as (
+  insert into public.requests (occupation_slug, neighborhood_id, description)
+  values ('t-reparo', tests.neighborhood('t-bairro-1'), 'Consertar a porta do armario da sala.')
+  returning id
+)
+insert into ids select 'req4', id from r;
+select tests.clear_authentication();
+select is((select count(*)::int from public.notifications
+            where user_id = tests.uid('provider_a') and template = 'pedido_novo'
+              and params ->> 'request_id' = (select id::text from ids where name = 'req4')), 0,
+          'a provider over its own cap of new-request notices is not told of the next one');
+select is((select count(*)::int from public.notifications
+            where user_id = tests.uid('provider_d') and template = 'pedido_novo'
+              and params ->> 'request_id' = (select id::text from ids where name = 'req4')), 1,
+          'a provider under the cap is');
+
+-- a quote cannot be created already marked as done
+select tests.authenticate_as('provider_a');
+select lives_ok($$insert into public.quotes (title, status, completed_at) values ('Orcamento de teste', 'draft', now())$$,
+                'a provider creates a quote with a completion date');
+select tests.clear_authentication();
+select is((select completed_at from public.quotes where title = 'Orcamento de teste'), null,
+          'the completion date is dropped: only mark_quote_completed writes it');
+
+-- the dates of the metrics are stamped by the transition, not by any later update
+alter table public.providers disable trigger providers_90_approved_at;
+update public.providers set approved_at = null where id = tests.uid('provider_d');
+alter table public.providers enable trigger providers_90_approved_at;
+update public.providers set bio = 'Atualizada depois.' where id = tests.uid('provider_d');
+select is((select approved_at from public.providers where id = tests.uid('provider_d')), null,
+          'a provider approved before the column existed is not stamped by an unrelated update');
+alter table public.payments disable trigger payments_90_received_at;
+update public.payments set received_at = null where id = (select id from ids where name = 'pay1');
+alter table public.payments enable trigger payments_90_received_at;
+update public.payments set platform_fee_cents = 0 where id = (select id from ids where name = 'pay1');
+select is((select received_at from public.payments where id = (select id from ids where name = 'pay1')), null,
+          'a payment paid before the column existed is not stamped by an unrelated update');
+
+-- the grace of the Pro plan has the range the webhook applies
+select tests.authenticate_as('admin');
+select throws_ok($$select public.admin_set_setting('pro_grace_days', '90'::jsonb)$$, '23514', 'invalid_setting',
+                 'a grace longer than 60 days is refused, so the webhook and the expiry job agree');
+select lives_ok($$select public.admin_set_setting('pro_grace_days', '30'::jsonb)$$, 'a grace of 30 days is accepted');
+select tests.clear_authentication();
 
 -- ---------------------------------------------------------------------------
 -- What the deletion of an account takes with it

@@ -49,12 +49,16 @@ export const blockRequestAuthor = async (requestId: string): Promise<void> => {
   unwrapMaybe<unknown>(await db().rpc('block_request_author', { p_request: requestId }));
 };
 
-export const unblockUser = async (blockedId: string): Promise<void> => {
-  unwrapMaybe<unknown>(await db().rpc('unblock_user', { p_blocked: blockedId }));
+export const unblockUser = async (ref: string): Promise<void> => {
+  unwrapMaybe<unknown>(await db().rpc('unblock_user', { p_blocked: ref }));
 };
 
 export interface BlockEntry {
-  blocked_id: string;
+  /**
+   * What unblockUser takes: the id of the provider (already public) or, for a client blocked from a request,
+   * an opaque handle. The id of a client is never returned.
+   */
+  ref: string;
   /** Public name of a blocked provider; null for the author of a request. */
   label: string | null;
   origin: 'provider' | 'request';

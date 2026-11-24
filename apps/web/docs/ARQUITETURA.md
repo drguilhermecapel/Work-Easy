@@ -444,7 +444,7 @@ Colunas listadas sem `created_at timestamptz default now()`, que toda tabela tem
   agendamentos está em "Agendamentos (pg_cron)", mais abaixo.
 - Templates (nomes que precisam existir no WhatsApp Business):
   `proposta_recebida`, `atendimento_confirmado`, `lembrete_atendimento`,
-  `pagamento_recebido`, `orcamento_respondido`, `plantao_oferecido`, `agendamento_solicitado`, `pedido_novo` (duas variáveis: ocupação e bairro), `shift_canceled_by_deletion` e `booking_canceled_by_deletion` (estes dois vêm da exclusão de conta). São 10 modelos.
+  `pagamento_recebido`, `orcamento_respondido`, `plantao_oferecido`, `agendamento_solicitado`, `pedido_novo` (duas variáveis: ocupação e bairro; no máximo 10 por prestador em 24 horas, teto próprio, para não consumir o teto diário compartilhado das mensagens transacionais), `shift_canceled_by_deletion` e `booking_canceled_by_deletion` (estes dois vêm da exclusão de conta). São 10 modelos.
 
 **Agendamentos (pg_cron)**
 
@@ -480,9 +480,11 @@ Os horários são os do banco (UTC no Supabase). A remoção de antecedentes ret
 - `shifts_insert_admin`: admin insere plantão em qualquer casa; o trigger
   `shifts_60_audit_admin_insert` grava `shift.created_by_admin`.
 - `user_blocks` (`blocker_id`, `blocked_id`, `origin` `provider` ou `request`, `created_at`).
-  Só quem bloqueou (e admin) lê; escrita só por função: `block_provider(uuid)`,
-  `block_request_author(uuid)` (o prestador nunca recebe o id do cliente), `unblock_user(uuid)`,
-  `my_blocks()`. Limite de 200 por conta (`block_limit`). O bloqueio vale nos dois sentidos em
+  A tabela não é lida nem escrita pelo app (sem grant para `anon` e `authenticated`, RLS sem política):
+  só por função: `block_provider(uuid)`, `block_request_author(uuid)`, `unblock_user(uuid)` e
+  `my_blocks()`, que devolve `ref` (o id do prestador, que já é público, ou, para um cliente
+  bloqueado a partir de um pedido, um identificador opaco `private.block_ref`; o id do cliente
+  nunca sai) e `unblock_user` recebe esse `ref` (migração `20261124100009`). Limite de 200 por conta (`block_limit`). O bloqueio vale nos dois sentidos em
   `search_providers`, `open_requests_for_me`, no aviso de pedido novo e nos triggers
   `proposals_15_blocked` e `bookings_15_blocked` (reserva de origem `platform`), que recusam com
   `not_allowed`.

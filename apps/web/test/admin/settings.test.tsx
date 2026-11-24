@@ -393,7 +393,11 @@ describe('regras de validação das configurações', () => {
     const table = /from \(values([\s\S]*?)\) as r\(k, lo, hi\)/.exec(sql)?.[1] ?? '';
     const inDatabase = Object.fromEntries([...table.matchAll(/\('([a-z_]+)',\s*(\d+),\s*(\d+)\)/g)].map(([, key, lo, hi]) => [key, { min: Number(lo), max: Number(hi) }]));
     const onScreen = Object.fromEntries(NUMBER_SETTINGS.map(key => [key, { min: NUMBER_LIMITS[key].min, max: NUMBER_LIMITS[key].max }]));
-    expect(onScreen).toEqual(inDatabase);
+    // Keys the database checks but the screen does not edit (set by SQL, docs/RUNBOOKS.md): the grace of the Pro plan
+    // has its range in the database so that the webhook (which caps it at 60 days) and the expiry job agree
+    const databaseOnly = ['pro_grace_days'];
+    expect(databaseOnly.every(key => key in inDatabase)).toBe(true);
+    expect(Object.fromEntries(Object.entries(inDatabase).filter(([key]) => !databaseOnly.includes(key)))).toEqual(onScreen);
   });
 
   it('puts a refusal of the database about a value in the sentence of the screen', () => {

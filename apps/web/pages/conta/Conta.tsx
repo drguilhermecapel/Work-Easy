@@ -367,15 +367,15 @@ const BlocksSection: React.FC = () => {
           {blocks.data.map(block => {
             const name = block.label ?? (block.origin === 'request' ? 'Cliente de um pedido' : 'Profissional');
             return (
-              <li key={block.blocked_id} className="py-2 flex flex-wrap items-center justify-between gap-3">
+              <li key={block.ref} className="py-2 flex flex-wrap items-center justify-between gap-3">
                 <span className="text-sm text-gray-800">
                   {name} <span className="text-gray-500">· desde {formatDateBR(block.created_at)}</span>
                 </span>
                 <button
                   type="button"
                   className={secondaryButton}
-                  disabled={busy === block.blocked_id}
-                  onClick={() => remove(block.blocked_id)}
+                  disabled={busy === block.ref}
+                  onClick={() => remove(block.ref)}
                   aria-label={`Desbloquear ${name}`}
                 >
                   Desbloquear

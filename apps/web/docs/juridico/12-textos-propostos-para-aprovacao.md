@@ -311,6 +311,8 @@ Textos e tratamentos que entraram no app em 24/11/2026 (`docs/DECISOES.md`, DD59
 
 ### N2. Página pública "Excluir a conta do WorkEasy" (DD72)
 
+**Atualização de 24/11/2026 (revisão adversarial):** a página passou a dizer que, para profissionais, os títulos e os itens de orçamentos e de serviços criados continuam, sem nome, telefone e observações do cliente; o texto de `anonymize_user` não os limpa. O advogado decide se isso basta ou se a anonimização deve limpá-los.
+
 **Onde aparece.** `/excluir-conta`, sem login, com link no rodapé (`pages/conta/ExcluirConta.tsx`). As lojas exigem um endereço público que explique a exclusão. Texto da página:
 
 > **Excluir a conta do WorkEasy**

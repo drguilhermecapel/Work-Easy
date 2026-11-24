@@ -3,7 +3,7 @@
 -- read/write matrix of the provider-owned tables for every role (anon, client, another
 -- client, provider, another provider, admin). Domain files test the rules of each domain.
 begin;
-select plan(74);
+select plan(75);
 select has_function('tests', 'setup_fixture', 'test helpers are installed (run 00_helpers first)');
 select tests.setup_fixture();
 
@@ -19,8 +19,8 @@ select is(
      from pg_class c
     where c.relnamespace = 'public'::regnamespace and c.relkind = 'r'
       and not exists (select 1 from pg_policy p where p.polrelid = c.oid)),
-  array['assist_usage', 'assist_usage_events', 'trial_claims'],
-  'every table in public has at least one explicit policy, except the deny-all service-role tables assist_usage, assist_usage_events and trial_claims');
+  array['assist_usage', 'assist_usage_events', 'trial_claims', 'user_blocks'],
+  'every table in public has at least one explicit policy, except the deny-all service-role tables assist_usage, assist_usage_events, trial_claims and user_blocks (read only through my_blocks(), which hides the id of a blocked client)');
 
 -- assist_usage and assist_usage_events are the tables with RLS and no policy on purpose: only take_assist_quota() touches them.
 select is(
@@ -29,6 +29,14 @@ select is(
      cross join (values ('SELECT'), ('INSERT'), ('UPDATE'), ('DELETE')) pr(p)
     where has_table_privilege(r.rolname, 'public.assist_usage', pr.p)),
   '{}'::text[], 'assist_usage has no grant for anon or authenticated');
+
+-- user_blocks is deny-all too: the app reads it only through my_blocks(), because a block made from a request holds the id of a client
+select is(
+  (select coalesce(array_agg(r.rolname || ':' || pr.p order by r.rolname, pr.p), '{}')
+     from (values ('anon'), ('authenticated')) r(rolname)
+     cross join (values ('SELECT'), ('INSERT'), ('UPDATE'), ('DELETE')) pr(p)
+    where has_table_privilege(r.rolname, 'public.user_blocks', pr.p)),
+  '{}'::text[], 'user_blocks has no grant for anon or authenticated');
 
 -- A write policy has to tie the row to the caller (auth.uid()), to the admin role or to a
 -- ownership helper; 'true', '1 = 1' or auth.role() = 'authenticated' would open it to everyone.

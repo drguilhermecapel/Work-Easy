@@ -1506,7 +1506,7 @@ isOneToOne: true
                            },
 "my_blocks":
 { Args: Record<PropertyKey, never>; Returns: {
-              "blocked_id": string,"created_at": string,"label": string,"origin": string
+              "created_at": string,"label": string,"origin": string,"ref": string
             }[]
                            },
 "offer_shift":

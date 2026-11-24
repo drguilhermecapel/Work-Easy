@@ -14,6 +14,7 @@
 
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const args = process.argv.slice(2);
 const option = name => {
@@ -88,4 +89,4 @@ const main = () => {
 };
 
 // Run only as a script: the test imports the helpers above
-if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href) process.exit(main());
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) process.exit(main());

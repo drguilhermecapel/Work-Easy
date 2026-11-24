@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -62,5 +62,21 @@ describe('check-bundle-secrets', () => {
   it('says when there is no build to check', () => {
     const result = run(['--dist', join(tmpdir(), 'no-such-dist-folder')]);
     expect(result.status).toBe(2);
+  });
+});
+
+describe('check-bundle-secrets: where it runs from', () => {
+  it('still refuses a secret when the script sits in a folder whose name has # or % in it', () => {
+    // The guard that runs main() compared import.meta.url with a hand-made file:// URL and silently did nothing
+    // (exit 0) for such paths: the gate must fail closed
+    const base = mkdtempSync(join(tmpdir(), 'check-secrets-'));
+    made.push(base);
+    const folder = join(base, 'x#y%z', 'scripts');
+    mkdirSync(folder, { recursive: true });
+    copyFileSync(SCRIPT, join(folder, 'check-bundle-secrets.mjs'));
+    const dist = makeDist('const key="sb_secret_abc123";');
+    const result = spawnSync(process.execPath, [join(folder, 'check-bundle-secrets.mjs'), '--dist', dist], { encoding: 'utf8' });
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('sb_secret_');
   });
 });

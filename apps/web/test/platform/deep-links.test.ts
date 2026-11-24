@@ -33,15 +33,16 @@ describe('routeFromAppUrl', () => {
   });
 });
 
-const shell = vi.hoisted(() => ({ isNativePlatform: vi.fn(), addListener: vi.fn(), exitApp: vi.fn() }));
+const shell = vi.hoisted(() => ({ isNativePlatform: vi.fn(), addListener: vi.fn(), exitApp: vi.fn(), getLaunchUrl: vi.fn() }));
 vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: shell.isNativePlatform } }));
-vi.mock('@capacitor/app', () => ({ App: { addListener: shell.addListener, exitApp: shell.exitApp } }));
+vi.mock('@capacitor/app', () => ({ App: { addListener: shell.addListener, exitApp: shell.exitApp, getLaunchUrl: shell.getLaunchUrl } }));
 
 describe('platform/native: links opened in the app', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     shell.addListener.mockResolvedValue({ remove: vi.fn() });
     shell.isNativePlatform.mockReturnValue(true);
+    shell.getLaunchUrl.mockResolvedValue(undefined);
     vi.stubEnv('VITE_SITE_URL', SITE);
     window.location.hash = '';
   });
@@ -57,6 +58,21 @@ describe('platform/native: links opened in the app', () => {
   it('opens the route of a link to the site', async () => {
     (await listener())({ url: 'https://workeasy.example/atendimentos/42' });
     expect(window.location.hash).toBe('#/atendimentos/42');
+  });
+
+  it('opens the route of the link that launched the app (a cold start has no appUrlOpen event)', async () => {
+    shell.getLaunchUrl.mockResolvedValue({ url: 'https://workeasy.example/pedidos/9' });
+    await listener();
+    expect(window.location.hash).toBe('#/pedidos/9');
+  });
+
+  it('ignores a launch link to another host, and a failure to read it', async () => {
+    shell.getLaunchUrl.mockResolvedValue({ url: 'https://evil.example/pedidos/9' });
+    await listener();
+    expect(window.location.hash).toBe('');
+    shell.getLaunchUrl.mockRejectedValue(new Error('unavailable'));
+    await listener();
+    expect(window.location.hash).toBe('');
   });
 
   it('ignores a link to another host', async () => {
