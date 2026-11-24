@@ -8,8 +8,8 @@ select has_function('tests', 'setup_fixture', 'test helpers are installed (run 0
 select tests.setup_fixture();
 
 select enum_has_labels('public', 'consent_purpose',
-                       array['terms', 'privacy', 'marketing', 'background_check', 'location', 'age_declaration'],
-                       'the consent purposes include the age declaration');
+                       array['terms', 'privacy', 'marketing', 'background_check', 'location', 'age_declaration', 'ai_assist'],
+                       'the consent purposes include the age declaration (and, since 20261124100006, the consent to the AI assistants)');
 
 select tests.authenticate_as('client_a');
 select lives_ok($$insert into public.consents (purpose, version, granted) values ('age_declaration', '2026-11', true)$$,

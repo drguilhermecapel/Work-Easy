@@ -36,16 +36,14 @@ export const createRequest = async (input: NewRequest): Promise<RequestRow> => {
 
 /**
  * Puts the account on the waiting list of a neighborhood the pilot does not serve yet. Asking
- * twice for the same neighborhood and service is the same entry (the database ignores the repeat).
+ * twice for the same neighborhood and service is the same entry: the unique key refuses the
+ * repeat (23505) and that counts as done.
  */
 export const joinWaitlist = async (input: { userId: string; neighborhoodId: string; occupationSlug: string | null }): Promise<void> => {
   const { error } = await db()
     .from('waitlist_entries')
-    .upsert(
-      { user_id: input.userId, neighborhood_id: input.neighborhoodId, occupation_slug: input.occupationSlug },
-      { onConflict: 'user_id,neighborhood_id,occupation_key', ignoreDuplicates: true },
-    );
-  if (error) throw toAppError(error);
+    .insert({ user_id: input.userId, neighborhood_id: input.neighborhoodId, occupation_slug: input.occupationSlug });
+  if (error && (error as { code?: string }).code !== '23505') throw toAppError(error);
 };
 
 /** The signed-in client's requests (RLS returns only theirs), newest first. */

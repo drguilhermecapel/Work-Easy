@@ -1010,4 +1010,116 @@ describe('fluxo do produto contra o Supabase real', () => {
       }
     });
   });
+
+  // -------------------------------------------------------------------------
+  // (k) aviso de pedido novo, denúncia, bloqueio e lista de espera
+  // -------------------------------------------------------------------------
+  describe('(k) aviso de pedido novo, denúncia, bloqueio e lista de espera', () => {
+    let asker: TestUser;
+    let pro: ProviderSetup;
+    let askedId = '';
+
+    const openForPro = async () => must(await pro.user.client.rpc('open_requests_for_me'), 'pedidos abertos') as Array<{ id: string }>;
+    const searchAsAsker = async () =>
+      must(await asker.client.rpc('search_providers', { p_occupation: policy.occupation_slug, p_neighborhood: hood.id, p_limit: 100 }), 'busca') as Array<{
+        provider_id: string;
+      }>;
+
+    beforeAll(async () => {
+      asker = await world.createUser('cliente-denuncia');
+      pro = await makeApprovedProvider(world, admin, { label: 'prestador-denuncia', policy, neighborhood: hood.id });
+      const request = must(
+        await asker.client
+          .from('requests')
+          .insert({
+            occupation_slug: policy.occupation_slug,
+            neighborhood_id: hood.id,
+            description: `Pedido para o teste de aviso e bloqueio (teste de integração ${world.runId})`,
+          })
+          .select('id')
+          .single(),
+        'pedido',
+      );
+      askedId = request.id;
+    });
+
+    afterAll(async () => {
+      await asker.client.from('requests').update({ status: 'canceled' }).eq('id', askedId);
+    });
+
+    it('o prestador que pode responder é avisado do pedido novo, e o cliente não', async () => {
+      const notices = must(
+        await world.service.from('notifications').select('user_id, template, params').eq('template', 'pedido_novo').eq('params->>request_id', askedId),
+        'avisos',
+      ) as Array<{ user_id: string }>;
+      expect(notices.map(n => n.user_id)).toContain(pro.user.id);
+      expect(notices.map(n => n.user_id)).not.toContain(asker.id);
+      expect(notices.length).toBeLessThanOrEqual(30);
+    });
+
+    it('a conta fora da linha Cuidado não a tem no menu', async () => {
+      expect(must(await asker.client.rpc('care_access'), 'care_access')).toBe(false);
+    });
+
+    it('o cliente denuncia o perfil, e só o admin vê e encerra a denúncia', async () => {
+      const first = must(
+        await asker.client.rpc('report_content', { p_type: 'provider', p_target: pro.user.id, p_reason: 'fraude', p_details: 'Pediu pagamento por fora.' }),
+        'denúncia',
+      );
+      // Denunciar de novo o mesmo alvo devolve a denúncia aberta
+      const again = must(await asker.client.rpc('report_content', { p_type: 'provider', p_target: pro.user.id, p_reason: 'spam' }), 'denúncia repetida');
+      expect(again).toBe(first);
+
+      // O denunciado não lê a denúncia; quem denunciou lê a sua
+      expect(must(await pro.user.client.from('content_reports').select('id'), 'leitura do denunciado')).toEqual([]);
+      expect(must(await asker.client.from('content_reports').select('id'), 'leitura de quem denunciou')).toEqual([{ id: first }]);
+      await expectRule(asker.client.rpc('admin_resolve_report', { p_report: first, p_status: 'dismissed' }), 'not_allowed');
+
+      const queue = must(await admin.client.rpc('admin_list_reports', { p_status: 'open', p_limit: 100, p_offset: 0 }), 'fila') as Array<{
+        id: string;
+        details: string | null;
+        target_type: string;
+      }>;
+      expect(queue.find(row => row.id === first)).toMatchObject({ target_type: 'provider', details: 'Pediu pagamento por fora.' });
+      must(await admin.client.rpc('admin_resolve_report', { p_report: first, p_status: 'actioned', p_note: 'Conferido no teste.' }), 'encerramento');
+      const after = must(await asker.client.from('content_reports').select('status').eq('id', first).single(), 'situação');
+      expect(after.status).toBe('actioned');
+    });
+
+    it('o bloqueio tira o prestador da busca do cliente e o pedido do cliente da lista do prestador, e recusa a proposta', async () => {
+      expect((await searchAsAsker()).map(row => row.provider_id)).toContain(pro.user.id);
+      expect((await openForPro()).map(row => row.id)).toContain(askedId);
+
+      must(await asker.client.rpc('block_provider', { p_provider: pro.user.id }), 'bloqueio');
+      const mine = must(await asker.client.rpc('my_blocks'), 'meus bloqueios') as Array<{ blocked_id: string; label: string | null }>;
+      expect(mine.map(row => row.blocked_id)).toEqual([pro.user.id]);
+      // O bloqueado não fica sabendo
+      expect(must(await pro.user.client.from('user_blocks').select('blocker_id'), 'leitura do bloqueado')).toEqual([]);
+
+      expect((await searchAsAsker()).map(row => row.provider_id)).not.toContain(pro.user.id);
+      expect((await openForPro()).map(row => row.id)).not.toContain(askedId);
+      await expectRule(pro.user.client.from('proposals').insert({ request_id: askedId, price_cents: 15000 }), 'not_allowed');
+      // Para quem não bloqueou, nada muda
+      const others = must(await world.anon.rpc('search_providers', { p_occupation: policy.occupation_slug, p_neighborhood: hood.id, p_limit: 100 }), 'busca anônima') as Array<{
+        provider_id: string;
+      }>;
+      expect(others.map(row => row.provider_id)).toContain(pro.user.id);
+
+      must(await asker.client.rpc('unblock_user', { p_blocked: pro.user.id }), 'desbloqueio');
+      expect((await searchAsAsker()).map(row => row.provider_id)).toContain(pro.user.id);
+      expect((await openForPro()).map(row => row.id)).toContain(askedId);
+    });
+
+    it('a lista de espera guarda o bairro e o serviço pedidos, uma vez, e só o admin vê o resumo', async () => {
+      const entry = { neighborhood_id: hood.id, occupation_slug: policy.occupation_slug };
+      must(await asker.client.from('waitlist_entries').insert(entry).select('id').single(), 'lista de espera');
+      const repeated = await asker.client.from('waitlist_entries').insert(entry);
+      expect(repeated.error?.code).toBe('23505');
+      await expectRule(asker.client.rpc('admin_waitlist_summary'), 'not_allowed');
+      const summary = must(await admin.client.rpc('admin_waitlist_summary'), 'resumo') as Array<{ neighborhood_id: string; occupation_slug: string | null; entries: number }>;
+      const row = summary.find(item => item.neighborhood_id === hood.id && item.occupation_slug === policy.occupation_slug);
+      expect(Number(row?.entries)).toBeGreaterThanOrEqual(1);
+      must(await asker.client.from('waitlist_entries').delete().eq('user_id', asker.id).select('id'), 'saída da lista');
+    });
+  });
 });

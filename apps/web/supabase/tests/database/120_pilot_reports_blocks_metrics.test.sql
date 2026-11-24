@@ -1,7 +1,7 @@
 -- Launch round of 24/11/2026: care line visibility, waiting list, shifts created by the operation,
 -- new request notice, blocks, reports, search rotation and the dates the metrics needed.
 begin;
-select plan(52);
+select plan(62);
 select has_function('tests', 'setup_fixture', 'test helpers are installed (run 00_helpers first)');
 select tests.setup_fixture();
 
@@ -16,6 +16,18 @@ select is((select value from public.platform_settings where key = 'care_line_ope
 select tests.authenticate_anon();
 select is((select count(*)::int from public.platform_settings where key in ('care_line_open', 'pilot_neighborhoods')), 2,
           'the two launch settings are public, so the app reads them without a session');
+select tests.clear_authentication();
+
+select tests.authenticate_as('admin');
+select lives_ok($$select public.admin_set_setting('pilot_neighborhoods', '["t-bairro-1", "t-bairro-2"]'::jsonb)$$,
+                'the administration chooses the neighborhoods of the pilot');
+select throws_ok($$select public.admin_set_setting('pilot_neighborhoods', '["t-bairro-1", "bairro-que-nao-existe"]'::jsonb)$$,
+                 '23514', 'invalid_setting', 'a slug that is not a neighborhood is refused, so a typo cannot hide the filter');
+select throws_ok($$select public.admin_set_setting('pilot_neighborhoods', '"t-bairro-1"'::jsonb)$$,
+                 '23514', 'invalid_setting', 'the pilot is a list');
+select throws_ok($$select public.admin_set_setting('care_line_open', '"sim"'::jsonb)$$,
+                 '23514', 'invalid_setting', 'the care line switch is true or false');
+select lives_ok($$select public.admin_set_setting('pilot_neighborhoods', '[]'::jsonb)$$, 'the empty list offers every neighborhood again');
 select tests.clear_authentication();
 
 -- ---------------------------------------------------------------------------
@@ -195,6 +207,35 @@ select lives_ok(format($$insert into public.shifts (household_id, period, rate_c
                 'the administration creates a shift for the family');
 select tests.clear_authentication();
 select is((select count(*)::int from public.audit_log where action = 'shift.created_by_admin'), 1, 'and that is audited');
+
+-- ---------------------------------------------------------------------------
+-- What the deletion of an account takes with it
+-- ---------------------------------------------------------------------------
+-- provider_e sent a report and has a proposal with a message; client_b is on the waiting list.
+update public.profiles set city = 'São Paulo' where id = tests.uid('provider_e');
+-- The proposal comes before the block: with a block between the two it would be refused
+insert into public.proposals (request_id, provider_id, price_cents, message)
+values ((select id from ids where name = 'req1'), tests.uid('provider_e'), 9000, 'Posso ir amanhã cedo, me chame.');
+select tests.authenticate_as('client_a');
+with r as (
+  insert into public.requests (occupation_slug, neighborhood_id, description)
+  values ('t-reparo', tests.neighborhood('t-bairro-1'), 'Pintar o portão da garagem neste mês.')
+  returning id
+)
+insert into ids select 'req3', id from r;
+select lives_ok(format($$select public.block_provider(%L)$$, tests.uid('provider_e')), 'a block on the account that will be deleted');
+select tests.clear_authentication();
+
+update public.profiles set deleted_at = now() where id in (tests.uid('provider_e'), tests.uid('client_b'));
+
+select is((select count(*)::int from public.content_reports where reporter_id = tests.uid('provider_e') or details is not null and target_type = 'request'), 0,
+          'the reports of a deleted account lose their author and their text');
+select is((select count(*)::int from public.user_blocks where blocked_id = tests.uid('provider_e')), 0,
+          'blocks with a deleted account end');
+select is((select count(*)::int from public.waitlist_entries where user_id = tests.uid('client_b')), 0,
+          'the waiting list entries of a deleted account are removed');
+select is((select count(*)::int from public.proposals where provider_id = tests.uid('provider_e') and message is not null), 0,
+          'the free text of the proposals of a deleted provider is erased');
 
 select * from finish();
 rollback;

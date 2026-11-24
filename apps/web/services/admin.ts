@@ -2,7 +2,7 @@ import { VERIFICATION_LABELS } from '../catalog/labels';
 import type { VerificationStep } from '../catalog/types';
 import { AppError, toAppError } from '../lib/errors';
 import { saoPauloDateTime } from '../lib/timezone';
-import { db, unwrap, unwrapMaybe } from './client';
+import { db, nullable, unwrap, unwrapMaybe } from './client';
 import { occupationNames } from './occupationNames';
 import type { BookingStatus } from './bookings';
 import type { DataRequestKind, PlanCode, ProviderStatus } from './types';
@@ -590,7 +590,7 @@ export const createDocumentUrl = async (storagePath: string): Promise<string> =>
 export const reviewDocument = async (documentId: string, accept: boolean, reason?: string): Promise<DocumentStatus> => {
   const text = accept ? reason?.trim() || null : requireReason(reason);
   const data = await guarded(async () =>
-    unwrapMaybe<unknown>(await db().rpc('admin_review_document', { p_document: documentId, p_accept: accept, p_reason: text })),
+    unwrapMaybe<unknown>(await db().rpc('admin_review_document', { p_document: documentId, p_accept: accept, p_reason: nullable(text) })),
   );
   return data === 'accepted' || data === 'rejected' ? data : accept ? 'accepted' : 'rejected';
 };
@@ -1042,7 +1042,7 @@ export const REPORTS_PAGE_SIZE = 20;
 
 export const listReports = async ({ status, page = 0 }: { status?: ReportStatus | ''; page?: number } = {}): Promise<{ rows: ReportRow[]; hasMore: boolean }> => {
   const rows = unwrap<ReportRow[]>(
-    await db().rpc('admin_list_reports', { p_status: status || null, p_limit: REPORTS_PAGE_SIZE + 1, p_offset: page * REPORTS_PAGE_SIZE }),
+    await db().rpc('admin_list_reports', { p_status: nullable(status || null), p_limit: REPORTS_PAGE_SIZE + 1, p_offset: page * REPORTS_PAGE_SIZE }),
   );
   return { rows: rows.slice(0, REPORTS_PAGE_SIZE), hasMore: rows.length > REPORTS_PAGE_SIZE };
 };
@@ -1053,7 +1053,7 @@ export const RESOLUTION_NOTE_MAX = 1000;
 export const resolveReport = async (id: string, status: Exclude<ReportStatus, 'open'>, note: string): Promise<void> => {
   const text = note.trim();
   if (text.length > RESOLUTION_NOTE_MAX) throw new AppError('invalid_input', { message: `A anotação pode ter até ${RESOLUTION_NOTE_MAX} caracteres.` });
-  unwrapMaybe<unknown>(await db().rpc('admin_resolve_report', { p_report: id, p_status: status, p_note: text || null }));
+  unwrapMaybe<unknown>(await db().rpc('admin_resolve_report', { p_report: id, p_status: status, p_note: nullable(text || null) }));
 };
 
 export const countOpenReports = async (): Promise<number> => {
@@ -1119,3 +1119,30 @@ export const getDailyFunnel = async (fromDay: string, toDay: string): Promise<Da
   groupDailyFunnel(
     unwrap<Array<{ day: string; event: string; events: number | string }>>(await db().rpc('admin_funnel_daily', { p_from: fromDay, p_to: toDay })),
   );
+
+// ---------------------------------------------------------------------------
+// Launch controls (platform_settings care_line_open and pilot_neighborhoods)
+// ---------------------------------------------------------------------------
+
+/** Opens or closes the care line in the menu of every account (docs/DECISOES.md, D12). */
+export const setCareLineOpen = async (open: boolean): Promise<void> => {
+  await guarded(async () => unwrapMaybe<unknown>(await db().rpc('admin_set_setting', { p_key: 'care_line_open', p_value: open })));
+};
+
+/** "moema, Vila-Mariana ,," → ["moema", "vila-mariana"]: slugs in lower case, without repeats or blanks. */
+export const parsePilotSlugs = (text: string): string[] => [
+  ...new Set(
+    text
+      .split(/[\s,;]+/)
+      .map(item => item.trim().toLowerCase())
+      .filter(Boolean),
+  ),
+];
+
+/**
+ * Neighborhoods the request form offers; the empty list offers all of them. The database refuses a
+ * slug that is not a neighborhood, so a typo cannot quietly hide the filter.
+ */
+export const setPilotNeighborhoods = async (slugs: string[]): Promise<void> => {
+  await guarded(async () => unwrapMaybe<unknown>(await db().rpc('admin_set_setting', { p_key: 'pilot_neighborhoods', p_value: slugs })));
+};

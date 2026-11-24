@@ -1,6 +1,7 @@
 import React from 'react';
 import { formatDateTime } from '../../components/admin/format';
 import { BooleanSetting, NumberSetting } from '../../components/admin/SettingRows';
+import LaunchSettings from '../../components/admin/LaunchSettings';
 import { BOOLEAN_DEFS, NUMBER_DEFS, REVENUE_SETTING_KEYS } from '../../components/admin/settingDefs';
 import { Card } from '../../components/admin/ui';
 import ErrorAlert from '../../components/ErrorAlert';
@@ -38,6 +39,8 @@ const Configuracoes: React.FC = () => {
               <BooleanSetting key={`${def.key}:${String(rows.find(r => r.key === def.key)?.value)}`} def={def} rows={rows} onSaved={settings.reload} />
             ))}
           </section>
+
+          <LaunchSettings rows={rows} onSaved={settings.reload} />
 
           <section aria-labelledby="cfg-valores" className="space-y-3">
             <h2 id="cfg-valores" className="text-lg font-bold text-gray-800">Valores e limites</h2>

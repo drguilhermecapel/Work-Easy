@@ -49,9 +49,13 @@ const ExcluirConta: React.FC = () => {
       <section aria-labelledby="excluir-apagado" className="mt-8">
         <h2 id="excluir-apagado" className="font-bold text-gray-800 mb-2">O que é apagado</h2>
         <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
-          <li>Nome, telefone, e-mail de acesso, cidade e localização.</li>
-          <li>Documentos enviados e textos escritos por você, como descrições de pedidos e mensagens.</li>
-          <li>Casas, pessoas cuidadas, notas de plantões e textos do relatório diário da linha de cuidado.</li>
+          <li>Nome, telefone, e-mail de acesso, cidade e a localização registrada na entrada e na saída de plantões.</li>
+          <li>
+            Documentos enviados e textos escritos por você: descrições de pedidos, mensagens de propostas, comentários de avaliações e
+            observações de atendimentos.
+          </li>
+          <li>Nome das casas, dados das pessoas cuidadas, notas de plantões e textos do relatório diário da linha de cuidado.</li>
+          <li>Bloqueios, entradas em lista de espera e o texto das denúncias que você fez.</li>
         </ul>
       </section>
 
@@ -69,7 +73,11 @@ const ExcluirConta: React.FC = () => {
           <Link to="/privacidade" className="text-primary underline">
             Política de Privacidade
           </Link>
-          . Atendimentos e plantões ainda em aberto são cancelados, e a outra parte é avisada.
+          . Plantões e atendimentos aceitos e ainda não pagos são cancelados, e a outra parte é avisada.
+        </p>
+        <p className="text-sm text-gray-600 mt-2">
+          A exclusão é recusada enquanto houver atendimento pago, em andamento ou em contestação: conclua ou resolva esses atendimentos
+          antes de excluir a conta.
         </p>
       </section>
 
