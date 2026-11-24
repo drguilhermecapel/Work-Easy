@@ -305,7 +305,7 @@ Textos e tratamentos que entraram no app em 24/11/2026 (`docs/DECISOES.md`, DD59
 
 > Enviar o texto que você escreve nos assistentes (sugestão de orçamento, resumo da semana) a um serviço de inteligência artificial de terceiros. Sem este consentimento os assistentes ficam desligados para você; o resto do app funciona igual.
 
-**Limites.** O texto não nomeia o provedor. A conferência do aceite é feita na tela; as funções de servidor não a repetem. O assistente de pedidos (`request-assist`) não tem tela e segue desligado.
+**Limites.** O texto não nomeia o provedor. A conferência do aceite é feita na tela e repetida pelas funções de servidor, que conferem a concessão, não a versão do texto. O assistente de pedidos (`request-assist`) não tem tela e segue desligado.
 
 **Perguntas para o advogado.** (a) O consentimento é a base adequada, ou o tratamento cabe em outra base e o aceite é só transparência? (b) O texto precisa nomear o provedor e o país? (c) Para o resumo da semana, que lê relatórios sobre a pessoa cuidada, o aceite da família basta, já que a pessoa cuidada e o cuidador não aceitam nada? (d) A retirada do consentimento precisa apagar algo além de desligar o uso?
 

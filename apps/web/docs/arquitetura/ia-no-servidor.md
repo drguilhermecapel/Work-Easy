@@ -326,7 +326,7 @@ Rascunho para revisão de advogado. Não é parecer jurídico. Nenhuma norma foi
 2. O envio de texto de relatórios de cuidado a um provedor de IA no exterior e a retenção de dados da API (não conferida aqui)
    precisam de análise do advogado antes de os relatórios de pessoas reais passarem por essa função.
 3. Decidir se o consentimento específico para o resumo é exigido (hoje o aviso aparece antes do clique, mas não há aceite registrado).
-   **Atualização de 24/11/2026 (DD62):** o primeiro uso do resumo e da sugestão de orçamento pede a concordância e grava o consentimento `ai_assist`, com a versão do texto (`components/AiConsent.tsx`); a retirada é em Minha conta. A conferência é só na tela: as funções `quote-assist`, `care-summary` e `request-assist` não leem o consentimento. O texto do aceite e a base legal continuam com o advogado (`docs/juridico/12`).
+   **Atualização de 24/11/2026 (DD62):** o primeiro uso do resumo e da sugestão de orçamento pede a concordância e grava o consentimento `ai_assist`, com a versão do texto (`components/AiConsent.tsx`); a retirada é em Minha conta. As funções `quote-assist`, `care-summary` e `request-assist` repetem a conferência: sem concessão registrada respondem 403 `assist_consent_required`, antes da cota e do modelo. O servidor confere a concessão, não a versão do texto. O texto do aceite e a base legal continuam com o advogado (`docs/juridico/12`).
 4. Definir quem responde por conteúdo errado no resumo e no orçamento sugerido (hoje: aviso de que a IA pode errar e revisão obrigatória pelo prestador).
 
 Checklist técnico: `supabase secrets set ANTHROPIC_API_KEY=...`; conferir `ASSIST_HOURLY_LIMIT`; implantar as duas funções; fazer

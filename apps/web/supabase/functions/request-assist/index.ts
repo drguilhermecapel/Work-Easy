@@ -8,7 +8,7 @@
 // low. Haiku 5.5 has no server-side refusal fallback: a refusal is answered
 // with the "fill it in manually" message.
 import Anthropic from 'npm:@anthropic-ai/sdk@0.132.1';
-import { authenticate, config, logError, must, now, serve, serviceClient } from '../_runtime/supabase.ts';
+import { aiConsentGranted, authenticate, config, logError, must, now, serve, serviceClient } from '../_runtime/supabase.ts';
 import { fetchAllRows, type OccupationCandidate, quotaGranted } from '../_shared/assist.ts';
 import { HttpError } from '../_shared/http.ts';
 import { type AssistDeps, type ClassifyRequest, type ClassifyResult, handler, requestAssistSwitchOn } from './handler.ts';
@@ -69,6 +69,7 @@ const deps: AssistDeps = {
   classify: anthropic ? request => classify(anthropic, request) : null,
   hourlyLimit: config.assistHourlyLimit,
   usage: {
+    consented: aiConsentGranted,
     // One call to the database, serialized per user: it counts the calls granted to the user in the
     // last 60 minutes and grants one more only while below the limit (take_assist_quota).
     async take(userId, limit) {

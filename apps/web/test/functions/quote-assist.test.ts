@@ -36,6 +36,7 @@ function quoteDeps(result: ModelResult | (() => ModelResult | Promise<ModelResul
     model: 'test-model',
     hourlyLimit: over.limit ?? 10,
     usage: {
+      consented: async () => (over as { noConsent?: boolean }).noConsent !== true,
       take: async (userId, limit) => {
         usage.takes.push({ userId, limit });
         if (over.failTake) throw new Error('database unavailable');
@@ -131,6 +132,15 @@ describe('quote-assist: input', () => {
     expect(res.body.error.code).toBe('invalid_input');
     expect(usage.takes).toEqual([]);
     expect(requests).toEqual([]);
+  });
+
+  it('answers 403 without the recorded consent to the AI assistants, before taking quota or calling the model', async () => {
+    const refused = quoteDeps(CLEAN, { noConsent: true } as Over);
+    const res = await call(refused.deps);
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('assist_consent_required');
+    expect(refused.usage.takes).toEqual([]);
+    expect(refused.requests).toEqual([]);
   });
 
   it('answers 400 for an occupation that does not exist, without taking quota', async () => {

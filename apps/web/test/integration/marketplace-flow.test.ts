@@ -1081,7 +1081,8 @@ describe('fluxo do produto contra o Supabase real', () => {
         target_type: string;
       }>;
       expect(queue.find(row => row.id === first)).toMatchObject({ target_type: 'provider', details: 'Pediu pagamento por fora.' });
-      must(await admin.client.rpc('admin_resolve_report', { p_report: first, p_status: 'actioned', p_note: 'Conferido no teste.' }), 'encerramento');
+      // The function returns nothing: only the absence of an error is checked
+      expect((await admin.client.rpc('admin_resolve_report', { p_report: first, p_status: 'actioned', p_note: 'Conferido no teste.' })).error).toBeNull();
       const after = must(await asker.client.from('content_reports').select('status').eq('id', first).single(), 'situação');
       expect(after.status).toBe('actioned');
     });
@@ -1090,7 +1091,7 @@ describe('fluxo do produto contra o Supabase real', () => {
       expect((await searchAsAsker()).map(row => row.provider_id)).toContain(pro.user.id);
       expect((await openForPro()).map(row => row.id)).toContain(askedId);
 
-      must(await asker.client.rpc('block_provider', { p_provider: pro.user.id }), 'bloqueio');
+      expect((await asker.client.rpc('block_provider', { p_provider: pro.user.id })).error).toBeNull();
       const mine = must(await asker.client.rpc('my_blocks'), 'meus bloqueios') as Array<{ blocked_id: string; label: string | null }>;
       expect(mine.map(row => row.blocked_id)).toEqual([pro.user.id]);
       // O bloqueado não fica sabendo
@@ -1105,7 +1106,7 @@ describe('fluxo do produto contra o Supabase real', () => {
       }>;
       expect(others.map(row => row.provider_id)).toContain(pro.user.id);
 
-      must(await asker.client.rpc('unblock_user', { p_blocked: pro.user.id }), 'desbloqueio');
+      expect((await asker.client.rpc('unblock_user', { p_blocked: pro.user.id })).error).toBeNull();
       expect((await searchAsAsker()).map(row => row.provider_id)).toContain(pro.user.id);
       expect((await openForPro()).map(row => row.id)).toContain(askedId);
     });

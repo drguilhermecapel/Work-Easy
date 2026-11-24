@@ -156,6 +156,21 @@ export async function hasPaidPayment(column: 'booking_id' | 'quote_id', id: stri
   return (rows?.length ?? 0) > 0;
 }
 
+/** The account's latest decision about the AI assistants is a grant (purpose ai_assist of the consent history). */
+export async function aiConsentGranted(userId: string): Promise<boolean> {
+  const row = must(
+    await serviceClient()
+      .from('consents')
+      .select('granted')
+      .eq('user_id', userId)
+      .eq('purpose', 'ai_assist')
+      .order('at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ) as { granted: boolean } | null;
+  return row?.granted === true;
+}
+
 export async function setProviderPlan(providerId: string, plan: PlanCode): Promise<void> {
   must(await serviceClient().from('providers').update({ plan }).eq('id', providerId));
 }

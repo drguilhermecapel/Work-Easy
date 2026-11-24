@@ -2,7 +2,7 @@
 // description of at most 2000 characters, so it runs on Claude Haiku 5.5, as request-assist.
 // The call itself is in _runtime/anthropic.ts: no tools, JSON schema only.
 import { createClassifier } from '../_runtime/anthropic.ts';
-import { audit, authenticate, config, logError, must, now, serve, serviceClient } from '../_runtime/supabase.ts';
+import { aiConsentGranted, audit, authenticate, config, logError, must, now, serve, serviceClient } from '../_runtime/supabase.ts';
 import { quotaGranted } from '../_shared/assist.ts';
 import type { OccupationContext } from '../_shared/quote-assist.ts';
 import { handler, type QuoteAssistDeps } from './handler.ts';
@@ -22,6 +22,7 @@ const deps: QuoteAssistDeps = {
     : null,
   hourlyLimit: config.assistHourlyLimit,
   usage: {
+    consented: aiConsentGranted,
     // One call to the database, serialized per user: it counts the calls granted to the user in the
     // last 60 minutes and grants one more only while below the limit (take_assist_quota, shared
     // with request-assist and care-summary).

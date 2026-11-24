@@ -66,6 +66,7 @@ function summaryDeps(result: ModelResult | (() => ModelResult) | null, over: Ove
     model: 'test-model',
     hourlyLimit: over.limit ?? 10,
     usage: {
+      consented: async () => (over as { noConsent?: boolean }).noConsent !== true,
       take: async (userId, limit) => {
         usage.takes.push({ userId, limit });
         if (over.failTake) throw new Error('database unavailable');

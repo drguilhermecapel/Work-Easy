@@ -158,7 +158,7 @@ describe('/pro/orcamentos: Sugerir itens com IA', () => {
   it('fills items, prices and notes of the form, saves nothing and leaves empty the price nobody gave', async () => {
     const user = userEvent.setup();
     await openEditor(user);
-    await user.click(screen.getByLabelText(/Pintura de parede · R\$ 35,00 por m²/));
+    await user.click(await screen.findByLabelText(/Pintura de parede · R\$ 35,00 por m²/));
     await ask(user);
 
     expect(await screen.findByText(/Sugestão aplicada ao orçamento: 2 itens/)).toBeInTheDocument();
@@ -220,7 +220,7 @@ describe('/pro/orcamentos: Sugerir itens com IA', () => {
   it('sends no reference prices unless the provider marks some, and only the ones marked', async () => {
     const user = userEvent.setup();
     await openEditor(user);
-    expect(screen.getByLabelText(/Pintura de parede · R\$ 35,00 por m²/)).not.toBeChecked();
+    expect(await screen.findByLabelText(/Pintura de parede · R\$ 35,00 por m²/)).not.toBeChecked();
     expect(screen.getByLabelText(/Visita técnica · R\$ 80,00 a R\$ 120,00 por visita/)).not.toBeChecked();
     await ask(user);
     await screen.findByText(/Sugestão aplicada/);

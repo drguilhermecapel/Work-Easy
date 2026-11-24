@@ -3,7 +3,7 @@
 // request-assist and quote-assist. The call itself is in _runtime/anthropic.ts: no tools,
 // JSON schema only. Not tested against the live API in this repository (no key here).
 import { createClassifier } from '../_runtime/anthropic.ts';
-import { audit, authenticate, config, logError, must, now, serve, serviceClient } from '../_runtime/supabase.ts';
+import { aiConsentGranted, audit, authenticate, config, logError, must, now, serve, serviceClient } from '../_runtime/supabase.ts';
 import { quotaGranted } from '../_shared/assist.ts';
 import { parseRange, SUMMARY_STATUSES, type WeekData, type WeekShift } from '../_shared/care-summary.ts';
 import { type CareSummaryDeps, handler } from './handler.ts';
@@ -32,6 +32,7 @@ const deps: CareSummaryDeps = {
     : null,
   hourlyLimit: config.assistHourlyLimit,
   usage: {
+    consented: aiConsentGranted,
     // One call to the database, serialized per user: it counts the calls granted to the user in the
     // last 60 minutes and grants one more only while below the limit (take_assist_quota, shared
     // with request-assist and quote-assist).

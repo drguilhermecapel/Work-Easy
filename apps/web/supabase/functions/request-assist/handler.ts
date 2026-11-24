@@ -14,6 +14,7 @@
 // model only after redactPersonalData (redact.ts): no CPF, CNPJ, phone, e-mail,
 // link or CEP.
 
+import { AI_CONSENT_REQUIRED_MESSAGE, type AiUsage } from '../_shared/ai-model.ts';
 import {
   ASSIST_SYSTEM_PROMPT, AssistOutputError, assistSchema, buildAssistUserMessage, type OccupationCandidate,
   parseAssistOutput, rankOccupations, TEXT_MAX, TEXT_MIN,
@@ -37,14 +38,8 @@ export type ClassifyResult =
   | { kind: 'refusal' }
   | { kind: 'incomplete'; reason: string };
 
-export interface AssistUsage {
-  /**
-   * Consumes one call of the quota of `userId` (take_assist_quota). Resolves false, without
-   * consuming anything, when `limit` calls were already granted in the last 60 minutes. A database
-   * failure rejects: the model is never called without a granted quota.
-   */
-  take(userId: string, limit: number): Promise<boolean>;
-}
+/** The same quota and consent rule of the other assistants (see AiUsage). */
+export type AssistUsage = AiUsage;
 
 export interface AssistDeps extends BaseDeps {
   /** platform_settings.request_assist_enabled is true (see requestAssistSwitchOn). A read failure rejects: nothing is sent. */
@@ -74,6 +69,10 @@ export function handler(req: Request, deps: AssistDeps): Promise<Response> {
     // What the model receives: the text without contact and document numbers
     const text = redactPersonalData(validated(Body, await readJson(req)).text);
 
+    // Consent first, like the other assistants: without the recorded agreement nothing is sent and no quota is spent
+    if (deps.hourlyLimit >= 1 && !(await deps.usage.consented(session.user.id))) {
+      throw new HttpError(403, 'assist_consent_required', AI_CONSENT_REQUIRED_MESSAGE);
+    }
     if (deps.hourlyLimit < 1 || !(await deps.usage.take(session.user.id, deps.hourlyLimit))) {
       throw errors.tooMany(
         'assist_rate_limited',

@@ -20,6 +20,7 @@ const ASSIST_MESSAGES: Record<string, string> = {
   assist_unavailable: 'A IA não conseguiu responder agora.',
   assist_busy: 'A IA está ocupada no momento. Tente de novo em instantes.',
   assist_timeout: 'A IA demorou para responder.',
+  assist_consent_required: 'Falta a sua concordância com o envio do texto à IA de terceiros.',
 };
 
 const assistError = async (err: unknown, instead: string): Promise<AppError> => {

@@ -246,10 +246,17 @@ describe('the call to the model', () => {
 
   it('takes the quota before anything else and refuses when the 60-minute quota is used up', async () => {
     const calls: Array<[string, number]> = [];
-    const usage = { take: async (id: string, limit: number) => (calls.push([id, limit]), calls.length <= 1) };
+    const usage = { consented: async () => true, take: async (id: string, limit: number) => (calls.push([id, limit]), calls.length <= 1) };
     await expect(takeQuota({ hourlyLimit: 3, usage }, 'u1', 'limite')).resolves.toBeUndefined();
     await expect(takeQuota({ hourlyLimit: 3, usage }, 'u1', 'limite')).rejects.toMatchObject({ status: 429, code: 'assist_rate_limited', message: 'limite' });
     await expect(takeQuota({ hourlyLimit: 0, usage }, 'u1', 'limite')).rejects.toMatchObject({ status: 429 });
+    // Without the recorded consent the call is refused before any quota is spent
+    const before = calls.length;
+    await expect(takeQuota({ hourlyLimit: 3, usage: { ...usage, consented: async () => false } }, 'u1', 'limite')).rejects.toMatchObject({
+      status: 403,
+      code: 'assist_consent_required',
+    });
+    expect(calls).toHaveLength(before);
     expect(calls).toEqual([['u1', 3], ['u1', 3]]); // limit 0 never reaches the database
   });
 });

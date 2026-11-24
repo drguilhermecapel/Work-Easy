@@ -25,7 +25,17 @@ export interface AiUsage {
    * failure rejects: the model is never called without a granted quota.
    */
   take(userId: string, limit: number): Promise<boolean>;
+  /**
+   * Whether the account's latest decision about the purpose `ai_assist` is a grant (consents
+   * table). The screens ask for it before showing an assistant; this is the same rule on the
+   * server, so a direct call cannot send text to the model without the recorded agreement.
+   * A database failure rejects.
+   */
+  consented(userId: string): Promise<boolean>;
 }
+
+export const AI_CONSENT_REQUIRED_MESSAGE =
+  'Para usar a ajuda com inteligência artificial, concorde antes com o envio do texto a um serviço de terceiros. O pedido aparece no próprio assistente e pode ser desfeito em Minha conta.';
 
 /** The parts of a Messages API response the assists read. */
 export interface ModelResponseLike {
@@ -65,13 +75,18 @@ export function interpretResponse(response: ModelResponseLike): ModelResult {
 
 /**
  * Takes one unit of the user's quota of the last 60 minutes before the model is asked (429 when
- * it is used up; limit 0 turns the assist off without asking the database).
+ * it is used up; limit 0 turns the assist off without asking the database). Before that, the
+ * account must have agreed to the AI assistants (403 assist_consent_required).
  */
 export async function takeQuota(
   deps: { hourlyLimit: number; usage: AiUsage },
   userId: string,
   rateLimitedMessage: string,
 ): Promise<void> {
+  // Consent first: a refusal for lack of consent must not spend the quota
+  if (deps.hourlyLimit >= 1 && !(await deps.usage.consented(userId))) {
+    throw new HttpError(403, 'assist_consent_required', AI_CONSENT_REQUIRED_MESSAGE);
+  }
   if (deps.hourlyLimit < 1 || !(await deps.usage.take(userId, deps.hourlyLimit))) {
     throw errors.tooMany('assist_rate_limited', rateLimitedMessage);
   }

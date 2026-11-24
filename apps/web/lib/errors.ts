@@ -287,6 +287,7 @@ const FUNCTION_CODES: Record<string, ErrorCode> = {
   invalid_response: 'server_error',
   method_not_allowed: 'server_error',
   assist_rate_limited: 'rate_limited',
+  assist_consent_required: 'not_allowed',
   payload_too_large: 'invalid_input',
   active_bookings: 'active_bookings',
 };
