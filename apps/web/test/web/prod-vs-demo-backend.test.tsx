@@ -115,8 +115,8 @@ describe('a build with a backend, as a visitor', () => {
     { path: '/privacidade', heading: 'Política de Privacidade', end: '/privacidade' },
     { path: '/sac', heading: 'Atendimento ao Consumidor (SAC)', end: '/sac' },
     { path: '/categorias', heading: 'Todas as categorias', end: '/categorias' },
-    // the area page is not part of this front: it still prints a demo link (reported), so only the route is checked
-    { path: '/search?category=health', end: '/categorias/health', scan: false },
+    { path: '/search?category=health', end: '/categorias/health' },
+    { path: '/categorias/limpeza', end: '/categorias/limpeza' },
   ];
 
   it.each(ROUTES)('$path ends at $end with nothing fictitious on screen', async ({ path, heading, end, scan = true }) => {

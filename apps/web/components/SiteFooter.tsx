@@ -21,12 +21,12 @@ const SiteFooter: React.FC = () => {
         <p className="text-gray-500 text-sm mb-4">Conectando quem precisa com quem sabe fazer.</p>
         {demo ? (
           <>
-            <nav aria-label="Rodapé" className="flex justify-center gap-4 text-xs text-gray-400 mb-4">
+            <nav aria-label="Rodapé" className="flex justify-center gap-4 text-xs text-gray-500 mb-4">
               <Link to="/termos" className={LINK}>Termos de Uso</Link>
               <Link to="/privacidade" className={LINK}>Privacidade</Link>
               <Link to="/register-provider" className={LINK}>Trabalhe Conosco</Link>
             </nav>
-            <p className="text-gray-400 text-xs">© 2026 WorkEasy. Protótipo de demonstração. Todos os direitos reservados.</p>
+            <p className="text-gray-500 text-xs">© 2026 WorkEasy. Protótipo de demonstração. Todos os direitos reservados.</p>
           </>
         ) : (
           <>
@@ -36,10 +36,11 @@ const SiteFooter: React.FC = () => {
                   {doc.label}
                 </Link>
               ))}
+              <Link to="/excluir-conta" className={LINK}>Excluir conta</Link>
               <Link to="/pro/cadastro" className={LINK}>Trabalhe conosco</Link>
             </nav>
             <CompanyDetails className="text-xs text-gray-500 space-y-0.5 mb-3" />
-            <p className="text-gray-400 text-xs">© {new Date().getFullYear()} {company().name ?? 'WorkEasy'}. Todos os direitos reservados.</p>
+            <p className="text-gray-500 text-xs">© {new Date().getFullYear()} {company().name ?? 'WorkEasy'}. Todos os direitos reservados.</p>
           </>
         )}
       </div>

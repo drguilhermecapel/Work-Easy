@@ -7,6 +7,7 @@ import { LAUNCH_AREA_SLUGS, SECTION, areaFacts, areaMeta, policyBadges } from '.
 import { MOCK_PROVIDERS } from '../constants';
 import { filterProviders } from '../utils/search';
 import { LAUNCH_NEIGHBORHOODS } from '../components/seo/launch';
+import { backendEnabled } from '../lib/supabase';
 import { Notice, OccupationCard, Paragraphs } from '../components/seo/Prose';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 
@@ -44,7 +45,9 @@ const AreaPage: React.FC = () => {
   if (!area) return <Navigate to="/categorias" replace />;
 
   const occupations = [...area.occupations].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
-  const hasDemoProviders = filterProviders(MOCK_PROVIDERS, { categorySlug: area.slug }).length > 0;
+  // The fictitious profiles and the health search belong to the demonstration only
+  const hasDemoProviders = !backendEnabled && filterProviders(MOCK_PROVIDERS, { categorySlug: area.slug }).length > 0;
+  const healthSearch = !backendEnabled && area.slug === 'health';
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 min-h-screen">
@@ -65,9 +68,9 @@ const AreaPage: React.FC = () => {
         </div>
       </header>
 
-      {(area.slug === 'health' || hasDemoProviders) && (
+      {(healthSearch || hasDemoProviders) && (
         <div className="flex flex-wrap gap-3 mb-6">
-          {area.slug === 'health' && (
+          {healthSearch && (
             <Link to="/health" className="inline-flex items-center min-h-11 text-sm font-medium bg-teal-50 text-teal-700 px-4 py-2 rounded-full hover:bg-teal-100">
               Buscar profissionais de saúde
             </Link>

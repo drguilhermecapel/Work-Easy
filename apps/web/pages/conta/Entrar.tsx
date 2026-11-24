@@ -216,11 +216,11 @@ const Entrar: React.FC = () => {
               />
               <span>
                 Li e aceito os{' '}
-                <Link to="/legal" className="text-primary underline">
+                <Link to="/termos" className="text-primary underline">
                   Termos de Uso
                 </Link>{' '}
                 e a{' '}
-                <Link to="/legal" className="text-primary underline">
+                <Link to="/privacidade" className="text-primary underline">
                   Política de Privacidade
                 </Link>
                 .

@@ -56,11 +56,11 @@ const TermsGate: React.FC<{ userId: string; children?: ReactNode; onAccepted?: (
           <input type="checkbox" className="mt-1" checked={acceptedTerms} onChange={e => setAcceptedTerms(e.target.checked)} />
           <span>
             Li e aceito os{' '}
-            <Link to="/legal" className="text-primary underline">
+            <Link to="/termos" className="text-primary underline">
               Termos de Uso
             </Link>{' '}
             e a{' '}
-            <Link to="/legal" className="text-primary underline">
+            <Link to="/privacidade" className="text-primary underline">
               Política de Privacidade
             </Link>
             .
