@@ -1,10 +1,7 @@
 import { formatCents } from '../lib/money';
-import { AppError } from '../lib/errors';
-import { toE164BR } from '../lib/phone';
 import type { Tables } from '../lib/database.types';
 import { db, invokeFunction, unwrap } from './client';
 import { guard } from './proErrors';
-import { parseCpfCnpj } from './proFormat';
 
 // Charges for the provider's own clients, made in the provider's Asaas
 // subaccount by the charges-create function. Card data never reaches the app:
@@ -41,28 +38,22 @@ export interface NewCharge {
   /** "YYYY-MM-DD"; empty = the server picks tomorrow. */
   dueDate?: string;
   description?: string;
-  customer: { cpfCnpj: string; name?: string; email?: string; phone?: string };
+  /**
+   * The CRM client who pays. Needed only when the booking or quote is not linked to one (a linked
+   * item keeps its own client; naming another is refused). The payer's name and document come
+   * from the CRM record, never from the request: the document must be saved there first.
+   */
+  providerClientId?: string;
 }
 
 /** Charges an own booking or an accepted quote. Needs the Pro plan and an active receiving account (the function checks both). */
 export const createCharge = (input: NewCharge): Promise<ChargeResult> =>
   guard(async () => {
-    const cpfCnpj = parseCpfCnpj(input.customer.cpfCnpj);
-    if (!cpfCnpj) throw new AppError('cpf_cnpj_required', { message: 'Informe um CPF ou CNPJ válido do cliente.' });
-    const customer: Record<string, string> = { cpf_cnpj: cpfCnpj };
-    if (input.customer.name?.trim()) customer.name = input.customer.name.trim();
-    if (input.customer.email?.trim()) customer.email = input.customer.email.trim();
-    const typedPhone = input.customer.phone?.trim() ?? '';
-    if (typedPhone) {
-      const phone = toE164BR(typedPhone);
-      if (!phone) throw new AppError('invalid_phone');
-      customer.phone = phone;
-    }
     const body: Record<string, unknown> = {
       [input.target.kind === 'booking' ? 'booking_id' : 'quote_id']: input.target.id,
       method: input.method,
-      customer,
     };
+    if (input.providerClientId) body.provider_client_id = input.providerClientId;
     if (input.dueDate) body.due_date = input.dueDate;
     if (input.description?.trim()) body.description = input.description.trim();
     return invokeFunction<ChargeResult>('charges-create', body);

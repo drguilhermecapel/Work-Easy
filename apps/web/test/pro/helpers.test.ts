@@ -298,8 +298,8 @@ describe('CSV exports', () => {
 
   it('writes the clients with contact data only, never the private notes', () => {
     const csv = clientsCsv([
-      { id: 'c1', client_id: null, name: 'Carlos Dias', phone: '+5511987654321', email: 'carlos@example.com', notes: 'Prefere de manhã', origin: 'own', created_at: '2026-10-01T12:00:00Z' },
-      { id: 'c2', client_id: 'u1', name: '=cmd|calc', phone: null, email: null, notes: null, origin: 'platform', created_at: '2026-10-02T12:00:00Z' },
+      { id: 'c1', client_id: null, name: 'Carlos Dias', phone: '+5511987654321', email: 'carlos@example.com', notes: 'Prefere de manhã', origin: 'own', cpf_cnpj: null, created_at: '2026-10-01T12:00:00Z' },
+      { id: 'c2', client_id: 'u1', name: '=cmd|calc', phone: null, email: null, notes: null, origin: 'platform', cpf_cnpj: null, created_at: '2026-10-02T12:00:00Z' },
     ]);
     expect(csv).toBe(
       '﻿Nome;Celular;E-mail;Origem;Cadastrado em\r\n' +

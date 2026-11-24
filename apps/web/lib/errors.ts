@@ -67,6 +67,7 @@ export type ClientErrorCode =
   | 'pro_required'
   | 'profile_incomplete'
   | 'cpf_cnpj_required'
+  | 'customer_document_missing'
   // Edge Functions (conflicts of payments, charges, subscriptions and onboarding)
   | 'already_paid'
   | 'booking_not_canceled'
@@ -174,6 +175,7 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   pro_required: 'Este recurso faz parte do plano Pro.',
   profile_incomplete: 'Complete seu nome em Minha conta antes de continuar.',
   cpf_cnpj_required: 'Informe o CPF ou CNPJ para continuar.',
+  customer_document_missing: 'Cadastre o CPF ou CNPJ do cliente no CRM antes de cobrar.',
   already_paid: 'Este item já foi pago. Não é possível cobrar de novo.',
   booking_not_canceled: 'A cobrança só é cancelada depois que o atendimento é cancelado.',
   booking_not_chargeable: 'Este atendimento não pode ser cobrado na situação atual.',
