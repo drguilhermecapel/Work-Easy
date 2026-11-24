@@ -64,7 +64,7 @@ jobs:
           retention-days: 7
 
       - name: Android (debug APK)
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 21
@@ -81,9 +81,10 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
-      # Fixed Rust (src-tauri/Cargo.toml rust-version): a new stable release does not change the build
-      - uses: dtolnay/rust-toolchain@1.90.0
-      - uses: Swatinem/rust-cache@v2
+      # Fixed Rust (src-tauri/Cargo.toml rust-version): a new stable release does not change the build.
+      # The action has a branch per Rust version; the SHA is the tip of its 1.90.0 branch.
+      - uses: dtolnay/rust-toolchain@547f64eaa184fd62768e02b77019e5408713ca53 # 1.90.0
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: apps/web/src-tauri
       - name: Linux desktop (deb, AppImage)
@@ -110,9 +111,10 @@ jobs:
           cache: npm
           cache-dependency-path: apps/web/package-lock.json
       - run: npm ci
-      # Fixed Rust (src-tauri/Cargo.toml rust-version): a new stable release does not change the build
-      - uses: dtolnay/rust-toolchain@1.90.0
-      - uses: Swatinem/rust-cache@v2
+      # Fixed Rust (src-tauri/Cargo.toml rust-version): a new stable release does not change the build.
+      # The action has a branch per Rust version; the SHA is the tip of its 1.90.0 branch.
+      - uses: dtolnay/rust-toolchain@547f64eaa184fd62768e02b77019e5408713ca53 # 1.90.0
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: apps/web/src-tauri
       - name: Windows desktop (msi, exe)
@@ -139,9 +141,10 @@ jobs:
           cache: npm
           cache-dependency-path: apps/web/package-lock.json
       - run: npm ci
-      # Fixed Rust (src-tauri/Cargo.toml rust-version): a new stable release does not change the build
-      - uses: dtolnay/rust-toolchain@1.90.0
-      - uses: Swatinem/rust-cache@v2
+      # Fixed Rust (src-tauri/Cargo.toml rust-version): a new stable release does not change the build.
+      # The action has a branch per Rust version; the SHA is the tip of its 1.90.0 branch.
+      - uses: dtolnay/rust-toolchain@547f64eaa184fd62768e02b77019e5408713ca53 # 1.90.0
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: apps/web/src-tauri
       - name: macOS desktop (dmg)

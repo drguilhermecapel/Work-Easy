@@ -1260,7 +1260,7 @@ isOneToOne: false
                   ]
                 },"admin_open_disputes": {
                   Row: {
-                    "booking_id": string | null,"client_id": string | null,"client_name": string | null,"disputed_at": string | null,"occupation_slug": string | null,"origin": Database["public"]['Enums']["booking_origin"] | null,"payment_statuses": (Database["public"]['Enums']["payment_status"])[] | null,"period": unknown,"platform_fee_cents": number | null,"price_cents": number | null,"provider_id": string | null,"provider_name": string | null
+                    "booking_id": string,"client_id": string | null,"client_name": string | null,"disputed_at": string | null,"occupation_slug": string,"origin": Database["public"]['Enums']["booking_origin"],"payment_statuses": (Database["public"]['Enums']["payment_status"])[] | null,"period": unknown,"platform_fee_cents": number,"price_cents": number,"provider_id": string | null,"provider_name": string | null
                   }
                   ComputedFields: never
                   Relationships: [
@@ -1292,7 +1292,7 @@ isOneToOne: false
                   ]
                 },"admin_payments_attention": {
                   Row: {
-                    "action": string | null,"amount_cents": number | null,"at": string | null,"audit_id": number | null,"booking_id": string | null,"data": Json | null,"method": Database["public"]['Enums']["payment_method"] | null,"payment_id": string | null,"provider_id": string | null,"status": Database["public"]['Enums']["payment_status"] | null
+                    "action": string,"amount_cents": number,"at": string,"audit_id": number,"booking_id": string | null,"data": NonNullable<Json>,"method": Database["public"]['Enums']["payment_method"],"payment_id": string,"provider_id": string | null,"status": Database["public"]['Enums']["payment_status"]
                   }
                   ComputedFields: never
                   Relationships: [
@@ -1324,7 +1324,7 @@ isOneToOne: false
                   ]
                 },"admin_provider_queue": {
                   Row: {
-                    "created_at": string | null,"display_name": string | null,"documents_accepted": number | null,"documents_rejected": number | null,"documents_submitted": number | null,"full_name": string | null,"occupations": (string)[] | null,"occupations_to_approve": number | null,"phone": string | null,"provider_id": string | null,"registries_to_review": number | null,"slug": string | null,"status": Database["public"]['Enums']["provider_status"] | null
+                    "created_at": string,"display_name": string,"documents_accepted": number | null,"documents_rejected": number | null,"documents_submitted": number | null,"full_name": string | null,"occupations": (string)[] | null,"occupations_to_approve": number | null,"phone": string | null,"provider_id": string,"registries_to_review": number | null,"slug": string,"status": Database["public"]['Enums']["provider_status"]
                   }
                   ComputedFields: never
                   Relationships: [

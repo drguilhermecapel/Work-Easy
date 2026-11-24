@@ -10,7 +10,7 @@ import { useAsync } from '../../lib/useAsync';
 import { createCharge, listMyPayments, type ChargeResult, type PaymentMethod, type PaymentRow } from '../../services/charges';
 import { getMyPaymentAccount } from '../../services/proBilling';
 import { listMyBookings, type BookingView } from '../../services/proAgenda';
-import { listClients, saveClient, saveClientDocument } from '../../services/proClients';
+import { listClients, saveClient, saveClientDocument, type ClientRow } from '../../services/proClients';
 import { formatPeriodBR } from '../../services/proFormat';
 import { listQuotes, type QuoteRow } from '../../services/quotes';
 import { formatPhoneBR } from '../../lib/phone';
@@ -100,6 +100,10 @@ const ChargeForm: React.FC<{ data: Data; initialTarget: string; onCreated: () =>
   const [error, setError] = useState<unknown>(null);
   const [problem, setProblem] = useState<Problem | null>(null);
   const [result, setResult] = useState<ChargeResult | null>(null);
+  // The CRM list read again after a try that changed it (a client registered, a document saved) and then failed:
+  // without it the form keeps the list of the page load and asks again for a document that is already saved
+  const [freshClients, setFreshClients] = useState<ClientRow[] | null>(null);
+  const clients = freshClients ?? data.clients;
 
   const [kind, targetId] = target.split(':');
   const booking = kind === 'booking' ? data.bookings.find(item => item.id === targetId) : undefined;
@@ -107,7 +111,7 @@ const ChargeForm: React.FC<{ data: Data; initialTarget: string; onCreated: () =>
   // A booking or a quote linked to a CRM client keeps that client: the function refuses any other one
   const linkedId = booking?.provider_client_id ?? quote?.provider_client_id ?? null;
   const chosenId = linkedId ?? pickedClient;
-  const client = data.clients.find(item => item.id === chosenId) ?? null;
+  const client = clients.find(item => item.id === chosenId) ?? null;
   // An unlinked quote can register its own client in the CRM from the name and the phone it carries
   const canCreate = Boolean(quote && !linkedId && quote.client_name?.trim());
   const creating = chosenId === NEW_CLIENT;
@@ -129,6 +133,25 @@ const ChargeForm: React.FC<{ data: Data; initialTarget: string; onCreated: () =>
     document.getElementById(field)?.focus();
   };
 
+  /**
+   * Reads the CRM list again after a failed try that registered `clientId` or saved its document. A client registered
+   * for the quote becomes the picked one, and a document now on file is not asked for again. If the list cannot be
+   * read, the form stays as it was (the document is asked again, and saving it again is harmless).
+   */
+  const refreshClients = async (clientId: string) => {
+    let fresh: ClientRow[];
+    try {
+      fresh = await listClients(provider.id);
+    } catch {
+      return;
+    }
+    setFreshClients(fresh);
+    const saved = fresh.find(item => item.id === clientId);
+    if (!saved) return;
+    if (!linkedId) setPickedClient(saved.id);
+    if (saved.cpf_cnpj) setCpfCnpj('');
+  };
+
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
@@ -138,12 +161,17 @@ const ChargeForm: React.FC<{ data: Data; initialTarget: string; onCreated: () =>
     if (!chosenId) return reject('cob-cliente', 'Escolha o cliente que paga.');
     if (needsDocument && !cpfCnpj.trim()) return reject('cob-documento', errorMessage(new AppError('cpf_cnpj_required')));
     setBusy(true);
+    // Whether this try wrote to the CRM: then a failure further on reads the client list again
+    let changedClient: string | null = null;
     try {
       // The payer's name and document come from the CRM record: save the document there first
       let clientId = chosenId;
       if (creating && createdClientId) {
         clientId = createdClientId;
-        if (cpfCnpj.trim()) await saveClientDocument(createdClientId, cpfCnpj);
+        if (cpfCnpj.trim()) {
+          await saveClientDocument(createdClientId, cpfCnpj);
+          changedClient = createdClientId;
+        }
       } else if (creating) {
         const created = await saveClient({
           providerId: provider.id,
@@ -152,9 +180,11 @@ const ChargeForm: React.FC<{ data: Data; initialTarget: string; onCreated: () =>
           cpfCnpj,
         });
         clientId = created.id;
+        changedClient = created.id;
         setCreatedClient({ target, id: created.id });
       } else if (cpfCnpj.trim()) {
         await saveClientDocument(chosenId, cpfCnpj);
+        changedClient = chosenId;
       }
       setResult(
         await createCharge({
@@ -166,11 +196,13 @@ const ChargeForm: React.FC<{ data: Data; initialTarget: string; onCreated: () =>
         }),
       );
       setCpfCnpj('');
+      setFreshClients(null);
       onCreated();
     } catch (err) {
       // The document that the CRM or the function refuses belongs to its field; anything else goes below the form
       if (err instanceof AppError && err.code === 'cpf_cnpj_required') reject('cob-documento', errorMessage(err));
       else setError(err);
+      if (changedClient) await refreshClients(changedClient);
     } finally {
       setBusy(false);
     }
@@ -250,7 +282,7 @@ const ChargeForm: React.FC<{ data: Data; initialTarget: string; onCreated: () =>
               >
                 <option value="">Escolha…</option>
                 {canCreate && <option value={NEW_CLIENT}>{`Cadastrar ${quote?.client_name?.trim()} no CRM`}</option>}
-                {data.clients.map(item => (
+                {clients.map(item => (
                   <option key={item.id} value={item.id}>
                     {item.name}
                   </option>

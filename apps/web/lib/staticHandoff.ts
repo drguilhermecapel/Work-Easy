@@ -10,6 +10,9 @@ import { createRoot, type Root } from 'react-dom/client';
 // Here React is mounted in a hidden sibling of the static page. The static page stays on screen, untouched,
 // until the route has its first useful render (the lazy page is in and the rules it waits for are in), and
 // only then is it swapped for the React tree in one step. See docs/arquitetura/seo-pwa.md, section 10.1.
+//
+// When the React tree fails before the swap (a route chunk that does not load, a crash caught by the
+// ErrorBoundary), the swap is called off: the readable static page stays and a discreet notice offers a reload.
 
 /** The page scripts/prerender.mjs writes: the only child of #root that is static content. */
 const STATIC_PAGE = ':scope > main[data-prerendered]';
@@ -22,6 +25,8 @@ interface Handoff {
   /** Boundaries still showing a fallback inside the route (the rules of the area, for instance). */
   pending: number;
   reveal: () => void;
+  /** Calls the swap off for good: the static page stays, with the reload notice. */
+  fail: () => void;
 }
 
 let current: Handoff | null = null;
@@ -64,6 +69,40 @@ export const useHandoffPending = (): void => {
       settle(handoff);
     };
   }, []);
+};
+
+/**
+ * Called by the ErrorBoundary when it catches an error. While the static page is still on screen, the swap is
+ * called off: the visitor keeps reading it (focus and scroll untouched) and a notice (role="status") offers a
+ * reload. Returns whether that happened; false when there is no static page or the swap is already done, and
+ * then the ErrorBoundary's own screen is what the visitor sees.
+ */
+export const keepStaticPageOnError = (): boolean => {
+  const handoff = current;
+  if (!handoff) return false;
+  handoff.fail();
+  return true;
+};
+
+/** The reload notice shown over the static page when React failed behind it. Plain DOM: the React tree is broken. */
+const failureNotice = (): HTMLElement => {
+  const notice = document.createElement('div');
+  notice.setAttribute('role', 'status');
+  notice.dataset.handoffNotice = '';
+  notice.className = 'fixed inset-x-0 bottom-0 z-50 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pointer-events-none';
+  const box = document.createElement('div');
+  box.className = 'pointer-events-auto mx-auto max-w-md rounded-2xl bg-gray-900 text-white shadow-xl px-4 py-3 flex flex-wrap items-center gap-3';
+  const text = document.createElement('p');
+  text.className = 'flex-1 min-w-48 text-sm';
+  text.textContent = 'Parte do site não carregou. Você pode continuar lendo ou recarregar a página.';
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'text-sm font-semibold bg-white text-gray-900 px-4 py-2 rounded-xl hover:bg-gray-100';
+  button.textContent = 'Recarregar';
+  button.addEventListener('click', () => window.location.reload());
+  box.append(text, button);
+  notice.append(box);
+  return notice;
 };
 
 /** The element of the new tree that stands for the one the visitor had focused in the static page. */
@@ -126,7 +165,16 @@ export const mountWithStaticHandoff = (
     if (scrollY > 0) window.scrollTo(0, scrollY);
   };
 
-  current = { routeReady: false, pending: 0, reveal };
+  const fail = (): void => {
+    if (done) return;
+    done = true;
+    current = null;
+    window.clearTimeout(timer.id);
+    // The host stays hidden with whatever the ErrorBoundary rendered; nothing on screen moves
+    rootElement.append(failureNotice());
+  };
+
+  current = { routeReady: false, pending: 0, reveal, fail };
   timer.id = window.setTimeout(reveal, timeoutMs);
 
   const root = createRoot(host);

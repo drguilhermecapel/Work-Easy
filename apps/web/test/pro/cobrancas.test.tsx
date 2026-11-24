@@ -232,6 +232,113 @@ describe('/pro/cobrancas: charging', () => {
     expect(fake.functionCalls[1].body).toMatchObject({ provider_client_id: 'cli-new' });
   });
 
+  describe('after a charge that fails, the CRM list is read again (not the whole page)', () => {
+    /** provider_clients as a small table: inserts and document updates are kept, and the list reads them. */
+    const statefulClients = () => {
+      const rows = CLIENTS.map(row => ({ ...row }));
+      let lists = 0;
+      let listFails = false;
+      fake.tables.provider_clients = (call: TableCall) => {
+        if (call.op === 'insert') {
+          const row = { id: 'cli-new', client_id: null, email: null, notes: null, origin: 'own', created_at: '2026-11-01T00:00:00Z', cpf_cnpj: null, ...(call.payload as object) };
+          rows.push(row as (typeof rows)[number]);
+          return ok(row);
+        }
+        if (call.op === 'update') {
+          const id = call.filters.find(([, column]) => column === 'id')?.[2];
+          const row = rows.find(item => item.id === id)!;
+          Object.assign(row, call.payload);
+          return ok(row);
+        }
+        lists += 1;
+        if (listFails) return { data: null, error: { code: '08006', message: 'connection failure', details: null, hint: null } };
+        return ok(rows.map(row => ({ ...row })));
+      };
+      return { reads: () => lists, failListsFromNow: () => void (listFails = true) };
+    };
+    const failingOnce = () => {
+      let attempts = 0;
+      fake.functionsHandlers['charges-create'] = () => {
+        attempts += 1;
+        return attempts === 1 ? functionError(502, 'payment_provider_error', 'O Asaas não respondeu.') : functionData(CHARGE);
+      };
+    };
+    const reads = (table: string) => fake.tableCalls.filter(call => call.table === table && call.op === 'select').length;
+
+    it('a document saved for the linked client is not asked again: the field becomes optional and empty', async () => {
+      setup(providerRow({ plan: 'pro' }));
+      const clients = statefulClients();
+      failingOnce();
+      const user = userEvent.setup();
+      renderPro('/pro/cobrancas?atendimento=b-1');
+      await user.type(await screen.findByLabelText('CPF ou CNPJ do cliente'), VALID_CPF);
+      const before = { clients: clients.reads(), payments: reads('payments'), quotes: reads('quotes'), bookings: reads('bookings') };
+      await user.click(screen.getByRole('button', { name: 'Criar cobrança' }));
+      await screen.findByRole('alert');
+
+      const field = await screen.findByLabelText('Trocar o CPF ou CNPJ (opcional)');
+      expect(field).toHaveValue('');
+      expect(clients.reads()).toBe(before.clients + 1);
+      // Only the CRM list: the payments, bookings and quotes of the page are not read again
+      expect({ payments: reads('payments'), quotes: reads('quotes'), bookings: reads('bookings') })
+        .toEqual({ payments: before.payments, quotes: before.quotes, bookings: before.bookings });
+
+      await user.click(screen.getByRole('button', { name: 'Criar cobrança' }));
+      expect(await screen.findByRole('heading', { name: 'Cobrança criada' })).toBeInTheDocument();
+      expect(fake.tableCalls.filter(call => call.table === 'provider_clients' && call.op === 'update')).toHaveLength(1);
+      expect(fake.functionCalls).toHaveLength(2);
+    });
+
+    it('a client registered for the quote becomes the picked client, with its document on file', async () => {
+      setup(providerRow({ plan: 'pro' }));
+      statefulClients();
+      failingOnce();
+      const user = userEvent.setup();
+      renderPro('/pro/cobrancas?orcamento=q-1');
+      await user.selectOptions(await screen.findByLabelText('Cliente do seu CRM'), 'new');
+      await user.type(screen.getByLabelText('CPF ou CNPJ do cliente'), '11.222.333/0001-81');
+      await user.click(screen.getByRole('button', { name: 'Criar cobrança' }));
+      await screen.findByRole('alert');
+
+      await waitFor(() => expect(screen.getByLabelText('Cliente do seu CRM')).toHaveValue('cli-new'));
+      expect(within(screen.getByLabelText('Cliente do seu CRM')).getByRole('option', { name: 'Marta Lima' })).toBeInTheDocument();
+      expect(screen.getByLabelText('Trocar o CPF ou CNPJ (opcional)')).toHaveValue('');
+
+      await user.click(screen.getByRole('button', { name: 'Criar cobrança' }));
+      expect(await screen.findByRole('heading', { name: 'Cobrança criada' })).toBeInTheDocument();
+      expect(fake.tableCalls.filter(call => call.table === 'provider_clients' && call.op === 'insert')).toHaveLength(1);
+      expect(fake.tableCalls.filter(call => call.table === 'provider_clients' && call.op === 'update')).toHaveLength(0);
+      expect(fake.functionCalls[1].body).toEqual({ quote_id: 'q-1', method: 'pix', provider_client_id: 'cli-new' });
+    });
+
+    it('a failure that changed nothing in the CRM does not read it again', async () => {
+      setup(providerRow({ plan: 'pro' }));
+      const clients = statefulClients();
+      failingOnce();
+      const user = userEvent.setup();
+      renderPro('/pro/cobrancas?orcamento=q-1');
+      await user.selectOptions(await screen.findByLabelText('Cliente do seu CRM'), 'cli-2');
+      const before = clients.reads();
+      await user.click(screen.getByRole('button', { name: 'Criar cobrança' }));
+      await screen.findByRole('alert');
+      expect(clients.reads()).toBe(before);
+    });
+
+    it('if the list cannot be read again, the form stays as it was and the error shown is the charge\'s', async () => {
+      setup(providerRow({ plan: 'pro' }));
+      const clients = statefulClients();
+      failingOnce();
+      const user = userEvent.setup();
+      renderPro('/pro/cobrancas?atendimento=b-1');
+      await user.type(await screen.findByLabelText('CPF ou CNPJ do cliente'), VALID_CPF);
+      clients.failListsFromNow();
+      await user.click(screen.getByRole('button', { name: 'Criar cobrança' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent(/Asaas|cobrança|tente/i);
+      expect(screen.getByLabelText('CPF ou CNPJ do cliente')).toHaveValue(VALID_CPF);
+      expect(screen.getByRole('button', { name: 'Criar cobrança' })).toBeEnabled();
+    });
+  });
+
   it('keeps the target and the payer fixed while a charge is being sent, so a late answer cannot land on another quote', async () => {
     let release: (value: Result) => void = () => {};
     fake.functionsHandlers['charges-create'] = () => new Promise<Result>(resolve => (release = resolve));

@@ -1,5 +1,6 @@
 import React from 'react';
 import { captureError } from '../lib/observability';
+import { keepStaticPageOnError } from '../lib/staticHandoff';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -11,7 +12,9 @@ interface ErrorBoundaryState {
 
 /**
  * Last line of defence for rendering errors. Shows a sentence in pt-BR (never the raw
- * error) and reports the exception to Sentry when error reporting is enabled.
+ * error) and reports the exception to Sentry when error reporting is enabled. While a
+ * prerendered static page is still on screen (lib/staticHandoff.ts), that page stays
+ * instead, with a reload notice, and this screen is left in the hidden container.
  */
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   state: ErrorBoundaryState = { failed: false };
@@ -22,6 +25,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
 
   componentDidCatch(error: unknown, info: React.ErrorInfo): void {
     captureError(error, { componentStack: info.componentStack ?? '' });
+    keepStaticPageOnError();
   }
 
   render(): React.ReactNode {

@@ -3,7 +3,8 @@ from app.main import create_app
 
 # Os testes montam o app com um ambiente explícito, sem depender de os.environ.
 client = TestClient(create_app({}))
-demo_client = TestClient(create_app({"ENABLE_DEMO_ROUTES": "true"}))
+# Desde o DD101 a demo só sobe com APP_ENV numa lista explícita de desenvolvimento.
+demo_client = TestClient(create_app({"APP_ENV": "test", "ENABLE_DEMO_ROUTES": "true"}))
 
 def test_health_check():
     res = client.get("/health")
