@@ -97,7 +97,7 @@ Demonstrações fora, faixa de protótipo fora com backend ligado, `CAMERA` fora
 | M07 | Rota `/excluir-conta` (`/termos` e `/privacidade` já existem por `config/legal.ts` e `pages/legal/routes.tsx`, com texto em elaboração); separar os dois links de `/legal` no aceite; link da Política no rodapé e em Minha conta; atualizar `CONSENT_VERSIONS` | `AppShell.tsx`, `pages/conta/Entrar.tsx`, `components/TermsGate.tsx`, `config/legal.ts` | A e B | B02, B03 **Estado em 24/11/2026:** feito, exceto `CONSENT_VERSIONS`, que só muda quando o texto final for publicado. O rodapé ganhou o link "Excluir conta"; Minha conta ainda não tem link direto para a Política. |
 | M08 | Não bloquear a página de exclusão no `robots.txt` | `public/robots.txt` | A e B | B03 **Estado em 24/11/2026:** feito (nada a mudar no arquivo: `/excluir-conta` não cai em nenhuma regra `Disallow`). |
 | M09 | Flag de build para as abas de login (E-mail e Celular), conforme D3 | `pages/conta/Entrar.tsx` | A e B | B09 **Estado em 24/11/2026:** feito: `VITE_LOGIN_METHODS` (`email`, `phone` ou os dois). |
-| M10 | `versionCode` e `versionName` por propriedade do Gradle e `signingConfig` opcional lendo `keystore.properties` (proposta na seção 14.7) | `android/app/build.gradle` | A e B | B10 **Estado em 24/11/2026:** feito: `-PappVersionCode`, `-PappVersionName` e `signingConfig` lendo `android/keystore.properties` quando o arquivo existe. Não verificado por build `release`. |
+| M10 | `versionCode` e `versionName` por propriedade do Gradle e `signingConfig` opcional lendo `keystore.properties` (proposta na seção 14.7) | `android/app/build.gradle` | A e B | B10 **Estado em 24/11/2026:** feito: `-PappVersionCode`, `-PappVersionName` e `signingConfig` lendo `android/keystore.properties` quando o arquivo existe. Provado por `bundleRelease` em 24/11/2026 (seção 14.5): sem o arquivo o `.aab` sai sem assinatura; com ele, assinado. |
 | M11 | `.gitignore`: `*.jks` e `keystore.properties` | `apps/web/.gitignore` | A e B | B10 **Estado em 24/11/2026:** feito: `*.jks`, `*.keystore` e `keystore.properties`. |
 | M12 | Manter `android:allowBackup="false"` (valor de hoje, conferido no manifesto); mudar só por decisão, porque com `true`: o backup do Android copia o armazenamento do WebView, que guarda a sessão do Supabase | manifesto | A e B | nota |
 
@@ -700,8 +700,8 @@ Notes
 | Pacote | `br.com.workeasy` | `capacitor.config.ts`, `android/app/build.gradle` |
 | `minSdk`, `compileSdk`, `targetSdk` | 24, 36, 36 | `android/variables.gradle` |
 | Android Gradle Plugin, Gradle, Java | 8.13.0, 8.14.3, Java 21 | `android/build.gradle`, `gradle-wrapper.properties`, `capacitor.build.gradle` |
-| `versionCode`, `versionName` | 1, `"1.0"` fixos | `android/app/build.gradle` |
-| Build de release | `minifyEnabled false`, sem `signingConfig` | `android/app/build.gradle` |
+| `versionCode`, `versionName` | 1 e `"1.0"` por padrão; `-PappVersionCode` e `-PappVersionName` mudam (desde 24/11/2026) | `android/app/build.gradle` |
+| Build de release | `minifyEnabled false`; `signingConfig` só se existir `android/keystore.properties` (ignorado pelo Git); manifesto de release sem `CAMERA` e sem localização | `android/app/build.gradle`, `android/app/src/release/AndroidManifest.xml` |
 | Versão do web app | `0.1.0` | `package.json` |
 
 O `targetSdk` 36 atende o requisito vigente: desde 31/08/2026, apps novos e atualizações precisam mirar o Android 16 (API 36) (G13); a extensão pedida até 01/11/2026 já expirou. Sem código nativo próprio (só Java e WebView), o app já atende a regra de páginas de 16 KB, que vale para atualizações a partir de 01/02/2027 (A09); confirme no Analisador de APK que não há `.so`.
@@ -752,7 +752,9 @@ keytool -export -rfc -keystore ~/workeasy-signing/workeasy-upload.jks \
 
 ### 14.4 Gerar o AAB assinado
 
-Pré-requisitos: Node 22, JDK 21 (Temurin, como em `.github/workflows/web-release.yml`), Android SDK com a plataforma 36 e `ANDROID_HOME` definido (ou `android/local.properties` com `sdk.dir`). **Não executei o build do Android nesta sessão**: não há Android SDK neste ambiente. Executei só `vite build --mode native` em pasta de rascunho (4 s, 3,2 MB) e os comandos de `keytool` e `jarsigner`.
+Pré-requisitos: Node 22, JDK 21 (Temurin, como em `.github/workflows/web-release.yml`), Android SDK com a plataforma 36 e `ANDROID_HOME` definido (ou `android/local.properties` com `sdk.dir`).
+
+**Atalho provado em 24/11/2026:** `bash scripts/android-release.sh` faz os passos 1 a 6 abaixo, na ordem (exige `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `APP_VERSION_CODE`, `APP_VERSION_NAME` e `ANDROID_HOME`; `VITE_SITE_URL` é comparado com o host do manifesto; `STRICT_APP_LINKS=1` falha enquanto houver placeholder de links). Ele força `VITE_STORE_BUILD=android` e confere, com `scripts/check-store-bundle.mjs`, que o `dist/` e a cópia em `android/app/src/main/assets/public` são do build de loja. Rodou até o fim com valores descartáveis do Supabase e uma chave descartável: `BUILD SUCCESSFUL`, `.aab` de ~4,0 MB, assinado, `jarsigner -verify` = `jar verified.`.
 
 ```bash
 set -euo pipefail
@@ -780,12 +782,12 @@ if grep -rIEq "sb_secret_[A-Za-z0-9_-]{16,}|service_role|SERVICE_ROLE|ASAAS_API_
 grep -rIlF "$VITE_SUPABASE_URL" dist >/dev/null || { echo "Bundle sem a URL do Supabase: build em modo demonstração"; exit 1; }
 npx cap sync android
 
-# 4. AAB de release (sem signingConfig, sai sem assinatura)
+# 4. AAB de release. Com android/keystore.properties o Gradle já assina (tarefa signReleaseBundle); sem ele sai sem assinatura.
 cd android
-./gradlew :app:bundleRelease --no-daemon
-AAB=app/build/outputs/bundle/release/app-release.aab     # caminho padrão do Gradle do Android; o log mostra o caminho real
+./gradlew :app:bundleRelease --no-daemon -PappVersionCode=1000001 -PappVersionName=1.0.0
+AAB=app/build/outputs/bundle/release/app-release.aab     # caminho conferido em 24/11/2026
 
-# 5. Assinar com a chave de upload (A04). O jarsigner pede as senhas no terminal.
+# 5. Só se o passo 4 saiu sem assinatura (sem keystore.properties): assinar com a chave de upload (A04). O jarsigner pede as senhas no terminal.
 jarsigner -keystore ~/workeasy-signing/workeasy-upload.jks "$AAB" workeasy-upload
 # (O apksigner NÃO assina AAB, A04.)
 
@@ -793,9 +795,9 @@ jarsigner -keystore ~/workeasy-signing/workeasy-upload.jks "$AAB" workeasy-uploa
 jarsigner -verify "$AAB"      # deve terminar em "jar verified."
 ```
 
-A guarda do passo 3 foi testada contra o bundle de rascunho: passa no bundle limpo e falha quando se injeta uma chave `sb_secret_` completa. O CI do repositório já faz outra varredura (`grep -rIiE "gemini|api_key" dist/` em `web-ci.yml`). [incerto] O caminho do AAB e as mensagens do Gradle: conferir no primeiro build real.
+A guarda do passo 3 foi testada contra o bundle de rascunho: passa no bundle limpo e falha quando se injeta uma chave `sb_secret_` completa. O CI do repositório já faz outra varredura (`grep -rIiE "gemini|api_key" dist/` em `web-ci.yml`). O caminho do AAB e o `BUILD SUCCESSFUL` foram conferidos num build real em 24/11/2026 (1 min 25 s numa máquina de nuvem, com as dependências em cache).
 
-Avisos esperados do `jarsigner`: certificado autoassinado e ausência de carimbo de tempo. É normal para chave de upload.
+Avisos esperados do `jarsigner`: certificado autoassinado e ausência de carimbo de tempo. É normal para chave de upload. O `jarsigner` do JDK 21 assina com SHA-384 por padrão; se o Console recusar, assine com `-sigalg SHA256withRSA -digestalg SHA-256` [incerto: não houve recusa a testar, não há conta].
 
 ### 14.5 Conferir o pacote antes de subir
 
@@ -808,13 +810,27 @@ aapt2 dump permissions /tmp/workeasy-universal.apk
 # Não pode aparecer com.google.android.gms.permission.AD_ID (G34), CAMERA, READ_MEDIA_*, RECORD_AUDIO.
 ```
 
+**Sem o `bundletool`** (foi assim que se conferiu em 24/11/2026, porque o `.jar` do `bundletool` não foi usado neste ambiente; ele é o caminho oficial e continua válido): o manifesto do módulo `base` do `.aab` está em formato protobuf. O `aapt2` do Android SDK o converte para o formato comum:
+
+```bash
+mkdir x && cd x && unzip -q ../app-release.aab 'base/*' && cd base
+mv manifest/AndroidManifest.xml . && mv dex/classes.dex . && rmdir manifest dex && rm -rf root
+zip -qr ../proto.apk . && cd .. && "$ANDROID_HOME/build-tools/36.0.0/aapt2" convert --output-format binary -o bin.apk proto.apk
+"$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging bin.apk | grep -E "^package|permission|uses-feature"
+"$ANDROID_HOME/build-tools/36.0.0/aapt2" dump xmltree --file AndroidManifest.xml bin.apk    # filtro autoVerify e host
+```
+
+Resultado no `.aab` de 24/11/2026 (perfil A, build de loja): `package: name='br.com.workeasy' versionCode='7' versionName='1.2.3'` (com `-PappVersionCode=7 -PappVersionName=1.2.3`), `targetSdkVersion 36`, `minSdkVersion 24`, **uma** permissão de uso, `android.permission.INTERNET`, mais `br.com.workeasy.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` (própria do pacote, acrescentada pelo AndroidX). Não há `CAMERA`, `ACCESS_*_LOCATION`, `uses-feature` de câmera ou GPS nem `AD_ID`. O filtro `autoVerify="true"` existe, com `scheme=https` e `host=app.workeasy.example` (ainda o de exemplo). `allowBackup=false`, `usesCleartextTraffic=false`. Não há `.so` nem pasta `base/lib`: **não existe divisão por ABI**, então o `.aab` (3,9 MB) e o APK universal (`app-release-unsigned.apk`, 4,1 MB) têm o mesmo conteúdo nativo (nenhum), e a Play só reparte por densidade e idioma de recursos. O `assets/public` do `.aab` passa em `scripts/check-store-bundle.mjs --store android`.
+
 Alternativa sem linha de comando: Android Studio > Build > Analyze APK, abrir o `.aab` e ver o `AndroidManifest.xml` mesclado (A08). Procure `.so`: não deve haver (A09).
 
 ### 14.6 Primeiro upload
 
 Testar e lançar > Teste > **Teste interno** > Criar nova versão. Na primeira versão, aceite a Assinatura de apps do Google Play, envie o `.aab`, dê um nome à versão, cole as notas (seção 15), salve, avance e inicie o lançamento (G30). Crie a lista de e-mails dos testadores e copie o link de adesão (G29). Lembre: **ao subir o primeiro artefato o nome do pacote fica fixo** (G29).
 
-### 14.7 Ajustes propostos no Gradle (não aplicados, não testados)
+### 14.7 Ajustes no Gradle (aplicados em M10 e provados em 24/11/2026; o trecho abaixo é a proposta original)
+
+O que está em `android/app/build.gradle` é parecido, com os nomes `appVersionCode` e `appVersionName` (não `versionCode`, que o Gradle já usa) e o `signingConfig` lendo `rootProject.file('keystore.properties')`. Prova: `bundleRelease` sem `keystore.properties` saiu sem assinatura (`jarsigner -verify`: `jar is unsigned.`); com um `keystore.properties` apontando para uma chave descartável saiu assinado (`jar verified.`) e `keytool -printcert -jarfile` mostrou a mesma impressão digital SHA-256 que `keytool -list -v` do `.jks`.
 
 ```groovy
 // android/app/build.gradle (proposta M10)
@@ -843,12 +859,16 @@ android {
         }
     }
 }
-// uso: ./gradlew :app:bundleRelease -PversionName=1.0.0 -PversionCode=1000001
+// uso: ./gradlew :app:bundleRelease -PappVersionName=1.0.0 -PappVersionCode=1000001
 ```
 
 O padrão com `keystore.properties` é o da documentação do Android Studio (A05). Com ele o passo 5 da seção 14.4 some.
 
 Sobre o Capacitor: a documentação do projeto diz que o app é enviado à Google Play Store "just like any other native Android app" (C01). O fluxo acima (AAB, chave de upload, Console) é o de um app Android comum.
+
+### 14.8 App Links (só o dono fecha)
+
+O manifesto verifica o host `app.workeasy.example`, que é de exemplo, e `public/.well-known/assetlinks.json` tem `TODO` no lugar da impressão digital. Nada disso se inventa: depende do domínio de produção e do **primeiro envio** ao Console. Ordem: (1) definir o domínio e trocar o host no manifesto, no entitlement iOS e em `VITE_SITE_URL`; (2) enviar o primeiro `.aab` ao teste interno, com a Assinatura de apps do Google Play ligada; (3) copiar o SHA-256 do **certificado de assinatura do app** (Play Console > Integridade do app > Assinatura de apps, não o da chave de upload) para `assetlinks.json`; (4) publicar o site e rodar `node scripts/check-app-links.mjs --strict --site-url https://<domínio>`; (5) em aparelho, `adb shell pm get-app-links br.com.workeasy` deve mostrar o host como `verified`. Detalhe e tabela do que trocar em cada arquivo: `docs/arquitetura/nativo.md`, seção 8. Sem o passo 3 o app instala e funciona, mas os links `https` abrem no navegador.
 
 ---
 
@@ -989,7 +1009,7 @@ Não envie documentos nem dados pessoais reais além dos necessários ao seu pap
 ## 20. O que não consegui verificar
 
 - **Telas do Console.** Não tenho acesso ao Play Console. Nomes de menus e passos vêm da Ajuda em pt-BR. As perguntas exatas do questionário IARC, a lista de etiquetas e o nome do menu de países só aparecem no Console.
-- **Build do Android.** Quando este texto foi escrito não havia Android SDK no ambiente e o build não foi executado; em 24/11/2026 o `assembleRelease` foi executado de verdade (ver o parágrafo logo abaixo). `./gradlew :app:bundleRelease` (o pacote AAB que a loja pede) continua não executado. Na época verifiquei só: `vite build --mode native` em pasta de rascunho (sem escrever no repositório), `keytool` e `jarsigner` com uma chave descartável (já apagada) e um pacote de mentira, o script do Apêndice B com imagens reais e de teste, e o script do Apêndice A contra este arquivo.
+- **Build do Android.** Quando este texto foi escrito não havia Android SDK no ambiente e o build não foi executado; em 24/11/2026 o `assembleRelease` foi executado de verdade (ver o parágrafo logo abaixo). `./gradlew :app:bundleRelease` (o pacote AAB que a loja pede) foi executado depois, também em 24/11/2026 (ver o fim do documento). Na época verifiquei só: `vite build --mode native` em pasta de rascunho (sem escrever no repositório), `keytool` e `jarsigner` com uma chave descartável (já apagada) e um pacote de mentira, o script do Apêndice B com imagens reais e de teste, e o script do Apêndice A contra este arquivo.
 - **OTP fixo no Supabase hospedado.** Conferi só o esquema OpenAPI (S01). Não há projeto de produção para testar, nem a semântica de `sms_test_otp_valid_until`, nem se o Auth hospedado exige provedor de SMS ligado (o `config.toml` local diz que exige). A página de login por celular do Supabase (`/docs/guides/auth/phone-login`) que abri não trata de números de teste.
 - **Política de faturamento.** Li o texto oficial (G05, G06), mas não encontrei no texto aberto uma regra para app que apenas **usa** assinatura comprada fora, nem para serviço só online. Ficam como [incerto].
 - **Pesquisa na web.** O limite de buscas da sessão acabou no meio do trabalho; as páginas foram abertas por endereço direto. O que dependia de busca ficou [incerto].
@@ -1182,4 +1202,4 @@ raise SystemExit(0 if ok else 1)
 
 ### Prova do build Android (24/11/2026)
 
-Provado em 24/11/2026 por build real (JDK 21, AGP 8.13.0, Gradle 8.14.3, compileSdk 36): `assembleDebug` e `assembleRelease` passam; `aapt2 dump badging` mostra CAMERA, localização e os dois `uses-feature` só no debug; `-PappVersionCode=7 -PappVersionName=1.2.3` dá versionCode 7 e versionName 1.2.3; com um keystore descartável o APK sai assinado (`apksigner verify`: esquema v2) e sem `keystore.properties` sai `unsigned`. **Ainda sem prova:** `bundleRelease` (AAB), instalação e execução em aparelho ou emulador, o listener `appUrlOpen` (só foi compilado), o `assetlinks.json` do domínio (o host do manifesto ainda é o de exemplo `app.workeasy.example`) e um build nativo com `VITE_STORE_BUILD=android`. O `cap sync` numa cópia de trabalho em outra pasta reescreve `android/capacitor.settings.gradle` com caminhos relativos errados: reverta esse arquivo antes de commitar.
+Provado em 24/11/2026 por build real (JDK 21, AGP 8.13.0, Gradle 8.14.3, compileSdk 36): `assembleDebug` e `assembleRelease` passam; `aapt2 dump badging` mostra CAMERA, localização e os dois `uses-feature` só no debug; `-PappVersionCode=7 -PappVersionName=1.2.3` dá versionCode 7 e versionName 1.2.3; com um keystore descartável o APK sai assinado (`apksigner verify`: esquema v2) e sem `keystore.properties` sai `unsigned`. **Também provado em 24/11/2026 (segunda rodada):** `bundleRelease` gera `app/build/outputs/bundle/release/app-release.aab` (3,9 MB, 694 entradas, nenhum `.so`); o manifesto mesclado do `.aab` (seção 14.5) declara só `INTERNET`, sem câmera nem localização, com o filtro `autoVerify="true"` e o host `app.workeasy.example`; sem `keystore.properties` o `.aab` sai sem assinatura, com ele sai assinado e `jarsigner -verify` diz `jar verified.`, com a mesma impressão digital SHA-256 do `.jks` (chave descartável de um diretório temporário, apagada, nunca versionada); `VITE_STORE_BUILD=android npm run build:native && npx cap sync android` leva ao projeto o bundle de loja, e `node scripts/check-store-bundle.mjs --store android` confirma isso em `dist/`, em `android/app/src/main/assets/public` e dentro do `.aab`. O bundle de loja tem os mesmos 212 arquivos do bundle comum, com nomes diferentes: o código da venda do Pro, da linha Cuidado e das telas de IA **continua nos arquivos**, porque os sinalizadores (`config/features.ts`) são lidos quando o app roda; o que o build de loja muda é o que o app mostra e as rotas que registra. Isso se prova por teste de tela (`test/web/store-build.test.tsx`, `store-build-pages.test.tsx`, `store-build-routes.test.tsx`) e, no bundle, por um Chrome sem cabeça sobre o `dist` em modo demonstração: `/#/cuidado` e `/#/pro/plantoes` mostram a página de "ainda não disponível" no bundle comum e caem na tela inicial no bundle de loja. A venda do Pro e as telas só existem com backend e sessão; a prova delas é a de teste (render real das rotas). **Os assistentes de IA não saem do build Android**: `features.aiAssistInBuild` só é falso no iOS (`app-store.md`, D6); no Android o rascunho de orçamento com IA (`QuoteAssist`) continua, atrás do consentimento registrado; o resumo da semana do Cuidado sai junto com a linha. O formulário de Segurança dos dados e a Política precisam continuar dizendo isso. **Ainda sem prova:** instalação e execução em aparelho ou emulador, o listener `appUrlOpen` (só foi compilado e testado em jsdom), a verificação do `assetlinks.json` pelo Google (o host do manifesto ainda é o de exemplo e a impressão digital é `TODO`; `node scripts/check-app-links.mjs --strict` falha de propósito por isso), a Assinatura de apps do Play e um envio real ao Console. O `cap sync` numa cópia de trabalho em outra pasta reescreve `android/capacitor.settings.gradle` com caminhos relativos errados: reverta esse arquivo antes de commitar.

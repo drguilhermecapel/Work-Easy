@@ -19,6 +19,15 @@ updates:
         update-types:
           - minor
           - patch
+    ignore:
+      # typescript-eslint (peer typescript < 6.1) recusa carregar com o TypeScript 7:
+      # o lint quebra. Reabrir quando o typescript-eslint suportar o 7.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
+      # Os tipos acompanham o Node do CI e dos builds (22): a major 26 liberaria APIs
+      # que não existem na versão que roda.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
@@ -33,3 +42,8 @@ updates:
         update-types:
           - minor
           - patch
+    ignore:
+      # A tag é a versão do Rust (src-tauri/Cargo.toml: rust-version 1.90), não a do
+      # action: o Dependabot a lê como se fosse e propõe subir o compilador (1.120.0
+      # derrubou os jobs de desktop do PR #12). O Rust se atualiza à mão.
+      - dependency-name: dtolnay/rust-toolchain

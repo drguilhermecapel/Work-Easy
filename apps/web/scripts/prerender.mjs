@@ -156,7 +156,9 @@ export const normalizeSiteUrl = (value, warn = () => {}) => {
 const absolute = (siteUrl, path) => (siteUrl ? `${siteUrl}${path === '/' ? '/' : path}` : path);
 
 const LINK_CLASS = 'inline-flex items-center max-sm:min-h-11 text-secondary hover:underline';
-const link = (href, text) => `<a href="${escapeHtml(href)}" class="${LINK_CLASS}">${escapeHtml(text)}</a>`;
+/** A link that sits inside running text needs more than colour to stand out (WCAG 1.4.1): underlined. */
+const INLINE_LINK_CLASS = `${LINK_CLASS} underline`;
+const link = (href, text, cls = LINK_CLASS) => `<a href="${escapeHtml(href)}" class="${cls}">${escapeHtml(text)}</a>`;
 
 const list = items =>
   `<ul class="list-disc pl-5 space-y-1 text-sm text-gray-800">${items.map(item => `<li>${item}</li>`).join('')}</ul>`;
@@ -249,7 +251,7 @@ const EXTERNAL_URL = /^https?:\/\//i;
 
 const hrefOf = url => (SAFE_URL.test(url) ? url : null);
 const anchor = (url, inner) =>
-  `<a href="${escapeHtml(url)}"${EXTERNAL_URL.test(url) ? ' rel="noopener noreferrer"' : ''} class="${LINK_CLASS}">${inner}</a>`;
+  `<a href="${escapeHtml(url)}"${EXTERNAL_URL.test(url) ? ' rel="noopener noreferrer"' : ''} class="${INLINE_LINK_CLASS}">${inner}</a>`;
 
 // Inline constructs, tried in this order when two start at the same place. Nothing else produces a tag.
 const INLINE = [
@@ -602,7 +604,7 @@ export const buildPages = ({
       `<header><h1 class="${H1_CLASS}">Todas as categorias</h1>${paragraphs([categoriesLead(indexAreas.length)])}</header>${list(
         indexAreas.map(
           area =>
-            `${link(`/categorias/${area.slug}`, area.name)}: ${escapeHtml(area.description)} (${pagedOccupations(area).length} ${
+            `${link(`/categorias/${area.slug}`, area.name, INLINE_LINK_CLASS)}: ${escapeHtml(area.description)} (${pagedOccupations(area).length} ${
               pagedOccupations(area).length === 1 ? 'serviço' : 'serviços'
             })`,
         ),

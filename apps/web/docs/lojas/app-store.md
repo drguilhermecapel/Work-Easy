@@ -35,7 +35,7 @@ Fontes são citadas como **[A1]** a **[A16]** (seção 16). Caminhos de arquivo 
 
 | # | Risco | Diretriz | Situação |
 |---|---|---|---|
-| R1 | Parecer de web empacotado. O app iOS hoje usa câmera (fotos de documento), localização opcional e o restante é o site. Sem push e sem Universal Links. | 4.2 | **Alto.** Ver 3.3. |
+| R1 | Parecer de web empacotado. O app iOS hoje usa câmera (fotos de documento) e o restante é o site; a localização só existe no Cuidado, que sai da build de loja. Sem push. Universal Links: o arquivo de entitlements existe com domínio de exemplo e falta o domínio real, o Team ID e o teste em aparelho (seção 10.4). | 4.2 | **Alto.** Ver 3.3. |
 | R2 | Exclusão de conta recusada quando há atendimento ativo (HTTP 409). | 5.1.1(v) | Médio. Ver 8. |
 | R3 | Build de Xcode: o Capacitor 8 exige Xcode 26.0 ou mais novo, e o envio exige SDK do iOS 26 desde 28/04/2026. | Requisito de upload | Exige um Mac com Xcode 26. Ver 11. |
 
@@ -99,7 +99,7 @@ Cada fato abaixo foi conferido no código ou na documentação do repositório. 
 | F17 | Idioma: `CFBundleDevelopmentRegion = pt-BR`. Só há textos em português. | `ios/App/App/Info.plist` |
 | F18 | Projeto Xcode: bundle `br.com.workeasy`; `IPHONEOS_DEPLOYMENT_TARGET = 15.0`; `TARGETED_DEVICE_FAMILY = "1,2"`; `MARKETING_VERSION = 1.0`; `CURRENT_PROJECT_VERSION = 1`; `CODE_SIGN_STYLE = Automatic`; **sem `DEVELOPMENT_TEAM`**. | `ios/App/App.xcodeproj/project.pbxproj` |
 | F19 | Não há arquivo `.xcscheme` compartilhado no repositório. O script `ios:build` usa `-scheme App`. Pode falhar no `xcodebuild` sem o esquema compartilhado. [incerto] | busca por `*.xcscheme` em `ios/` (nenhum resultado) |
-| F20 | Capacitor 8.5.2 (`package.json`). Pacote Swift em `ios/App/CapApp-SPM/Package.swift`, com iOS 15. Não há `entitlements`. Universal Links pendentes. | `package.json`; `docs/arquitetura/nativo.md` §3.4 |
+| F20 | Capacitor 8.5.2 (`package.json`). Pacote Swift em `ios/App/CapApp-SPM/Package.swift`, com iOS 15. Desde 24/11/2026 há `ios/App/App/App.entitlements` (`applinks:` de **exemplo**) ligado ao alvo `App`; Universal Links continuam pendentes do domínio e do Team ID. | `package.json`; `docs/arquitetura/nativo.md` §3.4 e §8 |
 | F21 | Sem fastlane no repositório. | busca em `ios/` |
 
 ---
@@ -147,7 +147,7 @@ A conta precisa ser de **organização** (ver também B5 e a decisão de abrir a
 | **3.1.1** Compra no app | "If you want to unlock features or functionality within your app, (by way of example: subscriptions, ...) you must use in-app purchase." [A1] | Plano Pro cobrado por Asaas fora do app. | **B3.** Seção 3.2. |
 | **3.1.3(d)** Serviço em tempo real entre duas pessoas | "If your app enables the purchase of real-time person-to-person services between two individuals (for example tutoring students, medical consultations, real estate tours, or fitness training), you may use purchase methods other than in-app purchase to collect those payments. One-to-few and one-to-many real-time services must use in-app purchase." [A1] | Pode servir para aulas individuais, mas não para aulas em grupo. | Ver 3.2. |
 | **3.1.3(e)** Bens e serviços fora do app | "If your app enables people to purchase physical goods or services that will be consumed outside of the app, you must use purchase methods other than in-app purchase to collect those payments, such as Apple Pay or traditional credit card entry." [A1] | Pagamento de pintura, faxina e reparo na casa do cliente, por Pix ou cartão. É o caso previsto. | Ver 3.2 (resposta pronta). |
-| **4.2** Funcionalidade mínima | "Your app should include features, content, and UI that elevate it beyond a repackaged website." [A1] | Marketplace com pedidos, propostas, agenda, pagamento e avaliação. Recursos nativos: câmera, seletor de fotos e localização opcional. Sem push. | **R1.** Ver 3.3. |
+| **4.2** Funcionalidade mínima | "Your app should include features, content, and UI that elevate it beyond a repackaged website." [A1] | Marketplace com pedidos, propostas, agenda, pagamento e avaliação. Recursos nativos: câmera e seletor de fotos (a localização opcional é do Cuidado, fora da build de loja). Sem push. | **R1.** Ver 3.3. |
 | **4.8** Login | Exige outra opção de login se houver login de terceiros. Não se aplica se o app "exclusively uses your company's own account setup and sign-in systems." [A1] | Só login próprio por código (F01, F02). | Nada a fazer, enquanto não houver login social. |
 | **5.1.1(i)** Política de privacidade | "All apps must include a link to their privacy policy in the App Store Connect metadata field and within the app in an easily accessible manner." [A1] | Política em rascunho (F15). | **B1.** Seção 3.5. |
 | **5.1.1(v)** Exclusão de conta | "If your app supports account creation, you must also offer account deletion within the app." [A1] | Existe (F11). Recusa com atendimento ativo. | **R2.** Seção 8. |
@@ -177,7 +177,7 @@ Se a Apple perguntar sobre aulas individuais em tempo real, acrescentar a refer�
 A diretriz 4.2 pede que o app vá além de um site empacotado. Pelo que o repositório mostra hoje, o argumento é possível, mas é fraco se o revisor testar só a versão de demonstração:
 
 - O app não é um site com links: tem conta, pedidos, propostas, agenda, pagamentos, documentos e histórico. A Apple diz que apps "shouldn't primarily be marketing materials, advertisements, web clippings, content aggregators, or a collection of links" [A1, 4.2.2]. O WorkEasy não é isso, mas só se o backend estiver no ar.
-- Recursos do aparelho em uso: câmera para fotografar documentos (F08); seletor de fotos; localização opcional (F07). Em iOS, isso não basta para ser "app-like" por si só.
+- Recursos do aparelho em uso na build de loja: câmera para fotografar documentos (F08) e seletor de fotos. A localização opcional (F07) só existe no Cuidado, que sai da versão. Em iOS, isso não basta para ser "app-like" por si só.
 - **Não há** notificações push nem Universal Links. A ausência de push é um ponto fraco, porque o aviso de nova proposta hoje vai por WhatsApp e e-mail (F10).
 - Recomendação: incluir nas notas um texto específico sobre o que o revisor deve testar (seção 7.5) e tratar push e Universal Links como itens do produto [PLANEJADO], não como promessa de nota.
 
@@ -377,7 +377,7 @@ Finalidades usadas: **App Functionality** (funcionalidade do app) e **Analytics*
 | Financial Info | Payment Info | **Não** | — | — | — | cartão digitado na página do Asaas; o app não recebe o número (F04) | — |
 | Identifiers | User ID | Sim | Sim | Não | App Functionality | `auth.uid()` | Declarado |
 | Identifiers | Device ID | Não encontrado | — | — | — | busca no código | — |
-| Location | Precise Location | Sim, só com consentimento e só se o Cuidado estiver na build | Sim | Não | App Functionality | `checkins.lat`, `checkins.lng` (F07) | Declarado. Se D4 excluir o Cuidado: **Não**. |
+| Location | Precise Location | Sim, só com consentimento e só se o Cuidado estiver na build | Sim | Não | App Functionality | `checkins.lat`, `checkins.lng` (F07) | Fora da build de loja (D4): **Não declarar**, e já não está no manifesto nem no `Info.plist`. Declarar de novo se o Cuidado entrar. |
 | Location | Coarse Location | Não | — | — | — | — | — |
 | User Content | Photos or Videos | Sim (profissional) | Sim | Não | App Functionality | fotos de documentos no bucket `provider-documents` (F08) | Declarado. Se houver selfie, mesma categoria. |
 | User Content | Other User Content | Sim | Sim | Não | App Functionality | `requests.description`, `proposals.message`, `reviews.comment`, `daily_reports`, itens de orçamento | Declarado |
@@ -407,7 +407,7 @@ Agenda de contatos, identificador de publicidade, histórico de navegação, his
 
 ### 5.5 Manifesto de privacidade (`ios/App/App/PrivacyInfo.xcprivacy`)
 
-O arquivo existe e está no alvo do Xcode (`project.pbxproj`, linhas 18, 32, 76 e 150). Ele declara 9 tipos, todos vinculados, sem rastreamento e com finalidade `AppFunctionality`: e-mail, telefone, nome, identificador, localização precisa, fotos, outro conteúdo do usuário, outro contato e histórico de compras.
+O arquivo existe e está no alvo do Xcode (`project.pbxproj`, linhas 18, 32, 76 e 150). Ele declara 8 tipos, todos vinculados, sem rastreamento e com finalidade `AppFunctionality`: e-mail, telefone, nome, identificador, fotos, outro conteúdo do usuário, outro contato e histórico de compras. A localização precisa foi retirada em 24/11/2026, junto com a chave `NSLocationWhenInUseUsageDescription` do `Info.plist`, porque só servia ao Cuidado (D4); o comentário do arquivo diz como restaurar quando o Cuidado entrar no iOS.
 
 **Faltam para bater com a ficha (seção 5.2):** `NSPrivacyCollectedDataTypePhysicalAddress`, `NSPrivacyCollectedDataTypeOtherFinancialInfo`, `NSPrivacyCollectedDataTypeProductInteraction` (finalidade Analytics) e, se o Sentry entrar, `NSPrivacyCollectedDataTypeCrashData` e `NSPrivacyCollectedDataTypeOtherDiagnosticData`. [incerto: os identificadores seguem o padrão do arquivo atual; a página de dados do manifesto não abriu, então conferir os nomes exatos antes de enviar.]
 
@@ -508,7 +508,7 @@ NÃO FAZ PARTE DESTA VERSÃO
 
 PAGAMENTOS: os serviços são executados fora do app (pintura, faxina, reparo). O pagamento é feito pelo app: por Pix (código no próprio app) ou cartão (em página do processador de pagamentos). Essa forma corresponde à diretriz 3.1.3(e). Não é necessário pagar para testar a revisão.
 
-RECURSOS NATIVOS: câmera (fotos de documentos no cadastro de profissional), seletor de fotos e localização opcional (usada só no registro de plantão, que não existe nesta versão).
+RECURSOS NATIVOS: câmera (fotos de documentos no cadastro de profissional) e seletor de fotos. Esta versão não pede localização.
 
 CONTATO: [E-MAIL DE SUPORTE] | Política de privacidade: [URL]
 ```
@@ -565,13 +565,13 @@ CONTATO: [E-MAIL DE SUPORTE] | Política de privacidade: [URL]
 |---|---|---|---|---|
 | `CFBundleDevelopmentRegion` | `pt-BR` | — | Correto | Nenhuma |
 | `CFBundleDisplayName` | `WorkEasy` | — | Correto | Nenhuma |
-| `NSCameraUsageDescription` | "A câmera serve para fotografar um documento no seu cadastro de prestador, que é enviado para análise logo depois. **Também mostra a prévia na tela de verificação de identidade, sem enviar imagens.**" | Sim, `captureFile` no cadastro. A prévia só existe na demonstração. | **A segunda frase é falsa na build com backend** (F09). | Trocar pelo texto abaixo. |
-| `NSLocationWhenInUseUsageDescription` | "A localização é usada apenas quando você registra a entrada ou a saída de um plantão ..." | Sim, `locate()` no check-in. | Verdadeiro, mas só se o Cuidado estiver na build. | Manter se D4 for revertida. Se não, remover a chave (sem uso, sem texto). |
+| `NSCameraUsageDescription` | **Corrigida em 24/11/2026** para o texto abaixo (a frase sobre a prévia da verificação de identidade saiu: era falsa na build com backend, F09). | Sim, `captureFile` no cadastro. A prévia só existe na demonstração. | Verdadeira. [incerto: não testado em iPhone] | Nenhuma. |
+| `NSLocationWhenInUseUsageDescription` | **Removida em 24/11/2026** (era: "A localização é usada apenas quando você registra a entrada ou a saída de um plantão ..."). | `locate()` só no check-in do Cuidado, fora da build de loja. | Sem uso na build de loja. | Restaurar o texto, e a localização no `PrivacyInfo.xcprivacy`, se D4 for revertida. |
 | `NSPhotoLibraryUsageDescription` | "Você escolhe uma foto da galeria para anexar um documento ao seu cadastro. O WorkEasy não lê as outras fotos." | Seletor de arquivos aceita imagem. [incerto: se o seletor do WebKit usa a biblioteca de fotos] | Correto. | Manter. |
 | `UIRequiredDeviceCapabilities` | `armv7` | — | Resquício apontado em `docs/arquitetura/nativo.md`, 3.4. [incerto: efeito na lista de aparelhos] | Não mudar sem testar em TestFlight. |
 | `ITSAppUsesNonExemptEncryption` | **Ausente** | — | A página da chave não abriu. [incerto] | Decidir na App Store Connect. Se o app só usa HTTPS padrão, a chave costuma ser `false`. Confirmar. |
 | `UIBackgroundModes`, `aps-environment` | Ausentes | — | Sem push (F10) | Nenhuma, até haver push [PLANEJADO]. |
-| Entitlements `com.apple.developer.associated-domains` | Ausente | — | Universal Links pendentes (F20) | [PLANEJADO]: depende do domínio real e do Team ID. |
+| Entitlements `com.apple.developer.associated-domains` | **Criado em 24/11/2026**: `ios/App/App/App.entitlements`, `applinks:app.workeasy.example` (**placeholder**), registrado no projeto Xcode (`CODE_SIGN_ENTITLEMENTS`). | Universal Links (`SceneDelegate` repassa o link ao Capacitor). | Pendente do dono: domínio real, Team ID, capacidade no App ID, teste em iPhone. Não aberto no Xcode (sem macOS). | Ver 10.4 e `docs/arquitetura/nativo.md`, seção 8. |
 
 **Texto proposto para `NSCameraUsageDescription` (build com backend):**
 
@@ -584,7 +584,7 @@ O WorkEasy usa a câmera para fotografar os documentos exigidos no seu cadastro 
 | Chave | Estado | Ação |
 |---|---|---|
 | `NSCameraUsageDescription` | "A câmera é usada apenas para mostrar a prévia na tela de verificação de identidade. **Nenhuma imagem é enviada ou armazenada.**" | **Falsa na build com backend**: a prévia de verificação não existe nela (F09). No desktop, o cadastro usa o seletor de arquivos e não há `getUserMedia` (`docs/lojas/desktop-e-assinatura.md`). Uso de câmera no Mac [incerto]: remover a chave, ou trocar só se o teste no Mac mostrar a câmera. |
-| `NSLocationWhenInUseUsageDescription` | Mesmo texto do iOS | Mesma decisão de D4. |
+| `NSLocationWhenInUseUsageDescription` | Mesmo texto do iOS (no iOS já foi removida; no macOS não mexi, o arquivo é do desktop) | Mesma decisão de D4. |
 | `NSPhotoLibraryUsageDescription` | Ausente | Não é necessária se não houver acesso à biblioteca. [incerto] |
 
 **Texto proposto para o macOS (só se a câmera for usada no Mac):**
@@ -599,7 +599,7 @@ Ver seção 5.5. Alinhar a lista com a ficha antes de enviar.
 
 ### 10.4 Entitlements
 
-O repositório não tem arquivo de entitlements, nem para iOS nem para macOS. Para Universal Links, para push e para a Mac App Store, o arquivo precisa ser criado. [PLANEJADO]
+iOS: `ios/App/App/App.entitlements` existe desde 24/11/2026, só com `com.apple.developer.associated-domains` (`applinks:app.workeasy.example`, **placeholder** marcado no arquivo), e o `project.pbxproj` aponta para ele nas configurações Debug e Release do alvo `App` (edição mínima: uma referência de arquivo, a entrada no grupo e `CODE_SIGN_ENTITLEMENTS`; o arquivo não vai para a fase Resources). A edição foi feita à mão e **não foi aberta no Xcode**: conferi o plist, o pareamento das referências e o script `scripts/check-app-links.mjs`; o primeiro `xcodebuild` no Mac é o teste de verdade (o `npm run ios:build` usa `CODE_SIGNING_ALLOWED=NO`, que ignora os entitlements). Para o dono: trocar o domínio (o mesmo do Android e de `VITE_SITE_URL`), preencher o Team ID em `public/.well-known/apple-app-site-association`, ligar "Associated Domains" no App ID (conta paga; o Xcode faz com assinatura automática) e testar em iPhone; `node scripts/check-app-links.mjs --strict` é o portão. Push e Mac App Store continuam sem entitlements [PLANEJADO]; macOS não tem arquivo de entitlements.
 
 ---
 
@@ -852,7 +852,8 @@ Não recomendado na primeira versão. Não abri a página do Tauri sobre Mac App
 **Privacidade e permissões**
 
 - [ ] Ficha de privacidade (seção 5.2) igual ao manifesto (seção 5.5). Decisões de Health, Sensitive Info e Diagnostics fechadas.
-- [ ] `NSCameraUsageDescription` trocado pelo texto da seção 10.1. Chave de localização mantida ou removida conforme D4.
+- [x] `NSCameraUsageDescription` com o texto da seção 10.1 e chave de localização removida (D4), feito em 24/11/2026; revisar de novo se o Cuidado entrar.
+- [ ] Universal Links: domínio real, Team ID, capacidade no App ID e `node scripts/check-app-links.mjs --strict` em 0. (seção 10.4)
 - [ ] `ITSAppUsesNonExemptEncryption` decidido. (seção 10.1)
 - [ ] Texto de permissão do desktop corrigido. (seção 10.2)
 
@@ -991,8 +992,8 @@ Observação: a palavra-chave "orçamento" tem acento e ocupa 2 bytes. A conta �
 Esta seção lista o que encontrei e não mexi, porque este kit é só de documentação. Cada item precisa de dono.
 
 1. `src-tauri/Info.plist`: texto de câmera falso para o desktop (seção 10.2).
-2. `ios/App/App/Info.plist`: frase sobre prévia de verificação falsa na build com backend (seção 10.1).
-3. `ios/App/App/PrivacyInfo.xcprivacy`: faltam endereço, dados financeiros, dados de produto e, se o Sentry entrar, diagnósticos (seção 5.5).
+2. `ios/App/App/Info.plist`: **corrigido em 24/11/2026** (frase da prévia de verificação e chave de localização, seção 10.1).
+3. `ios/App/App/PrivacyInfo.xcprivacy`: faltam endereço, dados financeiros, dados de produto e, se o Sentry entrar, diagnósticos (seção 5.5). A localização foi retirada em 24/11/2026. Os três tipos que faltam ficaram para o advogado e para uma conferência dos nomes exatos das chaves, que não pude abrir.
 4. `docs/juridico/03-politica-de-privacidade.md`: o texto principal não nomeia `product_events` (só a Q17 nomeia) e diz que não encontrou ferramenta de análise de terceiros (seção 5.2 e F13).
 5. `supabase/migrations/20261108100000_product_events.sql`: novo, não aparece em `docs/ARQUITETURA.md` (que lista as tabelas por domínio).
 6. `.env.native`: sem variáveis do backend. A build nativa padrão é de demonstração (F14).

@@ -151,6 +151,13 @@ describe('markdown to HTML', () => {
     expect(out).not.toMatch(/<a href="\/legal\/politica" rel=/);
   });
 
+  it('underlines a link inside running text, so that it does not depend on colour alone (WCAG 1.4.1, axe link-in-text-block)', () => {
+    const out = html('Veja [a política](/legal/politica) e [o site](https://example.com).');
+    const classes = [...out.matchAll(/<a [^>]*class="([^"]*)"/g)].map(match => match[1].split(' '));
+    expect(classes).toHaveLength(2);
+    for (const list of classes) expect(list).toContain('underline');
+  });
+
   it('makes the first level-1 heading the only h1', () => {
     const out = html('# Um\n\n## Dois\n\n# Três\n\n### Quatro');
     expect(out.match(/<h1[ >]/g)).toHaveLength(1);

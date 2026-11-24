@@ -64,7 +64,18 @@ export interface QuoteAssistInput {
   referencePrices?: ReferencePrice[];
 }
 
-export const QUOTE_ASSIST_LIMITS = { descriptionMin: 10, descriptionMax: 2000, referencePrices: 20, labelMax: 80 } as const;
+/**
+ * `referencePriceMaxCents` is R$ 100.000,00, the same limit as MAX_REFERENCE_CENTS of the function (a drift test
+ * compares them). The function refuses the whole request when one reference is above it, as a generic
+ * `invalid_input`, so the app never sends such a price: the item then has no price and the provider types it.
+ */
+export const QUOTE_ASSIST_LIMITS = {
+  descriptionMin: 10,
+  descriptionMax: 2000,
+  referencePrices: 20,
+  labelMax: 80,
+  referencePriceMaxCents: 10_000_000,
+} as const;
 
 const NOTES_MAX = 4000;
 const MANUAL_QUOTE = 'Monte os itens manualmente.';
@@ -91,11 +102,14 @@ export const suggestQuote = async (input: QuoteAssistInput): Promise<QuoteSugges
   if (description.length > QUOTE_ASSIST_LIMITS.descriptionMax) {
     throw new AppError('invalid_input', { message: `A descrição pode ter até ${QUOTE_ASSIST_LIMITS.descriptionMax} caracteres.` });
   }
-  const references = (input.referencePrices ?? []).slice(0, QUOTE_ASSIST_LIMITS.referencePrices).map(price => ({
-    label: price.label.trim().slice(0, QUOTE_ASSIST_LIMITS.labelMax),
-    unit_price_cents: price.unit_price_cents,
-    ...(price.unit ? { unit: price.unit } : {}),
-  }));
+  const references = (input.referencePrices ?? [])
+    .filter(price => price.unit_price_cents <= QUOTE_ASSIST_LIMITS.referencePriceMaxCents)
+    .slice(0, QUOTE_ASSIST_LIMITS.referencePrices)
+    .map(price => ({
+      label: price.label.trim().slice(0, QUOTE_ASSIST_LIMITS.labelMax),
+      unit_price_cents: price.unit_price_cents,
+      ...(price.unit ? { unit: price.unit } : {}),
+    }));
   try {
     const answer = await invokeFunction<unknown>('quote-assist', {
       description,

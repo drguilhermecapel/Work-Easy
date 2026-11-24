@@ -71,8 +71,14 @@ const equivalentOf = (focused: HTMLElement, host: HTMLElement): HTMLElement | nu
   if (focused instanceof HTMLAnchorElement) {
     const href = focused.getAttribute('href');
     const text = focused.textContent?.trim();
-    const same = [...host.querySelectorAll('a')].filter(a => a.getAttribute('href') === href);
-    return same.find(a => a.textContent?.trim() === text) ?? same[0] ?? null;
+    // The static page is only the <main>: the twin is looked for there first. The bar of the app comes before
+    // <main> in the document and often has a link to the same place ("Categorias"), which is not where the visitor was.
+    for (const scope of [host.querySelector('main'), host]) {
+      const same = [...(scope?.querySelectorAll('a') ?? [])].filter(a => a.getAttribute('href') === href);
+      const twin = same.find(a => a.textContent?.trim() === text) ?? same[0];
+      if (twin) return twin;
+    }
+    return null;
   }
   return null;
 };

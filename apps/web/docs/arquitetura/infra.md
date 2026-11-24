@@ -17,7 +17,7 @@ usuários reais e os workflows de publicação ainda não foram executados.
 | Publicação do banco e das funções | `.github/workflows/deploy-supabase.yml` | Migrations (com simulação por padrão) e Edge Functions | Não executado |
 | Atualizações de dependências | `.github/dependabot.yml` | npm em `apps/web` (semanal) e GitHub Actions (mensal) | Ativo ao entrar na `main` |
 | Donos do código | `.github/CODEOWNERS` | Revisão dos donos em `apps/web`, `apps/web/supabase` e `.github` | Vale só com a proteção da branch configurada |
-| Política de segurança | `.github/SECURITY.md` | Como reportar falhas e o escopo | Contato ainda a definir |
+| Política de segurança | `.github/SECURITY.md` | Como reportar falhas e o escopo | Aponta para o reporte privado do GitHub (ativado pelo dono em 24/11/2026); os prazos de resposta ficam a confirmar por ele |
 | Checklist de PR | `.github/pull_request_template.md` | Lembretes de testes, alegações, migrations e segredos | Ativo |
 
 Workflows que já existiam e não foram alterados: `.github/workflows/web-ci.yml`
@@ -200,8 +200,9 @@ Ordem sugerida para a primeira publicação. Nenhum passo é automático.
 10. Rodar **Publicar site (Cloudflare Pages)** e conferir com `curl -sI https://<domínio>/`
     os cabeçalhos `content-security-policy`, `strict-transport-security` e
     `cache-control`.
-11. Ligar, em Settings do repositório, "Private vulnerability reporting" e
-    preencher o contato em `.github/SECURITY.md`.
+11. "Private vulnerability reporting" ligado em Settings do repositório (o dono
+    informou em 24/11/2026; confirme que o botão "Report a vulnerability" aparece na aba
+    Security). Falta só o dono confirmar os prazos de resposta em `.github/SECURITY.md`.
 12. Proteger a branch `main`: exigir revisão, exigir revisão dos donos
     (CODEOWNERS), exigir os checks do `web-ci`, bloquear force-push.
 13. Confirmar que o Dependabot está ativo em Settings, Code security.

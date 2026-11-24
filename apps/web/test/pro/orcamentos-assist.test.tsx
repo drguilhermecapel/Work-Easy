@@ -186,6 +186,28 @@ describe('/pro/orcamentos: Sugerir itens com IA', () => {
     expect(savedWrites()).toEqual([]);
   });
 
+  it('does not send a reference price above R$ 100.000 (the function would refuse the whole request), and says so on the service', async () => {
+    services = [service(), service({ id: 'svc-3', title: 'Obra completa', price_min_cents: 10_000_001, unit: 'projeto' })];
+    const user = userEvent.setup();
+    await openEditor(user);
+    const expensive = await screen.findByLabelText(/Obra completa · R\$ 100\.000,01 por projeto \(acima de R\$ 100\.000,00: o preço não é enviado, você preenche\)/);
+    await user.click(expensive);
+    await user.click(screen.getByLabelText(/Pintura de parede · R\$ 35,00 por m²/));
+    await ask(user);
+
+    expect(await screen.findByText(/Sugestão aplicada/)).toBeInTheDocument();
+    expect(fake.functionCalls).toEqual([
+      {
+        name: 'quote-assist',
+        body: {
+          description: DESCRIPTION,
+          occupation_slug: 'pintor',
+          reference_prices: [{ label: 'Pintura de parede', unit_price_cents: 3500, unit: 'm2' }],
+        },
+      },
+    ]);
+  });
+
   it('cannot be saved until the provider types the missing price, and saves what the provider confirmed', async () => {
     const user = userEvent.setup();
     await openEditor(user);

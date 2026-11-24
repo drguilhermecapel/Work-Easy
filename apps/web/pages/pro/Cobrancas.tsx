@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Download } from 'lucide-react';
 import { findOccupation } from '../../catalog';
-import { AppError } from '../../lib/errors';
+import { AppError, errorMessage } from '../../lib/errors';
 import { formatCents } from '../../lib/money';
 import { formatDateBR, todayInSaoPaulo } from '../../lib/timezone';
 import { useAsync } from '../../lib/useAsync';
@@ -78,6 +78,13 @@ const ChargeResultCard: React.FC<{ result: ChargeResult }> = ({ result }) => (
 
 const NEW_CLIENT = 'new';
 
+type FieldId = 'cob-alvo' | 'cob-cliente' | 'cob-documento';
+/** A problem with one field of the form: shown next to it, tied to it (aria-describedby, aria-invalid), and the field gets the focus. */
+interface Problem {
+  field: FieldId;
+  message: string;
+}
+
 const ChargeForm: React.FC<{ data: Data; initialTarget: string; onCreated: () => void }> = ({ data, initialTarget, onCreated }) => {
   const { provider } = useProvider();
   const [target, setTarget] = useState(initialTarget);
@@ -85,9 +92,13 @@ const ChargeForm: React.FC<{ data: Data; initialTarget: string; onCreated: () =>
   const [dueDate, setDueDate] = useState('');
   const [description, setDescription] = useState('');
   const [pickedClient, setPickedClient] = useState('');
+  // The CRM entry made for this quote by a try that failed later: the next try uses it instead of registering the client again
+  // The CRM client registered for a quote by an attempt that failed later, kept with the target it belongs to
+  const [createdClient, setCreatedClient] = useState<{ target: string; id: string } | null>(null);
   const [cpfCnpj, setCpfCnpj] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const [problem, setProblem] = useState<Problem | null>(null);
   const [result, setResult] = useState<ChargeResult | null>(null);
 
   const [kind, targetId] = target.split(':');
@@ -101,25 +112,39 @@ const ChargeForm: React.FC<{ data: Data; initialTarget: string; onCreated: () =>
   const canCreate = Boolean(quote && !linkedId && quote.client_name?.trim());
   const creating = chosenId === NEW_CLIENT;
   const needsDocument = creating || !client?.cpf_cnpj;
+  // Only the client made for the quote now on screen can be reused: a late answer for another target never counts
+  const createdClientId = createdClient?.target === target ? createdClient.id : null;
 
   const pick = (value: string) => {
     setTarget(value);
     setPickedClient('');
+    setCreatedClient(null);
     setCpfCnpj('');
+    setProblem(null);
+  };
+  const problemOf = (field: FieldId): string | null => (problem?.field === field ? problem.message : null);
+  /** Puts the problem next to its field and moves the focus there, instead of leaving it in a line below the button. */
+  const reject = (field: FieldId, message: string) => {
+    setProblem({ field, message });
+    document.getElementById(field)?.focus();
   };
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
-    setBusy(true);
     setError(null);
+    setProblem(null);
     setResult(null);
+    if (!targetId || (kind !== 'booking' && kind !== 'quote')) return reject('cob-alvo', 'Escolha o atendimento ou o orçamento a cobrar.');
+    if (!chosenId) return reject('cob-cliente', 'Escolha o cliente que paga.');
+    if (needsDocument && !cpfCnpj.trim()) return reject('cob-documento', errorMessage(new AppError('cpf_cnpj_required')));
+    setBusy(true);
     try {
-      if (!targetId || (kind !== 'booking' && kind !== 'quote')) throw new AppError('invalid_input', { message: 'Escolha o atendimento ou o orçamento a cobrar.' });
-      if (!chosenId) throw new AppError('invalid_input', { message: 'Escolha o cliente que paga.' });
-      if (needsDocument && !cpfCnpj.trim()) throw new AppError('cpf_cnpj_required');
       // The payer's name and document come from the CRM record: save the document there first
       let clientId = chosenId;
-      if (creating) {
+      if (creating && createdClientId) {
+        clientId = createdClientId;
+        if (cpfCnpj.trim()) await saveClientDocument(createdClientId, cpfCnpj);
+      } else if (creating) {
         const created = await saveClient({
           providerId: provider.id,
           name: quote?.client_name ?? '',
@@ -127,6 +152,7 @@ const ChargeForm: React.FC<{ data: Data; initialTarget: string; onCreated: () =>
           cpfCnpj,
         });
         clientId = created.id;
+        setCreatedClient({ target, id: created.id });
       } else if (cpfCnpj.trim()) {
         await saveClientDocument(chosenId, cpfCnpj);
       }
@@ -142,7 +168,9 @@ const ChargeForm: React.FC<{ data: Data; initialTarget: string; onCreated: () =>
       setCpfCnpj('');
       onCreated();
     } catch (err) {
-      setError(err);
+      // The document that the CRM or the function refuses belongs to its field; anything else goes below the form
+      if (err instanceof AppError && err.code === 'cpf_cnpj_required') reject('cob-documento', errorMessage(err));
+      else setError(err);
     } finally {
       setBusy(false);
     }
@@ -160,8 +188,8 @@ const ChargeForm: React.FC<{ data: Data; initialTarget: string; onCreated: () =>
   return (
     <div className="space-y-4">
       <form onSubmit={submit} className="space-y-4" noValidate aria-label="Nova cobrança">
-        <Field id="cob-alvo" label="O que cobrar">
-          <select id="cob-alvo" className={inputClass} value={target} onChange={e => pick(e.target.value)}>
+        <Field id="cob-alvo" label="O que cobrar" error={problemOf('cob-alvo')}>
+          <select id="cob-alvo" className={inputClass} value={target} disabled={busy} onChange={e => pick(e.target.value)}>
             <option value="">Escolha…</option>
             {data.bookings.length > 0 && (
               <optgroup label="Atendimentos com cliente seu">
@@ -209,8 +237,17 @@ const ChargeForm: React.FC<{ data: Data; initialTarget: string; onCreated: () =>
               Cliente: <strong>{client?.name ?? 'cliente do seu CRM'}</strong>
             </p>
           ) : (
-            <Field id="cob-cliente" label="Cliente do seu CRM" hint="O orçamento ainda não está ligado a um cliente do CRM.">
-              <select id="cob-cliente" className={inputClass} value={pickedClient} onChange={e => setPickedClient(e.target.value)}>
+            <Field id="cob-cliente" label="Cliente do seu CRM" hint="O orçamento ainda não está ligado a um cliente do CRM." error={problemOf('cob-cliente')}>
+              <select
+                id="cob-cliente"
+                className={inputClass}
+                value={pickedClient}
+                disabled={busy}
+                onChange={e => {
+                  setPickedClient(e.target.value);
+                  setProblem(null);
+                }}
+              >
                 <option value="">Escolha…</option>
                 {canCreate && <option value={NEW_CLIENT}>{`Cadastrar ${quote?.client_name?.trim()} no CRM`}</option>}
                 {data.clients.map(item => (
@@ -230,8 +267,19 @@ const ChargeForm: React.FC<{ data: Data; initialTarget: string; onCreated: () =>
                   ? 'O Asaas exige o documento para emitir a cobrança. Ele fica salvo no cadastro do cliente.'
                   : 'O documento deste cliente já está salvo. Preencha só se precisar corrigi-lo.'
               }
+              error={problemOf('cob-documento')}
             >
-              <input id="cob-documento" className={inputClass} inputMode="numeric" autoComplete="off" value={cpfCnpj} onChange={e => setCpfCnpj(e.target.value)} />
+              <input
+                id="cob-documento"
+                className={inputClass}
+                inputMode="numeric"
+                autoComplete="off"
+                value={cpfCnpj}
+                onChange={e => {
+                  setCpfCnpj(e.target.value);
+                  if (problem?.field === 'cob-documento') setProblem(null);
+                }}
+              />
             </Field>
           )}
           <p className="text-xs text-gray-500">

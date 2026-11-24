@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Download, Pencil, Plus } from 'lucide-react';
 import { findOccupation } from '../../catalog';
@@ -7,7 +7,8 @@ import { formatPhoneBR } from '../../lib/phone';
 import { formatDateBR, todayInSaoPaulo } from '../../lib/timezone';
 import { useAsync } from '../../lib/useAsync';
 import { listMyBookings, type BookingView } from '../../services/proAgenda';
-import { clientHistory, countBookingsByClient, deleteClient, listClients, saveClient, type ClientRow, type HistoryEntry } from '../../services/proClients';
+import { clientHistory, countBookingsByClient, deleteClient, formatCpfCnpj, listClients, saveClient, type ClientRow, type HistoryEntry } from '../../services/proClients';
+import { parseCpfCnpj } from '../../services/proFormat';
 import { clientsCsv, csvFileName, downloadCsv } from '../../services/proExport';
 import { listQuotes, type QuoteRow } from '../../services/quotes';
 import ErrorAlert from '../../components/ErrorAlert';
@@ -24,9 +25,14 @@ interface Draft {
   phone: string;
   email: string;
   notes: string;
+  /** CPF or CNPJ for charges, as shown in the field (masked). */
+  cpfCnpj: string;
+  /** An entry linked to a platform account: its document is not the provider's to change (the database refuses it). */
+  documentLocked: boolean;
+  hasDocument: boolean;
 }
 
-const EMPTY: Draft = { name: '', phone: '', email: '', notes: '' };
+const EMPTY: Draft = { name: '', phone: '', email: '', notes: '', cpfCnpj: '', documentLocked: false, hasDocument: false };
 
 const ClientForm: React.FC<{ providerId: string; initial: Draft; onDone: () => void; onCancel: () => void }> = ({
   providerId,
@@ -37,14 +43,33 @@ const ClientForm: React.FC<{ providerId: string; initial: Draft; onDone: () => v
   const [draft, setDraft] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
-  const set = (key: keyof Draft, value: string) => setDraft(current => ({ ...current, [key]: value }));
+  const [documentError, setDocumentError] = useState<string | null>(null);
+  const documentInput = useRef<HTMLInputElement>(null);
+  const set = (key: 'name' | 'phone' | 'email' | 'notes' | 'cpfCnpj', value: string) => setDraft(current => ({ ...current, [key]: value }));
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
-    setBusy(true);
     setError(null);
+    // The document is sent only when the provider changed it (an empty field clears it); a bad one stops here, next to its field
+    const typedDocument = draft.cpfCnpj.trim();
+    const documentChanged = !draft.documentLocked && typedDocument !== initial.cpfCnpj;
+    if (documentChanged && typedDocument && !parseCpfCnpj(typedDocument)) {
+      setDocumentError('Informe um CPF ou CNPJ válido (11 ou 14 números).');
+      documentInput.current?.focus();
+      return;
+    }
+    setDocumentError(null);
+    setBusy(true);
     try {
-      await saveClient({ ...draft, providerId });
+      await saveClient({
+        id: draft.id,
+        providerId,
+        name: draft.name,
+        phone: draft.phone,
+        email: draft.email,
+        notes: draft.notes,
+        ...(documentChanged ? { cpfCnpj: typedDocument } : {}),
+      });
       onDone();
     } catch (err) {
       setError(err);
@@ -65,6 +90,35 @@ const ClientForm: React.FC<{ providerId: string; initial: Draft; onDone: () => v
           <input id="cli-email" className={inputClass} type="email" autoComplete="off" value={draft.email} onChange={e => set('email', e.target.value)} />
         </Field>
       </div>
+      {draft.documentLocked ? (
+        <p className="text-sm text-gray-600">
+          CPF ou CNPJ para cobranças: {draft.hasDocument ? 'cadastrado' : 'não cadastrado'}. Este cliente tem conta no WorkEasy e o documento só ele pode alterar.
+        </p>
+      ) : (
+        <Field
+          id="cli-documento"
+          label="CPF ou CNPJ (para cobranças)"
+          hint="Opcional. O Asaas exige o documento para emitir uma cobrança. Fica salvo no cadastro e só você vê. Apague o campo e salve para remover."
+          error={documentError}
+        >
+          <input
+            id="cli-documento"
+            ref={documentInput}
+            className={inputClass}
+            inputMode="numeric"
+            autoComplete="off"
+            value={draft.cpfCnpj}
+            onChange={e => {
+              set('cpfCnpj', e.target.value);
+              setDocumentError(null);
+            }}
+            onBlur={e => {
+              const digits = parseCpfCnpj(e.target.value);
+              if (digits) set('cpfCnpj', formatCpfCnpj(digits));
+            }}
+          />
+        </Field>
+      )}
       <Field id="cli-notas" label="Anotações (opcional)" hint="Só você vê. Evite dados de saúde ou outros dados sensíveis do cliente.">
         <textarea id="cli-notas" className={inputClass} rows={3} maxLength={4000} value={draft.notes} onChange={e => set('notes', e.target.value)} />
       </Field>
@@ -87,6 +141,9 @@ const draftOf = (client: ClientRow): Draft => ({
   phone: formatPhoneBR(client.phone),
   email: client.email ?? '',
   notes: client.notes ?? '',
+  cpfCnpj: formatCpfCnpj(client.cpf_cnpj),
+  documentLocked: client.client_id !== null,
+  hasDocument: Boolean(client.cpf_cnpj),
 });
 
 const HISTORY_SHOWN = 10;
@@ -211,6 +268,7 @@ const Clients: React.FC = () => {
             <p className="text-sm text-gray-600 break-words">
               {[formatPhoneBR(client.phone), client.email].filter(Boolean).join(' · ') || 'Sem contato cadastrado'}
             </p>
+            <p className="text-sm text-gray-500 mt-1">Documento cadastrado: {client.cpf_cnpj ? 'sim' : 'não'}</p>
             {client.notes && <p className="text-sm text-gray-500 mt-1 whitespace-pre-line break-words">{client.notes}</p>}
             <History entries={clientHistory(client.id, clients.data?.historyBookings ?? [], clients.data?.historyQuotes ?? [])} />
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3">

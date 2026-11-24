@@ -212,6 +212,45 @@ describe('/pro/cobrancas: charging', () => {
     expect(screen.queryByLabelText(/número do cartão|cvv/i)).not.toBeInTheDocument();
   });
 
+  it('does not register the same client twice when the charge fails and the provider tries again', async () => {
+    let attempts = 0;
+    fake.functionsHandlers['charges-create'] = () => {
+      attempts += 1;
+      return attempts === 1 ? functionError(409, 'provider_payment_account_missing', 'Ative o recebimento.') : functionData(CHARGE);
+    };
+    const user = userEvent.setup();
+    renderPro('/pro/cobrancas?orcamento=q-1');
+    await user.selectOptions(await screen.findByLabelText('Cliente do seu CRM'), 'new');
+    await user.type(screen.getByLabelText('CPF ou CNPJ do cliente'), '11.222.333/0001-81');
+    await user.click(screen.getByRole('button', { name: 'Criar cobrança' }));
+    await screen.findByRole('alert');
+
+    await user.click(screen.getByRole('button', { name: 'Criar cobrança' }));
+    expect(await screen.findByRole('heading', { name: 'Cobrança criada' })).toBeInTheDocument();
+
+    expect(fake.tableCalls.filter(call => call.table === 'provider_clients' && call.op === 'insert')).toHaveLength(1);
+    expect(fake.functionCalls[1].body).toMatchObject({ provider_client_id: 'cli-new' });
+  });
+
+  it('keeps the target and the payer fixed while a charge is being sent, so a late answer cannot land on another quote', async () => {
+    let release: (value: Result) => void = () => {};
+    fake.functionsHandlers['charges-create'] = () => new Promise<Result>(resolve => (release = resolve));
+    const user = userEvent.setup();
+    renderPro('/pro/cobrancas?orcamento=q-1');
+    await user.selectOptions(await screen.findByLabelText('Cliente do seu CRM'), 'new');
+    await user.type(screen.getByLabelText('CPF ou CNPJ do cliente'), '11.222.333/0001-81');
+    await user.click(screen.getByRole('button', { name: 'Criar cobrança' }));
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Criando…' })).toBeDisabled());
+    expect(screen.getByLabelText('O que cobrar')).toBeDisabled();
+    expect(screen.getByLabelText('Cliente do seu CRM')).toBeDisabled();
+
+    release(functionData(CHARGE));
+    expect(await screen.findByRole('heading', { name: 'Cobrança criada' })).toBeInTheDocument();
+    expect(screen.getByLabelText('O que cobrar')).toBeEnabled();
+    expect(fake.tableCalls.filter(call => call.table === 'provider_clients' && call.op === 'insert')).toHaveLength(1);
+  });
+
   it('lets an unlinked quote be charged to an existing CRM client that already has the document, without asking for it again', async () => {
     fake.functionsHandlers['charges-create'] = () => functionData(CHARGE);
     const user = userEvent.setup();
@@ -223,6 +262,37 @@ describe('/pro/cobrancas: charging', () => {
     expect(await screen.findByRole('heading', { name: 'Cobrança criada' })).toBeInTheDocument();
     expect(fake.tableCalls.filter(call => call.table === 'provider_clients' && call.op !== 'select')).toEqual([]);
     expect(fake.functionCalls[0].body).toEqual({ quote_id: 'q-1', method: 'pix', provider_client_id: 'cli-2' });
+  });
+
+  it('ties each refusal to its own field: described by it, marked invalid, focused, and cleared when the field changes', async () => {
+    const user = userEvent.setup();
+    renderPro('/pro/cobrancas');
+    const target = await screen.findByLabelText('O que cobrar');
+    const submit = () => user.click(screen.getByRole('button', { name: 'Criar cobrança' }));
+
+    await submit();
+    expect(target).toHaveFocus();
+    expect(target).toHaveAttribute('aria-invalid', 'true');
+    expect(target).toHaveAccessibleDescription('Escolha o atendimento ou o orçamento a cobrar.');
+
+    await user.selectOptions(target, 'quote:q-1');
+    expect(target).not.toHaveAttribute('aria-invalid');
+    await submit();
+    const payer = screen.getByLabelText('Cliente do seu CRM');
+    expect(payer).toHaveFocus();
+    expect(payer).toHaveAccessibleDescription(/Escolha o cliente que paga\./);
+
+    await user.selectOptions(target, 'booking:b-1');
+    await submit();
+    const document = screen.getByLabelText('CPF ou CNPJ do cliente');
+    expect(document).toHaveFocus();
+    expect(document).toHaveAttribute('aria-invalid', 'true');
+    expect(document).toHaveAccessibleDescription(/Informe o CPF ou CNPJ para continuar\./);
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+
+    await user.type(document, '1');
+    expect(document).not.toHaveAttribute('aria-invalid');
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 
   it('checks the target, the payer and the document before calling the function', async () => {

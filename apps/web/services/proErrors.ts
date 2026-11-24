@@ -11,35 +11,49 @@ const asRecord = (value: unknown): Record<string, unknown> | null =>
   value && typeof value === 'object' ? (value as Record<string, unknown>) : null;
 
 /**
- * The raw code behind an error: the one the Edge Function answered, or the rule
- * the database raised as message. Null when there is none.
+ * Codes whose sentence comes from the server when it sent one. The server has two reasons for the same
+ * code (the payment account is not complete / it predates the CPF check), and each asks the provider to
+ * do something different. lib/errors.ts keeps a sentence for both as the fallback. Every other code keeps
+ * the app's own sentence: a server text is never shown for a code that is not listed here.
  */
-export const serverCodeOf = async (error: AppError): Promise<string | null> => {
+export const SERVER_SENTENCE_CODES: ReadonlySet<string> = new Set(['trial_requires_payment_account']);
+const SERVER_SENTENCE_MAX = 300;
+
+/**
+ * The code behind an error (the one the Edge Function answered, or the rule the database raised as
+ * message; null when there is none) and the sentence the function sent with it, when there is one.
+ */
+export const serverAnswerOf = async (error: AppError): Promise<{ code: string | null; message: string | null }> => {
   const cause = asRecord(error.cause);
-  // A function answer { ok: false, error: { code } } read by invokeFunction
-  const answered = asRecord(cause?.error)?.code;
-  if (typeof answered === 'string') return answered;
+  const text = (value: unknown): string | null => (typeof value === 'string' && value.trim() ? value.trim() : null);
+  // A function answer { ok: false, error: { code, message } } read by invokeFunction
+  const answered = asRecord(cause?.error);
+  if (typeof answered?.code === 'string') return { code: answered.code, message: text(answered.message) };
   // An HTTP error from functions.invoke carries the response in `context`
   const context = cause?.context as { clone?: () => { json: () => Promise<unknown> } } | undefined;
   if (context && typeof context.clone === 'function') {
     try {
       const body = asRecord(await context.clone().json());
-      const code = asRecord(body?.error)?.code;
-      if (typeof code === 'string') return code;
+      const inner = asRecord(body?.error);
+      if (typeof inner?.code === 'string') return { code: inner.code, message: text(inner.message) };
     } catch {
       // not JSON
     }
   }
   // A rule raised by the database: the code is the message
-  return error.detail?.trim().match(/^[a-z_]+/)?.[0] ?? null;
+  return { code: error.detail?.trim().match(/^[a-z_]+/)?.[0] ?? null, message: null };
 };
+
+/** The raw code behind an error (see serverAnswerOf). */
+export const serverCodeOf = async (error: AppError): Promise<string | null> => (await serverAnswerOf(error)).code;
 
 /** The same error, with a specific sentence when the Pro area knows its code. */
 export const proError = async (err: unknown): Promise<AppError> => {
   // The async variant also reads the code from the HTTP response of a failed function call
   const error = await toAppErrorAsync(err);
-  const code = await serverCodeOf(error);
-  const message = code ? PRO_MESSAGES[code] : undefined;
+  const { code, message: sent } = await serverAnswerOf(error);
+  const fromServer = code && SERVER_SENTENCE_CODES.has(code) && sent && sent.length <= SERVER_SENTENCE_MAX ? sent : undefined;
+  const message = fromServer ?? (code ? PRO_MESSAGES[code] : undefined);
   return message ? new AppError(error.code, { cause: error.cause, detail: error.detail, message }) : error;
 };
 

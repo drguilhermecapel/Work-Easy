@@ -285,8 +285,9 @@ shells nativos), o React monta direto, como antes. Se a rota não ficar pronta e
 troca acontece mesmo assim.
 
 - **Foco, rolagem e links.** Se o foco estava num link do estático, vai para o mesmo link (mesmo `href` e texto) da
-  página nova, ou para o `<main>` se não houver; se estava fora da página estática, não muda. A posição de rolagem é
-  restaurada. Enquanto o React não troca, os links do estático são links comuns (navegação normal do navegador).
+  página nova (procurado primeiro dentro do `<main>`, porque a barra do app vem antes dele no documento e repete links
+  como "Categorias"), ou para o `<main>` se não houver; se estava fora da página estática, não muda. A posição de
+  rolagem é restaurada. Enquanto o React não troca, os links do estático são links comuns (navegação normal do navegador).
 - **`hydrateRoot` descartado.** A marcação do estático (strings de `catalog/prose.mjs`, sem a barra de navegação nem o
   rodapé) não é a do React; hidratar daria mismatch e, no melhor caso, o React descartaria o estático do mesmo jeito.
 

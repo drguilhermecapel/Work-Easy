@@ -24,6 +24,7 @@ const client = (overrides: Record<string, unknown> = {}) => ({
   notes: 'Prefere de manhã',
   origin: 'own',
   created_at: '2026-10-01T00:00:00Z',
+  cpf_cnpj: null,
   ...overrides,
 });
 
@@ -276,5 +277,162 @@ describe('/pro/clientes: history', () => {
     renderPro('/pro/clientes');
     expect(await screen.findByRole('heading', { name: 'Carlos Dias' })).toBeInTheDocument();
     expect(screen.queryByText(/Histórico/)).not.toBeInTheDocument();
+  });
+});
+
+describe('/pro/clientes: CPF or CNPJ for charges', () => {
+  const CPF = '52998224725';
+  const CNPJ = '11222333000181';
+  const updates = () => fake.tableCalls.filter(call => call.table === 'provider_clients' && call.op === 'update').map(call => call.payload);
+  const inserts = () => fake.tableCalls.filter(call => call.table === 'provider_clients' && call.op === 'insert').map(call => call.payload);
+
+  it('formats a CPF and a CNPJ for display and leaves anything else as it is', async () => {
+    const { formatCpfCnpj } = await import('../../services/proClients');
+    expect(formatCpfCnpj(CPF)).toBe('529.982.247-25');
+    expect(formatCpfCnpj(CNPJ)).toBe('11.222.333/0001-81');
+    expect(formatCpfCnpj(null)).toBe('');
+    expect(formatCpfCnpj(undefined)).toBe('');
+    expect(formatCpfCnpj('123')).toBe('123');
+  });
+
+  it('creates a client with a CPF typed with punctuation, saves digits only and shows only that the document exists', async () => {
+    const user = userEvent.setup();
+    renderPro('/pro/clientes');
+    await user.click(await screen.findByRole('button', { name: /Novo cliente/ }));
+    await user.type(await screen.findByLabelText('Nome'), 'Carlos Dias');
+    await user.type(screen.getByLabelText('CPF ou CNPJ (para cobranças)'), '529.982.247-25');
+    await user.click(screen.getByRole('button', { name: 'Salvar cliente' }));
+
+    const card = (await screen.findByRole('heading', { name: 'Carlos Dias' })).closest('li') as HTMLElement;
+    expect(inserts()).toEqual([{ name: 'Carlos Dias', phone: null, email: null, notes: null, cpf_cnpj: CPF, provider_id: 'prov-1' }]);
+    expect(within(card).getByText('Documento cadastrado: sim')).toBeInTheDocument();
+    // The list never prints the number, masked or not
+    expect(card.textContent).not.toMatch(/529|98224725|\d{3}\.\d{3}/);
+  });
+
+  it('shows "não" for a client without document and sends no document column when the field stays empty', async () => {
+    clients = [client()];
+    const user = userEvent.setup();
+    renderPro('/pro/clientes');
+    const card = (await screen.findByRole('heading', { name: 'Carlos Dias' })).closest('li') as HTMLElement;
+    expect(within(card).getByText('Documento cadastrado: não')).toBeInTheDocument();
+
+    await user.click(within(card).getByRole('button', { name: 'Editar Carlos Dias' }));
+    expect(await screen.findByLabelText('CPF ou CNPJ (para cobranças)')).toHaveValue('');
+    await user.clear(screen.getByLabelText('Anotações (opcional)'));
+    await user.type(screen.getByLabelText('Anotações (opcional)'), 'Nova nota');
+    await user.click(screen.getByRole('button', { name: 'Salvar cliente' }));
+    await waitFor(() => expect(updates()).toHaveLength(1));
+    // A document nobody touched is left alone
+    expect(updates()[0]).toEqual({ name: 'Carlos Dias', phone: '+5511987654321', email: 'carlos@example.com', notes: 'Nova nota' });
+  });
+
+  it('refuses a document with wrong check digits next to its field, keeps the focus there and saves nothing', async () => {
+    const user = userEvent.setup();
+    renderPro('/pro/clientes');
+    await user.click(await screen.findByRole('button', { name: /Novo cliente/ }));
+    await user.type(await screen.findByLabelText('Nome'), 'Carlos Dias');
+    const field = screen.getByLabelText('CPF ou CNPJ (para cobranças)');
+    await user.type(field, '529.982.247-26');
+    await user.click(screen.getByRole('button', { name: 'Salvar cliente' }));
+
+    const error = await screen.findByText('Informe um CPF ou CNPJ válido (11 ou 14 números).');
+    expect(error).toHaveAttribute('role', 'alert');
+    expect(field).toHaveAttribute('aria-invalid', 'true');
+    expect(field.getAttribute('aria-describedby')).toContain(error.id);
+    expect(field).toHaveFocus();
+    expect(inserts()).toEqual([]);
+
+    // Typing again clears the error; a valid CNPJ is then accepted
+    await user.clear(field);
+    expect(screen.queryByText('Informe um CPF ou CNPJ válido (11 ou 14 números).')).not.toBeInTheDocument();
+    await user.type(field, '11.222.333/0001-81');
+    await user.click(screen.getByRole('button', { name: 'Salvar cliente' }));
+    await waitFor(() => expect(inserts()).toHaveLength(1));
+    expect(inserts()[0]).toMatchObject({ cpf_cnpj: CNPJ });
+  });
+
+  it('masks a valid document when the field loses the focus', async () => {
+    const user = userEvent.setup();
+    renderPro('/pro/clientes');
+    await user.click(await screen.findByRole('button', { name: /Novo cliente/ }));
+    const field = await screen.findByLabelText('CPF ou CNPJ (para cobranças)');
+    await user.type(field, CPF);
+    await user.tab();
+    expect(field).toHaveValue('529.982.247-25');
+    await user.clear(field);
+    await user.type(field, CNPJ);
+    await user.tab();
+    expect(field).toHaveValue('11.222.333/0001-81');
+  });
+
+  it('edits the document of a client: shows it masked, replaces it, then clears it', async () => {
+    clients = [client({ cpf_cnpj: CPF })];
+    const user = userEvent.setup();
+    renderPro('/pro/clientes');
+    let card = (await screen.findByRole('heading', { name: 'Carlos Dias' })).closest('li') as HTMLElement;
+    expect(within(card).getByText('Documento cadastrado: sim')).toBeInTheDocument();
+
+    await user.click(within(card).getByRole('button', { name: 'Editar Carlos Dias' }));
+    const field = await screen.findByLabelText('CPF ou CNPJ (para cobranças)');
+    expect(field).toHaveValue('529.982.247-25');
+    await user.clear(field);
+    await user.type(field, CNPJ);
+    await user.click(screen.getByRole('button', { name: 'Salvar cliente' }));
+    await waitFor(() => expect(clients[0].cpf_cnpj).toBe(CNPJ));
+
+    card = (await screen.findByRole('heading', { name: 'Carlos Dias' })).closest('li') as HTMLElement;
+    await user.click(within(card).getByRole('button', { name: 'Editar Carlos Dias' }));
+    const again = await screen.findByLabelText('CPF ou CNPJ (para cobranças)');
+    expect(again).toHaveValue('11.222.333/0001-81');
+    await user.clear(again);
+    await user.click(screen.getByRole('button', { name: 'Salvar cliente' }));
+    await waitFor(() => expect(clients[0].cpf_cnpj).toBeNull());
+    expect(updates().at(-1)).toMatchObject({ cpf_cnpj: null });
+    card = (await screen.findByRole('heading', { name: 'Carlos Dias' })).closest('li') as HTMLElement;
+    expect(await within(card).findByText('Documento cadastrado: não')).toBeInTheDocument();
+  });
+
+  it('does not offer to change the document of a client who has an account on WorkEasy (the database refuses it)', async () => {
+    clients = [client({ client_id: 'user-9', origin: 'platform', cpf_cnpj: CPF })];
+    const user = userEvent.setup();
+    renderPro('/pro/clientes');
+    const card = (await screen.findByRole('heading', { name: 'Carlos Dias' })).closest('li') as HTMLElement;
+    await user.click(within(card).getByRole('button', { name: 'Editar Carlos Dias' }));
+
+    expect(await screen.findByText(/CPF ou CNPJ para cobranças: cadastrado\. Este cliente tem conta no WorkEasy/)).toBeInTheDocument();
+    expect(screen.queryByLabelText('CPF ou CNPJ (para cobranças)')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Salvar cliente' }));
+    await waitFor(() => expect(updates()).toHaveLength(1));
+    expect(updates()[0]).not.toHaveProperty('cpf_cnpj');
+  });
+
+  it('shows the refusal of the database in words when it rejects the document', async () => {
+    clients = [client()];
+    fake.tables.provider_clients = (call: TableCall) => (call.op === 'update' ? ruleError('cpf_cnpj_invalid') : ok(clients));
+    const user = userEvent.setup();
+    renderPro('/pro/clientes');
+    await user.click(await screen.findByRole('button', { name: 'Editar Carlos Dias' }));
+    await user.type(await screen.findByLabelText('CPF ou CNPJ (para cobranças)'), CPF);
+    await user.click(screen.getByRole('button', { name: 'Salvar cliente' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('CPF ou CNPJ inválido. Confira os números.');
+  });
+
+  it('keeps the document out of the CSV export and never writes it to the console', async () => {
+    const downloads = captureDownloads();
+    const logged: unknown[][] = [];
+    const spies = (['log', 'info', 'warn', 'error', 'debug'] as const).map(method =>
+      vi.spyOn(console, method).mockImplementation((...args: unknown[]) => void logged.push(args)),
+    );
+    clients = [client({ cpf_cnpj: CPF }), client({ id: 'cli-2', name: 'Empresa Alfa', cpf_cnpj: CNPJ })];
+    const user = userEvent.setup();
+    renderPro('/pro/clientes');
+    await user.click(await screen.findByRole('button', { name: 'Exportar CSV' }));
+    const text = await blobText(downloads[0].blob);
+
+    expect(text.split('\r\n')[0]).toBe('Nome;Celular;E-mail;Origem;Cadastrado em');
+    expect(text).not.toMatch(/52998224725|529\.982|11222333000181|11\.222\.333/);
+    spies.forEach(spy => spy.mockRestore());
+    expect(JSON.stringify(logged)).not.toMatch(/52998224725|529\.982|11222333000181|11\.222\.333/);
   });
 });
