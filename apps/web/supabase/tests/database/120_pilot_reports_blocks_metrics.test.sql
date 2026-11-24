@@ -1,7 +1,7 @@
 -- Launch round of 24/11/2026: care line visibility, waiting list, shifts created by the operation,
 -- new request notice, blocks, reports, search rotation and the dates the metrics needed.
 begin;
-select plan(75);
+select plan(77);
 select has_function('tests', 'setup_fixture', 'test helpers are installed (run 00_helpers first)');
 select tests.setup_fixture();
 
@@ -285,6 +285,9 @@ insert into ids select 'req3', id from r;
 select lives_ok(format($$select public.block_provider(%L)$$, tests.uid('provider_e')), 'a block on the account that will be deleted');
 select tests.clear_authentication();
 
+insert into public.quotes (provider_id, title, status, client_name) values (tests.uid('provider_e'), 'Orcamento da dona Maria', 'draft', 'Maria');
+insert into public.services (provider_id, occupation_slug, title, price_min_cents, unit) values (tests.uid('provider_e'), 't-reparo', 'Reparo na casa da dona Maria', 8000, 'hora');
+
 update public.profiles set deleted_at = now() where id in (tests.uid('provider_e'), tests.uid('client_b'));
 
 select is((select count(*)::int from public.content_reports where reporter_id = tests.uid('provider_e') or details is not null and target_type = 'request'), 0,
@@ -295,6 +298,10 @@ select is((select count(*)::int from public.waitlist_entries where user_id = tes
           'the waiting list entries of a deleted account are removed');
 select is((select count(*)::int from public.proposals where provider_id = tests.uid('provider_e') and message is not null), 0,
           'the free text of the proposals of a deleted provider is erased');
+select is((select title from public.quotes where provider_id = tests.uid('provider_e')), 'Orçamento removido',
+          'the title of a deleted provider''s quote, free text that can carry a client name, is replaced');
+select is((select title from public.services where provider_id = tests.uid('provider_e')), 'Serviço removido',
+          'and so is the title of a service');
 
 select * from finish();
 rollback;

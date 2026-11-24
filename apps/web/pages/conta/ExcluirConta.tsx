@@ -68,8 +68,8 @@ const ExcluirConta: React.FC = () => {
           </li>
           <li>O registro de que você aceitou os termos, guardado sem identificação direta, como prova do consentimento.</li>
           <li>
-            Para profissionais: os títulos e os itens dos orçamentos e dos serviços que você criou continuam, sem o nome, o telefone e as
-            observações do cliente.
+            Para profissionais: os itens e o total dos orçamentos continuam, porque são o registro do que foi cobrado, sem o nome, o telefone
+            e as observações do cliente. Os títulos de orçamentos e de serviços são trocados por um texto neutro.
           </li>
         </ul>
         <p className="text-sm text-gray-600 mt-3">

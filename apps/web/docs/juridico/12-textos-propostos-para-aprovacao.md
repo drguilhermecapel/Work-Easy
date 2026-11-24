@@ -311,7 +311,7 @@ Textos e tratamentos que entraram no app em 24/11/2026 (`docs/DECISOES.md`, DD59
 
 ### N2. Página pública "Excluir a conta do WorkEasy" (DD72)
 
-**Atualização de 24/11/2026 (revisão adversarial):** a página passou a dizer que, para profissionais, os títulos e os itens de orçamentos e de serviços criados continuam, sem nome, telefone e observações do cliente; o texto de `anonymize_user` não os limpa. O advogado decide se isso basta ou se a anonimização deve limpá-los.
+**Atualização de 24/11/2026 (revisão adversarial e DD82):** na exclusão, os títulos de orçamentos e de serviços do prestador, que são texto livre e podem citar um cliente, passam a ser trocados por um texto neutro (migração `20261124100010`). Os itens e o total dos orçamentos continuam, porque são o registro do que foi cobrado, sem nome, telefone e observações do cliente. O advogado confirma se manter itens e total atende a guarda fiscal sem conflito com a LGPD.
 
 **Onde aparece.** `/excluir-conta`, sem login, com link no rodapé (`pages/conta/ExcluirConta.tsx`). As lojas exigem um endereço público que explique a exclusão. Texto da página:
 
