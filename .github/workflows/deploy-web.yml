@@ -53,7 +53,7 @@ jobs:
         working-directory: apps/web
     steps:
       # Checkout first: the steps below run in apps/web, which exists only after it.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 

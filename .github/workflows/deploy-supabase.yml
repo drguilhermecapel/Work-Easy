@@ -58,7 +58,7 @@ jobs:
       # Checkout first: the steps run in apps/web, which exists only after it.
       # `ref` is only passed through `with:` (never interpolated into a shell line).
       # Full history, because a `ref` must be proved to be part of main's history.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref || github.sha }}
           fetch-depth: 0
