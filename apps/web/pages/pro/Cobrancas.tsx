@@ -93,7 +93,8 @@ const ChargeForm: React.FC<{ data: Data; initialTarget: string; onCreated: () =>
   const [description, setDescription] = useState('');
   const [pickedClient, setPickedClient] = useState('');
   // The CRM entry made for this quote by a try that failed later: the next try uses it instead of registering the client again
-  const [createdClientId, setCreatedClientId] = useState<string | null>(null);
+  // The CRM client registered for a quote by an attempt that failed later, kept with the target it belongs to
+  const [createdClient, setCreatedClient] = useState<{ target: string; id: string } | null>(null);
   const [cpfCnpj, setCpfCnpj] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -111,11 +112,13 @@ const ChargeForm: React.FC<{ data: Data; initialTarget: string; onCreated: () =>
   const canCreate = Boolean(quote && !linkedId && quote.client_name?.trim());
   const creating = chosenId === NEW_CLIENT;
   const needsDocument = creating || !client?.cpf_cnpj;
+  // Only the client made for the quote now on screen can be reused: a late answer for another target never counts
+  const createdClientId = createdClient?.target === target ? createdClient.id : null;
 
   const pick = (value: string) => {
     setTarget(value);
     setPickedClient('');
-    setCreatedClientId(null);
+    setCreatedClient(null);
     setCpfCnpj('');
     setProblem(null);
   };
@@ -149,7 +152,7 @@ const ChargeForm: React.FC<{ data: Data; initialTarget: string; onCreated: () =>
           cpfCnpj,
         });
         clientId = created.id;
-        setCreatedClientId(created.id);
+        setCreatedClient({ target, id: created.id });
       } else if (cpfCnpj.trim()) {
         await saveClientDocument(chosenId, cpfCnpj);
       }
@@ -186,7 +189,7 @@ const ChargeForm: React.FC<{ data: Data; initialTarget: string; onCreated: () =>
     <div className="space-y-4">
       <form onSubmit={submit} className="space-y-4" noValidate aria-label="Nova cobrança">
         <Field id="cob-alvo" label="O que cobrar" error={problemOf('cob-alvo')}>
-          <select id="cob-alvo" className={inputClass} value={target} onChange={e => pick(e.target.value)}>
+          <select id="cob-alvo" className={inputClass} value={target} disabled={busy} onChange={e => pick(e.target.value)}>
             <option value="">Escolha…</option>
             {data.bookings.length > 0 && (
               <optgroup label="Atendimentos com cliente seu">
@@ -239,6 +242,7 @@ const ChargeForm: React.FC<{ data: Data; initialTarget: string; onCreated: () =>
                 id="cob-cliente"
                 className={inputClass}
                 value={pickedClient}
+                disabled={busy}
                 onChange={e => {
                   setPickedClient(e.target.value);
                   setProblem(null);

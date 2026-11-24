@@ -232,6 +232,25 @@ describe('/pro/cobrancas: charging', () => {
     expect(fake.functionCalls[1].body).toMatchObject({ provider_client_id: 'cli-new' });
   });
 
+  it('keeps the target and the payer fixed while a charge is being sent, so a late answer cannot land on another quote', async () => {
+    let release: (value: Result) => void = () => {};
+    fake.functionsHandlers['charges-create'] = () => new Promise<Result>(resolve => (release = resolve));
+    const user = userEvent.setup();
+    renderPro('/pro/cobrancas?orcamento=q-1');
+    await user.selectOptions(await screen.findByLabelText('Cliente do seu CRM'), 'new');
+    await user.type(screen.getByLabelText('CPF ou CNPJ do cliente'), '11.222.333/0001-81');
+    await user.click(screen.getByRole('button', { name: 'Criar cobrança' }));
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Criando…' })).toBeDisabled());
+    expect(screen.getByLabelText('O que cobrar')).toBeDisabled();
+    expect(screen.getByLabelText('Cliente do seu CRM')).toBeDisabled();
+
+    release(functionData(CHARGE));
+    expect(await screen.findByRole('heading', { name: 'Cobrança criada' })).toBeInTheDocument();
+    expect(screen.getByLabelText('O que cobrar')).toBeEnabled();
+    expect(fake.tableCalls.filter(call => call.table === 'provider_clients' && call.op === 'insert')).toHaveLength(1);
+  });
+
   it('lets an unlinked quote be charged to an existing CRM client that already has the document, without asking for it again', async () => {
     fake.functionsHandlers['charges-create'] = () => functionData(CHARGE);
     const user = userEvent.setup();
