@@ -58,7 +58,9 @@ select is(public.get_quote_by_token((select id from ids where name = 'token')) -
 select ok(not (public.get_quote_by_token((select id from ids where name = 'token')) ? 'client_phone'),
           'the quote by token does not expose the client phone');
 select is(public.get_quote_by_token(gen_random_uuid()), null, 'an unknown token returns nothing');
-select is(public.respond_quote((select id from ids where name = 'token'), true)::text, 'accepted', 'anon accepts the quote');
+select is(public.respond_quote((select id from ids where name = 'token'), true,
+                              (public.get_quote_by_token((select id from ids where name = 'token')) ->> 'total_cents')::int)::text,
+          'accepted', 'anon accepts the quote at the total it was shown');
 select throws_ok($$select public.respond_quote((select id from ids where name = 'token'), false)$$,
                  'P0001', 'invalid_transition', 'an answered quote cannot be answered again');
 
@@ -77,7 +79,8 @@ select throws_ok($$select public.respond_quote((select id from ids where name = 
                  'P0001', 'quote_expired', 'an expired quote cannot be accepted');
 select is(public.get_quote_by_token((select id from ids where name = 'today_token')) ->> 'status', 'sent',
           'a quote is still valid on its last day (São Paulo date)');
-select is(public.respond_quote((select id from ids where name = 'today_token'), true)::text, 'accepted',
+select is(public.respond_quote((select id from ids where name = 'today_token'), true,
+                              (public.get_quote_by_token((select id from ids where name = 'today_token')) ->> 'total_cents')::int)::text, 'accepted',
           'and can be accepted on that day');
 
 -- The scheduler expires quotes past their validity and leaves the others alone.

@@ -1,0 +1,6 @@
+# Code owners are requested for review on these paths. Enable "Require review
+# from Code Owners" in the branch protection of main to make it mandatory.
+# In this monorepo the Supabase project lives in apps/web/supabase.
+/apps/web/ @drguilhermecapel
+/apps/web/supabase/ @drguilhermecapel
+/.github/ @drguilhermecapel

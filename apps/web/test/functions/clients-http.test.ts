@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest';
 import { AsaasClient, AsaasError, describeAsaasError } from '../../supabase/functions/_shared/asaas-client.ts';
 import { keyFromDictionary, readConfig } from '../../supabase/functions/_shared/config.ts';
 import { dbRuleError } from '../../supabase/functions/_shared/handler-kit.ts';
-import { allowedOrigins, corsHeaders, errors, HttpError, route } from '../../supabase/functions/_shared/http.ts';
-import { asaasWith, fakeFetch } from './helpers.ts';
+import {
+  allowedOrigins, corsHeaders, errors, HttpError, JSON_BODY_LIMIT, readJson, route,
+} from '../../supabase/functions/_shared/http.ts';
+import { asaasWith, fakeFetch, post } from './helpers.ts';
 
 describe('AsaasClient', () => {
   it('sends access_token, JSON body and parses the response', async () => {
@@ -34,7 +36,7 @@ describe('AsaasClient', () => {
 
   it('handles non-JSON errors', async () => {
     const fetch = async () => new Response('<html>bad gateway</html>', { status: 502 });
-    const client = new AsaasClient({ apiKey: 'k', fetch });
+    const client = new AsaasClient({ apiKey: 'k', fetch, baseUrl: 'https://api-sandbox.asaas.com/v3' });
     const error = await client.getPixQrCode('pay_1').catch(e => e);
     expect(error).toBeInstanceOf(AsaasError);
     expect(error.errors[0].code).toBe('http_502');
@@ -47,6 +49,50 @@ describe('AsaasClient', () => {
     expect((await nested.client.createAccount({} as never)).apiKey).toBe('k2');
   });
 
+  it('lists subaccounts by CPF/CNPJ with the root key and no apiKey in the items', async () => {
+    const { client, calls } = asaasWith({
+      'GET /v3/accounts': { body: { object: 'list', hasMore: false, totalCount: 1, data: [{ id: 'acc_1', walletId: 'wal_1', cpfCnpj: '52998224725' }] } },
+    });
+    const page = await client.listAccounts({ cpfCnpj: '52998224725', limit: 500 });
+    expect(page.data).toEqual([{ id: 'acc_1', walletId: 'wal_1', cpfCnpj: '52998224725' }]);
+    expect(page.hasMore).toBe(false);
+    expect(calls[0].method).toBe('GET');
+    expect(new URL(calls[0].url).searchParams.get('cpfCnpj')).toBe('52998224725');
+    expect(new URL(calls[0].url).searchParams.get('limit')).toBe('100'); // Asaas caps at 100
+    expect(calls[0].headers.access_token).toBe('root-key');
+  });
+
+  it('creates an access token for a subaccount and reads the key from either place', async () => {
+    const top = asaasWith({ 'POST /v3/accounts/acc_1/accessTokens': { body: { id: 'tok_1', apiKey: 'new-key' } } });
+    expect(await top.client.createAccessToken('acc_1', { name: 'WorkEasy' })).toEqual({ id: 'tok_1', apiKey: 'new-key' });
+    expect(top.calls[0].body).toEqual({ name: 'WorkEasy' });
+    const nested = asaasWith({ 'POST /v3/accounts/acc_2/accessTokens': { body: { accessToken: { apiKey: 'k2' } } } });
+    expect(await nested.client.createAccessToken('acc_2')).toEqual({ id: null, apiKey: 'k2' });
+    const refused = asaasWith({
+      'POST /v3/accounts/acc_3/accessTokens': { status: 403, body: { errors: [{ code: 'access_denied', description: 'Acesso negado. Code: x' }] } },
+    });
+    const error = await refused.client.createAccessToken('acc_3').catch(e => e);
+    expect(error).toBeInstanceOf(AsaasError);
+    expect(error.status).toBe(403);
+  });
+
+  it('lists, creates and updates webhooks', async () => {
+    const { client, calls } = asaasWith({
+      'GET /v3/webhooks': { body: { hasMore: true, data: [{ id: 'wh_1', url: 'https://x/y', hasAuthToken: true }] } },
+      'POST /v3/webhooks': { body: { id: 'wh_2', url: 'https://x/z' } },
+      'PUT /v3/webhooks/wh_1': { body: { id: 'wh_1', url: 'https://x/y' } },
+    });
+    const page = await client.listWebhooks({ offset: 100, limit: 100 });
+    expect(page).toMatchObject({ hasMore: true, data: [{ id: 'wh_1' }] });
+    expect(new URL(calls[0].url).searchParams.get('offset')).toBe('100');
+    await client.createWebhook({
+      name: 'WorkEasy', url: 'https://x/z', email: 'a@b.com', enabled: true, interrupted: false, sendType: 'SEQUENTIALLY', events: ['PAYMENT_CREATED'],
+    });
+    await client.updateWebhook('wh_1', { enabled: true, interrupted: false });
+    expect(calls[1]).toMatchObject({ method: 'POST', body: { name: 'WorkEasy', sendType: 'SEQUENTIALLY' } });
+    expect(calls[2]).toMatchObject({ method: 'PUT', body: { enabled: true, interrupted: false } });
+  });
+
   it('switches API key for subaccount calls and encodes path ids', async () => {
     const { fetch, calls } = fakeFetch({ 'DELETE /v3/subscriptions/sub_1%2F..': { body: { deleted: true, id: 'sub_1' } } });
     const client = new AsaasClient({ apiKey: 'root', fetch, baseUrl: 'https://api.asaas.com/v3/' }).withApiKey('sub');
@@ -57,7 +103,7 @@ describe('AsaasClient', () => {
 
   it('refuses plain http and missing keys', () => {
     expect(() => new AsaasClient({ apiKey: 'k', fetch: fetch, baseUrl: 'http://api.asaas.com/v3' })).toThrow();
-    expect(() => new AsaasClient({ apiKey: '', fetch: fetch })).toThrow();
+    expect(() => new AsaasClient({ apiKey: '', fetch: fetch, baseUrl: 'https://api-sandbox.asaas.com/v3' })).toThrow();
   });
 });
 
@@ -146,10 +192,10 @@ describe('readConfig', () => {
 
   it('opens the dev origins only for the Asaas sandbox or ALLOW_DEV_ORIGINS=true', () => {
     expect(readConfig(() => undefined).allowDevOrigins).toBe(true); // defaults to the sandbox
-    const production = { ASAAS_BASE_URL: 'https://api.asaas.com/v3' };
-    expect(readConfig(n => (production as Record<string, string>)[n]).allowDevOrigins).toBe(false);
-    expect(readConfig(n => ({ ...production, ALLOW_DEV_ORIGINS: 'true' } as Record<string, string>)[n]).allowDevOrigins).toBe(true);
-    expect(readConfig(n => ({ ...production, ALLOW_DEV_ORIGINS: 'yes' } as Record<string, string>)[n]).allowDevOrigins).toBe(false);
+    const realAsaas = { ASAAS_BASE_URL: 'https://api.asaas.com/v3' };
+    expect(readConfig(n => (realAsaas as Record<string, string>)[n]).allowDevOrigins).toBe(false);
+    expect(readConfig(n => ({ ...realAsaas, ALLOW_DEV_ORIGINS: 'true' } as Record<string, string>)[n]).allowDevOrigins).toBe(true);
+    expect(readConfig(n => ({ ...realAsaas, ALLOW_DEV_ORIGINS: 'yes' } as Record<string, string>)[n]).allowDevOrigins).toBe(false);
   });
 
   it('reads the grace days and the assistant limit as bounded integers', () => {
@@ -165,5 +211,83 @@ describe('readConfig', () => {
     expect(readConfig(n => ({ SUPABASE_ANON_KEY: 'anon', SUPABASE_PUBLISHABLE_KEYS: '{bad' })[n]).publishableKey).toBe('anon');
     expect(keyFromDictionary('{"other":"x"}')).toBeUndefined();
     expect(readConfig(n => ({ SUPABASE_SECRET_KEYS: '{"default":"sb_secret_y"}' })[n]).serviceKey).toBe('sb_secret_y');
+  });
+});
+
+describe('readJson body limit', () => {
+  /** The HttpError a refused body leaves behind; fails the test when the body was accepted. */
+  const refusal = (promise: Promise<unknown>): Promise<HttpError> =>
+    promise.then(() => {
+      throw new Error('readJson accepted the body');
+    }, (error: HttpError) => error);
+
+  // A body that arrives as a stream, so the request carries no Content-Length
+  const streamed = (chunks: Uint8Array[]) =>
+    new Request('http://x/f', {
+      method: 'POST',
+      body: new ReadableStream<Uint8Array>({
+        start(controller) {
+          for (const chunk of chunks) controller.enqueue(chunk);
+          controller.close();
+        },
+      }),
+      duplex: 'half',
+    } as RequestInit);
+
+  it('reads a body within the limit and accepts one of exactly the limit', async () => {
+    expect(await readJson(post('x', { a: 1 }))).toEqual({ a: 1 });
+    const padded = `${' '.repeat(JSON_BODY_LIMIT - 2)}{}`;
+    expect(new TextEncoder().encode(padded).byteLength).toBe(JSON_BODY_LIMIT);
+    expect(await readJson(new Request('http://x/f', { method: 'POST', body: padded }))).toEqual({});
+  });
+
+  it('still answers 400 for text that is not JSON', async () => {
+    const error = await refusal(readJson(new Request('http://x/f', { method: 'POST', body: 'não é json' })));
+    expect(error).toBeInstanceOf(HttpError);
+    expect(error.status).toBe(400);
+    expect(error.code).toBe('invalid_json');
+  });
+
+  it('refuses a Content-Length over the limit before reading the body', async () => {
+    const req = new Request('http://x/f', {
+      method: 'POST', headers: { 'Content-Length': String(JSON_BODY_LIMIT + 1) }, body: '{}',
+    });
+    const error = await refusal(readJson(req));
+    expect(error).toBeInstanceOf(HttpError);
+    expect(error.status).toBe(413);
+    expect(req.bodyUsed).toBe(false);
+  });
+
+  it('refuses a streamed body without Content-Length once it passes the limit', async () => {
+    const half = new Uint8Array(JSON_BODY_LIMIT / 2 + 1).fill(0x20);
+    const req = streamed([half, half]);
+    expect(req.headers.get('content-length')).toBeNull();
+    const error = await refusal(readJson(req));
+    expect(error).toBeInstanceOf(HttpError);
+    expect(error.status).toBe(413);
+  });
+
+  it('stops reading an endless stream at the limit', async () => {
+    let pulls = 0;
+    const endless = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulls++;
+        controller.enqueue(new Uint8Array(1024).fill(0x20));
+      },
+    });
+    const error = await refusal(readJson(new Request('http://x/f', { method: 'POST', body: endless, duplex: 'half' } as RequestInit)));
+    expect(error.status).toBe(413);
+    expect(pulls).toBeLessThan(JSON_BODY_LIMIT / 1024 + 10);
+  });
+
+  it('answers 413 with the error envelope through route', async () => {
+    const req = new Request('http://x/f', {
+      method: 'POST', headers: { 'Content-Length': String(JSON_BODY_LIMIT + 1) }, body: '{}',
+    });
+    const res = await route(req, { methods: ['POST'] }, async () => ({ data: await readJson(req) }));
+    expect(res.status).toBe(413);
+    expect(await res.json()).toEqual({
+      ok: false, error: { code: 'payload_too_large', message: 'O corpo da requisição é grande demais.' },
+    });
   });
 });

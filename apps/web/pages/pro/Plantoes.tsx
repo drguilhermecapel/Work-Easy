@@ -94,7 +94,7 @@ const OfferCard: React.FC<{ shift: CaregiverShift; onAccepted: (shift: Caregiver
   return (
     <Card as="li" className="space-y-3">
       <ShiftFacts shift={shift} />
-      <CareError error={error} audience="cuidador" />
+      <ErrorAlert error={error} />
       <div className="flex flex-wrap gap-2">
         {!stale && (
           <button type="button" className={primaryButton} disabled={busy} onClick={accept}>

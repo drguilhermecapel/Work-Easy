@@ -31,9 +31,15 @@ Com a stack local de pé (`supabase start`) e `supabase/functions/.env` preenchi
 supabase functions serve --env-file supabase/functions/.env
 ```
 
-`asaas-webhook` e `notify-dispatch` não recebem JWT de usuário: rodar com
-`--no-verify-jwt` localmente e, no deploy, `verify_jwt = false` para essas duas
-em `supabase/config.toml` (ou `supabase functions deploy <nome> --no-verify-jwt`).
+`asaas-webhook` e `notify-dispatch` não recebem JWT de usuário: `verify_jwt = false`
+para essas duas já está em `supabase/config.toml` (e o `supabase functions serve` local
+herda essa configuração). Cada uma confere o próprio segredo no código
+(`asaas-access-token` e `x-cron-secret`).
+
+Cobranças e assinaturas (`charges-create`, `subscriptions-manage`, `asaas-onboard`) exigem
+conta de prestador aprovada pelo admin (e ao menos uma ocupação aprovada). Em
+`charges-create` o pagador é um cliente do CRM: o corpo envia só `provider_client_id`
+(e nunca `customer`); CPF/CNPJ, nome, e-mail e telefone vêm do registro do cliente.
 
 Exemplos (`$JWT` é o access token de um usuário logado; `$ANON` a chave publicável):
 
@@ -43,17 +49,20 @@ H=(-H "Authorization: Bearer $JWT" -H "apikey: $ANON" -H 'Content-Type: applicat
 
 curl "${H[@]}" -d '{"name":"Ana","email":"ana@example.com","cpf_cnpj":"52998224725","birth_date":"1990-05-10","mobile_phone":"11987654321","income_value_cents":500000,"address":"Rua A","address_number":"10","province":"Pinheiros","postal_code":"05422000"}' $BASE/asaas-onboard
 curl "${H[@]}" -d '{"booking_id":"<uuid>","method":"pix","cpf_cnpj":"52998224725"}' $BASE/payments-create
-curl "${H[@]}" -d '{"quote_id":"<uuid>","method":"boleto","customer":{"cpf_cnpj":"52998224725","name":"Cliente"}}' $BASE/charges-create
+curl "${H[@]}" -d '{"quote_id":"<uuid>","method":"boleto","provider_client_id":"<uuid de um cliente do CRM com cpf_cnpj>"}' $BASE/charges-create
 curl "${H[@]}" -d '{"booking_id":"<uuid de um atendimento cancelado>"}' $BASE/payments-void
 curl "${H[@]}" -d '{"action":"subscribe","method":"pix"}' $BASE/subscriptions-manage
 curl "${H[@]}" -d '{"action":"cancel"}' $BASE/subscriptions-manage
 curl "${H[@]}" -X POST $BASE/account-export
 curl "${H[@]}" -d '{"confirm":"EXCLUIR"}' $BASE/account-delete
 curl "${H[@]}" -d '{"text":"Tem um vazamento embaixo da pia, preciso hoje"}' $BASE/request-assist
+# só administrador ($JWT de um admin); nunca testada no Asaas real: primeiro dry_run no sandbox (RUNBOOKS, "Re-registrar o webhook das subcontas")
+curl "${H[@]}" -d '{"provider_id":"<uuid>","dry_run":true}' $BASE/asaas-webhooks-sync
 
 curl -H "asaas-access-token: $ASAAS_WEBHOOK_TOKEN" -H 'Content-Type: application/json' \
   -d '{"id":"evt_teste_1","event":"PAYMENT_RECEIVED","payment":{"id":"pay_xxx","dueDate":"2026-10-19"}}' $BASE/asaas-webhook
 curl -H "x-cron-secret: $CRON_SECRET" -H 'Content-Type: application/json' -d '{"limit":20}' $BASE/notify-dispatch
+curl -X POST -H "x-cron-secret: $CRON_SECRET" $BASE/background-check-purge
 ```
 
 No sandbox do Asaas, configure o webhook da conta raiz (Integrações → Webhooks)
@@ -71,3 +80,10 @@ Os nomes e a ordem das variáveis de `notifications.params` estão em
 `_shared/notifications.ts` (`TEMPLATES`). Cada template precisa ser aprovado
 no WhatsApp Manager com o mesmo nome, idioma `pt_BR` e as variáveis nessa ordem.
 Chaves terminadas em `_cents` viram valor em reais; em `_at`, data e hora de São Paulo.
+
+São 10 modelos. O mais novo é `pedido_novo` (24/11/2026): avisa o prestador de um pedido
+que ele pode responder, com duas variáveis (`occupation_name`, `neighborhood_name`),
+preenchidas por `_shared/notification-context.ts` a partir de `params.request_id`.
+
+`PRO_GRACE_DAYS` é reserva: a carência do Pro vem de `platform_settings.pro_grace_days`
+(a mesma chave do job de expiração), e a variável só vale quando a chave não pode ser lida.

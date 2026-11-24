@@ -2,7 +2,7 @@ import { VERIFICATION_LABELS } from '../catalog/labels';
 import type { VerificationStep } from '../catalog/types';
 import { AppError, toAppError } from '../lib/errors';
 import { saoPauloDateTime } from '../lib/timezone';
-import { db, unwrap, unwrapMaybe } from './client';
+import { db, nullable, unwrap, unwrapMaybe } from './client';
 import { occupationNames } from './occupationNames';
 import type { BookingStatus } from './bookings';
 import type { DataRequestKind, PlanCode, ProviderStatus } from './types';
@@ -59,14 +59,37 @@ const stepList = (steps: string): string =>
     .map(step => VERIFICATION_LABELS[step as VerificationStep] ?? step)
     .join('; ');
 
+/** The registry rule of the table: the policy asks for the registry and the provider gave no number. */
+export const REGISTRY_NUMBER_MISSING =
+  'O prestador ainda não informou o número do registro que a política exige. Peça que ele informe o número no cadastro antes de aprovar.';
+
+/** `invalid_setting` carries the key in English (`pro_trial_days is a whole number from 0 to 90`): say it with the screen's own sentence. */
+const settingRefusal = (details: string): string => {
+  const key = /^([a-z_]+) is /.exec(details)?.[1] ?? '';
+  const limits = (NUMBER_LIMITS as Record<string, { message: string } | undefined>)[key];
+  if (limits) return `O banco recusou o valor. ${limits.message}`;
+  if ((BOOLEAN_SETTINGS as readonly string[]).includes(key)) return 'O banco recusou o valor: esta configuração só aceita ligada ou desligada.';
+  return 'O banco recusou o valor: confira a faixa aceita para esta configuração.';
+};
+
 /**
- * The database refuses with generic codes (`not_allowed`, `documents_missing`) written for the
- * provider's screens; here the same refusal is explained for the person who administers.
+ * The database refuses with generic codes (`not_allowed`, `documents_missing`, `registry_required`)
+ * written for the provider's screens; here the same refusal is explained for the person who administers.
  */
 export const explainAdminError = (err: unknown): AppError => {
   const app = toAppError(err);
   const details = (app.cause as { details?: unknown } | null | undefined)?.details;
   const text = typeof details === 'string' ? details.trim() : '';
+  if (app.code === 'registry_required') {
+    return new AppError('registry_required', {
+      cause: app.cause,
+      detail: app.detail,
+      message: 'O banco recusou: a política de uma das ocupações exige o número do registro e o prestador ainda não o informou. Peça que ele informe o número no cadastro e tente de novo.',
+    });
+  }
+  if (/^invalid_setting\b/.test(app.detail ?? '')) {
+    return new AppError('invalid_input', { cause: app.cause, detail: app.detail, message: settingRefusal(text) });
+  }
   if (app.code === 'documents_missing') {
     const steps = stepList(text);
     return new AppError('documents_missing', {
@@ -106,36 +129,141 @@ const profileNames = async (ids: Array<string | null>): Promise<Map<string, stri
 // Metrics (view admin_metrics)
 // ---------------------------------------------------------------------------
 
+/** The tables the view counts by status (one table of the panel each). */
 export const METRIC_ENTITIES = ['requests', 'proposals', 'bookings', 'payments', 'providers'] as const;
 export type MetricEntity = (typeof METRIC_ENTITIES)[number];
 
+/**
+ * Rows the view adds for the operating funnel: requests that received a proposal, Pro subscriptions
+ * by status and the free-plan providers at the monthly proposal limit. They are not tables of the
+ * panel; `buildFunnel` reads them.
+ */
+export const FUNNEL_ENTITIES = ['requests_with_proposal', 'subscriptions', 'free_allowance'] as const;
+export type FunnelEntity = (typeof FUNNEL_ENTITIES)[number];
+
 export interface MetricRow {
-  entity: MetricEntity;
+  entity: MetricEntity | FunnelEntity;
   status: string;
   this_week: number;
   this_month: number;
   total: number;
+  /** Created in the last 7 and 30 days (rolling, unlike this_week and this_month, which are calendar). */
+  last_7_days: number;
+  last_30_days: number;
+  /** Payments only: the sum of the amounts counted in `total` and in `this_month`; null for the rest. */
+  amount_cents: number | null;
+  month_amount_cents: number | null;
 }
 
 const isMetricEntity = (value: unknown): value is MetricEntity => (METRIC_ENTITIES as readonly unknown[]).includes(value);
+const isFunnelEntity = (value: unknown): value is FunnelEntity => (FUNNEL_ENTITIES as readonly unknown[]).includes(value);
+
+const METRIC_COLUMNS = 'entity, status, this_week, this_month, total, last_7_days, last_30_days, amount_cents, month_amount_cents';
+const count = (value: unknown): number => Number(value) || 0;
+const cents = (value: unknown): number | null => (value === null || value === undefined ? null : count(value));
 
 export const getMetrics = async (): Promise<MetricRow[]> => {
-  const rows = unwrap<Array<Record<string, unknown>>>(await db().from('admin_metrics').select('entity, status, this_week, this_month, total'));
+  const rows = unwrap<Array<Record<string, unknown>>>(await db().from('admin_metrics').select(METRIC_COLUMNS));
   return rows
-    .filter(row => isMetricEntity(row.entity))
+    .filter(row => isMetricEntity(row.entity) || isFunnelEntity(row.entity))
     .map(row => ({
-      entity: row.entity as MetricEntity,
+      entity: row.entity as MetricRow['entity'],
       status: String(row.status),
-      this_week: Number(row.this_week) || 0,
-      this_month: Number(row.this_month) || 0,
-      total: Number(row.total) || 0,
+      this_week: count(row.this_week),
+      this_month: count(row.this_month),
+      total: count(row.total),
+      last_7_days: count(row.last_7_days),
+      last_30_days: count(row.last_30_days),
+      amount_cents: cents(row.amount_cents),
+      month_amount_cents: cents(row.month_amount_cents),
     }));
 };
 
-export const groupMetrics = (rows: MetricRow[]): Record<MetricEntity, MetricRow[]> => {
-  const grouped: Record<MetricEntity, MetricRow[]> = { requests: [], proposals: [], bookings: [], payments: [], providers: [] };
-  for (const row of rows) grouped[row.entity].push(row);
+/** The rows of each table of the panel; funnel rows and unknown entities are left out. */
+export const groupMetrics = <Row extends { entity: string }>(rows: Row[]): Record<MetricEntity, Row[]> => {
+  const grouped: Record<MetricEntity, Row[]> = { requests: [], proposals: [], bookings: [], payments: [], providers: [] };
+  for (const row of rows) if (isMetricEntity(row.entity)) grouped[row.entity].push(row);
   return grouped;
+};
+
+// ---------------------------------------------------------------------------
+// Operating funnel (read from the same view)
+// ---------------------------------------------------------------------------
+
+export type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'pending' | 'canceled';
+/** In the order the panel lists them. */
+export const SUBSCRIPTION_STATUSES: SubscriptionStatus[] = ['trialing', 'active', 'past_due', 'pending', 'canceled'];
+
+/** From request to completion; the panel lists the bookings in this order. */
+export const BOOKING_FUNNEL_STATUSES: BookingStatus[] = ['requested', 'accepted', 'paid', 'in_progress', 'completed', 'released', 'canceled', 'disputed'];
+
+/**
+ * A payment counts as received once the money came in: received, held (kept by the platform while
+ * the escrow is on) and released. Confirmed (not credited yet), refunded, failed and canceled do not.
+ */
+export const RECEIVED_PAYMENT_STATUSES: readonly string[] = ['received', 'held', 'released'];
+
+/** Created in the last 7 days, in the last 30 days, and ever. */
+export interface WindowCount {
+  last7: number;
+  last30: number;
+  total: number;
+}
+
+export interface Funnel {
+  providers: Record<ProviderStatus, number>;
+  requests: WindowCount;
+  /** Requests (by the day they were created) that received at least one proposal, even one withdrawn later. */
+  requestsWithProposal: WindowCount;
+  bookings: Array<{ status: BookingStatus; last30: number; total: number }>;
+  /** Payments received, in count and in cents (gross: what the clients paid, not revenue of the platform). */
+  paymentsReceived: { count: number; cents: number; monthCount: number; monthCents: number };
+  subscribers: Record<SubscriptionStatus, number>;
+  /** Free-plan providers that already sent this month every proposal the plan allows. */
+  atFreeLimit: number;
+}
+
+const sumOf = (rows: MetricRow[], pick: (row: MetricRow) => number): number => rows.reduce((total, row) => total + pick(row), 0);
+
+/** The operating funnel out of the rows of admin_metrics; what the view has no row for counts as zero. */
+export const buildFunnel = (rows: MetricRow[]): Funnel => {
+  const of = (entity: MetricRow['entity']): MetricRow[] => rows.filter(row => row.entity === entity);
+  const window = (entity: MetricRow['entity']): WindowCount => ({
+    last7: sumOf(of(entity), row => row.last_7_days),
+    last30: sumOf(of(entity), row => row.last_30_days),
+    total: sumOf(of(entity), row => row.total),
+  });
+  const totalOf = (entity: MetricRow['entity'], status: string): number => sumOf(of(entity).filter(row => row.status === status), row => row.total);
+
+  const received = of('payments').filter(row => RECEIVED_PAYMENT_STATUSES.includes(row.status));
+  return {
+    providers: {
+      draft: totalOf('providers', 'draft'),
+      pending_review: totalOf('providers', 'pending_review'),
+      approved: totalOf('providers', 'approved'),
+      suspended: totalOf('providers', 'suspended'),
+    },
+    requests: window('requests'),
+    requestsWithProposal: window('requests_with_proposal'),
+    bookings: BOOKING_FUNNEL_STATUSES.map(status => {
+      const own = of('bookings').filter(row => row.status === status);
+      return { status, last30: sumOf(own, row => row.last_30_days), total: sumOf(own, row => row.total) };
+    }),
+    paymentsReceived: {
+      count: sumOf(received, row => row.total),
+      cents: sumOf(received, row => row.amount_cents ?? 0),
+      monthCount: sumOf(received, row => row.this_month),
+      monthCents: sumOf(received, row => row.month_amount_cents ?? 0),
+    },
+    subscribers: {
+      trialing: totalOf('subscriptions', 'trialing'),
+      active: totalOf('subscriptions', 'active'),
+      past_due: totalOf('subscriptions', 'past_due'),
+      pending: totalOf('subscriptions', 'pending'),
+      canceled: totalOf('subscriptions', 'canceled'),
+    },
+    atFreeLimit: totalOf('free_allowance', 'reached'),
+  };
 };
 
 // ---------------------------------------------------------------------------
@@ -343,7 +471,9 @@ export const getProviderDetail = async (providerId: string): Promise<ProviderDet
     db().from('providers').select(PROVIDER_COLUMNS).eq('id', providerId).maybeSingle(),
     db().from('profiles').select('full_name, phone').eq('id', providerId).maybeSingle(),
     db().from('provider_occupations').select(OCCUPATION_COLUMNS).eq('provider_id', providerId).order('is_primary', { ascending: false }),
-    db().from('provider_documents').select(DOCUMENT_COLUMNS).eq('provider_id', providerId).order('created_at', { ascending: false }),
+    // A purged document has no file to open (its record stays in audit_log): the list leaves it out.
+    db().from('provider_documents').select(DOCUMENT_COLUMNS).eq('provider_id', providerId)
+      .in('status', ['submitted', 'accepted', 'rejected']).order('created_at', { ascending: false }),
   ]);
   const providerRow = unwrapMaybe<AdminProvider>(provider);
   if (!providerRow) throw new AppError('not_found');
@@ -394,13 +524,21 @@ export const stepStatuses = (policy: AdminPolicy | null, documents: AdminDocumen
     return { step, state, documents: own };
   });
 
+/** Whether the policy asks for the professional registry, so the occupation must carry a registry number. */
+export const requiresRegistry = (policy: Pick<AdminPolicy, 'verification'> | null): boolean =>
+  Boolean(policy?.verification?.includes('registro_profissional'));
+
+/** Whether the occupation has a registry number on file (blank counts as none). */
+export const hasRegistryNumber = (occupation: Pick<AdminOccupation, 'registry_number'>): boolean => Boolean(occupation.registry_number?.trim());
+
 /**
- * Whether the screen offers "approve occupation": every step of the policy accepted and a registry
- * that was not rejected. It is the same rule as admin_set_occupation_approval, shown to save a
- * trip; the database is the one that decides.
+ * Whether the screen offers "approve occupation": every step of the policy accepted, a registry
+ * number on file when the policy asks for the registry, and a registry that was not rejected. It is
+ * the same rule as admin_set_occupation_approval (and the registry rule of the table, which raises
+ * registry_required), shown to save a trip; the database is the one that decides.
  */
 export const approvalCheck = (
-  occupation: Pick<AdminOccupation, 'registry_status' | 'policy'>,
+  occupation: Pick<AdminOccupation, 'registry_status' | 'policy'> & Partial<Pick<AdminOccupation, 'registry_number'>>,
   documents: AdminDocument[],
 ): { ok: boolean; reason: string | null } => {
   if (occupation.registry_status === 'rejected') {
@@ -409,6 +547,10 @@ export const approvalCheck = (
   // Without a policy nothing says which documents are required, so the database refuses too
   if (!occupation.policy) {
     return { ok: false, reason: 'Esta ocupação não tem política no catálogo, então não há como saber quais documentos exigir.' };
+  }
+  // A number that was not read (undefined) is not a number that is missing: only an empty one blocks
+  if (requiresRegistry(occupation.policy) && occupation.registry_number !== undefined && !hasRegistryNumber({ registry_number: occupation.registry_number })) {
+    return { ok: false, reason: REGISTRY_NUMBER_MISSING };
   }
   const missing = missingSteps(occupation.policy, documents);
   if (missing.length > 0) {
@@ -433,7 +575,11 @@ export const registryLookupUrl = (policy: Pick<AdminPolicy, 'registry_name' | 'r
 /** Signed address (5 minutes) of a file in the private bucket provider-documents. */
 export const SIGNED_URL_SECONDS = 300;
 
+/** The view is recorded first: when the record fails, no address is returned. */
 export const createDocumentUrl = async (storagePath: string): Promise<string> => {
+  await guarded(async () =>
+    unwrapMaybe<unknown>(await db().rpc('admin_log_document_view', { p_storage_path: storagePath })),
+  );
   const { data, error } = await db().storage.from('provider-documents').createSignedUrl(storagePath, SIGNED_URL_SECONDS);
   if (error) throw toAppError(error);
   if (!data?.signedUrl) throw new AppError('not_found');
@@ -444,7 +590,7 @@ export const createDocumentUrl = async (storagePath: string): Promise<string> =>
 export const reviewDocument = async (documentId: string, accept: boolean, reason?: string): Promise<DocumentStatus> => {
   const text = accept ? reason?.trim() || null : requireReason(reason);
   const data = await guarded(async () =>
-    unwrapMaybe<unknown>(await db().rpc('admin_review_document', { p_document: documentId, p_accept: accept, p_reason: text })),
+    unwrapMaybe<unknown>(await db().rpc('admin_review_document', { p_document: documentId, p_accept: accept, p_reason: nullable(text) })),
   );
   return data === 'accepted' || data === 'rejected' ? data : accept ? 'accepted' : 'rejected';
 };
@@ -704,9 +850,22 @@ export const markPaymentReviewed = async (paymentId: string, reason: string): Pr
 // ---------------------------------------------------------------------------
 
 export const BOOLEAN_SETTINGS = ['commission_enabled', 'escrow_enabled'] as const;
-export const NUMBER_SETTINGS = ['commission_bps', 'pro_price_cents', 'proposal_limit', 'labor_lock_days_per_week'] as const;
+export const NUMBER_SETTINGS = [
+  'commission_bps',
+  'pro_price_cents',
+  'proposal_limit',
+  'labor_lock_days_per_week',
+  'pro_trial_days',
+  'free_proposals_per_month',
+  'commission_cap_cents',
+] as const;
 export type BooleanSettingKey = (typeof BOOLEAN_SETTINGS)[number];
 export type NumberSettingKey = (typeof NUMBER_SETTINGS)[number];
+
+/** The number settings that hold cents: the screen takes them in reais. */
+export const MONEY_SETTINGS = ['pro_price_cents', 'commission_cap_cents'] as const satisfies readonly NumberSettingKey[];
+export type MoneySettingKey = (typeof MONEY_SETTINGS)[number];
+const isMoneySetting = (key: NumberSettingKey): key is MoneySettingKey => (MONEY_SETTINGS as readonly string[]).includes(key);
 
 export interface SettingRow {
   key: string;
@@ -718,12 +877,24 @@ export interface SettingRow {
 export const listSettings = async (): Promise<SettingRow[]> =>
   unwrap<SettingRow[]>(await db().from('platform_settings').select('key, value, internal, updated_at').order('key', { ascending: true }));
 
-/** Limits accepted by the screen (the database does not check them); the integer is what is stored. */
+/**
+ * Limits accepted by the screen, the same ones admin_set_setting checks in the database (which
+ * answers `invalid_setting` outside them); the integer is what is stored. For the three revenue
+ * settings the minimum 0 is a value of its own: no ceiling, no limit, no trial.
+ */
 export const NUMBER_LIMITS: Record<NumberSettingKey, { min: number; max: number; message: string }> = {
   commission_bps: { min: 0, max: 5000, message: 'A comissão vai de 0 a 5.000 pontos-base (0% a 50%).' },
   pro_price_cents: { min: 100, max: 100_000, message: 'O preço do plano Pro vai de R$ 1,00 a R$ 1.000,00.' },
   proposal_limit: { min: 1, max: 10, message: 'O limite de propostas por pedido vai de 1 a 10.' },
   labor_lock_days_per_week: { min: 1, max: 7, message: 'Os dias por semana vão de 1 a 7.' },
+  pro_trial_days: { min: 0, max: 90, message: 'Os dias de teste grátis vão de 0 (sem teste) a 90.' },
+  free_proposals_per_month: { min: 0, max: 100, message: 'As propostas por mês do plano gratuito vão de 0 (sem limite) a 100.' },
+  commission_cap_cents: { min: 0, max: 1_000_000, message: 'O teto da comissão vai de R$ 0,00 (sem teto) a R$ 10.000,00.' },
+};
+
+const MONEY_ERRORS: Record<MoneySettingKey, string> = {
+  pro_price_cents: 'Informe o valor em reais, por exemplo 49,90.',
+  commission_cap_cents: 'Informe o valor em reais, por exemplo 150,00. Use 0 para ficar sem teto.',
 };
 
 /** "49,90" or "1.234,50" or "49.90" → 4990 cents; null when it is not a money amount with at most 2 decimals. */
@@ -742,9 +913,10 @@ export const parseReaisToCents = (text: string): number | null => {
 export const parseNumberSetting = (key: NumberSettingKey, text: string): { value: number } | { error: string } => {
   const typed = text.trim();
   if (typed === '') return { error: 'Informe um valor.' };
-  const value = key === 'pro_price_cents' ? parseReaisToCents(typed) : /^\d+$/.test(typed) ? Number(typed) : null;
+  const money = isMoneySetting(key);
+  const value = money ? parseReaisToCents(typed) : /^\d+$/.test(typed) ? Number(typed) : null;
   if (value === null || !Number.isSafeInteger(value)) {
-    return { error: key === 'pro_price_cents' ? 'Informe o valor em reais, por exemplo 49,90.' : 'Informe um número inteiro.' };
+    return { error: money ? MONEY_ERRORS[key] : 'Informe um número inteiro.' };
   }
   const limits = NUMBER_LIMITS[key];
   if (value < limits.min || value > limits.max) return { error: limits.message };
@@ -756,7 +928,7 @@ export const setSetting = async (key: BooleanSettingKey | NumberSettingKey, valu
     const limits = NUMBER_LIMITS[key as NumberSettingKey];
     if (!limits || !Number.isInteger(value) || value < limits.min || value > limits.max) throw invalid(limits?.message ?? 'Valor inválido.');
   }
-  unwrapMaybe<unknown>(await db().rpc('admin_set_setting', { p_key: key, p_value: value }));
+  await guarded(async () => unwrapMaybe<unknown>(await db().rpc('admin_set_setting', { p_key: key, p_value: value })));
 };
 
 /** The exact words an administrator types to turn a money feature on. */
@@ -837,4 +1009,140 @@ export const listDataRequests = async ({ status, page = 0 }: { status?: DataRequ
   const names = await profileNames(result.rows.map(row => row.user_id));
   result.rows = result.rows.map(row => ({ ...row, user_name: row.user_id ? names.get(row.user_id) ?? null : null }));
   return result;
+};
+
+// ---------------------------------------------------------------------------
+// Reports (content_reports, read through admin_list_reports)
+// ---------------------------------------------------------------------------
+
+export const REPORT_STATUSES = ['open', 'actioned', 'dismissed'] as const;
+export type ReportStatus = (typeof REPORT_STATUSES)[number];
+export type ReportTargetType = 'provider' | 'review' | 'request';
+
+export interface ReportRow {
+  id: string;
+  created_at: string;
+  status: ReportStatus;
+  target_type: ReportTargetType;
+  target_id: string;
+  target_user_id: string | null;
+  /** Provider name (profile and review) or occupation slug (request); null once the target is gone. */
+  target_label: string | null;
+  /** The text that was reported, as it is now. */
+  target_text: string | null;
+  reason: string;
+  details: string | null;
+  reporter_id: string | null;
+  resolution_note: string | null;
+  resolved_at: string | null;
+  open_reports_on_target: number;
+}
+
+export const REPORTS_PAGE_SIZE = 20;
+
+export const listReports = async ({ status, page = 0 }: { status?: ReportStatus | ''; page?: number } = {}): Promise<{ rows: ReportRow[]; hasMore: boolean }> => {
+  const rows = unwrap<ReportRow[]>(
+    await db().rpc('admin_list_reports', { p_status: nullable(status || null), p_limit: REPORTS_PAGE_SIZE + 1, p_offset: page * REPORTS_PAGE_SIZE }),
+  );
+  return { rows: rows.slice(0, REPORTS_PAGE_SIZE), hasMore: rows.length > REPORTS_PAGE_SIZE };
+};
+
+export const RESOLUTION_NOTE_MAX = 1000;
+
+/** Closes a report as acted on or dismissed. The action itself (unpublish, suspend) is done with the other admin tools. */
+export const resolveReport = async (id: string, status: Exclude<ReportStatus, 'open'>, note: string): Promise<void> => {
+  const text = note.trim();
+  if (text.length > RESOLUTION_NOTE_MAX) throw new AppError('invalid_input', { message: `A anotação pode ter até ${RESOLUTION_NOTE_MAX} caracteres.` });
+  unwrapMaybe<unknown>(await db().rpc('admin_resolve_report', { p_report: id, p_status: status, p_note: nullable(text || null) }));
+};
+
+export const countOpenReports = async (): Promise<number> => {
+  const { count, error } = await db().from('content_reports').select('id', { count: 'exact', head: true }).eq('status', 'open');
+  if (error) throw toAppError(error);
+  return count ?? 0;
+};
+
+// ---------------------------------------------------------------------------
+// Waiting list and daily funnel
+// ---------------------------------------------------------------------------
+
+export interface WaitlistSummaryRow {
+  neighborhood_id: string;
+  neighborhood_name: string;
+  occupation_slug: string | null;
+  entries: number;
+  last_entry_at: string;
+}
+
+/** Demand outside the pilot neighborhoods, most asked first. */
+export const getWaitlistSummary = async (): Promise<WaitlistSummaryRow[]> =>
+  unwrap<WaitlistSummaryRow[]>(await db().rpc('admin_waitlist_summary')).map(row => ({ ...row, entries: Number(row.entries) }));
+
+/** Steps of the product funnel, in the order a request travels (events of public.product_events). */
+export const FUNNEL_EVENTS = [
+  'request_created',
+  'proposal_sent',
+  'booking_requested',
+  'booking_accepted',
+  'payment_received',
+  'review_published',
+  'provider_submitted',
+  'provider_approved',
+  'occupation_approved',
+  'pro_trial_started',
+  'pro_subscribed',
+] as const;
+export type FunnelEvent = (typeof FUNNEL_EVENTS)[number];
+
+export interface DailyFunnelRow {
+  /** "YYYY-MM-DD", São Paulo. */
+  day: string;
+  counts: Partial<Record<FunnelEvent, number>>;
+}
+
+const isFunnelEvent = (value: unknown): value is FunnelEvent => (FUNNEL_EVENTS as readonly unknown[]).includes(value);
+
+/** One row per day of the window that had any event, newest first; a day without events has no row. */
+export const groupDailyFunnel = (rows: Array<{ day: string; event: string; events: number | string }>): DailyFunnelRow[] => {
+  const days = new Map<string, DailyFunnelRow>();
+  for (const row of rows) {
+    if (!isFunnelEvent(row.event)) continue;
+    const entry = days.get(row.day) ?? { day: row.day, counts: {} };
+    entry.counts[row.event] = (entry.counts[row.event] ?? 0) + Number(row.events);
+    days.set(row.day, entry);
+  }
+  return [...days.values()].sort((a, b) => b.day.localeCompare(a.day));
+};
+
+/** Events per day between two São Paulo dates, both included (admin_funnel_daily accepts up to 400 days). */
+export const getDailyFunnel = async (fromDay: string, toDay: string): Promise<DailyFunnelRow[]> =>
+  groupDailyFunnel(
+    unwrap<Array<{ day: string; event: string; events: number | string }>>(await db().rpc('admin_funnel_daily', { p_from: fromDay, p_to: toDay })),
+  );
+
+// ---------------------------------------------------------------------------
+// Launch controls (platform_settings care_line_open and pilot_neighborhoods)
+// ---------------------------------------------------------------------------
+
+/** Opens or closes the care line in the menu of every account (docs/DECISOES.md, D12). */
+export const setCareLineOpen = async (open: boolean): Promise<void> => {
+  await guarded(async () => unwrapMaybe<unknown>(await db().rpc('admin_set_setting', { p_key: 'care_line_open', p_value: open })));
+};
+
+/** "moema, Vila-Mariana ,," → ["moema", "vila-mariana"]: slugs in lower case, without repeats or blanks. */
+export const parsePilotSlugs = (text: string): string[] => [
+  ...new Set(
+    text
+      .split(/[\s,;]+/)
+      .map(item => item.trim().toLowerCase())
+      .filter(Boolean),
+  ),
+];
+
+/**
+ * Neighborhoods the request form offers; the empty list offers all of them. The database refuses a
+ * slug that is not a neighborhood, so a typo cannot quietly hide the filter.
+ */
+export const setPilotNeighborhoods = async (slugs: string[]): Promise<void> => {
+  await guarded(async () => unwrapMaybe<unknown>(await db().rpc('admin_set_setting', { p_key: 'pilot_neighborhoods', p_value: slugs })));
 };

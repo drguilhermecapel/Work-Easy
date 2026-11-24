@@ -8,10 +8,10 @@
 // low. Haiku 5.5 has no server-side refusal fallback: a refusal is answered
 // with the "fill it in manually" message.
 import Anthropic from 'npm:@anthropic-ai/sdk@0.132.1';
-import { authenticate, config, logError, must, now, serve, serviceClient } from '../_runtime/supabase.ts';
+import { aiConsentGranted, authenticate, config, logError, must, now, serve, serviceClient } from '../_runtime/supabase.ts';
 import { fetchAllRows, type OccupationCandidate, quotaGranted } from '../_shared/assist.ts';
 import { HttpError } from '../_shared/http.ts';
-import { type AssistDeps, type ClassifyRequest, type ClassifyResult, handler } from './handler.ts';
+import { type AssistDeps, type ClassifyRequest, type ClassifyResult, handler, requestAssistSwitchOn } from './handler.ts';
 
 const MODEL = 'claude-haiku-5-5';
 // The JSON answer is about 150 tokens; room for a long summary and nothing more
@@ -59,11 +59,19 @@ const deps: AssistDeps = {
   allowDevOrigins: config.allowDevOrigins,
   now,
   logError,
+  async featureEnabled() {
+    // Same reader shape as the platform's other switches (private.setting_bool): a missing row is off
+    const row = must(
+      await serviceClient().from('platform_settings').select('value').eq('key', 'request_assist_enabled').maybeSingle(),
+    ) as { value: unknown } | null;
+    return requestAssistSwitchOn(row?.value);
+  },
   classify: anthropic ? request => classify(anthropic, request) : null,
   hourlyLimit: config.assistHourlyLimit,
   usage: {
-    // One atomic statement in the database: counter per user and clock hour, incremented only
-    // while below the limit (see take_assist_quota in the marketplace migration).
+    consented: aiConsentGranted,
+    // One call to the database, serialized per user: it counts the calls granted to the user in the
+    // last 60 minutes and grants one more only while below the limit (take_assist_quota).
     async take(userId, limit) {
       return quotaGranted(
         must(await serviceClient().rpc('take_assist_quota', { p_user: userId, p_limit: limit })),

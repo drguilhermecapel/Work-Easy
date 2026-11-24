@@ -20,6 +20,7 @@ const CATEGORIES: NavItem = { label: 'Categorias', to: '/categorias' };
  * (the screens are fictitious); with a backend only the real session counts:
  * visitor, client, provider and admin links appear only for who can use them.
  * Access is always enforced by the database; the menu only hides dead ends.
+ * The care line is listed only for accounts with careAccess (docs/DECISOES.md, D12).
  */
 export const navModelFor = (auth: AuthContextType): NavModel => {
   if (auth.mode === 'demo') {
@@ -44,7 +45,7 @@ export const navModelFor = (auth: AuthContextType): NavModel => {
         { label: 'Pedidos recebidos', to: '/pro/pedidos' },
         { label: 'Agenda', to: '/pro/agenda' },
         { label: 'Atendimentos', to: '/atendimentos' },
-        { label: 'Plantões', to: '/pro/plantoes' },
+        ...(auth.careAccess ? [{ label: 'Plantões', to: '/pro/plantoes' }] : []),
         { label: 'Pedir serviço', to: '/pedido' },
       ]
     : [
@@ -52,7 +53,7 @@ export const navModelFor = (auth: AuthContextType): NavModel => {
         { label: 'Pedir serviço', to: '/pedido' },
         { label: 'Meus pedidos', to: '/pedidos' },
         { label: 'Atendimentos', to: '/atendimentos' },
-        { label: 'Cuidado', to: '/cuidado' },
+        ...(auth.careAccess ? [{ label: 'Cuidado', to: '/cuidado' }] : []),
       ];
 
   if (auth.isAdmin) items.push({ label: 'Administração', to: '/admin' });

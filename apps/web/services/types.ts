@@ -1,13 +1,14 @@
 // Row types written by hand from docs/ARQUITETURA.md, only for the columns
-// the screens use. They go away when lib/database.types.ts is generated
-// (see the TODO in lib/supabase.ts).
+// the screens use. The client itself is typed with the generated
+// lib/database.types.ts (lib/supabase.ts); these are the narrower shapes the
+// services return (see `unwrap` in services/client.ts).
 
 export type UserRole = 'client' | 'provider';
 export type ProviderStatus = 'draft' | 'pending_review' | 'approved' | 'suspended';
 export type PlanCode = 'free' | 'pro';
 export type RequestStatus = 'open' | 'matched' | 'closed' | 'canceled';
 export type ProposalStatus = 'sent' | 'accepted' | 'declined' | 'withdrawn';
-export type ConsentPurpose = 'terms' | 'privacy' | 'marketing' | 'background_check' | 'location';
+export type ConsentPurpose = 'terms' | 'privacy' | 'marketing' | 'background_check' | 'location' | 'age_declaration' | 'ai_assist';
 export type DataRequestKind = 'export' | 'delete';
 
 /** profiles */
@@ -74,6 +75,8 @@ export interface ProposalRow {
   price_cents: number;
   message: string | null;
   valid_until: string | null;
+  /** First day the provider can do the job (\"YYYY-MM-DD\"); optional, and absent in rows read before the column existed. */
+  available_from?: string | null;
   status: ProposalStatus;
   created_at: string;
 }

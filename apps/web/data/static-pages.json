@@ -1,0 +1,55 @@
+[
+  {
+    "path": "/para-profissionais",
+    "title": "Para profissionais: agenda, orçamentos e clientes",
+    "description": "Ferramenta gratuita para profissionais autônomos: página própria, agenda, orçamentos e clientes. Veja o que o plano Pro acrescenta e como é o cadastro.",
+    "h1": "WorkEasy para profissionais e prestadores de serviço",
+    "paragraphs": [
+      "O WorkEasy reúne numa ferramenta gratuita o que quem trabalha por conta própria usa no dia a dia: página própria para divulgar os serviços, agenda, lista de clientes e orçamentos que o cliente aceita ou recusa por um link. Quando houver pedidos da sua ocupação nos bairros que você atende, você pode enviar propostas.",
+      "O plano Pro acrescenta a cobrança de clientes seus por Pix, boleto ou cartão, feita na sua conta de recebimento no Asaas, e propostas novas sem o limite mensal do plano grátis. Preço, período de teste e limites são definidos pela plataforma e aparecem na tela de assinatura.",
+      "O cadastro segue a regra de cada ocupação: documento com foto, CPF ou CNPJ e, quando a profissão exige, registro no conselho, antecedentes criminais, licença ou seguro de responsabilidade civil. O registro aparece como “informado, não verificado” até a equipe do WorkEasy conferir; só depois da análise e da aprovação o profissional aparece nas buscas e recebe pedidos.",
+      "O WorkEasy não promete clientes, quantidade de pedidos nem renda: os pedidos dependem da ocupação, do bairro atendido e da procura. Também não substitui o conselho profissional, o contador nem as regras da profissão, que seguem sendo responsabilidade de cada profissional."
+    ],
+    "links": [
+      { "to": "/pro/cadastro", "label": "Criar meu cadastro" },
+      { "to": "/como-funciona", "label": "Como funciona para quem contrata" },
+      { "to": "/para-familias", "label": "Linha de cuidado para famílias" },
+      { "to": "/categorias", "label": "Áreas e ocupações" }
+    ]
+  },
+  {
+    "path": "/para-familias",
+    "title": "Linha de cuidado para famílias",
+    "description": "Como a linha de cuidado do WorkEasy organiza plantões: cuidadores aprovados, registro de entrada e saída e relatório diário não clínico.",
+    "h1": "Linha de cuidado do WorkEasy para famílias",
+    "paragraphs": [
+      "A linha de cuidado ainda não está aberta ao público em geral. Ela foi pensada para a família organizar plantões de cuidadores para uma pessoa da casa: a família cadastra a casa, informa só o primeiro nome da pessoa cuidada, cria o plantão com dia, horário e valor combinado e oferece a cuidadores aprovados que atendem o bairro. O primeiro que aceita fica com o plantão.",
+      "No plantão, o cuidador registra a entrada e a saída, com a localização do aparelho se concordar em enviá-la, e escreve o relatório do dia em texto simples: refeições, atividades e humor. O relatório é não clínico, e os campos do app não são feitos para diagnósticos, remédios, doses, exames nem sintomas.",
+      "O WorkEasy limita quantos dias diferentes por semana, de segunda a domingo, o mesmo cuidador pode ser confirmado na mesma casa. Quem quiser mais dias com a mesma pessoa pode contratar direto, fora do WorkEasy; nesse caso a plataforma não registra vínculo nem calcula encargos, e a decisão deve ser conferida com um contador ou advogado trabalhista.",
+      "A linha de cuidado não é serviço de saúde nem de emergência: não organiza procedimentos de enfermagem, uso de medicamentos nem atendimento de urgência. Em emergência, ligue 192 (SAMU). O pedido é feito na área Cuidado do app, com login."
+    ],
+    "links": [
+      { "to": "/cuidado", "label": "Pedir pela linha de cuidado" },
+      { "to": "/como-funciona", "label": "Como funciona o pedido de serviços" },
+      { "to": "/para-profissionais", "label": "Para profissionais e cuidadores" }
+    ]
+  },
+  {
+    "path": "/como-funciona",
+    "title": "Como funciona: pedido, propostas e atendimento",
+    "description": "Passo a passo para contratar pelo WorkEasy: descreva o pedido, receba propostas de profissionais, escolha uma e combine o atendimento.",
+    "h1": "Como funciona o WorkEasy para quem contrata",
+    "paragraphs": [
+      "Você descreve o serviço de que precisa e o bairro. O pedido chega aos profissionais aprovados naquela ocupação que atendem esse bairro, e cada um pode responder com uma proposta de preço e condições. Você compara as propostas, escolhe uma e combina o atendimento com o profissional escolhido.",
+      "O pagamento pelo app e a avaliação só aparecem quando estão habilitados na plataforma. O pagamento depende de o profissional ter ativado o recebimento, e a avaliação só pode ser feita depois de um atendimento concluído e pago pelo app. Sem isso, valor e forma de pagamento são combinados direto com o profissional.",
+      "Cada ocupação tem regras próprias, que aparecem na página do serviço: o que se pede de quem presta, se a profissão é regulamentada e como a plataforma cobra. Em algumas ocupações, a regra não permite ordenar os profissionais por nota.",
+      "O WorkEasy não escolhe o profissional por você, não fixa preços e não garante que haverá proposta, nem quantas serão, nem o prazo de resposta. O serviço em si é combinado e feito entre você e o profissional."
+    ],
+    "links": [
+      { "to": "/pedido", "label": "Fazer um pedido" },
+      { "to": "/categorias", "label": "Ver as categorias de serviço" },
+      { "to": "/para-profissionais", "label": "Para profissionais" },
+      { "to": "/para-familias", "label": "Linha de cuidado para famílias" }
+    ]
+  }
+]

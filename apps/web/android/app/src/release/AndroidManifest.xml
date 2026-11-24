@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Overlay of the release build, the one that goes to Google Play (docs/lojas/google-play.md, M03 and M04).
+    A store build declares only the permissions of what it ships:
+      * CAMERA is for the live preview of the identity-verification screen, which is a future feature
+        (photos of documents go through the system camera intent and need no permission);
+      * location is for the check-in of care shifts, and the care line is not in the store build
+        (VITE_STORE_BUILD hides it; docs/DECISOES.md, D12).
+    The debug build keeps both, so the screens can still be tried on a device.
+    When one of the two features ships in the store build, delete its lines here.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission android:name="android.permission.CAMERA" tools:node="remove" />
+    <uses-feature android:name="android.hardware.camera" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" tools:node="remove" />
+    <uses-feature android:name="android.hardware.location.gps" tools:node="remove" />
+</manifest>

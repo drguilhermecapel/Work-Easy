@@ -1,5 +1,5 @@
 import { AppError } from '../lib/errors';
-import { db, unwrapMaybe } from './client';
+import { db, nullable, unwrapMaybe } from './client';
 import { lineCents } from './quoteMath';
 
 export type PublicQuoteStatus = 'draft' | 'sent' | 'accepted' | 'declined' | 'expired';
@@ -38,10 +38,23 @@ export const getQuoteByToken = async (token: string): Promise<PublicQuote | null
   return { ...data, items: Array.isArray(data.items) ? data.items : [] };
 };
 
-/** Accepts or declines a sent quote that is still valid. Returns the new status. */
-export const respondQuote = async (token: string, accept: boolean): Promise<'accepted' | 'declined'> => {
+/**
+ * Accepts or declines a sent quote that is still valid. An acceptance carries the total the client was
+ * shown: the database refuses it when the quote changed since. Returns the new status.
+ */
+export const respondQuote = async (
+  token: string,
+  accept: boolean,
+  shownTotalCents?: number,
+): Promise<'accepted' | 'declined'> => {
   if (!isQuoteToken(token)) throw new AppError('not_found');
-  const data = unwrapMaybe<unknown>(await db().rpc('respond_quote', { p_token: token, p_accept: accept }));
+  const data = unwrapMaybe<unknown>(
+    await db().rpc('respond_quote', {
+      p_token: token,
+      p_accept: accept,
+      p_expected_total_cents: nullable(accept ? (shownTotalCents ?? null) : null),
+    }),
+  );
   return data === 'accepted' || data === 'declined' ? data : accept ? 'accepted' : 'declined';
 };
 

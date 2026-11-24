@@ -24,7 +24,7 @@ import { saoPauloDate } from '../_shared/dates.ts';
 import {
   type AuditEntry, type BaseDeps, dbRuleError, isDeterministicDbError,
 } from '../_shared/handler-kit.ts';
-import { HttpError, readJson, route } from '../_shared/http.ts';
+import { HttpError, readJson, route, WEBHOOK_BODY_LIMIT } from '../_shared/http.ts';
 import { deriveSubaccountToken, isUuid, secretMatches } from '../_shared/secrets.ts';
 import { laterPeriodEnd, periodEndFrom, planAfterCancel, planWhileOverdue } from '../_shared/subscriptions.ts';
 import type { BookingStatus, PaymentStatus, PlanCode, SubscriptionStatus } from '../_shared/types.ts';
@@ -33,7 +33,8 @@ export interface StoredPayment {
   id: string;
   status: PaymentStatus;
   booking_id: string | null;
-  provider_id: string;
+  /** Null once the provider row is gone (payments.provider_id is `on delete set null`). */
+  provider_id: string | null;
   escrow: boolean;
 }
 
@@ -49,7 +50,11 @@ export interface WebhookDeps extends BaseDeps {
   asaas: AsaasClient | null;
   /** Client with the provider's subaccount key from the Vault; null when none is stored. */
   subaccountAsaas(providerId: string): Promise<AsaasClient | null>;
-  /** PRO_GRACE_DAYS: days a past-due Pro keeps the plan after the paid period. */
+  /**
+   * PRO_GRACE_DAYS: days a past-due Pro keeps the plan after the paid period. Only a fallback:
+   * `store.graceDays` (platform_settings.pro_grace_days, the value the hourly expiry job uses)
+   * wins whenever it can be read, so the function and the job never disagree.
+   */
   proGraceDays?: number;
   store: {
     /** Inserts payment_events; on a duplicate id returns the existing row. */
@@ -67,7 +72,21 @@ export interface WebhookDeps extends BaseDeps {
     ): Promise<void>;
     setProviderPlan(providerId: string, plan: PlanCode): Promise<void>;
     audit(entry: AuditEntry): Promise<void>;
+    /** platform_settings.pro_grace_days; null when the key is missing or not a whole number. */
+    graceDays?(): Promise<number | null>;
   };
+}
+
+/** Days of grace of a past-due Pro: the database setting, else the environment, else none. Kept within 0 to 60. */
+async function graceDays(deps: WebhookDeps): Promise<number> {
+  let stored: number | null = null;
+  try {
+    stored = (await deps.store.graceDays?.()) ?? null;
+  } catch (error) {
+    deps.logError(error);
+  }
+  const days = stored ?? deps.proGraceDays ?? 0;
+  return Number.isInteger(days) ? Math.min(Math.max(days, 0), 60) : 0;
 }
 
 type Result = Record<string, unknown>;
@@ -97,9 +116,10 @@ export function handler(req: Request, deps: WebhookDeps): Promise<Response> {
 
     let body: unknown;
     try {
-      body = await readJson(req);
+      body = await readJson(req, WEBHOOK_BODY_LIMIT);
     } catch (error) {
-      if (!(error instanceof HttpError)) throw error;
+      // An oversized body is refused with 413, not acknowledged like an unreadable one
+      if (!(error instanceof HttpError) || error.status === 413) throw error;
       deps.logError(new Error('asaas-webhook: invalid JSON payload ignored'));
       return { data: { received: true, ignored: 'invalid_payload' } };
     }
@@ -143,6 +163,27 @@ export function handler(req: Request, deps: WebhookDeps): Promise<Response> {
       } catch (auditError) {
         deps.logError(auditError);
       }
+    }
+
+    // An event that changes money for a charge we do not have yet is the race with payments-create
+    // (the row is written after Asaas answers) or a charge whose row was never written. It is
+    // acknowledged, so the Asaas queue is not penalized, but it stays unprocessed: when Asaas
+    // delivers it again (or it is sent again from the Asaas panel) it is applied instead of being
+    // dropped as a duplicate. The audit entry is what tells the administrator it happened.
+    if (result.ignored === 'unknown_payment' && (effect.paymentStatus !== null || effect.bookingTo !== null)) {
+      result.pending = true;
+      try {
+        await deps.store.audit({
+          actor_id: null,
+          action: 'payment_event.unknown_payment',
+          entity: 'payment_events',
+          entity_id: event.id,
+          data: { event: event.event, asaas_payment_id: event.payment?.id ?? null, source: source ?? 'platform' },
+        });
+      } catch (auditError) {
+        deps.logError(auditError);
+      }
+      return { data: result };
     }
 
     await deps.store.markProcessed(stored.id, paymentId);
@@ -195,7 +236,8 @@ async function applyEvent(
   }
 
   const local = await deps.store.findPayment(event.payment.id);
-  if (local && source && local.provider_id.toLowerCase() !== source) {
+  // A payment with no provider cannot belong to the subaccount the event came from
+  if (local && source && local.provider_id?.toLowerCase() !== source) {
     result.ignored = 'account_mismatch';
     return null;
   }
@@ -294,6 +336,18 @@ async function applyPaymentEffect(
     if (!rule) throw error;
     deps.logError(error);
     result.booking_transition_refused = rule.code;
+    // The payment is recorded and the booking stayed behind: that must be visible in the database
+    try {
+      await deps.store.audit({
+        actor_id: null,
+        action: 'booking.transition_refused',
+        entity: 'bookings',
+        entity_id: local.booking_id,
+        data: { from: current, to, rule: rule.code, payment_id: local.id, asaas_event_id: eventId, event: eventName },
+      });
+    } catch (auditError) {
+      deps.logError(auditError);
+    }
   }
 }
 
@@ -399,7 +453,7 @@ async function applySubscription(
     } else {
       await deps.store.updateSubscription(sub.provider_id, { status: 'past_due' });
       applied = 'past_due';
-      plan = planWhileOverdue(sub.current_period_end, now, deps.proGraceDays ?? 0);
+      plan = planWhileOverdue(sub.current_period_end, now, await graceDays(deps));
     }
   }
 

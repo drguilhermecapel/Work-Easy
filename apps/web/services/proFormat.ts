@@ -55,6 +55,17 @@ export const weekRange = (day: string): Period => {
 
 export const overlaps = (a: Period, b: Period): boolean => a.start < b.end && b.start < a.end;
 
+/**
+ * 00:00 of the first day of the São Paulo calendar month that contains the instant. The free
+ * proposal allowance counts from here (check_proposal in the database uses the same boundary).
+ */
+export const monthStartSaoPaulo = (instant: Date = new Date()): Date => {
+  const [year, month] = todayInSaoPaulo(instant).split('-');
+  const start = saoPauloDateTime(`${year}-${month}-01`, '00:00');
+  if (!start) throw new AppError('invalid_input');
+  return start;
+};
+
 /** Day and times typed by the user (São Paulo time) → the period of an appointment. */
 export const toPeriod = (day: string, start: string, end: string): Period => {
   const from = saoPauloDateTime(day, start);

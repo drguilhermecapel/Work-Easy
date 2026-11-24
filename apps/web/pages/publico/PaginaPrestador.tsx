@@ -7,6 +7,9 @@ import { formatDateBR } from '../../lib/timezone';
 import { useAsync } from '../../lib/useAsync';
 import { getProviderPage, type PageAvailability, type ProviderPage } from '../../services/discovery';
 import Avatar from '../../components/Avatar';
+import ReportButton from '../../components/ReportButton';
+import BlockButton from '../../components/BlockButton';
+import { blockProvider } from '../../services/safety';
 import BackendNotice from '../../components/BackendNotice';
 import ErrorAlert from '../../components/ErrorAlert';
 import PageStatus from '../../components/PageStatus';
@@ -161,11 +164,23 @@ const Page: React.FC<{ page: ProviderPage }> = ({ page }) => {
                     <span>{findOccupation(review.occupation_slug)?.name ?? review.occupation_slug} · {formatDateBR(review.created_at)}</span>
                   </p>
                   {review.comment && <p className="text-sm text-gray-700 whitespace-pre-line break-words">{review.comment}</p>}
+                  {review.comment && (
+                    <ReportButton target={{ type: 'review', providerId: provider.id, createdAt: review.created_at }} label="Denunciar esta avaliação" />
+                  )}
                 </li>
               ))}
             </ul>
           </>
         )}
+      </section>
+
+      <section aria-label="Denunciar ou bloquear" className="flex flex-wrap gap-x-6 gap-y-2 px-1">
+        <ReportButton target={{ type: 'provider', providerId: provider.id }} label="Denunciar este perfil" />
+        <BlockButton
+          onBlock={() => blockProvider(provider.id)}
+          label="Bloquear este profissional"
+          consequence={`${provider.display_name} deixa de aparecer nas suas buscas e não recebe nem responde os seus pedidos. Atendimentos já combinados não mudam.`}
+        />
       </section>
     </div>
   );

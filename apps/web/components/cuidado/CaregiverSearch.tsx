@@ -73,7 +73,7 @@ const CaregiverSearch: React.FC<Props> = ({ shiftId, neighborhoodId, offers, onO
     }
   };
 
-  if (occupations.loading && !occupations.data) return <p role="status" className="text-sm text-gray-400">Carregando…</p>;
+  if (occupations.loading && !occupations.data) return <p role="status" className="text-sm text-gray-500">Carregando…</p>;
   if (occupations.data && occupations.data.length === 0) {
     return (
       <p className="text-sm text-gray-600">
@@ -111,7 +111,7 @@ const CaregiverSearch: React.FC<Props> = ({ shiftId, neighborhoodId, offers, onO
       </div>
 
       <ErrorAlert error={found.error} />
-      {found.loading && !found.data && <p role="status" className="text-sm text-gray-400">Buscando cuidadores…</p>}
+      {found.loading && !found.data && <p role="status" className="text-sm text-gray-500">Buscando cuidadores…</p>}
       {found.data && results.length === 0 && (
         <p className="text-sm text-gray-600 bg-gray-50 rounded-xl p-4">
           Nenhum cuidador aprovado atende este bairro agora. Tente “Todos os bairros” ou outro tipo de cuidador.

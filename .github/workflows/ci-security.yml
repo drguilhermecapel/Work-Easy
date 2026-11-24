@@ -1,9 +1,17 @@
 name: WorkEasy CI
 on:
+  # Public repository: Actions minutes are free (DD90). Only what the job tests: the Python API
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
+    paths: ['services/api/**', '.github/workflows/ci-security.yml']
   pull_request:
-    branches: [ main, develop ]
+    paths: ['services/api/**', '.github/workflows/ci-security.yml']
+  workflow_dispatch:
+
+# The job only reads the repository: no token write scope.
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest

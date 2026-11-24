@@ -30,7 +30,7 @@ export const pgRange = (start: Date, end: Date): string => {
 export const HOUR = 3_600_000;
 
 export const acceptedTerms = (userId: string): Row[] =>
-  (['terms', 'privacy'] as const).map(purpose => ({
+  (['terms', 'privacy', 'age_declaration'] as const).map(purpose => ({
     id: `c-${purpose}`,
     user_id: userId,
     purpose,
@@ -276,9 +276,15 @@ export const careRpcs = (world: CareWorld): FakeSupabase['rpcs'] => {
               status: shift.status,
               offer_status: offer?.status ?? null,
               caregiver_payout_cents: shift.caregiver_payout_cents,
-              notes: shift.notes,
-              neighborhood_name: world.neighborhoods.find(n => n.id === home?.neighborhood_id)?.name ?? null,
-              recipient_first_name: person?.first_name ?? null,
+              // The family's notes reach only the caregiver the shift belongs to (migration 20261110200005), and
+              // not once it is canceled. A canceled shift keeps its period and status as history; the neighborhood
+              // and the first name of the person cared for are withheld too (migration 20261118600005).
+              notes: mine && shift.status !== 'canceled' ? shift.notes : null,
+              neighborhood_name:
+                shift.status === 'canceled'
+                  ? null
+                  : world.neighborhoods.find(n => n.id === home?.neighborhood_id)?.name ?? null,
+              recipient_first_name: shift.status === 'canceled' ? null : person?.first_name ?? null,
             };
           })
           .filter(Boolean),

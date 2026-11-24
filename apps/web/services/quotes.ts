@@ -28,12 +28,14 @@ export interface QuoteRow {
   notes: string | null;
   status: QuoteStatus;
   public_token: string;
+  /** When the provider marked the accepted quote as done; null while it is not. */
+  completed_at?: string | null;
   created_at: string;
   updated_at: string;
 }
 
 const QUOTE_COLUMNS =
-  'id, provider_id, provider_client_id, client_name, client_phone, title, items, total_cents, valid_until, notes, status, public_token, created_at, updated_at';
+  'id, provider_id, provider_client_id, client_name, client_phone, title, items, total_cents, valid_until, notes, status, public_token, completed_at, created_at, updated_at';
 
 /** Preview of the total the server computes on save (sum of quantity x unit price, rounded per item as the database does). */
 export const quoteTotalCents = (items: QuoteItem[]): number => itemsTotalCents(items);
@@ -67,6 +69,8 @@ export interface QuoteInput {
 }
 
 export const MAX_ITEMS = 200;
+/** The database refuses longer descriptions (migration 20261110100005); the form stops at the same length. */
+export const ITEM_DESCRIPTION_MAX = 500;
 
 const validate = (input: QuoteInput): void => {
   const title = input.title.trim();
@@ -77,6 +81,9 @@ const validate = (input: QuoteInput): void => {
   if (input.items.length > MAX_ITEMS) throw new AppError('invalid_input', { message: `Um orçamento pode ter até ${MAX_ITEMS} itens.` });
   for (const item of input.items) {
     if (!item.description.trim()) throw new AppError('invalid_input', { message: 'Todos os itens precisam de descrição.' });
+    if (item.description.trim().length > ITEM_DESCRIPTION_MAX) {
+      throw new AppError('invalid_input', { message: `A descrição de cada item pode ter até ${ITEM_DESCRIPTION_MAX} caracteres.` });
+    }
     if (!(item.quantity > 0) || !Number.isFinite(item.quantity)) {
       throw new AppError('invalid_input', { message: 'A quantidade de cada item precisa ser maior que zero.' });
     }
@@ -131,6 +138,12 @@ export const setQuoteStatus = (id: string, status: 'draft' | 'sent'): Promise<Qu
 export const deleteQuote = (id: string): Promise<void> =>
   guard(async () => {
     unwrapMaybe<unknown>(await db().from('quotes').delete().eq('id', id));
+  });
+
+/** Marks an accepted quote as done (or takes that back). The database refuses any other status. */
+export const markQuoteCompleted = (id: string, done: boolean): Promise<void> =>
+  guard(async () => {
+    unwrapMaybe<unknown>(await db().rpc('mark_quote_completed', { p_quote: id, p_done: done }));
   });
 
 // ---- Sharing ------------------------------------------------------------------

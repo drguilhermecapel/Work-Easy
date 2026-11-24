@@ -1,4 +1,4 @@
-import { AppError } from '../lib/errors';
+import { ACCEPT_REFUSED_MESSAGE, AppError, toAppError } from '../lib/errors';
 import { formatTstzRange, type Period } from '../lib/tstzrange';
 import { db, unwrap, unwrapMaybe } from './client';
 import type { ProposalRow, RequestInsert, RequestRow } from './types';
@@ -18,7 +18,7 @@ export const DESCRIPTION_MAX = 2000;
 
 const REQUEST_COLUMNS =
   'id, client_id, occupation_slug, neighborhood_id, description, preferred_dates, urgent, status, expires_at, created_at';
-const PROPOSAL_COLUMNS = 'id, request_id, provider_id, price_cents, message, valid_until, status, created_at';
+const PROPOSAL_COLUMNS = 'id, request_id, provider_id, price_cents, message, valid_until, available_from, status, created_at';
 
 export const createRequest = async (input: NewRequest): Promise<RequestRow> => {
   const description = input.description.trim();
@@ -32,6 +32,18 @@ export const createRequest = async (input: NewRequest): Promise<RequestRow> => {
     urgent: input.urgent ?? false,
   };
   return unwrap<RequestRow>(await db().from('requests').insert(row).select(REQUEST_COLUMNS).single());
+};
+
+/**
+ * Puts the account on the waiting list of a neighborhood the pilot does not serve yet. Asking
+ * twice for the same neighborhood and service is the same entry: the unique key refuses the
+ * repeat (23505) and that counts as done.
+ */
+export const joinWaitlist = async (input: { userId: string; neighborhoodId: string; occupationSlug: string | null }): Promise<void> => {
+  const { error } = await db()
+    .from('waitlist_entries')
+    .insert({ user_id: input.userId, neighborhood_id: input.neighborhoodId, occupation_slug: input.occupationSlug });
+  if (error && (error as { code?: string }).code !== '23505') throw toAppError(error);
 };
 
 /** The signed-in client's requests (RLS returns only theirs), newest first. */
@@ -81,6 +93,13 @@ export const acceptProposal = async (proposalId: string, period: Period): Promis
   } catch {
     throw new AppError('invalid_input');
   }
-  const data = unwrapMaybe<unknown>(await db().rpc('accept_proposal', { p_proposal: proposalId, p_period: range }));
-  return typeof data === 'string' ? data : null;
+  try {
+    const data = unwrapMaybe<unknown>(await db().rpc('accept_proposal', { p_proposal: proposalId, p_period: range }));
+    return typeof data === 'string' ? data : null;
+  } catch (err) {
+    // The labor lock is refused with the same sentence as any acceptance: it does not reveal what it compared
+    const error = toAppError(err);
+    if (error.code === 'labor_lock') throw new AppError('labor_lock', { cause: err, detail: error.detail, message: ACCEPT_REFUSED_MESSAGE });
+    throw error;
+  }
 };

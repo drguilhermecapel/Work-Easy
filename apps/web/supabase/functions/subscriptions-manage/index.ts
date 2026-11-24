@@ -1,9 +1,8 @@
 import {
-  asaasClient, audit, authenticate, config, DbError, getCustomerId, getProfile, logError, must, now, saveCustomerId, serve,
-  serviceClient, setProviderPlan,
+  asaasClient, audit, authenticate, config, DbError, getCustomerId, getProfile, logError, must, now, readProviderAccount,
+  saveCustomerId, serve, serviceClient, setProviderPlan,
 } from '../_runtime/supabase.ts';
 import { UNIQUE_VIOLATION } from '../_shared/handler-kit.ts';
-import type { PlanCode } from '../_shared/types.ts';
 import { handler, type SubscriptionRow, type SubscriptionsDeps } from './handler.ts';
 
 const DEFAULT_PRO_PRICE_CENTS = 4900;
@@ -14,15 +13,14 @@ const deps: SubscriptionsDeps = {
   now,
   logError,
   asaas: asaasClient(),
+  documentSecret: config.asaas.trialDocumentSecret,
   async session(req) {
     const caller = await authenticate(req);
     if (!caller) return null;
     return {
       user: caller.user,
-      async getProvider() {
-        return must(await caller.db.from('providers').select('id, plan').eq('id', caller.user.id).maybeSingle()) as
-          | { id: string; plan: PlanCode }
-          | null;
+      getProvider() {
+        return readProviderAccount(caller.db, caller.user.id);
       },
     };
   },
@@ -56,6 +54,41 @@ const deps: SubscriptionsDeps = {
       return (updated?.length ?? 0) > 0;
     },
     setProviderPlan,
+    async isPaymentOnboardingComplete(providerId) {
+      const row = must(
+        await serviceClient()
+          .from('provider_payment_accounts')
+          .select('asaas_wallet_id, status')
+          .eq('provider_id', providerId)
+          .maybeSingle(),
+      ) as { asaas_wallet_id: string | null; status: string | null } | null;
+      return Boolean(row?.asaas_wallet_id) && row?.status === 'active';
+    },
+    async getPaymentCpfHash(providerId) {
+      const row = must(
+        await serviceClient()
+          .from('provider_payment_accounts')
+          .select('cpf_hash')
+          .eq('provider_id', providerId)
+          .maybeSingle(),
+      ) as { cpf_hash: string | null } | null;
+      return row?.cpf_hash ?? null;
+    },
+    async claimTrial(cpfHash, providerId, legacyHash) {
+      const db = serviceClient();
+      // Claims made before the keyed fingerprint hold the unkeyed SHA-256 of the CPF: such a CPF had its trial
+      const used = must(
+        await db.from('trial_claims').select('cpf_hash').in('cpf_hash', [cpfHash, legacyHash]).limit(1),
+      ) as unknown[] | null;
+      if ((used?.length ?? 0) > 0) return false;
+      const { error } = await db.from('trial_claims').insert({ cpf_hash: cpfHash, provider_id: providerId });
+      if (!error) return true;
+      if (error.code === UNIQUE_VIOLATION) return false;
+      throw new DbError(error.message, error.code);
+    },
+    async releaseTrial(cpfHash, providerId) {
+      must(await serviceClient().from('trial_claims').delete().eq('cpf_hash', cpfHash).eq('provider_id', providerId));
+    },
     async getProPriceCents() {
       const row = must(
         await serviceClient().from('platform_settings').select('value').eq('key', 'pro_price_cents').maybeSingle(),

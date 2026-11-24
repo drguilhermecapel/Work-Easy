@@ -491,7 +491,9 @@ select throws_ok($$select public.book_direct(tests.uid('provider_c'), (select id
                  'P0001', 'booking_limit', 'at most 10 open requests per client');
 
 select tests.authenticate_anon();
-select is(cardinality(public.available_slots(tests.uid('provider_c'), tests.future_monday(40), 60)), 12,
+-- The approval toggle above cancels the requests still waiting for provider_c (losing an
+-- occupation approval withdraws them, migration 20261109000005), so their hours are free again.
+select is(cardinality(public.available_slots(tests.uid('provider_c'), tests.future_monday(40), 60)), 19,
           'available_slots: 30-minute starts minus the booked hours');
 select is(lower((public.available_slots(tests.uid('provider_c'), tests.future_monday(40), 60))[1]),
           tests.sp(tests.at(40, 0, '08:00')), 'available_slots starts at the window opening (São Paulo time)');
@@ -511,12 +513,15 @@ select throws_ok(format($$insert into public.provider_clients (provider_id, clie
                         tests.uid('provider_a')),
                  '42501', null, 'the attacker cannot forge provider_clients.client_id');
 insert into public.provider_clients (provider_id, name) values (auth.uid(), 'x');
-select lives_ok(format($$insert into ids select 'atk_job', public.create_own_booking(
+-- A draft provider is not approved, so it cannot schedule an own job. The earlier expectation
+-- (lives_ok) predates the approval requirement: create_own_booking checked only that the provider
+-- was not suspended.
+select throws_ok(format($$insert into ids select 'atk_job', public.create_own_booking(
                         (select id from public.provider_clients where name = 'x'), 't-domestica', %L, 100, null)$$,
                        tests.sp_period('2030-11-04 12:00', 1)),
-                'an own job can be created for the attacker''s own entry');
-select is((select client_id from public.bookings where id = (select id from ids where name = 'atk_job')), null,
-          'the job carries no account of anyone else');
+                 'P0001', 'not_allowed', 'a draft provider cannot schedule an own job');
+select is((select count(*)::int from public.bookings where provider_id = tests.uid('attacker')), 0,
+          'no own job was written for the draft provider');
 select is((select count(*)::int from public.profiles where id = tests.uid('provider_a')), 0,
           'after: the victim profile is still unreadable');
 select is((select count(*)::int from public.providers where id = tests.uid('provider_a')), 0,
@@ -525,9 +530,6 @@ select tests.authenticate_as('provider_a');
 select is((select count(*)::int from public.bookings where provider_id = tests.uid('attacker')), 0,
           'the victim sees no fake job');
 select tests.clear_authentication();
-select is((select count(*)::int from public.notifications where user_id = tests.uid('provider_a')
-             and params ->> 'booking_id' = (select id::text from ids where name = 'atk_job')), 0,
-          'nothing was queued for the victim');
 
 -- A platform CRM entry (made by the server) is not a base for an "own" job either.
 select tests.authenticate_as('provider_c');
@@ -535,8 +537,8 @@ select throws_ok($$select public.create_own_booking((select id from public.provi
                     't-reparo', tests.sp_period('2030-11-05 12:00', 1), 100, null)$$,
                  'P0001', 'not_allowed', 'an own job needs an entry of origin own');
 
--- Contact is shared with the real counterpart only: the client gets the provider profile
--- (phone) once the provider accepted; the provider sees who asked from the start.
+-- Contact is shared with the real counterpart only, and only once the job is accepted: each side
+-- reads the other's profile (name, phone) from acceptance on, never for a request nobody accepted.
 select tests.clear_authentication();
 select tests.create_user('client_z', 'Cliente Z', '5511900000099');
 select tests.authenticate_as('client_z');
@@ -548,10 +550,12 @@ select is((select count(*)::int from public.profiles where id = tests.uid('provi
 select is((select count(*)::int from public.providers where id = tests.uid('provider_c')), 1,
           'but reads the provider row (the name for the list of jobs)');
 select tests.authenticate_as('provider_c');
-select is((select count(*)::int from public.profiles where id = tests.uid('client_z')), 1,
-          'the provider reads the profile of the client who asked');
+select is((select count(*)::int from public.profiles where id = tests.uid('client_z')), 0,
+          'the provider does not read the profile of a client whose request nobody accepted');
 select is(public.transition_booking((select id from ids where name = 'direct_z'), 'accepted')::text, 'accepted',
           'the provider accepts the direct booking');
+select is((select count(*)::int from public.profiles where id = tests.uid('client_z')), 1,
+          'after the acceptance the provider reads the client');
 select tests.authenticate_as('client_z');
 select is((select count(*)::int from public.profiles where id = tests.uid('provider_c')), 1,
           'after the acceptance the client reads the provider profile');

@@ -7,13 +7,16 @@ import { AppError } from '../../lib/errors';
 import { formatCents } from '../../lib/money';
 import { todayInSaoPaulo } from '../../lib/timezone';
 import { useAsync } from '../../lib/useAsync';
+import { listMyPayments, type PaymentRow } from '../../services/charges';
 import { getPolicies, listMyOccupations } from '../../services/providers';
 import {
   addAvailability,
   addTimeOff,
   createOwnBooking,
+  FINISHED_STATUSES,
   listAvailability,
   listMyBookings,
+  listRatingAllowedSlugs,
   listTimeOff,
   removeAvailability,
   removeTimeOff,
@@ -27,6 +30,7 @@ import ErrorAlert from '../../components/ErrorAlert';
 import PageStatus from '../../components/PageStatus';
 import ProPage from '../../components/pro/ProPage';
 import { useProvider } from '../../components/pro/proContext';
+import ReviewRequest from '../../components/pro/ReviewRequest';
 import { BOOKING_STATUS_LABELS, BOOKING_STATUS_STYLES } from '../../components/pro/labels';
 import { Badge, Card, ConfirmButton, EmptyState, Field, SectionTitle } from '../../components/pro/ui';
 import { inputClass, linkClass, primaryButton, secondaryButton } from '../../components/pro/styles';
@@ -34,17 +38,36 @@ import { inputClass, linkClass, primaryButton, secondaryButton } from '../../com
 /** Monday first, as the Brazilian week is read; the value is availability.weekday (0 = Sunday). */
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0] as const;
 
+/** Same statuses the database accepts for a review (check_review): the money was received, confirmed or released. */
+const PAID_IN_APP: PaymentRow['status'][] = ['received', 'confirmed', 'released'];
+
+/**
+ * Finished jobs the client can review: they came through the platform, were paid in the app and the occupation's policy
+ * allows public ratings (regulated professions that may not be ranked are not nudged to ask for reviews).
+ */
+const reviewableBookings = async (bookings: BookingView[], payments: PaymentRow[]): Promise<Set<string>> => {
+  const paid = new Set(payments.filter(item => PAID_IN_APP.includes(item.status)).map(item => item.booking_id));
+  const candidates = bookings.filter(
+    item => item.origin === 'platform' && item.client_id !== null && FINISHED_STATUSES.includes(item.status) && paid.has(item.id),
+  );
+  const allowed = await listRatingAllowedSlugs(candidates.map(item => item.occupation_slug));
+  return new Set(candidates.filter(item => allowed.has(item.occupation_slug)).map(item => item.id));
+};
+
 const load = async (providerId: string) => {
-  const [bookings, availability, timeOff, clients, occupations, settings] = await Promise.all([
+  const [bookings, availability, timeOff, clients, occupations, settings, payments] = await Promise.all([
     listMyBookings(providerId),
     listAvailability(providerId),
     listTimeOff(providerId),
     listClients(providerId),
     listMyOccupations(providerId),
     loadPublicSettings(),
+    // Only tells which jobs were paid in the app: when it fails no review link is offered
+    listMyPayments(providerId).catch((): PaymentRow[] => []),
   ]);
   const policies = await getPolicies(occupations.map(item => item.occupation_slug));
-  return { bookings, availability, timeOff, clients, occupations, policies, settings, now: Date.now(), today: todayInSaoPaulo() };
+  const reviewable = await reviewableBookings(bookings, payments);
+  return { bookings, availability, timeOff, clients, occupations, policies, settings, reviewable, now: Date.now(), today: todayInSaoPaulo() };
 };
 
 type Data = Awaited<ReturnType<typeof load>>;
@@ -62,7 +85,7 @@ const LaborLockNotice: React.FC<{ data: Data }> = ({ data }) => {
         <Scale size={16} className="text-amber-700" aria-hidden="true" /> Limite de {limit} dias por semana com o mesmo cliente
       </h2>
       <p>
-        {names}: a lei pode tratar o trabalho doméstico em mais de {limit} dias por semana na mesma casa como relação de emprego (LC 150/2015).
+        {names}: a lei pode tratar o trabalho doméstico em mais de {limit} dias por semana para esta família como relação de emprego (LC 150/2015).
         Por isso o WorkEasy não deixa marcar mais de {limit} dias diferentes na mesma semana (de segunda a domingo) com o mesmo cliente.
         Atendimentos cancelados não contam. Quando o limite é atingido, a tela avisa e o atendimento não é criado.
       </p>
@@ -374,7 +397,11 @@ const BookingActions: React.FC<{ booking: BookingView; onMove: (to: BookingStatu
   );
 };
 
-const BookingItem: React.FC<{ booking: BookingView; onMove: (id: string, to: BookingStatus, reason?: string) => Promise<void> }> = ({ booking, onMove }) => (
+const BookingItem: React.FC<{
+  booking: BookingView;
+  reviewable: boolean;
+  onMove: (id: string, to: BookingStatus, reason?: string) => Promise<void>;
+}> = ({ booking, reviewable, onMove }) => (
   <Card as="li">
     <div className="flex flex-wrap items-center gap-2 mb-1">
       <span className="font-semibold text-gray-900">{formatPeriodBR(booking.period)}</span>
@@ -386,6 +413,7 @@ const BookingItem: React.FC<{ booking: BookingView; onMove: (id: string, to: Boo
     </p>
     {booking.notes && <p className="text-sm text-gray-500 mt-1 break-words">{booking.notes}</p>}
     <BookingActions booking={booking} onMove={(to, reason) => onMove(booking.id, to, reason)} />
+    {reviewable && <ReviewRequest bookingId={booking.id} clientName={booking.clientName} />}
   </Card>
 );
 
@@ -401,7 +429,7 @@ const BookingsSection: React.FC<{ data: Data; onMove: (id: string, to: BookingSt
         ) : (
           <ul className="space-y-3">
             {upcoming.map(item => (
-              <BookingItem key={item.id} booking={item} onMove={onMove} />
+              <BookingItem key={item.id} booking={item} reviewable={data.reviewable.has(item.id)} onMove={onMove} />
             ))}
           </ul>
         )}
@@ -411,7 +439,7 @@ const BookingsSection: React.FC<{ data: Data; onMove: (id: string, to: BookingSt
           <SectionTitle id="agenda-anteriores">Anteriores</SectionTitle>
           <ul className="space-y-3">
             {past.map(item => (
-              <BookingItem key={item.id} booking={item} onMove={onMove} />
+              <BookingItem key={item.id} booking={item} reviewable={data.reviewable.has(item.id)} onMove={onMove} />
             ))}
           </ul>
         </section>

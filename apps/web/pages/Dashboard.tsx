@@ -68,7 +68,7 @@ const ClientDashboard: React.FC = () => {
                   <span className={`text-xs font-bold px-2 py-0.5 rounded-sm uppercase tracking-wide ${getStatusColor(req.status)}`}>
                     {req.status}
                   </span>
-                  <span className="text-xs text-gray-400">#{req.id}</span>
+                  <span className="text-xs text-gray-500">#{req.id}</span>
                 </div>
                 <h3 className="font-bold text-gray-900">{req.serviceTitle}</h3>
                 <p className="text-sm text-gray-500">Profissional: <span className="font-medium text-gray-700">{req.providerName}</span></p>
@@ -122,7 +122,7 @@ const ProviderDashboard: React.FC<{ isHealth: boolean }> = ({ isHealth }) => {
   return (
     <div className="space-y-6">
       {/* Provider Header Stats (example figures) */}
-      <p className="text-xs text-gray-400">Números de exemplo.</p>
+      <p className="text-xs text-gray-500">Números de exemplo.</p>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-xl shadow-xs border border-gray-100">
           <div className="text-gray-500 text-xs mb-1 uppercase font-bold">Ganhos (Mês)</div>
@@ -180,7 +180,7 @@ const ProviderDashboard: React.FC<{ isHealth: boolean }> = ({ isHealth }) => {
             <div key={req.id} className="bg-white border-l-4 border-l-yellow-400 rounded-r-xl p-4 shadow-xs animate-in fade-in slide-in-from-bottom-2">
               <div className="flex justify-between items-start mb-2">
                  <div>
-                   <span className="text-xs font-bold text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded-sm uppercase">Nova Solicitação</span>
+                   <span className="text-xs font-bold text-yellow-800 bg-yellow-50 px-2 py-0.5 rounded-sm uppercase">Nova Solicitação</span>
                    <h3 className="font-bold text-gray-900 text-lg mt-1">{req.serviceTitle}</h3>
                  </div>
                  <div className="text-right">
@@ -299,7 +299,7 @@ const ChatComponent: React.FC<{selectedChat: string | null, setSelectedChat: (id
               >
                 <div className="flex justify-between mb-1">
                   <span className="font-semibold text-sm">{req.providerName}</span>
-                  <span className="text-xs text-gray-400">10:30</span>
+                  <span className="text-xs text-gray-500">10:30</span>
                 </div>
                 <p className="text-xs text-gray-500 truncate">{req.serviceTitle}</p>
               </div>
@@ -321,7 +321,7 @@ const ChatComponent: React.FC<{selectedChat: string | null, setSelectedChat: (id
               </div>
               
               <div className="flex-1 bg-gray-50 p-4 overflow-y-auto space-y-4">
-                 <div className="text-center text-xs text-gray-400 my-4">Atenção: Nunca compartilhe senhas ou dados bancários.</div>
+                 <div className="text-center text-xs text-gray-500 my-4">Atenção: Nunca compartilhe senhas ou dados bancários.</div>
                  {/* Mock Messages */}
                  <div className="flex justify-start">
                    <div className="bg-white border border-gray-200 py-2 px-3 rounded-2xl rounded-tl-none max-w-[80%] text-sm">
@@ -338,7 +338,7 @@ const ChatComponent: React.FC<{selectedChat: string | null, setSelectedChat: (id
               </div>
             </>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-gray-400 bg-gray-50">
+            <div className="flex-1 flex flex-col items-center justify-center text-gray-500 bg-gray-50">
               <MessageCircle size={48} className="mb-4 opacity-20" />
               <p>Selecione uma conversa</p>
             </div>

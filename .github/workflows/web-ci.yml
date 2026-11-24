@@ -1,11 +1,14 @@
 name: Web CI
 
+# The repository is public, so Actions minutes are free (decision of 24/11/2026, docs/DECISOES.md DD90).
+# The paths keep the run to the changes that can break the web app.
 on:
   push:
     branches: [main, develop]
     paths: ['apps/web/**', '.github/workflows/web-ci.yml']
   pull_request:
     paths: ['apps/web/**', '.github/workflows/web-ci.yml']
+  workflow_dispatch:
 
 concurrency:
   group: web-ci-${{ github.ref }}
@@ -25,6 +28,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -35,12 +40,16 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      # Budgets of the initial load (scripts/check-bundle-size.mjs): a regression fails here, not in production
+      - run: npm run check:size
       - name: No secrets in the bundle
         run: |
           if grep -rIiE "gemini|api_key" dist/; then
             echo "::error::A secret-like string was found in the client bundle"
             exit 1
           fi
+          # Server keys of Supabase, including a legacy service_role JWT (no prefix to grep for)
+          node scripts/check-bundle-secrets.mjs --dist dist
 
   database:
     name: Banco de dados (pgTAP, integração, tipos)
@@ -48,6 +57,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -98,6 +109,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       # Versão do Deno usada no desenvolvimento (deno --version).
       - uses: denoland/setup-deno@v2.0.5
         with:

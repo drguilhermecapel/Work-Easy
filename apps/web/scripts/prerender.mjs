@@ -1,94 +1,102 @@
 #!/usr/bin/env node
 // Pre-renders static pages for search engines after `vite build` (website
 // only; the native build never runs this). It reads dist/index.html as the
-// template and writes, from catalog/*.json and data/neighborhoods.json:
+// template and writes, from catalog/*.json, data/neighborhoods.json and the
+// optional content files below:
 //
 //   dist/categorias/index.html                    all areas
 //   dist/categorias/<area>/index.html             one area
 //   dist/servicos/<slug>/index.html               one occupation
 //   dist/servicos/<slug>/<bairro>/index.html      launch areas x launch zones
+//   dist/<path>/index.html                        data/static-pages.json (institutional pages)
+//   dist/legal/<doc>/index.html                   content/legal/*.md (noindex unless VITE_LEGAL_STATUS=vigente)
+//   dist/index.html                               the home: Organization and WebSite JSON-LD
 //   dist/sitemap.xml (a sitemap index plus parts past 50,000 URLs), dist/robots.txt
 //
-// Each page carries its own <title>, description, canonical URL, Open Graph
-// tags, a schema.org JSON-LD block and real HTML inside <div id="root">,
-// which the React app replaces when it mounts (createRoot, not hydration).
-// The text is derived from the occupation policy only: no prices, ratings or
-// reviews are ever written, and the output is checked against the same
-// forbidden claims as test/claims-guard.test.ts before anything is written.
-// A page without title, description or canonical fails the build.
+// Each page carries its own <title>, description, canonical URL, Open Graph and
+// Twitter tags, schema.org JSON-LD and real HTML inside <div id="root">, which
+// the React app replaces when it mounts (createRoot, not hydration). The text
+// of the catalog pages comes from catalog/prose.mjs, the same module the four
+// React routes render, so the content and the links survive the mount
+// (test/seo/hydration-parity.test.tsx). It derives from the occupation policy:
+// no prices, ratings or reviews are ever written, and the output is checked
+// against the same forbidden claims as test/claims-guard.test.ts before
+// anything is written. A page without title, description or canonical fails
+// the build; an occupation page without enough text of its own is kept out of
+// the index (noindex, not in the sitemap) instead of failing it.
 //
 // Usage: node scripts/prerender.mjs [--mode <vite mode>] [--dist dist]
 
-import { existsSync, readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import {
+  BILLING_TEXT,
+  CITY,
+  LAUNCH_AREA_SLUGS,
+  LAUNCH_ZONES,
+  LOCATION_TEXT,
+  NOTICE,
+  PRICE_UNIT_TEXT,
+  PROVIDER_KIND_TEXT,
+  RULE_NOTE,
+  SECTION,
+  SITE_NAME,
+  SLUG,
+  VERIFICATION_TEXT,
+  areaIntro,
+  areaMeta,
+  categoriesLead,
+  categoriesMeta,
+  groupByZone,
+  inZone,
+  joinPt,
+  launchNeighborhoods,
+  neighborhoodIntro,
+  neighborhoodMeta,
+  occupationLabel,
+  occupationMeta,
+  occupationSentences,
+  policyBadges,
+  relatedWindow,
+  requestHref,
+  rotateNeighbors,
+  truncate,
+  zoneLabel,
+} from '../catalog/prose.mjs';
 
-export const SITE_NAME = 'WorkEasy';
-export const CITY = 'São Paulo';
-/** Launch categories that also get one page per neighborhood. */
-export const LAUNCH_AREA_SLUGS = ['cuidados', 'limpeza', 'reformas', 'eletricista', 'beleza', 'aulas', 'pets', 'autos'];
-/** Zones of data/neighborhoods.json covered at launch. */
-export const LAUNCH_ZONES = ['Sul', 'Centro'];
-const ZONE_LABELS = { Sul: 'Zona Sul', Norte: 'Zona Norte', Leste: 'Zona Leste', Oeste: 'Zona Oeste', Centro: 'Centro' };
+export {
+  BILLING_TEXT,
+  CITY,
+  LAUNCH_AREA_SLUGS,
+  LAUNCH_ZONES,
+  LOCATION_TEXT,
+  NOTICE,
+  PRICE_UNIT_TEXT,
+  PROVIDER_KIND_TEXT,
+  RULE_NOTE,
+  SITE_NAME,
+  VERIFICATION_TEXT,
+  joinPt,
+  occupationSentences,
+  requestHref,
+};
+
 const SITEMAP_URL_LIMIT = 50000;
-const DESCRIPTION_MAX = 160;
-const RELATED_LIMIT = 8;
 const WRITE_CONCURRENCY = 64;
-const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-
-// Prose forms of the policy enums. test/seo/prerender.test.ts keeps the keys
-// in sync with catalog/labels.ts.
-export const PRICE_UNIT_TEXT = {
-  hora: 'por hora',
-  dia: 'por dia',
-  servico: 'por serviço',
-  m2: 'por m²',
-  sessao: 'por sessão',
-  plantao: 'por plantão',
-  mes: 'por mês',
-  projeto: 'por projeto',
-  km: 'por km',
-  pacote: 'por pacote',
-  pagina: 'por página',
-  palavra: 'por palavra',
-  aula: 'por aula',
-  evento: 'por evento',
-  visita: 'por visita',
-};
-
-export const LOCATION_TEXT = {
-  domicilio: 'na casa do cliente',
-  online: 'online',
-  estabelecimento: 'no local do profissional',
-  empresa_cliente: 'na empresa do cliente',
-  externo: 'em local externo combinado com o cliente',
-};
-
-export const VERIFICATION_TEXT = {
-  documento_selfie: 'documento com foto e selfie',
-  cadastro_fiscal: 'CPF ou CNPJ (MEI, Simples ou empresa)',
-  registro_profissional: 'registro no conselho ou órgão da profissão',
-  antecedentes: 'certidão de antecedentes criminais',
-  certificado_curso: 'certificado do curso exigido por norma',
-  cnh: 'CNH na categoria adequada',
-  licenca_orgao: 'licença, alvará ou autorização do órgão competente',
-  seguro_rc: 'seguro de responsabilidade civil',
-};
-
-export const PROVIDER_KIND_TEXT = {
-  autonomo: name => `Quem oferece ${name} pelo WorkEasy se cadastra como autônomo ou MEI.`,
-  autonomo_ou_empresa: name => `Podem oferecer ${name} profissionais autônomos, MEIs ou empresas.`,
-  somente_empresa_licenciada: name => `Só empresas licenciadas podem oferecer ${name} pelo WorkEasy.`,
-};
-
-export const BILLING_TEXT = {
-  comissao_primeiro_servico: name =>
-    `Para ${name}, o modelo de cobrança previsto é uma comissão só no primeiro serviço com um cliente novo trazido pelo WorkEasy; a comissão depende de parecer jurídico para ser ligada.`,
-  so_assinatura: name =>
-    `Não há comissão sobre ${name}, por regra do conselho profissional: o profissional paga apenas a assinatura da ferramenta, se quiser usá-la.`,
-  sob_consulta_juridica: name => `O modelo de cobrança para ${name} ainda está em análise jurídica.`,
-};
+/** Same value as index.html, the web manifest (pwa.config.ts) and test/seo. */
+export const THEME_COLOR = '#667eea';
+/** Link-preview image in public/ (1200x630). */
+export const OG_IMAGE_PATH = '/og-image.png';
+/** An occupation page needs this many sentences of its own, each with at least MIN_SENTENCE_WORDS words, to be indexable. */
+export const MIN_OWN_SENTENCES = 3;
+export const MIN_SENTENCE_WORDS = 6;
+/** Paths the app uses for its own screens; a static page may not take them. */
+const RESERVED_PATHS = ['/', '/entrar', '/conta', '/pedido', '/pedidos', '/atendimentos', '/dashboard', '/pro', '/admin', '/cuidado', '/orcamento', '/agendar', '/p'];
+const HOME_START = '<!--home-seo-->';
+const HOME_END = '<!--/home-seo-->';
 
 // Copy of FORBIDDEN_CLAIMS in test/claims-guard.test.ts (the test checks they
 // match). Generated pages land in dist/, which that guard does not scan.
@@ -108,9 +116,6 @@ export const FORBIDDEN_CLAIMS = [
   ['"CRM ativo" badge', /crm ativo/],
 ];
 
-const NOTICE =
-  'O WorkEasy está em fase inicial: os perfis exibidos no app podem ser de demonstração e o pedido online depende de o serviço estar configurado. O WorkEasy não tabela preços; cada profissional informa o seu.';
-
 // ---------------------------------------------------------------- helpers
 
 const normalizeClaims = text => text.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
@@ -129,24 +134,10 @@ export const escapeHtml = value =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
+const unescapeHtml = value =>
+  value.replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&gt;/g, '>').replace(/&lt;/g, '<').replace(/&amp;/g, '&');
+
 const escapeXml = escapeHtml;
-
-/** "a", "a e b", "a, b e c" (or "ou" with `word`). */
-export const joinPt = (items, word = 'e') => {
-  const list = items.filter(Boolean);
-  if (list.length <= 1) return list.join('');
-  return `${list.slice(0, -1).join(', ')} ${word} ${list[list.length - 1]}`;
-};
-
-const truncate = (text, max = DESCRIPTION_MAX) => {
-  if (text.length <= max) return text;
-  const cut = text.slice(0, max - 1);
-  return `${cut.slice(0, cut.lastIndexOf(' ')).replace(/[,;:]$/, '')}…`;
-};
-
-const zoneLabel = zone => ZONE_LABELS[zone] ?? zone;
-/** "na Zona Sul", "no Centro". */
-const inZone = zone => (zone === 'Centro' ? 'no Centro' : `na ${zoneLabel(zone)}`);
 
 /** Absolute site URL without trailing slash, or '' when absent or invalid. */
 export const normalizeSiteUrl = (value, warn = () => {}) => {
@@ -164,7 +155,8 @@ export const normalizeSiteUrl = (value, warn = () => {}) => {
 
 const absolute = (siteUrl, path) => (siteUrl ? `${siteUrl}${path === '/' ? '/' : path}` : path);
 
-const link = (href, text) => `<a href="${escapeHtml(href)}" class="text-primary hover:underline">${escapeHtml(text)}</a>`;
+const LINK_CLASS = 'inline-flex items-center max-sm:min-h-11 text-secondary hover:underline';
+const link = (href, text) => `<a href="${escapeHtml(href)}" class="${LINK_CLASS}">${escapeHtml(text)}</a>`;
 
 const list = items =>
   `<ul class="list-disc pl-5 space-y-1 text-sm text-gray-800">${items.map(item => `<li>${item}</li>`).join('')}</ul>`;
@@ -172,11 +164,9 @@ const list = items =>
 const section = (title, inner) =>
   `<section class="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs space-y-3"><h2 class="font-bold text-gray-800">${escapeHtml(title)}</h2>${inner}</section>`;
 
-const paragraphs = sentences =>
-  sentences
-    .filter(Boolean)
-    .map(s => `<p class="text-sm text-gray-700 leading-relaxed">${escapeHtml(s)}</p>`)
-    .join('');
+const paragraph = (text, extra = 'text-sm text-gray-700 leading-relaxed') => `<p class="${extra}">${escapeHtml(text)}</p>`;
+
+const paragraphs = sentences => sentences.filter(Boolean).map(s => paragraph(s)).join('');
 
 const breadcrumb = crumbs =>
   `<nav aria-label="Caminho" class="text-sm text-gray-500 flex flex-wrap items-center gap-1">${crumbs
@@ -185,8 +175,19 @@ const breadcrumb = crumbs =>
     )
     .join(' ')}</nav>`;
 
-const main = (kind, inner) =>
-  `<main class="max-w-4xl mx-auto px-4 py-8 space-y-6 break-words" data-prerendered="${kind}">${inner}<p class="text-xs text-gray-500">${escapeHtml(NOTICE)}</p></main>`;
+const H1_CLASS = 'text-2xl md:text-3xl font-bold text-gray-800';
+
+const main = (kind, inner, width = 'max-w-4xl') =>
+  `<main class="${width} mx-auto px-4 py-8 space-y-6 break-words" data-prerendered="${kind}">${inner}${paragraph(NOTICE, 'text-xs text-gray-500')}</main>`;
+
+// Same markup as the React cards of pages/AreaPage.tsx (lucide ChevronRight inlined).
+const CHEVRON =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-right shrink-0 text-gray-500" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>';
+
+const occupationCard = (occupation, policy) =>
+  `<li><a href="/servicos/${escapeHtml(occupation.slug)}" class="flex items-center justify-between gap-3 bg-white border border-gray-100 rounded-xl px-4 py-3 h-full hover:border-primary transition-colors"><span class="min-w-0"><span class="block font-medium text-gray-800">${escapeHtml(occupation.name)}</span>${policyBadges(policy)
+    .map(badge => `<span class="inline-block mt-1 mr-1 text-xs bg-amber-50 text-amber-800 border border-amber-100 px-2 py-0.5 rounded-full">${escapeHtml(badge)}</span>`)
+    .join('')}</span>${CHEVRON}</a></li>`;
 
 // ------------------------------------------------------------ input data
 
@@ -194,7 +195,8 @@ const readJson = path => JSON.parse(readFileSync(path, 'utf8'));
 
 /**
  * Reads catalog/areas.json, catalog/policies.json and, when present,
- * data/neighborhoods.json (array, or { neighborhoods: [...] }).
+ * data/neighborhoods.json (array, or { neighborhoods: [...] }),
+ * data/seo-local.json, data/static-pages.json and content/legal/*.md.
  */
 export const loadInputs = (root, warn = console.warn) => {
   const areas = readJson(join(root, 'catalog', 'areas.json')).areas;
@@ -211,96 +213,290 @@ export const loadInputs = (root, warn = console.warn) => {
   // neighborhood pages are indexable: without local data they are the same text with another name.
   const localPath = join(root, 'data', 'seo-local.json');
   const localPairs = existsSync(localPath) ? readJson(localPath) : [];
-  return { areas, policies, neighborhoods, localPairs };
+  return { areas, policies, neighborhoods, localPairs, staticPages: loadStaticPages(root), legalDocs: loadLegalDocs(root, warn) };
 };
 
-// ------------------------------------------------------- page sentences
-
-/** Sentences about one occupation, all derived from its policy. */
-export const occupationSentences = (occupation, area, policy) => {
-  const name = occupation.name;
-  const units = joinPt(policy.priceUnits.map(u => PRICE_UNIT_TEXT[u]).filter(Boolean), 'ou');
-  const places = joinPt(policy.locations.map(l => LOCATION_TEXT[l]).filter(Boolean), 'ou');
-  const steps = policy.verification.map(v => VERIFICATION_TEXT[v]).filter(Boolean);
-
-  const hiring = [
-    units && `Para contratar ${name}, você descreve o que precisa e combina o valor ${units} com o profissional.`,
-    places && `O atendimento de ${name} acontece ${places}.`,
-    PROVIDER_KIND_TEXT[policy.providerType]?.(name),
-    policy.laborLock &&
-      `Por ser trabalho doméstico, a regra do WorkEasy é limitar ${name} a 2 dias por semana na mesma casa; acima disso, a lei trata a relação como emprego doméstico (LC 150/2015) e a contratação passa a ser direta pela família.`,
-  ].filter(Boolean);
-
-  const requirements = [
-    steps.length > 0 && `Quem quiser oferecer ${name} no WorkEasy terá de apresentar no cadastro: ${joinPt(steps)}.`,
-    policy.audienceMinors && `Como ${name} atende crianças ou adolescentes, a certidão de antecedentes criminais é obrigatória.`,
-    policy.backgroundCheck &&
-      !policy.audienceMinors &&
-      !policy.verification.includes('antecedentes') &&
-      `O cadastro para ${name} inclui consulta de antecedentes criminais.`,
-    BILLING_TEXT[policy.billing]?.(name),
-    !policy.ratingRanking &&
-      (policy.regulated
-        ? `Os profissionais de ${name} não são ordenados por nota, por regra do conselho profissional.`
-        : `Os profissionais de ${name} não são ordenados por nota.`),
-  ].filter(Boolean);
-
-  const registry = policy.registryName || policy.regulatorBody;
-  const body = policy.regulatorBody && policy.regulatorBody !== policy.registryName ? ` (${policy.regulatorBody})` : '';
-  const regulation = [
-    policy.regulated
-      ? `${name} é profissão regulamentada: o profissional precisa de registro no ${registry}${body}${policy.legalBasis ? `, com base em ${policy.legalBasis}` : ''}.`
-      : `${name} não exige registro em conselho profissional${policy.legalBasis ? `; a norma de referência é ${policy.legalBasis}` : ''}.`,
-    policy.verification.includes('licenca_orgao') &&
-      !policy.regulated &&
-      `Mesmo sem conselho, ${name} depende de licença, alvará ou autorização do órgão competente.`,
-    policy.confidence === 'a_confirmar' && `A base legal de ${name} ainda está a confirmar com advogado.`,
-  ].filter(Boolean);
-
-  const intro = [
-    area && `${name} faz parte da área ${area.name} do WorkEasy. ${area.description}`,
-    occupation.synonyms?.length > 0 && `Também procurado como ${joinPt(occupation.synonyms)}.`,
-  ].filter(Boolean);
-
-  return { intro, hiring, requirements, regulation, units, places };
+/** data/static-pages.json: an array of { path, title, description, h1, paragraphs, links }. Absent file: no pages. */
+export const loadStaticPages = root => {
+  const file = join(root, 'data', 'static-pages.json');
+  if (!existsSync(file)) return [];
+  const data = readJson(file);
+  if (!Array.isArray(data)) throw new Error('[prerender] data/static-pages.json deve ser uma lista de páginas.');
+  return data;
 };
 
-/** Sentence on where the service happens, from the neighborhood's point of view. */
-const neighborhoodPlaceSentence = (name, policy, bairro) => {
-  const clauses = [
-    policy.locations.includes('domicilio') && 'o profissional vai até o seu endereço no bairro',
-    policy.locations.includes('empresa_cliente') && 'o atendimento pode ser na sua empresa',
-    policy.locations.includes('estabelecimento') && `quando é no local do profissional, combine com ele a distância até ${bairro}`,
-    policy.locations.includes('externo') && 'o local externo é combinado com o profissional',
-    policy.locations.includes('online') && 'no atendimento online, o bairro não limita a escolha',
-  ].filter(Boolean);
-  return clauses.length > 0 ? `${name} em ${bairro}: ${clauses.join('; ')}.` : '';
+/** content/legal/*.md, one document each; README and files that start with "_" are notes, not pages. */
+export const loadLegalDocs = (root, warn = console.warn) => {
+  const dir = join(root, 'content', 'legal');
+  if (!existsSync(dir)) return [];
+  const docs = [];
+  for (const file of readdirSync(dir).sort()) {
+    if (!file.endsWith('.md') || /^(readme|_)/i.test(file)) continue;
+    const slug = basename(file, '.md');
+    if (!SLUG.test(slug)) {
+      warn(`[prerender] content/legal/${file}: nome de arquivo fora do padrão (a-z, 0-9 e hífen); documento ignorado.`);
+      continue;
+    }
+    docs.push({ slug, source: `content/legal/${file}`, markdown: readFileSync(join(dir, file), 'utf8') });
+  }
+  return docs;
 };
 
-// ---------------------------------------------------------------- pages
+// ---------------------------------------------------------------- markdown
 
-/** Where the "Pedir este serviço" button goes; the neighborhood is optional. */
-export const requestHref = (occupationSlug, neighborhoodSlug) =>
-  `/pedido?servico=${encodeURIComponent(occupationSlug)}${neighborhoodSlug ? `&bairro=${encodeURIComponent(neighborhoodSlug)}` : ''}`;
+const SAFE_URL = /^(?:https?:\/\/|mailto:|tel:|\/(?!\/)|#|\.{1,2}\/)/i;
+const EXTERNAL_URL = /^https?:\/\//i;
+
+const hrefOf = url => (SAFE_URL.test(url) ? url : null);
+const anchor = (url, inner) =>
+  `<a href="${escapeHtml(url)}"${EXTERNAL_URL.test(url) ? ' rel="noopener noreferrer"' : ''} class="${LINK_CLASS}">${inner}</a>`;
+
+// Inline constructs, tried in this order when two start at the same place. Nothing else produces a tag.
+const INLINE = [
+  [/`([^`\n]+)`/, m => `<code class="rounded bg-gray-100 px-1 text-xs">${escapeHtml(m[1])}</code>`],
+  [
+    /\[([^\]\n]+)\]\(\s*((?:[^()\s]|\([^()\s]*\))+)(?:\s+"[^"\n]*")?\s*\)/,
+    m => {
+      const url = hrefOf(m[2]);
+      return url ? anchor(url, renderInline(m[1])) : renderInline(m[1]);
+    },
+  ],
+  [/<((?:https?:\/\/|mailto:)[^>\s]+)>/i, m => anchor(m[1], escapeHtml(m[1]))],
+  [/\*\*([^*\n]+?)\*\*|__([^_\n]+?)__/, m => `<strong>${renderInline(m[1] ?? m[2])}</strong>`],
+  [/\*([^*\n]+?)\*|(?<![A-Za-z0-9])_([^_\n]+?)_(?![A-Za-z0-9])/, m => `<em>${renderInline(m[1] ?? m[2])}</em>`],
+  [/~~([^~\n]+?)~~/, m => `<del>${renderInline(m[1])}</del>`],
+  [/ {2,}\n|\\\n/, () => '<br />'],
+];
+
+/** Inline markdown to HTML. Text is escaped; only the constructs above emit tags, and links keep to safe schemes. */
+const renderInline = text => {
+  let out = '';
+  let rest = text;
+  while (rest.length > 0) {
+    let best = null;
+    for (const [re, build] of INLINE) {
+      const match = re.exec(rest);
+      if (match && (best === null || match.index < best.match.index)) best = { match, build };
+    }
+    if (best === null) break;
+    out += escapeHtml(rest.slice(0, best.match.index).replace(/\n/g, ' ')) + best.build(best.match);
+    rest = rest.slice(best.match.index + best.match[0].length);
+  }
+  return out + escapeHtml(rest.replace(/\n/g, ' '));
+};
+
+const MD = {
+  fence: /^\s*(```|~~~)/,
+  heading: /^(#{1,6})\s+(.+?)\s*#*\s*$/,
+  rule: /^\s*([-*_])(?:\s*\1){2,}\s*$/,
+  quote: /^\s{0,3}>\s?(.*)$/,
+  item: /^(\s*)([-*+]|\d{1,9}[.)])\s+(.*)$/,
+  tableRule: /^\s*\|?\s*:?-{2,}:?\s*(?:\|\s*:?-{2,}:?\s*)*\|?\s*$/,
+};
+
+const indentOf = line => /^\s*/.exec(line)[0].replace(/\t/g, '    ').length;
+
+/** Removes the indentation shared by all the non-blank lines. */
+const dedent = lines => {
+  const widths = lines.filter(line => line.trim() !== '').map(indentOf);
+  const strip = widths.length > 0 ? Math.min(...widths) : 0;
+  return lines.map(line => line.replace(new RegExp(`^\\s{0,${strip}}`), ''));
+};
+
+const splitRow = row =>
+  row
+    .trim()
+    .replace(/^\||\|$/g, '')
+    .split(/(?<!\\)\|/)
+    .map(cell => cell.replace(/\\\|/g, '|').trim());
+
+const HEADING_CLASS = {
+  1: H1_CLASS,
+  2: 'text-lg font-bold text-gray-800 pt-2',
+  3: 'font-bold text-gray-800',
+  4: 'font-semibold text-gray-800',
+  5: 'font-semibold text-gray-800',
+  6: 'font-semibold text-gray-800',
+};
+
+/** True when `line` opens a block that ends a paragraph. */
+const startsBlock = line => MD.fence.test(line) || MD.heading.test(line) || MD.rule.test(line) || MD.quote.test(line) || MD.item.test(line);
+
+/** Block markdown to HTML; `state.h1` is false once the first level-1 heading was written (later ones become h2). */
+const renderBlocks = (lines, state) => {
+  const html = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    if (line.trim() === '') {
+      i++;
+    } else if (MD.fence.test(line)) {
+      const fence = MD.fence.exec(line)[1];
+      const code = [];
+      i++;
+      while (i < lines.length && !lines[i].trim().startsWith(fence)) code.push(lines[i++]);
+      i++;
+      html.push(`<pre class="overflow-x-auto rounded-lg bg-gray-100 p-3 text-xs"><code>${escapeHtml(code.join('\n'))}</code></pre>`);
+    } else if (MD.heading.test(line)) {
+      const [, hashes, text] = MD.heading.exec(line);
+      let level = hashes.length;
+      if (level === 1 && state.h1) level = 2;
+      if (hashes.length === 1) state.h1 = true;
+      html.push(`<h${level} class="${HEADING_CLASS[level]}">${renderInline(text)}</h${level}>`);
+      i++;
+    } else if (MD.rule.test(line)) {
+      html.push('<hr class="border-gray-200" />');
+      i++;
+    } else if (MD.quote.test(line)) {
+      const inner = [];
+      while (i < lines.length && MD.quote.test(lines[i])) inner.push(MD.quote.exec(lines[i++])[1]);
+      html.push(`<blockquote class="border-l-4 border-gray-200 pl-4 space-y-2">${renderBlocks(inner, state)}</blockquote>`);
+    } else if (MD.item.test(line)) {
+      const base = indentOf(line);
+      const ordered = /\d/.test(MD.item.exec(line)[2]);
+      const items = [];
+      while (i < lines.length) {
+        const current = lines[i];
+        if (current.trim() === '') {
+          // A blank line stays inside the list only when the list goes on after it
+          const next = lines.slice(i + 1).find(l => l.trim() !== '');
+          if (next !== undefined && (indentOf(next) > base || (MD.item.test(next) && indentOf(next) === base))) {
+            i++;
+            continue;
+          }
+          break;
+        }
+        const item = MD.item.exec(current);
+        if (item && indentOf(current) === base) {
+          if (/\d/.test(item[2]) !== ordered) break;
+          items.push({ text: item[3], children: [] });
+        } else if (indentOf(current) > base && items.length > 0) {
+          items[items.length - 1].children.push(current);
+        } else {
+          break;
+        }
+        i++;
+      }
+      const tag = ordered ? 'ol' : 'ul';
+      const style = ordered ? 'list-decimal' : 'list-disc';
+      html.push(
+        `<${tag} class="${style} pl-5 space-y-1 text-sm text-gray-800">${items
+          .map(item => {
+            // Indented lines before the first nested marker continue the item's text; the rest is a nested list
+            const firstNested = item.children.findIndex(child => MD.item.test(child));
+            const continuation = firstNested === -1 ? item.children : item.children.slice(0, firstNested);
+            const nested = firstNested === -1 ? [] : dedent(item.children.slice(firstNested));
+            return `<li>${renderInline([item.text, ...continuation.map(c => c.trim())].join('\n'))}${nested.length > 0 ? renderBlocks(nested, state) : ''}</li>`;
+          })
+          .join('')}</${tag}>`,
+      );
+    } else if (line.includes('|') && i + 1 < lines.length && MD.tableRule.test(lines[i + 1]) && lines[i + 1].includes('-')) {
+      const head = splitRow(line);
+      i += 2;
+      const rows = [];
+      while (i < lines.length && lines[i].trim() !== '' && lines[i].includes('|')) rows.push(splitRow(lines[i++]));
+      const cell = (tag, text) => `<${tag} class="border border-gray-200 px-3 py-2 text-left align-top">${renderInline(text)}</${tag}>`;
+      html.push(
+        `<div class="overflow-x-auto"><table class="w-full border-collapse text-sm text-gray-700"><thead><tr>${head.map(c => cell('th', c)).join('')}</tr></thead><tbody>${rows
+          .map(row => `<tr>${head.map((_, col) => cell('td', row[col] ?? '')).join('')}</tr>`)
+          .join('')}</tbody></table></div>`,
+      );
+    } else {
+      const text = [];
+      while (i < lines.length && lines[i].trim() !== '' && (text.length === 0 || !startsBlock(lines[i]))) text.push(lines[i++]);
+      html.push(`<p class="text-sm text-gray-700 leading-relaxed">${renderInline(text.join('\n').trim())}</p>`);
+    }
+  }
+  return html.join('');
+};
+
+/** LF line breaks, no byte order mark, and no HTML comments: drafting notes in a comment must not reach a public page. */
+const normalizeMarkdown = markdown =>
+  markdown
+    .replace(/^\uFEFF/, '')
+    .replace(/\r\n?/g, '\n')
+    .replace(/<!--[\s\S]*?-->/g, '');
+
+/**
+ * Markdown to HTML without a dependency, for the legal pages. Supports
+ * headings, paragraphs, lists (nested), quotes, tables, code, rules, links,
+ * bold, italic and strike-through. HTML comments are dropped, other raw HTML is escaped, and a
+ * link whose scheme is not http(s), mailto, tel, a path or an anchor is
+ * written as plain text. The first "# " heading becomes the only h1.
+ */
+export const markdownToHtml = markdown => renderBlocks(normalizeMarkdown(markdown).split('\n'), { h1: false });
+
+/** { meta: { title, description }, body } from a markdown document with optional "key: value" front matter. */
+export const parseMarkdownDocument = markdown => {
+  let text = normalizeMarkdown(markdown);
+  const meta = {};
+  const front = /^---\n([\s\S]*?)\n---\n?/.exec(text);
+  if (front) {
+    for (const line of front[1].split('\n')) {
+      const pair = /^([A-Za-z_-]+):\s*(.*)$/.exec(line.trim());
+      if (pair) meta[pair[1].toLowerCase()] = pair[2].replace(/^(['"])(.*)\1$/, '$2').trim();
+    }
+    text = text.slice(front[0].length);
+  }
+  return { meta, body: text };
+};
+
+const stripMarkdown = text =>
+  text
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/[*_`~>#]+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+// ----------------------------------------------------------- page building
 
 const requireName = (value, what) => {
   if (typeof value !== 'string' || value.trim() === '') throw new Error(`[prerender] ${what} sem nome: a página ficaria sem título.`);
 };
 
-/** The occupations of `list` that follow `slug`, wrapping around, so that every page gets different related links. */
-const relatedWindow = (list, index) => {
-  const out = [];
-  for (let step = 1; step < list.length && out.length < RELATED_LIMIT; step++) out.push(list[(index + step) % list.length]);
-  return out;
+const PATH = /^\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)*$/;
+
+/** Checks one entry of data/static-pages.json; throws a message that says which one. */
+const checkStaticEntry = (entry, index) => {
+  const where = `data/static-pages.json[${index}]`;
+  const fail = reason => {
+    throw new Error(`[prerender] ${where}${typeof entry?.path === 'string' ? ` (${entry.path})` : ''}: ${reason}`);
+  };
+  if (!entry || typeof entry !== 'object') fail('entrada inválida');
+  for (const key of ['title', 'description', 'h1']) if (typeof entry[key] !== 'string' || entry[key].trim() === '') fail(`"${key}" ausente`);
+  if (typeof entry.path !== 'string' || !PATH.test(entry.path)) fail('"path" deve ser um caminho em minúsculas, como /como-funciona');
+  if (RESERVED_PATHS.some(reserved => reserved !== '/' && (entry.path === reserved || entry.path.startsWith(`${reserved}/`)))) fail('"path" é uma tela do app');
+  if (entry.path.startsWith('/servicos/') || entry.path.startsWith('/categorias/')) fail('"path" invade as páginas do catálogo');
+  if (!Array.isArray(entry.paragraphs) || entry.paragraphs.length === 0 || entry.paragraphs.some(p => typeof p !== 'string' || p.trim() === '')) {
+    fail('"paragraphs" deve ter ao menos um texto');
+  }
+  for (const item of entry.links ?? []) {
+    if (!item || typeof item.label !== 'string' || item.label.trim() === '') fail('link sem "label"');
+    if (typeof item.to !== 'string' || !item.to.startsWith('/') || item.to.startsWith('//') || /\s/.test(item.to)) fail(`link "${item.label}": "to" deve ser um caminho interno`);
+  }
 };
+
+const titleWithSite = title => (title.includes(SITE_NAME) ? title : `${title} | ${SITE_NAME}`);
 
 /**
  * Builds every page (without writing). Returns
- * Array<{ kind, path, title, description, jsonLd, body }>.
+ * Array<{ kind, path, title, description, jsonLd, extraLd?, body, indexable?, owner, masks }>.
  * `canRequest` says whether /pedido works in this build (backend or concierge
  * number); without it the main button leads to the search instead.
  */
-export const buildPages = ({ areas, policies, neighborhoods, localPairs = [], siteUrl = '', canRequest = true, warn = console.warn }) => {
+export const buildPages = ({
+  areas,
+  policies,
+  neighborhoods,
+  localPairs = [],
+  staticPages = [],
+  legalDocs = [],
+  legalStatus = '',
+  siteUrl = '',
+  canRequest = true,
+  warn = console.warn,
+}) => {
   const pages = [];
   const withLocalData = new Set(localPairs);
   const usableAreas = areas.filter(area => {
@@ -310,9 +506,7 @@ export const buildPages = ({ areas, policies, neighborhoods, localPairs = [], si
     return false;
   });
 
-  const launchNeighborhoods = (neighborhoods ?? [])
-    .filter(n => LAUNCH_ZONES.includes(n.zone) && SLUG.test(n.slug ?? ''))
-    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+  const bairros = launchNeighborhoods(neighborhoods);
 
   // Occupations that get a page: URL-safe slug and a policy to write from.
   const withPolicy = new Map();
@@ -332,7 +526,7 @@ export const buildPages = ({ areas, policies, neighborhoods, localPairs = [], si
     }
   }
   /** Titles must be unique: two occupations with the same name get their area appended. */
-  const labelOf = (occupation, area) => (nameCount.get(normalizeClaims(occupation.name)) > 1 ? `${occupation.name} (${area.name})` : occupation.name);
+  const labelOf = (occupation, area) => occupationLabel(occupation.name, area.name, nameCount.get(normalizeClaims(occupation.name)) > 1);
   const pagedByArea = new Map(usableAreas.map(area => [area.slug, area.occupations.filter(o => withPolicy.has(o.slug))]));
   const pagedOccupations = area => pagedByArea.get(area.slug) ?? [];
 
@@ -350,29 +544,46 @@ export const buildPages = ({ areas, policies, neighborhoods, localPairs = [], si
     ...extra,
   });
 
+  /** crumbs: Array<[path, name]>, the same trail as the visible breadcrumb. */
+  const breadcrumbLd = crumbs => ({
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: crumbs.map(([path, name], index) => ({ '@type': 'ListItem', position: index + 1, name, item: absolute(siteUrl, path) })),
+  });
+
   const cta = (occupation, bairro) => {
     const request = canRequest
       ? link(requestHref(occupation.slug, bairro?.slug), 'Pedir este serviço')
       : link(`/search?q=${encodeURIComponent(occupation.name)}`, 'Procurar profissionais');
-    return `<p class="flex flex-wrap gap-3 text-sm font-semibold">${request} ${link(
+    return `<div class="flex flex-wrap gap-3 text-sm font-semibold">${request} ${link(
       `/register-provider?ocupacao=${encodeURIComponent(occupation.slug)}`,
       'Ofereço este serviço',
-    )}</p>`;
+    )}</div>`;
   };
+
+  const policySections = (s, { hiring, requirements }) =>
+    section(hiring, paragraphs(s.hiring)) +
+    section(
+      requirements,
+      `${paragraph(RULE_NOTE, 'text-xs text-gray-500')}${
+        s.steps.length > 0 ? `${paragraph(s.stepsLead)}${list(s.steps.map(escapeHtml))}` : ''
+      }${paragraphs(s.requirements)}`,
+    ) +
+    section(SECTION.regulation, paragraphs(s.regulation));
 
   // /categorias
   const indexAreas = usableAreas.filter(a => pagedOccupations(a).length > 0);
-  const indexDescription = truncate(
-    `${indexAreas.length === 1 ? 'A área' : `As ${indexAreas.length} áreas`} de serviços do WorkEasy, como ${joinPt(indexAreas.slice(0, 3).map(a => a.name))}. Veja como cada profissão é contratada.`,
-  );
+  const indexMeta = categoriesMeta(indexAreas.map(a => a.name));
   pages.push({
     kind: 'categorias',
+    owner: 'categorias',
+    masks: [],
     path: '/categorias',
-    title: `Categorias de serviços | ${SITE_NAME}`,
-    description: indexDescription,
+    title: indexMeta.title,
+    description: indexMeta.description,
     jsonLd: serviceLd({
       name: 'Categorias de serviços',
-      description: indexDescription,
+      description: indexMeta.description,
       path: '/categorias',
       extra: {
         hasOfferCatalog: {
@@ -388,9 +599,7 @@ export const buildPages = ({ areas, policies, neighborhoods, localPairs = [], si
     }),
     body: main(
       'categorias',
-      `<header><h1 class="text-2xl md:text-3xl font-bold text-gray-800">Categorias de serviços</h1>${paragraphs([
-        `O WorkEasy reúne ${indexAreas.length} ${indexAreas.length === 1 ? 'área' : 'áreas'} de serviços. Em cada uma, a página da profissão explica como se contrata, como o preço é combinado e o que será exigido de quem presta o serviço.`,
-      ])}</header>${list(
+      `<header><h1 class="${H1_CLASS}">Todas as categorias</h1>${paragraphs([categoriesLead(indexAreas.length)])}</header>${list(
         indexAreas.map(
           area =>
             `${link(`/categorias/${area.slug}`, area.name)}: ${escapeHtml(area.description)} (${pagedOccupations(area).length} ${
@@ -398,6 +607,7 @@ export const buildPages = ({ areas, policies, neighborhoods, localPairs = [], si
             })`,
         ),
       )}`,
+      'max-w-7xl',
     ),
   });
 
@@ -405,28 +615,20 @@ export const buildPages = ({ areas, policies, neighborhoods, localPairs = [], si
   for (const area of indexAreas) {
     const occupations = pagedOccupations(area);
     const regulated = occupations.filter(o => withPolicy.get(o.slug).policy.regulated);
-    const isLaunch = LAUNCH_AREA_SLUGS.includes(area.slug) && launchNeighborhoods.length > 0;
+    const isLaunch = LAUNCH_AREA_SLUGS.includes(area.slug) && bairros.length > 0;
     const path = `/categorias/${area.slug}`;
-    const description = truncate(
-      `${area.description} Veja ${occupations.length === 1 ? 'o serviço' : `os ${occupations.length} serviços`} de ${area.name} no WorkEasy: ${joinPt(
-        occupations.slice(0, 3).map(o => o.name),
-      )}.`,
-    );
-    const summary = o => {
-      const p = withPolicy.get(o.slug).policy;
-      const units = joinPt(p.priceUnits.map(u => PRICE_UNIT_TEXT[u]).filter(Boolean), 'ou');
-      return `${link(`/servicos/${o.slug}`, o.name)}${units ? `: preço combinado ${escapeHtml(units)}` : ''}${
-        p.regulated ? `; exige registro no ${escapeHtml(p.registryName || p.regulatorBody)}` : ''
-      }`;
-    };
+    const meta = areaMeta(area, occupations.map(o => o.name));
+    const sorted = [...occupations].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
     pages.push({
       kind: 'area',
+      owner: `area:${area.slug}`,
+      masks: [area.name],
       path,
-      title: `${area.name}: profissionais e serviços | ${SITE_NAME}`,
-      description,
+      title: meta.title,
+      description: meta.description,
       jsonLd: serviceLd({
         name: area.name,
-        description,
+        description: meta.description,
         path,
         extra: {
           hasOfferCatalog: {
@@ -440,20 +642,23 @@ export const buildPages = ({ areas, policies, neighborhoods, localPairs = [], si
           },
         },
       }),
+      extraLd: [
+        breadcrumbLd([
+          ['/categorias', 'Categorias'],
+          [path, area.name],
+        ]),
+      ],
       body: main(
         'area',
         `${breadcrumb([
           ['/categorias', 'Categorias'],
           [path, area.name],
-        ])}<header><h1 class="text-2xl md:text-3xl font-bold text-gray-800">${escapeHtml(area.name)}</h1>${paragraphs([
-          area.description,
-          `${area.name} tem ${occupations.length} ${occupations.length === 1 ? 'serviço' : 'serviços'} no WorkEasy${
-            regulated.length > 0
-              ? `; ${regulated.length === 1 ? 'um é profissão regulamentada' : `${regulated.length} são profissões regulamentadas`}, com registro exigido no cadastro`
-              : ', nenhum deles com registro em conselho profissional'
-          }.`,
-          isLaunch && `Esta é uma das áreas de lançamento em ${CITY}, com páginas por bairro ${joinPt(LAUNCH_ZONES.map(inZone))}.`,
-        ])}</header>${section('Serviços desta área', list(occupations.map(summary)))}<p class="text-sm">${link('/categorias', 'Ver todas as categorias')}</p>`,
+        ])}<header><h1 class="${H1_CLASS}">${escapeHtml(area.name)}</h1>${paragraphs(
+          areaIntro({ area, count: occupations.length, regulated: regulated.length, launch: isLaunch }),
+        )}</header><div><h2 class="font-bold text-gray-800 mb-3">${escapeHtml(SECTION.areaServices)}</h2><ul class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">${sorted
+          .map(o => occupationCard(o, withPolicy.get(o.slug).policy))
+          .join('')}</ul></div>`,
+        'max-w-7xl',
       ),
     });
   }
@@ -469,91 +674,92 @@ export const buildPages = ({ areas, policies, neighborhoods, localPairs = [], si
       const related = relatedWindow(areaOccupations, areaIndex);
       const relatedSection =
         related.length > 0
-          ? section(`Outros serviços de ${area.name}`, list(related.map(o => link(`/servicos/${o.slug}`, o.name))))
+          ? section(SECTION.related(area.name), list(related.map(o => link(`/servicos/${o.slug}`, o.name))))
           : '';
-      const bairros = LAUNCH_AREA_SLUGS.includes(area.slug) ? launchNeighborhoods : [];
+      const areaBairros = LAUNCH_AREA_SLUGS.includes(area.slug) ? bairros : [];
       const path = `/servicos/${occupation.slug}`;
-      const description = truncate(
-        `${label}${s.units ? `: preço combinado ${s.units}` : ''}${s.places ? `, atendimento ${s.places}` : ''}. Veja o que o WorkEasy exige de quem oferece ${name}.`,
-      );
+      const meta = occupationMeta({ label, name, units: s.units, places: s.places });
       const bairroLinks =
-        bairros.length > 0
+        areaBairros.length > 0
           ? section(
-              `${name} por bairro`,
-              LAUNCH_ZONES.map(zone => {
-                const zoneBairros = bairros.filter(n => n.zone === zone);
-                if (zoneBairros.length === 0) return '';
-                return `<h3 class="text-sm font-semibold text-gray-700">${escapeHtml(zoneLabel(zone))}</h3>${list(
-                  zoneBairros.map(n => link(`${path}/${n.slug}`, `${name} em ${n.name}`)),
-                )}`;
-              }).join(''),
+              SECTION.byNeighborhood(name),
+              groupByZone(areaBairros)
+                .map(
+                  group =>
+                    `<h3 class="text-sm font-semibold text-gray-700">${escapeHtml(group.label)}</h3>${list(
+                      group.items.map(n => link(`${path}/${n.slug}`, `${name} em ${n.name}`)),
+                    )}`,
+                )
+                .join(''),
             )
           : '';
-      const policySections =
-        section('Como se contrata', paragraphs(s.hiring)) +
-        section('O que será exigido do profissional', paragraphs(s.requirements)) +
-        section('Profissão regulamentada?', paragraphs(s.regulation));
+      const owner = `occupation:${occupation.slug}`;
+      const crumbs = [
+        ['/categorias', 'Categorias'],
+        [`/categorias/${area.slug}`, area.name],
+        [path, name],
+      ];
 
       pages.push({
         kind: 'servico',
+        owner,
+        masks: [label, name, area.name],
+        shared: [area.description],
         path,
-        title: `${label}: como contratar | ${SITE_NAME}`,
-        description,
-        jsonLd: serviceLd({ name: label, description, path, category: area.name, alternateName: occupation.synonyms }),
+        title: meta.title,
+        description: meta.description,
+        jsonLd: serviceLd({ name: label, description: meta.description, path, category: area.name, alternateName: occupation.synonyms }),
+        extraLd: [breadcrumbLd(crumbs)],
         body: main(
           'servico',
-          `${breadcrumb([
-            ['/categorias', 'Categorias'],
-            [`/categorias/${area.slug}`, area.name],
-            [path, name],
-          ])}<header><h1 class="text-2xl md:text-3xl font-bold text-gray-800">${escapeHtml(name)}</h1>${paragraphs(s.intro)}</header>${cta(occupation)}${policySections}${bairroLinks}${relatedSection}`,
+          `${breadcrumb(crumbs)}<header><h1 class="${H1_CLASS}">${escapeHtml(name)}</h1>${paragraphs(s.intro)}</header>${cta(occupation)}${policySections(s, {
+            hiring: SECTION.hiring,
+            requirements: SECTION.requirements,
+          })}${bairroLinks}${relatedSection}`,
         ),
       });
 
-      for (const [index, n] of bairros.entries()) {
-        const zone = zoneLabel(n.zone);
+      for (const n of areaBairros) {
         const city = n.city || CITY;
         const bairroPath = `${path}/${n.slug}`;
-        const sameZone = bairros.filter(b => b.zone === n.zone && b.slug !== n.slug);
-        // Rotate so that each page links to different neighbors.
-        const start = sameZone.length > 0 ? index % sameZone.length : 0;
-        const neighbors = [...sameZone.slice(start), ...sameZone.slice(0, start)].slice(0, RELATED_LIMIT);
-        const bairroDescription = truncate(
-          `${label} em ${n.name} (${zone}, ${city})${s.places ? `: atendimento ${s.places}` : ''}${s.units ? `, preço combinado ${s.units}` : ''} e o que se exige do profissional.`,
+        const neighbors = rotateNeighbors(
+          areaBairros.filter(b => b.zone === n.zone),
+          n.slug,
         );
-        const intro = [
-          `Procura ${name} em ${n.name}, ${inZone(n.zone)} de ${city}? Esta página resume como o serviço é contratado pelo WorkEasy e o que será exigido de quem atende o bairro.`,
-          neighborhoodPlaceSentence(name, policy, n.name),
-          `Os profissionais de ${name} aparecem na busca do app quando há cadastros aprovados que atendem ${n.name}; nesta fase, a lista pode estar vazia.`,
-        ];
+        const bairroMeta = neighborhoodMeta({ label, bairro: n.name, zone: n.zone, city, units: s.units, places: s.places });
+        const bairroCrumbs = [...crumbs, [bairroPath, n.name]];
         pages.push({
           kind: 'bairro',
+          owner,
+          masks: [label, name, area.name, n.name, zoneLabel(n.zone), city],
           indexable: withLocalData.has(`${occupation.slug}/${n.slug}`),
           path: bairroPath,
-          title: `${label} em ${n.name}, ${city} | ${SITE_NAME}`,
-          description: bairroDescription,
+          title: bairroMeta.title,
+          description: bairroMeta.description,
           jsonLd: serviceLd({
             name: `${label} em ${n.name}`,
-            description: bairroDescription,
+            description: bairroMeta.description,
             path: bairroPath,
             category: area.name,
             alternateName: occupation.synonyms,
             areaServed: { '@type': 'Place', name: `${n.name}, ${city}`, containedInPlace: { '@type': 'City', name: city } },
             extra: { serviceType: name },
           }),
+          extraLd: [breadcrumbLd(bairroCrumbs)],
           body: main(
             'bairro',
-            `${breadcrumb([
-              ['/categorias', 'Categorias'],
-              [`/categorias/${area.slug}`, area.name],
-              [path, name],
-              [bairroPath, n.name],
-            ])}<header><h1 class="text-2xl md:text-3xl font-bold text-gray-800">${escapeHtml(`${name} em ${n.name}`)}</h1>${paragraphs(intro)}</header>${cta(occupation, n)}${policySections}${
+            `${breadcrumb(bairroCrumbs)}<header><h1 class="${H1_CLASS}">${escapeHtml(`${name} em ${n.name}`)}</h1>${paragraph(
+              `${zoneLabel(n.zone)}, ${city}`,
+              'text-sm text-gray-500',
+            )}${paragraphs(neighborhoodIntro({ name, policy, bairro: n.name, zone: n.zone, city }))}</header>${cta(occupation, n)}${policySections(s, {
+              hiring: SECTION.hiringIn(n.name),
+              requirements: SECTION.requirementsLocal,
+            })}${
               neighbors.length > 0
-                ? section(`${name} em outros bairros da ${zone === 'Centro' ? 'região central' : zone}`, list(neighbors.map(b => link(`${path}/${b.slug}`, `${name} em ${b.name}`))))
+                ? section(SECTION.otherNeighborhoods(name), list(neighbors.map(b => link(`${path}/${b.slug}`, `${name} em ${b.name}`))))
                 : ''
             }${section(
-              'Veja também',
+              SECTION.seeAlso,
               list([link(path, `${name}: como contratar`), link(`/categorias/${area.slug}`, `Todos os serviços de ${area.name}`)]),
             )}`,
           ),
@@ -562,11 +768,69 @@ export const buildPages = ({ areas, policies, neighborhoods, localPairs = [], si
     }
   }
 
+  // data/static-pages.json
+  staticPages.forEach((entry, index) => {
+    checkStaticEntry(entry, index);
+    const links = entry.links ?? [];
+    pages.push({
+      kind: 'estatica',
+      owner: `static:${entry.path}`,
+      masks: [],
+      path: entry.path,
+      title: titleWithSite(entry.title.trim()),
+      description: truncate(entry.description.trim()),
+      jsonLd: webPageLd({ name: entry.h1.trim(), description: truncate(entry.description.trim()), path: entry.path, siteUrl }),
+      body: main(
+        'estatica',
+        `<header><h1 class="${H1_CLASS}">${escapeHtml(entry.h1.trim())}</h1>${paragraphs(entry.paragraphs.map(p => p.trim()))}</header>${
+          links.length > 0 ? section(SECTION.seeAlso, list(links.map(item => link(item.to, item.label.trim())))) : ''
+        }`,
+      ),
+    });
+  });
+
+  // content/legal/*.md: drafts stay out of the index until the owner declares the documents in force
+  for (const doc of legalDocs) {
+    const { meta, body } = parseMarkdownDocument(doc.markdown);
+    const heading = /^#\s+(.+?)\s*#*\s*$/m.exec(body)?.[1];
+    const title = stripMarkdown(meta.title || heading || doc.slug.replace(/-/g, ' '));
+    // The first plain paragraph: not a heading, quote (the draft banner), list or table
+    const firstParagraph = body
+      .split(/\n\s*\n/)
+      .filter(block => !/^\s*(?:#|>|\||[-*+]\s|\d+[.)]\s|```|~~~)/.test(block))
+      .map(block => stripMarkdown(block))
+      .find(block => block.length > 40);
+    const description = truncate(meta.description || firstParagraph || `${title}. Documento legal do ${SITE_NAME}.`);
+    const html = markdownToHtml(body);
+    const path = `/legal/${doc.slug}`;
+    pages.push({
+      kind: 'legal',
+      owner: `legal:${doc.slug}`,
+      masks: [],
+      source: doc.source,
+      indexable: legalStatus === 'vigente',
+      path,
+      title: titleWithSite(title),
+      description,
+      jsonLd: webPageLd({ name: title, description, path, siteUrl }),
+      body: main('legal', `<article class="space-y-4">${/<h1[\s>]/.test(html) ? '' : `<h1 class="${H1_CLASS}">${escapeHtml(title)}</h1>`}${html}</article>`),
+    });
+  }
+
   assertUnique(pages, 'path');
   assertUnique(pages, 'title');
   assertUnique(pages, 'description');
   return pages;
 };
+
+const webPageLd = ({ name, description, path, siteUrl }) => ({
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name,
+  description,
+  inLanguage: 'pt-BR',
+  ...(siteUrl ? { url: absolute(siteUrl, path), isPartOf: { '@type': 'WebSite', name: SITE_NAME, url: `${siteUrl}/` } } : {}),
+});
 
 const assertUnique = (pages, key) => {
   const seen = new Map();
@@ -576,10 +840,126 @@ const assertUnique = (pages, key) => {
   }
 };
 
+// ------------------------------------------------- home: Organization, WebSite
+
+/**
+ * JSON-LD of the home page: who the site is, nothing else. No contact data,
+ * social profiles, address, rating or price exists in the project, so none is
+ * written. Needs the site URL: without it there is nothing valid to say.
+ */
+export const homeJsonLd = (siteUrl, description = '') => {
+  if (!siteUrl) return [];
+  return [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'Organization',
+      '@id': `${siteUrl}/#organization`,
+      name: SITE_NAME,
+      url: `${siteUrl}/`,
+      logo: absolute(siteUrl, '/icons/icon-512.png'),
+      ...(description ? { description } : {}),
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      '@id': `${siteUrl}/#website`,
+      name: SITE_NAME,
+      url: `${siteUrl}/`,
+      inLanguage: 'pt-BR',
+      ...(description ? { description } : {}),
+      publisher: { '@id': `${siteUrl}/#organization` },
+    },
+  ];
+};
+
+// ----------------------------------------------------------- content guard
+
+const normalizeSentence = text => normalizeClaims(text).replace(/\s+/g, ' ').trim();
+
+/** Sentences of the paragraphs of `page`, as written (no HTML, no entities). */
+export const pageSentences = page =>
+  [...page.body.matchAll(/<p [^>]*>([^<]*)<\/p>/g)].flatMap(([, html]) =>
+    unescapeHtml(html)
+      .split(/(?<=[.!?])\s+/)
+      .map(sentence => sentence.trim())
+      .filter(Boolean),
+  );
+
+const BOILERPLATE = new Set([NOTICE, RULE_NOTE].flatMap(text => text.split(/(?<=[.!?])\s+/)).map(normalizeSentence));
+const wordCount = sentence => sentence.split(/\s+/).filter(Boolean).length;
+
+/** The sentence with the names of its page and every number replaced, so that "Pintor em Moema" and "Pintor em Mooca" read the same. */
+const skeleton = (sentence, masks) => {
+  let text = normalizeSentence(sentence);
+  const names = masks.map(normalizeSentence).filter(name => name.length >= 3).sort((a, b) => b.length - a.length);
+  for (const name of names) text = text.split(name).join('§');
+  return text.replace(/\d+/g, '#');
+};
+
+/** Skeleton -> the owners (an occupation, an area...) whose pages contain it. */
+export const buildSentenceIndex = pages => {
+  const index = new Map();
+  for (const page of pages) {
+    for (const sentence of pageSentences(page)) {
+      const key = skeleton(sentence, page.masks ?? []);
+      const owners = index.get(key) ?? new Set();
+      owners.add(page.owner ?? page.path);
+      index.set(key, owners);
+    }
+  }
+  return index;
+};
+
+/**
+ * The sentences that make a page its own: distinct, with at least
+ * MIN_SENTENCE_WORDS words, not the notice every page carries, and found in
+ * no other owner's pages once names and numbers are masked. A sentence the
+ * template writes for every occupation with the same policy is not the page's.
+ */
+export const ownSentences = (page, index = buildSentenceIndex([page])) => {
+  const seen = new Set();
+  const own = [];
+  // Text that other pages repeat by design (the description of the area an occupation belongs to)
+  const shared = new Set((page.shared ?? []).flatMap(text => text.split(/(?<=[.!?])\s+/)).map(normalizeSentence));
+  for (const sentence of pageSentences(page)) {
+    const normalized = normalizeSentence(sentence);
+    if (BOILERPLATE.has(normalized) || shared.has(normalized) || wordCount(sentence) < MIN_SENTENCE_WORDS) continue;
+    const key = skeleton(sentence, page.masks ?? []);
+    if (seen.has(key) || (index.get(key)?.size ?? 0) !== 1) continue;
+    seen.add(key);
+    own.push(sentence);
+  }
+  return own;
+};
+
+/**
+ * Keeps occupation pages with fewer than `minOwn` own sentences out of the
+ * index (noindex, no sitemap entry): a page that only swaps a name into the
+ * template says nothing a crawler has not read already. Neighborhood pages
+ * have their own rule (noindex unless the pair is in data/seo-local.json).
+ * Returns the paths it changed.
+ */
+export const guardThinPages = (pages, { minOwn = MIN_OWN_SENTENCES } = {}) => {
+  // Neighborhood pages share their owner with the occupation page, so they cannot make one of its sentences less its own
+  const index = buildSentenceIndex(pages.filter(page => page.kind !== 'bairro'));
+  const thin = [];
+  for (const page of pages) {
+    if (page.kind !== 'servico') continue;
+    page.ownSentences = ownSentences(page, index).length;
+    if (page.ownSentences < minOwn) {
+      page.indexable = false;
+      page.thin = true;
+      thin.push(page.path);
+    }
+  }
+  return thin;
+};
+
 // ----------------------------------------------------------- validation
 
 // Structured data may never carry what the platform does not have.
 const FORBIDDEN_LD_KEYS = /^(aggregateRating|review|reviews|rating|ratingValue|reviewCount|ratingCount|offers|price|priceRange|priceCurrency|lowPrice|highPrice)$/;
+const LD_TYPES = ['Service', 'WebPage'];
 // Prices and ratings written in the text.
 const INVENTED_DATA = [
   ['price in reais', /r\$\s*\d/],
@@ -588,15 +968,14 @@ const INVENTED_DATA = [
   ['review count', /\b\d+\s*(?:avaliac(?:ao|oes)|reviews?)\b/],
 ];
 
-const hasForbiddenKey = value =>
+export const hasForbiddenKey = value =>
   Array.isArray(value)
     ? value.some(hasForbiddenKey)
     : value !== null && typeof value === 'object'
       ? Object.entries(value).some(([key, inner]) => FORBIDDEN_LD_KEYS.test(key) || hasForbiddenKey(inner))
       : false;
 
-const sentencesOf = body =>
-  [...body.matchAll(/<p [^>]*>([^<]*)<\/p>/g)].flatMap(([, text]) => text.split(/(?<=[.!?])\s+/).filter(sentence => sentence.trim().length > 20));
+const ldBlocks = page => [page.jsonLd, ...(page.extraLd ?? [])];
 
 /** Problems of a page before it is rendered; an empty list means it can be written. */
 export const validatePage = (page, siteUrl = '') => {
@@ -606,13 +985,12 @@ export const validatePage = (page, siteUrl = '') => {
   if (!text(page.description)) problems.push('sem descrição');
   if (typeof page.path !== 'string' || !page.path.startsWith('/') || !text(absolute(siteUrl, page.path))) problems.push('sem canonical');
   if (!/<h1[\s>]/.test(page.body ?? '')) problems.push('sem h1');
-  if (page.jsonLd?.['@type'] !== 'Service') problems.push('JSON-LD não é do tipo Service');
-  if (hasForbiddenKey(page.jsonLd)) problems.push('JSON-LD com preço, nota ou avaliação');
-  if ((page.kind === 'servico' || page.kind === 'bairro') && sentencesOf(page.body ?? '').length < 3) problems.push('menos de 3 frases próprias');
+  if (!LD_TYPES.includes(page.jsonLd?.['@type'])) problems.push('JSON-LD não é do tipo Service nem WebPage');
+  if (ldBlocks(page).some(hasForbiddenKey)) problems.push('JSON-LD com preço, nota ou avaliação');
   return problems;
 };
 
-const pageText = page => `${page.title}\n${page.description}\n${JSON.stringify(page.jsonLd)}\n${page.body.replace(/<[^>]+>/g, '\n')}`;
+const pageText = page => `${page.title}\n${page.description}\n${JSON.stringify(ldBlocks(page))}\n${page.body.replace(/<[^>]+>/g, '\n')}`;
 
 /** Forbidden claims and invented prices or ratings in the text of a page. */
 export const findProhibitedText = page => {
@@ -631,12 +1009,18 @@ export const validateHtml = html => {
   if (title.trim() === '') problems.push('<title> vazio');
   if (!/<meta name="description" content="[^"]+"/.test(html)) problems.push('<meta name="description"> vazio');
   if (!/<link rel="canonical" href="[^"]+"/.test(html)) problems.push('<link rel="canonical"> vazio');
+  if (!/<html[^>]*\blang="pt-BR"/.test(html)) problems.push('<html lang="pt-BR"> ausente');
+  if (!/<meta name="theme-color" content="[^"]+"/.test(html)) problems.push('<meta name="theme-color"> ausente');
+  for (const property of ['og:title', 'og:description', 'og:image']) {
+    if (!new RegExp(`<meta property="${property}" content="[^"]+"`).test(html)) problems.push(`<meta property="${property}"> ausente`);
+  }
+  if (!/<meta name="twitter:card" content="summary_large_image"/.test(html)) problems.push('<meta name="twitter:card"> ausente');
   if (!/<div id="root"><main [\s\S]*<h1[\s>]/.test(html)) problems.push('sem conteúdo em <div id="root">');
   const ld = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)];
-  if (ld.length !== 1) problems.push('JSON-LD ausente');
-  else {
+  if (ld.length < 1) problems.push('JSON-LD ausente');
+  for (const [, block] of ld) {
     try {
-      JSON.parse(ld[0][1]);
+      JSON.parse(block);
     } catch {
       problems.push('JSON-LD inválido');
     }
@@ -648,38 +1032,134 @@ export const validateHtml = html => {
 
 const jsonForScript = value => JSON.stringify(value).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
 
-/** Fills the dist/index.html template with one page. Throws when the page has no title, description or canonical. */
-export const renderPage = (template, page, siteUrl = '') => {
+const ldScript = block => `<script type="application/ld+json">${jsonForScript(block)}</script>`;
+
+// Head tags are found by their key, wherever the template put them, dropped and written again at the end of
+// <head> in a fixed order: a page never ends up with two og:title, and the result does not depend on whether the
+// template was already touched (a second run over the same dist/ reads the home that the first one wrote).
+const tagRe = (tag, attr, key) => new RegExp(`[ \\t]*<${tag}\\b[^>]*\\b${attr}="${key}"[^>]*>[ \\t]*\\n?`, 'gi');
+const addToHead = (html, fragment) => html.replace(/(\n?)[ \t]*<\/head>/, (_, newline) => `${newline || '\n'}    ${fragment}\n  </head>`);
+const putTag = (html, re, tag) => addToHead(html.replace(re, ''), tag);
+const upsertMeta = (html, attr, key, content) => putTag(html, tagRe('meta', attr, key), `<meta ${attr}="${key}" content="${escapeHtml(content)}" />`);
+const ensureMeta = (html, attr, key, content) => (tagRe('meta', attr, key).test(html) ? html : upsertMeta(html, attr, key, content));
+const upsertLink = (html, rel, href) => putTag(html, tagRe('link', 'rel', rel), `<link rel="${rel}" href="${escapeHtml(href)}" />`);
+
+const withLang = html => (/<html[^>]*\blang=/.test(html) ? html : html.replace(/<html\b/, '<html lang="pt-BR"'));
+
+/** The Open Graph and Twitter tags shared by every page; `url` is left out when the site URL is unknown. */
+const shareTags = (html, { title, description, url, image }) => {
+  let out = html;
+  out = upsertMeta(out, 'property', 'og:type', 'website');
+  out = upsertMeta(out, 'property', 'og:site_name', SITE_NAME);
+  out = upsertMeta(out, 'property', 'og:locale', 'pt_BR');
+  out = upsertMeta(out, 'property', 'og:title', title);
+  out = upsertMeta(out, 'property', 'og:description', description);
+  if (url) out = upsertMeta(out, 'property', 'og:url', url);
+  out = upsertMeta(out, 'property', 'og:image', image);
+  out = ensureMeta(out, 'property', 'og:image:width', '1200');
+  out = ensureMeta(out, 'property', 'og:image:height', '630');
+  out = ensureMeta(out, 'property', 'og:image:alt', SITE_NAME);
+  out = upsertMeta(out, 'name', 'twitter:card', 'summary_large_image');
+  out = upsertMeta(out, 'name', 'twitter:title', title);
+  out = upsertMeta(out, 'name', 'twitter:description', description);
+  out = upsertMeta(out, 'name', 'twitter:image', image);
+  return out;
+};
+
+/**
+ * Fills the dist/index.html template with one page. Throws when the page has
+ * no title, description or canonical. `preload` lists script chunks the page
+ * will need as soon as React mounts (see chunkPreloads).
+ */
+export const renderPage = (template, page, siteUrl = '', { preload = [] } = {}) => {
   const rootRe = /<div id="root">\s*<\/div>/;
   if (!rootRe.test(template)) throw new Error('[prerender] o molde não tem <div id="root"></div>');
   const invalid = validatePage(page, siteUrl);
   if (invalid.length > 0) throw new Error(`[prerender] ${page.path}: ${invalid.join('; ')}`);
   const canonical = absolute(siteUrl, page.path);
-  const head = [
-    `<link rel="canonical" href="${escapeHtml(canonical)}" />`,
-    ...(page.indexable === false ? [`<meta name="robots" content="noindex,follow" />`] : []),
-    `<meta property="og:type" content="website" />`,
-    `<meta property="og:site_name" content="${SITE_NAME}" />`,
-    `<meta property="og:locale" content="pt_BR" />`,
-    `<meta property="og:title" content="${escapeHtml(page.title)}" />`,
-    `<meta property="og:description" content="${escapeHtml(page.description)}" />`,
-    ...(siteUrl ? [`<meta property="og:url" content="${escapeHtml(canonical)}" />`] : []),
-    `<script type="application/ld+json">${jsonForScript(page.jsonLd)}</script>`,
-  ].join('\n    ');
 
   // Function replacements keep "$" sequences of the text literal.
-  let html = template.replace(/<title>[\s\S]*?<\/title>/, () => `<title>${escapeHtml(page.title)}</title>`);
-  const description = `<meta name="description" content="${escapeHtml(page.description)}" />`;
-  html = /<meta name="description"[^>]*>/.test(html)
-    ? html.replace(/<meta name="description"[^>]*>/, () => description)
-    : html.replace('</head>', () => `  ${description}\n  </head>`);
-  html = html.replace('</head>', () => `  ${head}\n  </head>`);
+  let html = withLang(template);
+  html = /<title>[\s\S]*?<\/title>/.test(html)
+    ? html.replace(/<title>[\s\S]*?<\/title>/, () => `<title>${escapeHtml(page.title)}</title>`)
+    : addToHead(html, `<title>${escapeHtml(page.title)}</title>`);
+  html = upsertMeta(html, 'name', 'description', page.description);
+  html = ensureMeta(html, 'name', 'theme-color', THEME_COLOR);
+  html = upsertLink(html, 'canonical', canonical);
+  if (page.indexable === false) html = upsertMeta(html, 'name', 'robots', 'noindex,follow');
+  html = shareTags(html, { title: page.title, description: page.description, url: siteUrl ? canonical : '', image: absolute(siteUrl, OG_IMAGE_PATH) });
+  const extra = [
+    ...preload.map(href => `<link rel="modulepreload" crossorigin href="${escapeHtml(href)}" />`),
+    ...ldBlocks(page).map(ldScript),
+  ];
+  html = addToHead(html, extra.join('\n    '));
   return html.replace(rootRe, () => `<div id="root">${page.body}</div>`);
 };
 
-const sitemapEntries = (paths, siteUrl, date) =>
-  paths.map(path => `  <url><loc>${escapeXml(absolute(siteUrl, path))}</loc><lastmod>${date}</lastmod></url>`);
+/** The shell without the block renderHome added to it (so that a second run starts from the template). */
+export const stripHome = html => html.replace(new RegExp(`[ \\t]*${HOME_START}[\\s\\S]*?${HOME_END}[ \\t]*\\n?`), '');
 
+/**
+ * The home is dist/index.html itself, which is also what the host serves for
+ * every route the app owns, so it gets no canonical and no og:url (they would
+ * point those routes at the home). It gets the absolute link-preview image and
+ * the Organization and WebSite JSON-LD.
+ */
+export const renderHome = (template, siteUrl = '') => {
+  if (!siteUrl) return template;
+  let html = stripHome(template);
+  html = upsertMeta(html, 'property', 'og:image', absolute(siteUrl, OG_IMAGE_PATH));
+  html = upsertMeta(html, 'name', 'twitter:image', absolute(siteUrl, OG_IMAGE_PATH));
+  const description = /<meta name="description" content="([^"]*)"/.exec(html)?.[1];
+  const blocks = homeJsonLd(siteUrl, description ? unescapeHtml(description) : '');
+  return addToHead(html, `${HOME_START}\n    ${blocks.map(ldScript).join('\n    ')}\n    ${HOME_END}`);
+};
+
+// -------------------------------------------------------- script preloads
+
+const PAGE_CHUNKS = { categorias: 'Categories', area: 'AreaPage', servico: 'OccupationPage', bairro: 'OccupationNeighborhoodPage' };
+
+/** Static imports of an ES module chunk: `from"./x.js"` and `import"./x.js"`, never `import("./x.js")`. */
+const staticImports = source => [...source.matchAll(/(?:\bfrom|\bimport)\s*["']\.\/([^"']+\.js)["']/g)].map(m => m[1]);
+
+/**
+ * Per page kind, the script chunks the route needs once React mounts: the
+ * page chunk and everything it imports statically, minus what the template
+ * already loads. Without them the browser learns about the ~30 small chunks of
+ * a route one round trip at a time, after the page chunk arrives.
+ * Returns { [kind]: Array<"/assets/..."> }; empty when dist/assets is absent.
+ */
+export const chunkPreloads = (distDir, template) => {
+  const assets = join(distDir, 'assets');
+  if (!existsSync(assets)) return {};
+  const files = readdirSync(assets).filter(file => file.endsWith('.js'));
+  const known = new Set([...template.matchAll(/(?:src|href)="\/assets\/([^"]+\.js)"/g)].map(m => m[1]));
+  const closure = start => {
+    const seen = new Set();
+    const visit = file => {
+      if (seen.has(file) || known.has(file) || !files.includes(file)) return;
+      seen.add(file);
+      for (const next of staticImports(readFileSync(join(assets, file), 'utf8'))) visit(next);
+    };
+    visit(start);
+    return [...seen];
+  };
+  const out = {};
+  for (const [kind, prefix] of Object.entries(PAGE_CHUNKS)) {
+    const chunk = files.find(file => file.startsWith(`${prefix}-`));
+    if (chunk) out[kind] = closure(chunk).map(file => `/assets/${file}`);
+  }
+  return out;
+};
+
+// ---------------------------------------------------------------- sitemap
+
+const sitemapEntries = (paths, siteUrl, lastmod) =>
+  paths.map(
+    path => `  <url><loc>${escapeXml(absolute(siteUrl, path))}</loc><lastmod>${typeof lastmod === 'function' ? lastmod(path) : lastmod}</lastmod></url>`,
+  );
+
+/** `date` is YYYY-MM-DD for every entry, or a function from path to date. */
 export const buildSitemap = (paths, siteUrl, date) =>
   [
     '<?xml version="1.0" encoding="UTF-8"?>',
@@ -699,10 +1179,11 @@ export const buildSitemapFiles = (paths, siteUrl, date, limit = SITEMAP_URL_LIMI
   const parts = [];
   for (let i = 0; i < paths.length; i += limit) parts.push(paths.slice(i, i + limit));
   const names = parts.map((_, i) => `sitemap-${i + 1}.xml`);
+  const newest = part => part.map(path => (typeof date === 'function' ? date(path) : date)).sort().at(-1);
   const index = [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
-    ...names.map(name => `  <sitemap><loc>${escapeXml(absolute(siteUrl, `/${name}`))}</loc><lastmod>${date}</lastmod></sitemap>`),
+    ...names.map((name, i) => `  <sitemap><loc>${escapeXml(absolute(siteUrl, `/${name}`))}</loc><lastmod>${newest(parts[i])}</lastmod></sitemap>`),
     '</sitemapindex>',
     '',
   ].join('\n');
@@ -717,6 +1198,44 @@ export const buildRobots = (base, siteUrl) => {
   while (lines.length > 0 && lines[lines.length - 1].trim() === '') lines.pop();
   if (siteUrl) lines.push('', `Sitemap: ${siteUrl}/sitemap.xml`);
   return `${lines.join('\n')}\n`;
+};
+
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+const gitDate = (root, files) => {
+  try {
+    return execFileSync('git', ['log', '-1', '--format=%cs', '--', ...files], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+  } catch {
+    return '';
+  }
+};
+
+/**
+ * YYYY-MM-DD of the last change to any of `files` (relative to `root`): the
+ * date of the last commit that touched them, else the newest modification
+ * time, else undefined when none of them exists. `git` can be replaced in tests.
+ */
+export const contentDate = (root, files, { git = gitDate } = {}) => {
+  const existing = files.filter(file => existsSync(join(root, file)));
+  if (existing.length === 0) return undefined;
+  const committed = git(root, existing);
+  if (DAY.test(committed)) return committed;
+  return new Date(Math.max(...existing.map(file => statSync(join(root, file)).mtimeMs))).toISOString().slice(0, 10);
+};
+
+/**
+ * Function from a URL path to its sitemap lastmod. With `buildDate` every URL
+ * gets that date. Without it, a URL gets the date its content last changed
+ * (the data files it is written from, plus this script and the prose module),
+ * not the day of the build: a lastmod that moves on every build tells a crawler nothing.
+ */
+export const makeLastmod = ({ root, buildDate, pages, today = new Date().toISOString().slice(0, 10), git }) => {
+  if (buildDate) return () => buildDate;
+  const shared = ['scripts/prerender.mjs', 'catalog/prose.mjs', 'index.html'];
+  const catalog = contentDate(root, ['catalog/areas.json', 'catalog/policies.json', 'data/neighborhoods.json', 'data/seo-local.json', ...shared], { git }) ?? today;
+  const institutional = contentDate(root, ['data/static-pages.json', ...shared], { git }) ?? today;
+  const byPath = new Map(pages.map(page => [page.path, page.kind === 'legal' ? contentDate(root, [page.source, ...shared], { git }) ?? today : page.kind === 'estatica' ? institutional : catalog]));
+  return path => byPath.get(path) ?? catalog;
 };
 
 /** Runs `fn` over `items` with at most `limit` in flight; stops taking new items after the first failure. */
@@ -739,9 +1258,11 @@ export const mapLimit = async (items, limit, fn) => {
 };
 
 /**
- * Generates every page into `distDir`. Returns { pages, counts, sitemapPaths }.
- * `buildDate` is YYYY-MM-DD (lastmod of every sitemap entry). Nothing is
- * written until every page has passed the checks on its content.
+ * Generates every page into `distDir`. Returns { pages, counts, sitemapPaths, thin }.
+ * `buildDate` (YYYY-MM-DD) forces the lastmod of every sitemap entry; without
+ * it each entry gets the date of its last content change. `legalStatus` is the
+ * value of VITE_LEGAL_STATUS: legal pages are indexable only when it is
+ * "vigente". Nothing is written until every page has passed the checks on its content.
  */
 export const prerender = async ({
   root,
@@ -749,18 +1270,18 @@ export const prerender = async ({
   siteUrl = '',
   buildDate,
   canRequest = true,
+  legalStatus = '',
   concurrency = WRITE_CONCURRENCY,
   log = console.log,
   warn = console.warn,
 }) => {
   const templatePath = join(distDir, 'index.html');
   if (!existsSync(templatePath)) throw new Error(`[prerender] ${templatePath} não existe: rode "vite build" antes.`);
-  const template = readFileSync(templatePath, 'utf8');
-  const date = buildDate ?? new Date().toISOString().slice(0, 10);
-  if (!siteUrl) warn('[prerender] VITE_SITE_URL vazia: canonical com caminho relativo, sem sitemap.xml e sem a linha Sitemap no robots.txt.');
+  const template = stripHome(readFileSync(templatePath, 'utf8'));
+  if (!siteUrl) warn('[prerender] VITE_SITE_URL vazia: canonical com caminho relativo, sem sitemap.xml, sem JSON-LD da home e sem a linha Sitemap no robots.txt.');
 
   const inputs = loadInputs(root, warn);
-  const pages = buildPages({ ...inputs, siteUrl, canRequest, warn });
+  const pages = buildPages({ ...inputs, legalStatus, siteUrl, canRequest, warn });
 
   const problems = pages.flatMap(page => [
     ...validatePage(page, siteUrl).map(problem => `${page.path} ${problem}`),
@@ -768,18 +1289,27 @@ export const prerender = async ({
   ]);
   if (problems.length > 0) throw new Error(`[prerender] páginas reprovadas:\n${problems.slice(0, 50).join('\n')}${problems.length > 50 ? `\n... e mais ${problems.length - 50}` : ''}`);
 
+  const thin = guardThinPages(pages);
+  if (thin.length > 0) {
+    warn(
+      `[prerender] ${thin.length} página(s) de ocupação com menos de ${MIN_OWN_SENTENCES} frases próprias ficaram noindex e fora do sitemap: ${thin.slice(0, 10).join(', ')}${thin.length > 10 ? ', ...' : ''}`,
+    );
+  }
+
   const sitemapPaths = ['/', ...pages.filter(p => p.indexable !== false).map(p => p.path)];
   // A sitemap needs absolute URLs: without the site URL it would be invalid, so none is written
-  const sitemapFiles = siteUrl ? buildSitemapFiles(sitemapPaths, siteUrl, date) : [];
+  const sitemapFiles = siteUrl ? buildSitemapFiles(sitemapPaths, siteUrl, makeLastmod({ root, buildDate, pages })) : [];
+  const preloads = chunkPreloads(distDir, template);
 
   await mapLimit(pages, concurrency, async page => {
-    const html = renderPage(template, page, siteUrl);
+    const html = renderPage(template, page, siteUrl, { preload: preloads[page.kind] });
     const invalid = validateHtml(html);
     if (invalid.length > 0) throw new Error(`[prerender] ${page.path}: ${invalid.join('; ')}`);
     const file = join(distDir, ...page.path.split('/').filter(Boolean), 'index.html');
     await mkdir(dirname(file), { recursive: true });
     await writeFile(file, html);
   });
+  await writeFile(templatePath, renderHome(template, siteUrl));
   for (const { name, xml } of sitemapFiles) await writeFile(join(distDir, name), xml);
   const robotsPath = join(distDir, 'robots.txt');
   const robotsBase = existsSync(robotsPath) ? readFileSync(robotsPath, 'utf8') : '';
@@ -791,7 +1321,7 @@ export const prerender = async ({
       .map(([k, v]) => `${k}: ${v}`)
       .join(', ')}); ${pages.length - (sitemapPaths.length - 1)} sem indexação (noindex); ${siteUrl ? `sitemap com ${sitemapPaths.length} URLs` : 'sem sitemap'}.`,
   );
-  return { pages, counts, sitemapPaths };
+  return { pages, counts, sitemapPaths, thin };
 };
 
 // ------------------------------------------------------------------ CLI
@@ -807,6 +1337,9 @@ export const requestEnabled = env => {
   const backend = (env.VITE_SUPABASE_URL ?? '').trim() !== '' && (env.VITE_SUPABASE_PUBLISHABLE_KEY ?? '').trim() !== '';
   return backend || (digits.length >= 12 && digits.length <= 15);
 };
+
+/** VITE_LEGAL_STATUS: the legal pages are indexable only when it is exactly "vigente" (the documents were reviewed and are in force). */
+export const legalStatusOf = env => (env.VITE_LEGAL_STATUS ?? '').trim();
 
 const runCli = async () => {
   const args = process.argv.slice(2);
@@ -824,7 +1357,13 @@ const runCli = async () => {
     return;
   }
   const distDir = resolve(root, argValue(args, '--dist') ?? 'dist');
-  await prerender({ root, distDir, siteUrl: normalizeSiteUrl(env.VITE_SITE_URL, console.warn), canRequest: requestEnabled(env) });
+  await prerender({
+    root,
+    distDir,
+    siteUrl: normalizeSiteUrl(env.VITE_SITE_URL, console.warn),
+    canRequest: requestEnabled(env),
+    legalStatus: legalStatusOf(env),
+  });
 };
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

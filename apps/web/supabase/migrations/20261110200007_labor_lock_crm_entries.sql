@@ -1,0 +1,135 @@
+-- 05 Bookings, labor lock: the CRM rule is restored and the account rule is kept. Two CRM entries
+-- of one provider that share a phone (digits only) or an e-mail are one employer, as before, with
+-- or without a platform account. Accounts join only through contact data confirmed in auth.users
+-- (the same confirmed phone or the same confirmed e-mail, on both sides); a CRM entry linked to an
+-- account is counted with the accounts that join it that way. The phone typed in a profile is never
+-- used. A CRM entry without an account is counted with the entries that share its own phone or
+-- e-mail. Redefines private.check_labor_lock with the same signature.
+
+create or replace function private.check_labor_lock(
+  p_provider uuid,
+  p_client uuid,
+  p_provider_client uuid,
+  p_household uuid,
+  p_period tstzrange,
+  p_booking uuid,
+  p_shift uuid
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_limit int := private.setting_int('labor_lock_days_per_week', 2);
+  v_owner uuid;
+  v_me_client uuid;
+  v_me_phone text;
+  v_me_email text;
+  v_seeds uuid[] := '{}';
+  v_accounts uuid[] := '{}';
+  v_cluster uuid[] := '{}';
+  v_week date;
+  v_days int;
+begin
+  if p_provider is null then
+    return;
+  end if;
+  perform pg_advisory_xact_lock(hashtextextended('labor_lock:' || p_provider::text, 0));
+
+  -- The household owner and the household are the same employer.
+  if p_household is not null then
+    select h.owner_id into v_owner from public.households h where h.id = p_household;
+  end if;
+
+  -- This provider's CRM entry, when the check has one: its platform account (written only by the
+  -- platform), and its own phone and e-mail, which group entries that have no account.
+  select pc.client_id, pc.phone, pc.email into v_me_client, v_me_phone, v_me_email
+    from public.provider_clients pc
+   where pc.id = p_provider_client and pc.provider_id = p_provider;
+
+  -- Accounts this check starts from: the client, the household owner, and the account of the entry.
+  select coalesce(array_agg(x.id), '{}') into v_seeds
+    from (
+      select p_client as id
+      union all
+      select v_owner
+      union all
+      select v_me_client
+    ) x
+   where x.id is not null;
+
+  -- Every account of the same employer: the seeds themselves, and any account whose confirmed phone
+  -- or confirmed e-mail equals the confirmed phone or e-mail of a seed.
+  select coalesce(array_agg(distinct m.id), '{}') into v_accounts
+    from (
+      select s.id from auth.users s where s.id = any (v_seeds)
+      union
+      select a.id
+        from auth.users a
+        join auth.users s on s.id = any (v_seeds)
+       where a.phone_confirmed_at is not null and s.phone_confirmed_at is not null
+         and private.norm_phone(a.phone) <> ''
+         and private.norm_phone(a.phone) = private.norm_phone(s.phone)
+      union
+      select a.id
+        from auth.users a
+        join auth.users s on s.id = any (v_seeds)
+       where a.email_confirmed_at is not null and s.email_confirmed_at is not null
+         and lower(trim(coalesce(a.email, ''))) <> ''
+         and lower(trim(a.email)) = lower(trim(s.email))
+    ) m;
+
+  -- CRM entries of this provider that are the same employer: linked to one of those accounts, or
+  -- sharing this entry's own phone or e-mail.
+  select coalesce(array_agg(pc.id), '{}') into v_cluster
+    from public.provider_clients pc
+   where pc.provider_id = p_provider
+     and (pc.client_id = any (v_accounts)
+          or (private.norm_phone(v_me_phone) <> ''
+              and private.norm_phone(pc.phone) = private.norm_phone(v_me_phone))
+          or (lower(trim(coalesce(v_me_email, ''))) <> ''
+              and lower(trim(pc.email)) = lower(trim(v_me_email))));
+  if p_provider_client is not null then
+    v_cluster := array_append(v_cluster, p_provider_client);
+  end if;
+
+  for v_week in
+    select distinct date_trunc('week', d)::date from private.local_days(p_period) d
+  loop
+    select count(distinct day) into v_days
+      from (
+        select d as day from private.local_days(p_period) d
+        union all
+        select d
+          from public.bookings b
+          join public.occupation_policies op on op.occupation_slug = b.occupation_slug and op.labor_lock
+          cross join lateral private.local_days(b.period) d
+         where b.provider_id = p_provider
+           and b.id is distinct from p_booking
+           and b.status <> 'canceled'
+           and (b.client_id = any (v_accounts)
+                or b.provider_client_id = any (v_cluster)
+                or b.household_id = p_household)
+        union all
+        -- shifts and households are created in 09_care
+        select d
+          from public.shifts s
+          join public.households h on h.id = s.household_id
+          cross join lateral private.local_days(s.period) d
+         where s.provider_id = p_provider
+           and s.id is distinct from p_shift
+           and s.status in ('assigned', 'checked_in', 'completed')
+           and (s.household_id = p_household or h.owner_id = any (v_accounts))
+      ) days
+     where date_trunc('week', day)::date = v_week;
+
+    if v_days > v_limit then
+      raise exception 'labor_lock' using errcode = 'P0001',
+        detail = format('week %s: %s days, limit %s', v_week, v_days, v_limit);
+    end if;
+  end loop;
+end;
+$$;
+
+revoke all on function private.check_labor_lock(uuid, uuid, uuid, uuid, tstzrange, uuid, uuid) from public;

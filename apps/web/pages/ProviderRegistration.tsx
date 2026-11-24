@@ -1,12 +1,12 @@
 import React, { Suspense, use, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { CheckCircle, ChevronRight, User, Briefcase, ShieldCheck, Upload, AlertCircle } from 'lucide-react';
-import { AREAS, findArea, findOccupation, loadPolicies } from '../catalog';
+import { AREAS, findArea, findOccupation, loadAreaPolicies } from '../catalog';
 import { BILLING_LABELS, VERIFICATION_LABELS } from '../catalog/labels';
 
 /** What onboarding will ask for the chosen occupation, from its policy. */
-const Requirements: React.FC<{ slug: string }> = ({ slug }) => {
-  const policy = use(loadPolicies())[slug];
+const Requirements: React.FC<{ slug: string; areaSlug: string }> = ({ slug, areaSlug }) => {
+  const policy = use(loadAreaPolicies(areaSlug))[slug];
   if (!policy) return null;
   return (
     <>
@@ -49,8 +49,8 @@ const ProviderRegistration: React.FC = () => {
 
   // Fetch the policies before step 3 needs them
   useEffect(() => {
-    void loadPolicies();
-  }, []);
+    if (formData.area) void loadAreaPolicies(formData.area);
+  }, [formData.area]);
 
   const occupationsInArea = [...(findArea(formData.area)?.occupations ?? [])].sort((a, b) =>
     a.name.localeCompare(b.name, 'pt-BR'),
@@ -228,7 +228,7 @@ const ProviderRegistration: React.FC = () => {
                 </h3>
                 {chosen ? (
                   <Suspense fallback={<p className="text-yellow-700">Carregando as regras deste serviço…</p>}>
-                    <Requirements slug={chosen.slug} />
+                    <Requirements slug={chosen.slug} areaSlug={chosen.areaSlug} />
                   </Suspense>
                 ) : (
                   <p className="text-yellow-700">As exigências dependem do serviço escolhido.</p>

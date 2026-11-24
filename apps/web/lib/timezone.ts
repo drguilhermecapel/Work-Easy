@@ -58,6 +58,15 @@ export const todayInSaoPaulo = (now: Date = new Date()): string => {
   return `${String(p.year).padStart(4, '0')}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`;
 };
 
+/**
+ * The last day a visitor can book: today in São Paulo plus `days` (the database answers no slots
+ * after that, and book_direct refuses a period more than a year ahead).
+ */
+export const lastBookableDayInSaoPaulo = (now: Date = new Date(), days = 365): string => {
+  const [year, month, day] = todayInSaoPaulo(now).split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+};
+
 /** True for a plain "YYYY-MM-DD" value (Postgres `date`), as opposed to a timestamp. */
 export const isDateOnly = (value: string): boolean => DAY.test(value);
 

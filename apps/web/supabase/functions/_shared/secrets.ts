@@ -39,11 +39,36 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export async function deriveSubaccountToken(platformToken: string, providerId: string): Promise<string> {
   if (!platformToken) throw new Error('platform webhook token is missing');
   if (!UUID.test(providerId)) throw new Error('provider id must be a uuid');
-  const key = await crypto.subtle.importKey(
-    'raw', encoder.encode(platformToken), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'],
+  return await hmacSha256Hex(platformToken, `asaas-subaccount:${providerId.toLowerCase()}`);
+}
+
+/** HMAC-SHA256 of the UTF-8 `message` keyed with `key`, in lowercase hex. */
+export async function hmacSha256Hex(key: string, message: string): Promise<string> {
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw', encoder.encode(key), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'],
   );
-  const mac = await crypto.subtle.sign('HMAC', key, encoder.encode(`asaas-subaccount:${providerId.toLowerCase()}`));
+  const mac = await crypto.subtle.sign('HMAC', cryptoKey, encoder.encode(message));
   return Array.from(new Uint8Array(mac), byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+const DOCUMENT_DIGITS = /^(\d{11}|\d{14})$/;
+
+/**
+ * Fingerprint of the CPF or CNPJ (digits only) of a receiving account: stored as
+ * provider_payment_accounts.cpf_hash and as trial_claims.cpf_hash.
+ * HMAC-SHA256(ASAAS_WEBHOOK_TOKEN, "document-fingerprint:<digits>") in hex. Keyed, so whoever reads
+ * the tables without the platform secret cannot enumerate the valid CPFs.
+ */
+export async function documentFingerprint(platformToken: string, digits: string): Promise<string> {
+  if (!platformToken) throw new Error('platform webhook token is missing');
+  if (!DOCUMENT_DIGITS.test(digits)) throw new Error('document must be a CPF or CNPJ with digits only');
+  return await hmacSha256Hex(platformToken, `document-fingerprint:${digits}`);
+}
+
+/** SHA-256 of the UTF-8 text in hex: the stored form of a document that must not be kept in clear. */
+export async function sha256Hex(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', encoder.encode(value));
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
 export const isUuid = (value: string) => UUID.test(value);

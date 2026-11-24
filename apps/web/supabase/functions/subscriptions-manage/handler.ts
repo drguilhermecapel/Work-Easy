@@ -3,19 +3,30 @@
 // Pro is switched on by asaas-webhook when the first charge is paid.
 // A provider that never subscribed gets `pro_trial_days` of Pro first: the Asaas subscription
 // then starts charging when the trial ends, and the provider is Pro (`trialing`) meanwhile.
+// The trial needs a finished Asaas receiving account, the CPF of that account (its keyed fingerprint
+// is compared with the CPF typed for the trial) and a CPF that has not had a trial before
+// (trial_claims keeps keyed fingerprints only; SHA-256 rows of earlier claims are still honoured).
 // Cancel removes the Asaas subscription; Pro stays until the paid (or trial) period ends.
 
-import { AsaasError, type AsaasClient } from '../_shared/asaas-client.ts';
+import { AsaasError, type AsaasClient, type AsaasSubscription } from '../_shared/asaas-client.ts';
 import { addDays, saoPauloDate } from '../_shared/dates.ts';
 import {
   type AuditEntry, type AuthUser, type BaseDeps, auditSafely, callAsaas, corsOf, toHttpError, validated,
 } from '../_shared/handler-kit.ts';
-import { errors, readJson, route } from '../_shared/http.ts';
+import { errors, HttpError, readJson, route } from '../_shared/http.ts';
 import { centsToReais } from '../_shared/money.ts';
+import { type ProviderApproval, requireApprovedProvider } from '../_shared/provider-approval.ts';
+import { documentFingerprint, sha256Hex } from '../_shared/secrets.ts';
 import { firstDueDate, planAfterCancel } from '../_shared/subscriptions.ts';
 import { BILLING_TYPE, PAYMENT_METHODS, type PlanCode, type SubscriptionStatus } from '../_shared/types.ts';
 import { cpfCnpj, object, oneOf, optional } from '../_shared/validate.ts';
 import { ensurePlatformCustomer } from '../payments-create/handler.ts';
+
+export const TRIAL_USED_MESSAGE = 'Este CPF já usou o teste grátis.';
+export const TRIAL_ONBOARDING_MESSAGE = 'Conclua o cadastro de recebimento pelo Asaas para começar o teste grátis.';
+export const TRIAL_DOCUMENT_MESSAGE = 'Para o teste grátis, informe o CPF do seu cadastro de recebimento.';
+export const TRIAL_UNBOUND_ACCOUNT_MESSAGE =
+  'Este recebimento foi criado antes da verificação de CPF do teste grátis. Fale com o suporte para liberar o teste.';
 
 export interface SubscriptionRow {
   provider_id: string;
@@ -28,7 +39,12 @@ export interface SubscriptionRow {
 
 export interface SubscriptionsDeps extends BaseDeps {
   asaas: AsaasClient | null;
-  session(req: Request): Promise<{ user: AuthUser; getProvider(): Promise<{ id: string; plan: PlanCode } | null> } | null>;
+  /** Platform webhook token: the key of the CPF fingerprints (documentFingerprint). Without it no trial can be checked. */
+  documentSecret?: string;
+  session(req: Request): Promise<{
+    user: AuthUser;
+    getProvider(): Promise<(ProviderApproval & { id: string; plan: string }) | null>;
+  } | null>;
   admin: {
     getSubscription(providerId: string): Promise<SubscriptionRow | null>;
     saveSubscription(row: SubscriptionRow): Promise<void>;
@@ -40,6 +56,17 @@ export interface SubscriptionsDeps extends BaseDeps {
      */
     claimSubscription(row: SubscriptionRow, previous: SubscriptionRow | null): Promise<boolean>;
     setProviderPlan(providerId: string, plan: PlanCode): Promise<void>;
+    /** True when the Asaas receiving account is finished: the subaccount exists and its key is stored (asaas-onboard status `active`). */
+    isPaymentOnboardingComplete(providerId: string): Promise<boolean>;
+    /** cpf_hash of the receiving account (documentFingerprint of the CPF/CNPJ Asaas validated); null for accounts created before it. */
+    getPaymentCpfHash(providerId: string): Promise<string | null>;
+    /**
+     * Inserts the trial claim of a CPF fingerprint. False when that CPF already had a trial, under this
+     * fingerprint or under the unkeyed SHA-256 (`legacyHash`) that earlier claims stored.
+     */
+    claimTrial(cpfHash: string, providerId: string, legacyHash: string): Promise<boolean>;
+    /** Gives a trial claim back when the subscription it was for could not be started. */
+    releaseTrial(cpfHash: string, providerId: string): Promise<void>;
     /** platform_settings.pro_price_cents */
     getProPriceCents(): Promise<number>;
     /** platform_settings.pro_trial_days; 0 (no trial) when the setting is missing or malformed. */
@@ -57,6 +84,31 @@ const Body = object({
   cpf_cnpj: optional(cpfCnpj()),
 });
 
+/**
+ * What a free trial needs before it is claimed: a finished Asaas receiving account, and the CPF typed
+ * for the trial must be the CPF of that account (same keyed fingerprint that asaas-onboard stored).
+ * Returns the keyed fingerprint, the form claims are stored in from now on, and the unkeyed SHA-256
+ * of the CPF, which earlier claims stored and which still counts as a claim.
+ */
+async function trialFingerprints(
+  deps: SubscriptionsDeps,
+  providerId: string,
+  cpf: string | undefined,
+): Promise<{ cpfHash: string; legacyHash: string }> {
+  if (!(await deps.admin.isPaymentOnboardingComplete(providerId))) {
+    throw errors.conflict('trial_requires_payment_account', TRIAL_ONBOARDING_MESSAGE);
+  }
+  // cpfCnpj() returns digits only: 11 for a CPF, 14 for a CNPJ, and the trial is for a person
+  if (!cpf || cpf.length !== 11) throw errors.invalidInput(['cpf_cnpj: informe seu CPF para começar o teste grátis']);
+  const accountHash = await deps.admin.getPaymentCpfHash(providerId);
+  // No fingerprint: the account predates the binding, so there is no CPF to check the trial against
+  if (!accountHash) throw errors.conflict('trial_requires_payment_account', TRIAL_UNBOUND_ACCOUNT_MESSAGE);
+  if (!deps.documentSecret) throw new HttpError(503, 'trial_unavailable', 'O teste grátis está indisponível no momento.');
+  const cpfHash = await documentFingerprint(deps.documentSecret, cpf);
+  if (cpfHash !== accountHash) throw errors.conflict('trial_document_mismatch', TRIAL_DOCUMENT_MESSAGE);
+  return { cpfHash, legacyHash: await sha256Hex(cpf) };
+}
+
 export function handler(req: Request, deps: SubscriptionsDeps): Promise<Response> {
   return route(req, { methods: ['POST'], ...corsOf(deps), onError: deps.logError }, async () => {
     const session = await deps.session(req);
@@ -71,6 +123,9 @@ export function handler(req: Request, deps: SubscriptionsDeps): Promise<Response
     const now = deps.now();
 
     if (input.action === 'subscribe') {
+      // Starting a subscription or the free trial needs an approved account; cancelling does not,
+      // so a suspended provider can still stop a subscription that is billing
+      requireApprovedProvider(provider);
       if (current && current.status !== 'canceled' && current.asaas_subscription_id) {
         throw errors.conflict('already_subscribed', 'Já existe uma assinatura Pro para esta conta.');
       }
@@ -81,20 +136,36 @@ export function handler(req: Request, deps: SubscriptionsDeps): Promise<Response
       const trialDays = current === null ? await deps.admin.getTrialDays() : 0;
       const today = saoPauloDate(now);
       const trialEndDay = trialDays > 0 ? addDays(today, trialDays) : null;
-      const customerId = await ensurePlatformCustomer({ admin: deps.admin, asaas }, session.user, input.cpf_cnpj);
-      const subscription = await callAsaas(() =>
-        asaas.createSubscription({
-          customer: customerId,
-          billingType: BILLING_TYPE[method],
-          value: centsToReais(price),
-          // The trial ends on the first due date; subscribing again inside a period already paid
-          // starts charging when that period ends
-          nextDueDate: trialEndDay ?? firstDueDate(today, current?.current_period_end ?? null, now),
-          cycle: 'MONTHLY',
-          description: 'WorkEasy Pro (mensal)',
-          externalReference: `subscription:${provider.id}`,
-        }),
-      );
+      // The trial is claimed for the CPF before anything is created in Asaas. When the subscription
+      // cannot be started, the claim is given back, so a failure does not spend the trial.
+      const trial = trialEndDay ? await trialFingerprints(deps, provider.id, input.cpf_cnpj) : null;
+      const trialHash = trial?.cpfHash ?? null;
+      if (trial && !(await deps.admin.claimTrial(trial.cpfHash, provider.id, trial.legacyHash))) {
+        throw errors.conflict('trial_already_used', TRIAL_USED_MESSAGE);
+      }
+      const giveBackTrial = async (): Promise<void> => {
+        if (trialHash) await deps.admin.releaseTrial(trialHash, provider.id).catch(deps.logError);
+      };
+      let subscription: AsaasSubscription;
+      try {
+        const customerId = await ensurePlatformCustomer({ admin: deps.admin, asaas }, session.user, input.cpf_cnpj);
+        subscription = await callAsaas(() =>
+          asaas.createSubscription({
+            customer: customerId,
+            billingType: BILLING_TYPE[method],
+            value: centsToReais(price),
+            // The trial ends on the first due date; subscribing again inside a period already paid
+            // starts charging when that period ends
+            nextDueDate: trialEndDay ?? firstDueDate(today, current?.current_period_end ?? null, now),
+            cycle: 'MONTHLY',
+            description: 'WorkEasy Pro (mensal)',
+            externalReference: `subscription:${provider.id}`,
+          }),
+        );
+      } catch (error) {
+        await giveBackTrial();
+        throw error;
+      }
       let invoiceUrl: string | null = null;
       try {
         const payments = await callAsaas(() => asaas.listSubscriptionPayments(subscription.id));
@@ -119,11 +190,13 @@ export function handler(req: Request, deps: SubscriptionsDeps): Promise<Response
       } catch (error) {
         // Without a row nothing would ever stop this subscription from billing the provider
         await asaas.deleteSubscription(subscription.id).catch(deps.logError);
+        await giveBackTrial();
         throw error;
       }
       if (!claimed) {
         // A simultaneous request saved its own subscription first: drop this one
         await asaas.deleteSubscription(subscription.id).catch(deps.logError);
+        await giveBackTrial();
         throw errors.conflict('already_subscribed', 'Já existe uma assinatura Pro para esta conta.');
       }
       if (trialEndDay) await deps.admin.setProviderPlan(provider.id, 'pro');

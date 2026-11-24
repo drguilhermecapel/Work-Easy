@@ -1,8 +1,9 @@
 import { loadPolicies } from '../catalog';
 import type { OccupationPolicy, PriceUnit, VerificationStep } from '../catalog/types';
-import { AppError } from '../lib/errors';
+import { AppError, toAppErrorAsync } from '../lib/errors';
+import { stripImageMetadata } from '../lib/imageMetadata';
 import type { Tables } from '../lib/database.types';
-import { db, unwrap, unwrapMaybe } from './client';
+import { db, nullable, unwrap, unwrapMaybe } from './client';
 import { guard } from './proErrors';
 import type { ProviderRow } from './types';
 
@@ -19,10 +20,18 @@ export interface ProviderOccupationRow {
   approved: boolean;
 }
 
-export type ProviderDocumentRow = Pick<
+type ProviderDocumentDbRow = Pick<
   Tables<'provider_documents'>,
   'id' | 'step' | 'storage_path' | 'status' | 'rejection_reason' | 'expires_at' | 'created_at'
 >;
+
+/** A document with a file. A purged one (status 'purged', no file) is not listed: its step counts as missing. */
+export type ProviderDocumentRow = Omit<ProviderDocumentDbRow, 'status' | 'storage_path'> & {
+  status: Exclude<ProviderDocumentDbRow['status'], 'purged'>;
+  storage_path: string;
+};
+
+const hasFile = (row: ProviderDocumentDbRow): row is ProviderDocumentRow => row.status !== 'purged' && row.storage_path !== null;
 
 const PROVIDER_COLUMNS =
   'id, display_name, slug, bio, avatar_path, status, plan, base_neighborhood_id, accepts_platform_requests, created_at';
@@ -147,8 +156,8 @@ export const becomeProvider = (input: BecomeProviderInput): Promise<string | nul
         p_display_name: displayName,
         p_slug: slug,
         p_occupation: input.occupation,
-        p_registry_number: input.registryNumber?.trim() || null,
-        p_registry_uf: uf || null,
+        p_registry_number: nullable(input.registryNumber?.trim() || null),
+        p_registry_uf: nullable(uf || null),
       }),
     );
     return typeof data === 'string' ? data : null;
@@ -234,39 +243,72 @@ export const DOCUMENT_TYPES: Record<string, string> = {
 
 export const listMyDocuments = (providerId: string): Promise<ProviderDocumentRow[]> =>
   guard(async () =>
-    unwrap<ProviderDocumentRow[]>(
+    unwrap<ProviderDocumentDbRow[]>(
       await db().from('provider_documents').select(DOCUMENT_COLUMNS).eq('provider_id', providerId).order('created_at', { ascending: false }),
-    ),
+    ).filter(hasFile),
   );
 
-const randomPart = (): string => globalThis.crypto?.randomUUID?.().slice(0, 8) ?? Math.random().toString(36).slice(2, 10);
+const TOO_LARGE = 'O arquivo precisa ter até 10 MB.';
+
+/** The Edge Function that stores a document: it removes the metadata left, enforces the limit and writes the bucket. */
+const DOCUMENT_UPLOAD_FUNCTION = 'provider-document-upload';
+
+interface DocumentUploadAnswer {
+  ok: boolean;
+  data?: ProviderDocumentRow;
+}
+
+/** The sentence the function sent with a refusal (its error body), or null when there is none. */
+const refusalSentence = async (error: unknown): Promise<string | null> => {
+  const context = (error as { context?: unknown } | null)?.context;
+  if (!context || typeof (context as Response).clone !== 'function') return null;
+  try {
+    const body = (await (context as Response).clone().json()) as { error?: { message?: unknown } } | null;
+    const message = body?.error?.message;
+    return typeof message === 'string' && message.trim() ? message : null;
+  } catch {
+    return null;
+  }
+};
 
 /**
- * Sends the file to the private bucket (provider-documents/<provider_id>/...) and
- * records it for the review. A failed record removes the file again.
+ * A refused upload. The function's own sentence is shown when it sent one, because the code alone
+ * (for example a full folder or a file it cannot read) does not say what the provider should do.
  */
-export const uploadProviderDocument = (input: { providerId: string; step: VerificationStep; file: File }): Promise<ProviderDocumentRow> =>
+const uploadRefusal = async (error: unknown): Promise<AppError> => {
+  const app = await toAppErrorAsync(error);
+  const message = await refusalSentence(error);
+  if (message) return new AppError(app.code, { cause: error, detail: app.detail, message });
+  // A 404 from the function means it is not served here, not that a document is missing (QA P-01)
+  if (app.code === 'not_found') return new AppError('function_unavailable', { cause: error, detail: app.detail });
+  return app;
+};
+
+/**
+ * Sends the file to the provider-document-upload Edge Function, which stores it in the private bucket
+ * under the provider's folder and records it for the review. The browser removes the photo's metadata
+ * first (stripImageMetadata); the function removes what is left, because a file can reach it without
+ * the browser. A PDF is sent as it is. A refusal from the function is shown with its own sentence.
+ */
+export const uploadProviderDocument = (input: { step: VerificationStep; file: File }): Promise<ProviderDocumentRow> =>
   guard(async () => {
-    const { providerId, step, file } = input;
-    const extension = DOCUMENT_TYPES[file.type];
-    if (!extension) {
+    const { step, file } = input;
+    if (!DOCUMENT_TYPES[file.type]) {
       throw new AppError('invalid_input', { message: 'Envie uma foto (JPG, PNG, WebP ou HEIC) ou um PDF.' });
     }
-    if (file.size === 0 || file.size > DOCUMENT_MAX_BYTES) {
-      throw new AppError('invalid_input', { message: 'O arquivo precisa ter até 10 MB.' });
-    }
-    const path = `${providerId}/${step}-${Date.now().toString(36)}-${randomPart()}.${extension}`;
-    const bucket = db().storage.from(DOCUMENT_BUCKET);
-    const { error: uploadError } = await bucket.upload(path, file, { contentType: file.type, upsert: false });
-    if (uploadError) throw uploadError;
-    try {
-      return unwrap<ProviderDocumentRow>(
-        await db().from('provider_documents').insert({ provider_id: providerId, step, storage_path: path }).select(DOCUMENT_COLUMNS).single(),
-      );
-    } catch (err) {
-      await bucket.remove([path]).catch(() => undefined);
-      throw err;
-    }
+    if (file.size === 0 || file.size > DOCUMENT_MAX_BYTES) throw new AppError('invalid_input', { message: TOO_LARGE });
+    // undefined selects the browser codec; the limit lets lossy output shrink until it fits.
+    const prepared = await stripImageMetadata(file, undefined, DOCUMENT_MAX_BYTES);
+    // The stripper already keeps the copy within the limit; this check is a guard.
+    if (prepared.size > DOCUMENT_MAX_BYTES) throw new AppError('invalid_input', { message: TOO_LARGE });
+
+    const form = new FormData();
+    form.append('step', step);
+    form.append('file', prepared, prepared.name);
+    const { data, error } = await db().functions.invoke<DocumentUploadAnswer>(DOCUMENT_UPLOAD_FUNCTION, { body: form });
+    if (error) throw await uploadRefusal(error);
+    if (!data?.ok || !data.data) throw new AppError('server_error');
+    return data.data;
   });
 
 /** Removes a document that no one has reviewed yet (the database refuses the others). */

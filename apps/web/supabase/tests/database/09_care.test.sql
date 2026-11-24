@@ -16,7 +16,7 @@ insert into public.provider_occupations (provider_id, occupation_slug, approved)
 
 -- ================================================================ schema
 select columns_are('public', 'care_recipients',
-                   array['id', 'household_id', 'first_name', 'birth_year', 'preferences', 'emergency_contact', 'created_at'],
+                   array['id', 'household_id', 'first_name', 'birth_year', 'preferences', 'emergency_contact', 'created_at', 'adult_declared_at'],
                    'care_recipients holds no health data (no diagnosis, no medication)');
 select is((select array_agg(p.parameter_name::text order by p.ordinal_position) from information_schema.parameters p
             where p.specific_schema = 'public' and p.specific_name like 'caregiver_shifts%' and p.parameter_mode = 'OUT'),
@@ -29,8 +29,8 @@ select tests.authenticate_as('client_a');
 select lives_ok(format($$insert into public.households (name, neighborhood_id) values ('Casa da vó', %L)$$,
                        tests.neighborhood('t-bairro-1')), 'family creates a household');
 insert into ids select 'house', id from public.households where name = 'Casa da vó';
-select lives_ok($$insert into public.care_recipients (household_id, first_name, birth_year, preferences, emergency_contact)
-                  values ((select id from ids where name = 'house'), 'Lúcia', 1940, 'Gosta de rádio', 'Filho 11 90000-0000')$$,
+select lives_ok($$insert into public.care_recipients (household_id, first_name, birth_year, preferences, emergency_contact, adult_declared_at)
+                  values ((select id from ids where name = 'house'), 'Lúcia', 1940, 'Gosta de rádio', 'Filho 11 90000-0000', now())$$,
                 'family adds a care recipient');
 insert into ids select 'lucia', id from public.care_recipients where first_name = 'Lúcia';
 select lives_ok(format($$insert into public.shifts (household_id, care_recipient_id, period, rate_cents, caregiver_payout_cents,
@@ -55,7 +55,7 @@ select is((select count(*)::int from public.care_recipients), 0, 'another client
 select is((select count(*)::int from public.shifts), 0, 'another client cannot read the shifts');
 select throws_ok($$select public.offer_shift((select id from ids where name = 'shift1'), array[tests.uid('provider_a')])$$,
                  'P0001', 'not_allowed', 'only the owner (or an admin) offers a shift');
-select throws_ok(format($$insert into public.care_recipients (household_id, first_name) values (%L, 'Intruso')$$,
+select throws_ok(format($$insert into public.care_recipients (household_id, first_name, adult_declared_at) values (%L, 'Intruso', now())$$,
                         (select id from ids where name = 'house')),
                  '42501', null, 'a family cannot add a care recipient to the household of another family');
 -- a shift names only a recipient of its own household

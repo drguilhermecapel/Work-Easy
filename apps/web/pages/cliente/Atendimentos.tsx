@@ -62,7 +62,7 @@ const BookingList: React.FC<{ userId: string }> = ({ userId }) => {
                 </p>
                 {booking.price_cents > 0 && <p className="text-sm font-semibold text-gray-800 mt-1">{formatCents(booking.price_cents)}</p>}
               </div>
-              <ChevronRight size={18} className="text-gray-400 shrink-0" aria-hidden="true" />
+              <ChevronRight size={18} className="text-gray-500 shrink-0" aria-hidden="true" />
             </Link>
           </li>
         ))}

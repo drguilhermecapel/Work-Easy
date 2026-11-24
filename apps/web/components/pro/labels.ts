@@ -35,13 +35,16 @@ export const REGISTRY_STATUS_LABELS: Record<Enums<'registry_status'>, string> = 
   rejected: 'Recusado',
 };
 
-export const DOCUMENT_STATUS_LABELS: Record<Enums<'document_status'>, string> = {
+/** Statuses the provider can see: a purged document has no file and is not listed (services/providers.ts). */
+type ListedDocumentStatus = Exclude<Enums<'document_status'>, 'purged'>;
+
+export const DOCUMENT_STATUS_LABELS: Record<ListedDocumentStatus, string> = {
   submitted: 'Enviado, aguardando análise',
   accepted: 'Aceito',
   rejected: 'Recusado',
 };
 
-export const DOCUMENT_STATUS_STYLES: Record<Enums<'document_status'> | 'missing', string> = {
+export const DOCUMENT_STATUS_STYLES: Record<ListedDocumentStatus | 'missing', string> = {
   submitted: 'bg-amber-100 text-amber-800',
   accepted: 'bg-green-100 text-green-800',
   rejected: 'bg-red-100 text-red-800',
@@ -66,7 +69,7 @@ export const BOOKING_STATUS_STYLES: Record<BookingStatus, string> = {
   in_progress: 'bg-purple-100 text-purple-800',
   completed: 'bg-gray-100 text-gray-700',
   released: 'bg-gray-100 text-gray-700',
-  canceled: 'bg-gray-100 text-gray-500',
+  canceled: 'bg-gray-100 text-gray-600',
   disputed: 'bg-red-100 text-red-800',
 };
 
@@ -89,7 +92,7 @@ export const PAYMENT_STATUS_STYLES: Record<PaymentStatus, string> = {
   released: 'bg-green-100 text-green-800',
   refunded: 'bg-gray-100 text-gray-700',
   failed: 'bg-red-100 text-red-800',
-  canceled: 'bg-gray-100 text-gray-500',
+  canceled: 'bg-gray-100 text-gray-600',
 };
 
 /** The card is paid on the Asaas invoice page: the app never handles card data. */
@@ -113,7 +116,7 @@ export const QUOTE_STATUS_STYLES: Record<QuoteStatus, string> = {
   sent: 'bg-blue-100 text-blue-800',
   accepted: 'bg-green-100 text-green-800',
   declined: 'bg-red-100 text-red-800',
-  expired: 'bg-gray-100 text-gray-500',
+  expired: 'bg-gray-100 text-gray-600',
 };
 
 export const PROPOSAL_STATUS_LABELS: Record<Enums<'proposal_status'>, string> = {
@@ -127,7 +130,7 @@ export const PROPOSAL_STATUS_STYLES: Record<Enums<'proposal_status'>, string> = 
   sent: 'bg-blue-100 text-blue-800',
   accepted: 'bg-green-100 text-green-800',
   declined: 'bg-gray-100 text-gray-600',
-  withdrawn: 'bg-gray-100 text-gray-500',
+  withdrawn: 'bg-gray-100 text-gray-600',
 };
 
 export const SUBSCRIPTION_STATUS_LABELS: Record<Enums<'subscription_status'>, string> = {

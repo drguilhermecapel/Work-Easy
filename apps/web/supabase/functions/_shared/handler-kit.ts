@@ -16,7 +16,7 @@ export interface AuthUser {
 
 export interface BaseDeps {
   siteUrl?: string;
-  /** Also allow the localhost dev server origins (sandbox or ALLOW_DEV_ORIGINS). */
+  /** Also allow the localhost dev server origins (outside production: sandbox or ALLOW_DEV_ORIGINS). */
   allowDevOrigins?: boolean;
   now(): Date;
   logError(error: unknown): void;

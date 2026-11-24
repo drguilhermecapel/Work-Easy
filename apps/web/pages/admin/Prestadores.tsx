@@ -65,7 +65,7 @@ const Prestadores: React.FC = () => {
       <form role="search" aria-label="Buscar prestadores" onSubmit={submit} className="bg-white border border-gray-100 rounded-2xl p-4 grid gap-3 sm:grid-cols-[1fr_14rem_auto] sm:items-end">
         <Field id="prestadores-busca" label="Buscar pelo nome" hint="Parte do nome do prestador, sem diferenciar maiúsculas.">
           <div className="relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true" />
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" aria-hidden="true" />
             <input
               id="prestadores-busca"
               type="search"
@@ -128,7 +128,7 @@ const Prestadores: React.FC = () => {
                       {row.review && ` · ${row.review.documents_accepted} aceitos, ${row.review.documents_rejected} rejeitados`}
                     </p>
                   </div>
-                  <ChevronRight size={18} className="text-gray-400 shrink-0" aria-hidden="true" />
+                  <ChevronRight size={18} className="text-gray-500 shrink-0" aria-hidden="true" />
                 </Link>
               </li>
             ))}

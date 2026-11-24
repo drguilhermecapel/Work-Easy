@@ -65,7 +65,7 @@ const ProvidersSection: React.FC<Props> = ({ occupationSlug, occupationName }) =
       </div>
 
       <ErrorAlert error={providers.error} />
-      {providers.loading && !providers.data && <p role="status" className="text-sm text-gray-400">Buscando profissionais…</p>}
+      {providers.loading && !providers.data && <p role="status" className="text-sm text-gray-500">Buscando profissionais…</p>}
       {providers.data && list.length === 0 && (
         <p className="text-sm text-gray-600 bg-white border border-gray-100 rounded-2xl p-5">
           {neighborhoodId

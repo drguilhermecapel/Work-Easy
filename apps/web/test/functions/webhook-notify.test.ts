@@ -2,6 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { DbError } from '../../supabase/functions/_shared/handler-kit.ts';
 import type { NotificationRow, NotificationUpdate } from '../../supabase/functions/_shared/notifications.ts';
+import { JSON_BODY_LIMIT, WEBHOOK_BODY_LIMIT } from '../../supabase/functions/_shared/http.ts';
 import { deriveSubaccountToken } from '../../supabase/functions/_shared/secrets.ts';
 import type { BookingStatus, PaymentStatus } from '../../supabase/functions/_shared/types.ts';
 import {
@@ -132,6 +133,24 @@ describe('asaas-webhook: access', () => {
   });
 });
 
+describe('asaas-webhook: body size', () => {
+  it('refuses a body over the webhook cap with 413, before anything is stored', async () => {
+    const { deps, log, calls } = webhookDeps();
+    const res = await read(await webhook(hook({ ...received, pad: 'x'.repeat(WEBHOOK_BODY_LIMIT) }), deps));
+    expect(res.status).toBe(413);
+    expect(res.body.error.code).toBe('payload_too_large');
+    expect(log.events).toEqual([]);
+    expect(calls).toEqual([]);
+  });
+
+  it('accepts an event larger than the JSON limit, since the webhook has its own cap', async () => {
+    const { deps, log } = webhookDeps();
+    const res = await read(await webhook(hook({ ...received, pad: 'x'.repeat(JSON_BODY_LIMIT * 2) }), deps));
+    expect(res.status).toBe(200);
+    expect(log.events).toHaveLength(1);
+  });
+});
+
 describe('asaas-webhook: payload', () => {
   it('acknowledges payloads without id or event with 200 so the sequential queue does not stall', async () => {
     const { deps, log } = webhookDeps();
@@ -184,11 +203,16 @@ describe('asaas-webhook: payload', () => {
     expect(log.paymentUpdates).toEqual([]);
   });
 
-  it('acknowledges events for payments it does not know', async () => {
+  it('acknowledges a money event for a charge it does not have yet, and keeps it to be applied on the next delivery', async () => {
     const { deps, log } = webhookDeps({ payment: null });
     const res = await read(await webhook(hook(received), deps));
-    expect(res.body.data.ignored).toBe('unknown_payment');
-    expect(log.processed).toEqual([['evrow-1', null]]);
+    // 200: the Asaas queue is not penalized for our own race with payments-create
+    expect(res.status).toBe(200);
+    expect(res.body.data).toMatchObject({ ignored: 'unknown_payment', pending: true });
+    // Not marked as processed: a new delivery is applied instead of being dropped as a duplicate
+    expect(log.processed).toEqual([]);
+    const audit = log.audits.find(a => a.action === 'payment_event.unknown_payment');
+    expect(audit?.data).toMatchObject({ event: received.event, asaas_payment_id: 'pay_1', source: 'platform' });
   });
 });
 
@@ -284,6 +308,9 @@ describe('asaas-webhook: payments', () => {
     expect(res.status).toBe(200);
     expect(res.body.data.booking_transition_refused).toBe('invalid_transition');
     expect(log.processed).toHaveLength(1);
+    // The payment is recorded and the booking stayed behind: the database says so
+    const refused = log.audits.find(a => a.action === 'booking.transition_refused');
+    expect(refused?.data).toMatchObject({ rule: 'invalid_transition', to: 'paid', payment_id: 'payrow-1' });
   });
 });
 
@@ -355,6 +382,28 @@ describe('asaas-webhook: provider subaccount', () => {
     expect(calls).toEqual([]);
   });
 
+  it('acknowledges a subaccount event for a payment whose provider is gone, without touching it', async () => {
+    const providerToken = await deriveSubaccountToken(TOKEN, PROVIDER.id);
+    const { deps, log, calls } = webhookDeps({
+      payment: { id: 'payrow-2', status: 'pending', booking_id: BOOKING_ID, provider_id: null, escrow: false },
+    });
+    const res = await read(await webhook(hook(received, providerToken, PROVIDER.id), deps));
+    expect(res.status).toBe(200);
+    expect(res.body.data.ignored).toBe('account_mismatch');
+    expect(log.paymentUpdates).toEqual([]);
+    expect(calls).toEqual([]);
+  });
+
+  it('still applies a root-account event to a payment whose provider is gone', async () => {
+    const { deps, log } = webhookDeps({
+      payment: { id: 'payrow-2', status: 'pending', booking_id: BOOKING_ID, provider_id: null, escrow: false },
+    });
+    const res = await read(await webhook(hook(received), deps));
+    expect(res.status).toBe(200);
+    expect(res.body.data.payment_status).toBe('received');
+    expect(log.paymentUpdates).toHaveLength(1);
+  });
+
   it('never lets a subaccount event grant Pro: subscription charges live in the root account', async () => {
     const providerToken = await deriveSubaccountToken(TOKEN, PROVIDER.id);
     const { deps, log } = webhookDeps({
@@ -364,6 +413,7 @@ describe('asaas-webhook: provider subaccount', () => {
     expect(res.body.data.ignored).toBe('unknown_payment');
     expect(log.subscriptions).toEqual([]);
     expect(log.plans).toEqual([]);
+    expect(log.audits.find(a => a.action === 'payment_event.unknown_payment')?.data).toMatchObject({ source: PROVIDER.id });
   });
 });
 
@@ -525,6 +575,19 @@ describe('asaas-webhook: Pro subscription', () => {
     const withGrace = webhookDeps({ payment: null, subscription: justEnded, remote: { 'GET /v3/payments/pay_s': overdueRemote }, graceDays: 5 });
     await webhook(hook(subEvent('PAYMENT_OVERDUE', 'evt_o3')), withGrace.deps);
     expect(withGrace.log.plans).toEqual(['pro']);
+
+    // The database setting (the one the hourly expiry job reads) wins over the environment
+    const settingWins = webhookDeps({ payment: null, subscription: justEnded, remote: { 'GET /v3/payments/pay_s': overdueRemote }, graceDays: 5 });
+    settingWins.deps.store.graceDays = async () => 0;
+    await webhook(hook(subEvent('PAYMENT_OVERDUE', 'evt_o5')), settingWins.deps);
+    expect(settingWins.log.plans).toEqual(['free']);
+    // A setting that cannot be read falls back to the environment instead of failing the event
+    const unreadable = webhookDeps({ payment: null, subscription: justEnded, remote: { 'GET /v3/payments/pay_s': overdueRemote }, graceDays: 5 });
+    unreadable.deps.store.graceDays = async () => {
+      throw new Error('settings unreadable');
+    };
+    await webhook(hook(subEvent('PAYMENT_OVERDUE', 'evt_o6')), unreadable.deps);
+    expect(unreadable.log.plans).toEqual(['pro']);
   });
 
   it('ignores a late OVERDUE for a charge that has been paid since', async () => {
@@ -560,8 +623,9 @@ describe('notify-dispatch', () => {
   const call = (headers: Record<string, string> = { 'x-cron-secret': CRON }, body: unknown = {}) =>
     new Request('http://localhost/functions/v1/notify-dispatch', { method: 'POST', headers, body: JSON.stringify(body) });
 
+  // As private.notify writes it: every row names the user whose confirmed contact it targets
   const row = (over: Partial<NotificationRow>): NotificationRow => ({
-    id: 'n1', user_id: null, phone: '11987654321', email: 'a@example.com', channel: 'whatsapp',
+    id: 'n1', user_id: '7a1b2c3d-0000-4000-8000-000000000001', phone: '11987654321', email: 'a@example.com', channel: 'whatsapp',
     template: 'pagamento_recebido', params: { amount_cents: 15000, client_name: 'Ana' }, attempts: 1, ...over, // attempts as the claim returns it (already counted)
   });
 

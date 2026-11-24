@@ -64,7 +64,7 @@ const tables = (): FakeSupabase['tables'] => ({
       : { data: ACCEPTED_TERMS, error: null },
 });
 
-const ACCEPTED_TERMS = (['terms', 'privacy'] as const).map(purpose => ({
+const ACCEPTED_TERMS = (['terms', 'privacy', 'age_declaration'] as const).map(purpose => ({
   id: `c-${purpose}`,
   user_id: USER_ID,
   purpose,
@@ -171,9 +171,13 @@ describe('/pedido with a backend (simulated Supabase client)', () => {
     expect(screen.getByRole('link', { name: 'Ver atendimento' })).toHaveAttribute('href', '/atendimentos/booking-1');
   });
 
-  it('shows the database rule in pt-BR when accepting fails', async () => {
+  it('refuses the acceptance under a labor lock with the plain sentence, revealing no contact or record', async () => {
     fake.session = { access_token: 't', user: { id: USER_ID } };
-    fake.rpcs.accept_proposal = () => ({ data: null, error: { code: 'P0001', message: 'labor_lock' } });
+    // Even if the database gives the detail of the rule, the screen does not show it
+    fake.rpcs.accept_proposal = () => ({
+      data: null,
+      error: { code: 'P0001', message: 'labor_lock: o telefone confere com uma entrada do prestador', details: null, hint: null },
+    });
     const user = userEvent.setup();
     renderAt('/pedidos/req-1');
     await user.click(await screen.findByRole('button', { name: 'Aceitar proposta' }));
@@ -181,7 +185,8 @@ describe('/pedido with a backend (simulated Supabase client)', () => {
     fireEvent.change(screen.getByLabelText('Início'), { target: { value: '09:00' } });
     fireEvent.change(screen.getByLabelText('Término'), { target: { value: '13:00' } });
     await user.click(screen.getByRole('button', { name: 'Confirmar e aceitar' }));
-    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('emprego doméstico'));
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Não é possível aceitar este pedido agora. Fale com a equipe do WorkEasy.'));
+    expect(screen.getByRole('alert')).not.toHaveTextContent(/telefone|entrada|cadastro|emprego doméstico|contrat/i);
   });
 
   it('asks for the current terms before creating a request when they were not recorded', async () => {
@@ -201,12 +206,14 @@ describe('/pedido with a backend (simulated Supabase client)', () => {
     expect(screen.queryByRole('button', { name: /Enviar pedido/ })).not.toBeInTheDocument();
     const accept = screen.getByRole('button', { name: 'Aceitar e continuar' });
     expect(accept).toBeDisabled();
-    await user.click(screen.getByRole('checkbox'));
+    await user.click(screen.getByRole('checkbox', { name: /Li e aceito/ }));
+    expect(accept).toBeDisabled(); // the declaration of 18 years is missing too
+    await user.click(screen.getByRole('checkbox', { name: /18 anos/ }));
     await user.click(accept);
 
     expect(await screen.findByRole('button', { name: /Enviar pedido/ })).toBeInTheDocument();
     const purposes = fake.tableCalls.filter(c => c.table === 'consents' && c.op === 'insert').map(c => (c.payload as { purpose: string }).purpose);
-    expect(purposes).toEqual(['terms', 'privacy']);
+    expect(purposes).toEqual(['terms', 'privacy', 'age_declaration']);
     expect(fake.tableCalls.some(c => c.table === 'requests' && c.op === 'insert')).toBe(false);
   });
 

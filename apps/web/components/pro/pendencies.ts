@@ -48,6 +48,14 @@ export const summarizeSteps = (steps: VerificationStep[], documents: ProviderDoc
     };
   });
 
+/**
+ * The provider may remove one of its documents only while the registration is a draft and nobody
+ * has reviewed the document yet. The database refuses the delete in any other case, so the screen
+ * offers the button only here.
+ */
+export const canRemoveDocument = (provider: Pick<ProviderRow, 'status'>, document: Pick<ProviderDocumentRow, 'status'>): boolean =>
+  provider.status === 'draft' && document.status === 'submitted';
+
 export interface Pendency {
   id: string;
   text: string;

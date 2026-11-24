@@ -6,6 +6,7 @@ import { AuthProvider } from '../../contexts/AuthContext';
 import type { AuthContextType, BackendAuth } from '../../contexts/AuthContext';
 import Navbar from '../../components/Navbar';
 import { isNavActive, navModelFor } from '../../components/navItems';
+import { PROTOTYPE_PATHS, isPrototypePath } from '../../pages/prototype/paths';
 import { UserType } from '../../types';
 
 const persona = { id: 'u', name: 'Pessoa', type: UserType.CLIENT, isHealthProfessional: false };
@@ -22,6 +23,7 @@ const backend = (patch: Partial<BackendAuth>): AuthContextType =>
     profile: null,
     provider: null,
     isAdmin: false,
+    careAccess: false,
     signInWithOtp: async () => {},
     verifyOtp: async () => null,
     signOut: async () => {},
@@ -50,13 +52,21 @@ describe('navModelFor', () => {
 
   it('shows a signed-in client the client areas and the way to become a provider', () => {
     const model = navModelFor(backend({ session }));
-    expect(model.items.map(i => i.to)).toEqual(['/categorias', '/pedido', '/pedidos', '/atendimentos', '/cuidado']);
+    expect(model.items.map(i => i.to)).toEqual(['/categorias', '/pedido', '/pedidos', '/atendimentos']);
     expect(model.cta?.to).toBe('/pro/cadastro');
+  });
+
+  it('lists the care line only for accounts already in it (D12)', () => {
+    expect(labels(backend({ session }))).not.toContain('Cuidado');
+    expect(labels(backend({ session, careAccess: true }))).toContain('Cuidado');
+    const caregiver = { session, provider: { id: 'p' } as BackendAuth['provider'] };
+    expect(labels(backend(caregiver))).not.toContain('Plantões');
+    expect(navModelFor(backend({ ...caregiver, careAccess: true })).items.map(i => i.to)).toContain('/pro/plantoes');
   });
 
   it('shows a provider the Pro tools and no more call to action', () => {
     const model = navModelFor(backend({ session, provider: { id: 'p' } as BackendAuth['provider'] }));
-    expect(model.items.map(i => i.to)).toEqual(['/pro', '/pro/pedidos', '/pro/agenda', '/atendimentos', '/pro/plantoes', '/pedido']);
+    expect(model.items.map(i => i.to)).toEqual(['/pro', '/pro/pedidos', '/pro/agenda', '/atendimentos', '/pedido']);
     expect(model.cta).toBeNull();
   });
 
@@ -73,6 +83,35 @@ describe('navModelFor', () => {
       backend({ session, provider: { id: 'p' } as BackendAuth['provider'], isAdmin: true }),
     ].flatMap(a => [...navModelFor(a).items, ...(navModelFor(a).cta ? [navModelFor(a).cta!] : [])]);
     for (const { to } of every) expect(to).toMatch(/^\/[a-z-/]*$/);
+  });
+});
+
+describe('prototype routes', () => {
+  it('are never linked by the menu of a build with a backend', () => {
+    const every = [
+      backend({}),
+      backend({ session }),
+      backend({ session, provider: { id: 'p' } as BackendAuth['provider'] }),
+      backend({ session, provider: { id: 'p' } as BackendAuth['provider'], isAdmin: true }),
+    ].flatMap(a => [...navModelFor(a).items, ...(navModelFor(a).cta ? [navModelFor(a).cta!] : [])]);
+    expect(every.length).toBeGreaterThan(0);
+    for (const { to } of every) expect(isPrototypePath(to), to).toBe(false);
+  });
+
+  it('are what the demo menu links to (self-check of the list)', () => {
+    const demo = { mode: 'demo', user: persona, switchRole: () => {}, isAuthenticated: true, loading: false } as AuthContextType;
+    const links = [...navModelFor(demo).items, navModelFor(demo).cta!];
+    expect(links.filter(({ to }) => isPrototypePath(to)).map(({ to }) => to)).toEqual(['/search', '/dashboard', '/register-provider']);
+  });
+
+  it('are matched with their sub-paths and query strings, and nothing else', () => {
+    expect(PROTOTYPE_PATHS.length).toBeGreaterThan(0);
+    expect(isPrototypePath('/doctor/doc-1')).toBe(true);
+    expect(isPrototypePath('/search?q=a')).toBe(true);
+    expect(isPrototypePath('/profile/me#x')).toBe(true);
+    expect(isPrototypePath('/searching')).toBe(false);
+    expect(isPrototypePath('/pro/cadastro')).toBe(false);
+    expect(isPrototypePath('/')).toBe(false);
   });
 });
 

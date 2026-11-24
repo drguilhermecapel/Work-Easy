@@ -29,6 +29,11 @@ dist-ssr
 *.sln
 *.sw?
 
+# Android upload key: never versioned (android/keystore.properties names the .jks and its passwords)
+*.jks
+*.keystore
+keystore.properties
+
 # Test and build output
 coverage
 

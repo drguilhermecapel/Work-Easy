@@ -1,9 +1,7 @@
-import { AppError } from '../lib/errors';
-import { toE164BR } from '../lib/phone';
+import { formatCents } from '../lib/money';
 import type { Tables } from '../lib/database.types';
 import { db, invokeFunction, unwrap } from './client';
 import { guard } from './proErrors';
-import { parseCpfCnpj } from './proFormat';
 
 // Charges for the provider's own clients, made in the provider's Asaas
 // subaccount by the charges-create function. Card data never reaches the app:
@@ -40,28 +38,22 @@ export interface NewCharge {
   /** "YYYY-MM-DD"; empty = the server picks tomorrow. */
   dueDate?: string;
   description?: string;
-  customer: { cpfCnpj: string; name?: string; email?: string; phone?: string };
+  /**
+   * The CRM client who pays. Needed only when the booking or quote is not linked to one (a linked
+   * item keeps its own client; naming another is refused). The payer's name and document come
+   * from the CRM record, never from the request: the document must be saved there first.
+   */
+  providerClientId?: string;
 }
 
 /** Charges an own booking or an accepted quote. Needs the Pro plan and an active receiving account (the function checks both). */
 export const createCharge = (input: NewCharge): Promise<ChargeResult> =>
   guard(async () => {
-    const cpfCnpj = parseCpfCnpj(input.customer.cpfCnpj);
-    if (!cpfCnpj) throw new AppError('cpf_cnpj_required', { message: 'Informe um CPF ou CNPJ válido do cliente.' });
-    const customer: Record<string, string> = { cpf_cnpj: cpfCnpj };
-    if (input.customer.name?.trim()) customer.name = input.customer.name.trim();
-    if (input.customer.email?.trim()) customer.email = input.customer.email.trim();
-    const typedPhone = input.customer.phone?.trim() ?? '';
-    if (typedPhone) {
-      const phone = toE164BR(typedPhone);
-      if (!phone) throw new AppError('invalid_phone');
-      customer.phone = phone;
-    }
     const body: Record<string, unknown> = {
       [input.target.kind === 'booking' ? 'booking_id' : 'quote_id']: input.target.id,
       method: input.method,
-      customer,
     };
+    if (input.providerClientId) body.provider_client_id = input.providerClientId;
     if (input.dueDate) body.due_date = input.dueDate;
     if (input.description?.trim()) body.description = input.description.trim();
     return invokeFunction<ChargeResult>('charges-create', body);
@@ -74,3 +66,19 @@ export const listMyPayments = (providerId: string): Promise<PaymentRow[]> =>
       await db().from('payments').select(PAYMENT_COLUMNS).eq('provider_id', providerId).order('created_at', { ascending: false }),
     ),
   );
+
+// ---- Sharing ------------------------------------------------------------------
+
+/**
+ * Text the provider sends to the client with a charge: the invoice link when there is one (it
+ * shows Pix, boleto or card on the Asaas page), else the Pix "copia e cola" code on its own line.
+ */
+export const chargeShareText = (charge: { amountCents: number | null; invoiceUrl: string | null; pixPayload: string | null }): string => {
+  const amount = charge.amountCents !== null ? ` de ${formatCents(charge.amountCents)}` : '';
+  if (charge.invoiceUrl) return `Olá! Segue a cobrança${amount}. Para pagar, abra: ${charge.invoiceUrl}`;
+  return `Olá! Segue a cobrança${amount}. Pix copia e cola:\n${charge.pixPayload ?? ''}`;
+};
+
+/** wa.me link with the text ready and no number (the provider picks the chat); the platform sends nothing. */
+export const chargeWhatsAppUrl = (charge: Parameters<typeof chargeShareText>[0]): string =>
+  `https://wa.me/?text=${encodeURIComponent(chargeShareText(charge))}`;

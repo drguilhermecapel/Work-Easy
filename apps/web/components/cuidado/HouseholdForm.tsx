@@ -4,6 +4,7 @@ import { LIMITS, type Household, type HouseholdInput } from '../../services/care
 import ErrorAlert from '../ErrorAlert';
 import HealthDataNotice from './HealthDataNotice';
 import { inputClass, primaryButton, secondaryButton } from './styles';
+import { HINT_OBSERVACOES_CASA_PLANTAO } from './textHints';
 import { Field } from './ui';
 
 interface Props {
@@ -84,7 +85,7 @@ const HouseholdForm: React.FC<Props> = ({ idPrefix, initial, neighborhoods, subm
           <NeighborhoodOptions neighborhoods={neighborhoods} />
         </select>
       </Field>
-      <Field id={`${idPrefix}-notas`} label="Observações sobre a casa (opcional)" hint="Por exemplo: “portaria 24 horas”, “sem elevador”.">
+      <Field id={`${idPrefix}-notas`} label="Observações sobre a casa (opcional)" hint={HINT_OBSERVACOES_CASA_PLANTAO}>
         <textarea
           id={`${idPrefix}-notas`}
           className={inputClass}

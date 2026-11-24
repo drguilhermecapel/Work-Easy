@@ -11,10 +11,10 @@ const BackendNotice: React.FC<{ title: string; children: ReactNode }> = ({ title
       </h1>
       <div className="text-sm text-gray-600 mt-3 space-y-2">{children}</div>
       <div className="flex flex-wrap gap-3 mt-5">
-        <Link to="/categorias" className="text-sm font-semibold bg-primary text-white px-4 py-2.5 rounded-xl hover:bg-purple-700">
+        <Link to="/categorias" className="inline-flex items-center min-h-11 text-sm font-semibold bg-primary text-white px-4 py-2.5 rounded-xl hover:bg-purple-700">
           Ver categorias
         </Link>
-        <Link to="/" className="text-sm font-semibold bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl hover:bg-gray-50">
+        <Link to="/" className="inline-flex items-center min-h-11 text-sm font-semibold bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl hover:bg-gray-50">
           Voltar ao início
         </Link>
       </div>

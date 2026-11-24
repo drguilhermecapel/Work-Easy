@@ -1,7 +1,7 @@
 -- Notifications: the outbox triggers per template, reminder scheduling and skipping,
 -- claim_notifications (service role) and RLS.
 begin;
-select plan(48);
+select plan(49);
 select has_function('tests', 'setup_fixture', 'test helpers are installed (run 00_helpers first)');
 select tests.setup_fixture();
 
@@ -32,12 +32,17 @@ select is((select count(*)::int from public.notifications
             where template = 'lembrete_atendimento' and scheduled_for = tests.sp('2030-06-30 09:00')), 2,
           'reminders are scheduled 24 h before the start');
 
--- requested bookings do not notify until accepted
+-- a requested booking tells the provider only; the client hears of it when the provider answers
 insert into ids values
   ('requested', tests.make_booking('provider_c', 'client_a', 't-reparo', tests.sp_period('2030-07-02 09:00'), 'requested'));
 select is((select count(*)::int from public.notifications
-            where params ->> 'booking_id' = (select id from ids where name = 'requested')::text), 0,
-          'a requested booking does not notify yet');
+            where params ->> 'booking_id' = (select id from ids where name = 'requested')::text
+              and template = 'agendamento_solicitado' and user_id = tests.uid('provider_c')), 1,
+          'a requested booking tells the provider');
+select is((select count(*)::int from public.notifications
+            where params ->> 'booking_id' = (select id from ids where name = 'requested')::text
+              and user_id = tests.uid('client_a')), 0,
+          'and does not tell the client yet');
 select tests.authenticate_as('provider_c');
 select public.transition_booking((select id from ids where name = 'requested'), 'accepted');
 select tests.clear_authentication();

@@ -4,6 +4,8 @@ import userEvent from '@testing-library/user-event';
 import {
   NEIGHBORHOODS,
   baseTables,
+  functionData,
+  functionError,
   isEq,
   occupationRow,
   ok,
@@ -12,6 +14,7 @@ import {
   ruleError,
   signInProvider,
   type ProFake,
+  type Result,
   type TableCall,
 } from './fake';
 
@@ -19,6 +22,12 @@ vi.mock('../../lib/supabase', async () => {
   const { createProFake } = await import('./fake');
   return { supabase: createProFake(), backendEnabled: true };
 });
+
+// jsdom has no canvas, so photos pass through here; the re-encoding has its own tests in test/web/image-metadata.test.ts
+vi.mock('../../lib/imageMetadata', async importOriginal => ({
+  ...(await importOriginal<typeof import('../../lib/imageMetadata')>()),
+  stripImageMetadata: async (file: File) => file,
+}));
 
 const { supabase } = await import('../../lib/supabase');
 const { renderPro } = await import('./render');
@@ -41,8 +50,30 @@ let provider: ReturnType<typeof providerRow> | null;
 let occupations: ReturnType<typeof occupationRow>[];
 let documents: Array<Record<string, unknown>>;
 let selected: string[];
+/** Forms the page sent to the upload function, in order. */
+let uploads: FormData[];
 
 const pdf = (name = 'documento.pdf') => new File(['%PDF-1.4 teste'], name, { type: 'application/pdf' });
+
+const UPLOAD = 'provider-document-upload';
+
+/** The upload function stores what it receives and records it, as the server does: the list then shows it. */
+const storeLikeFunction = (body: unknown): Result => {
+  const form = body as FormData;
+  uploads.push(form);
+  const step = String(form.get('step'));
+  const row = {
+    id: `doc-${documents.length + 1}`,
+    step,
+    storage_path: `prov-1/${step}-stored`,
+    status: 'submitted',
+    rejection_reason: null,
+    expires_at: null,
+    created_at: '2026-10-22T12:00:00Z',
+  };
+  documents = [row, ...documents];
+  return functionData(row);
+};
 
 beforeEach(() => {
   fake.reset();
@@ -51,6 +82,8 @@ beforeEach(() => {
   occupations = [];
   documents = [];
   selected = [];
+  uploads = [];
+  fake.functionsHandlers[UPLOAD] = storeLikeFunction;
   fake.tables = {
     ...baseTables({ provider: null }),
     providers: (call: TableCall) => {
@@ -215,7 +248,21 @@ describe('/pro/cadastro: steps of a draft provider', () => {
     expect(screen.queryByRole('checkbox', { name: /Pinheiros/ })).not.toBeInTheDocument();
   });
 
-  it('asks for the documents the policy requires, uploads to the private bucket and records them', async () => {
+  it('reverts a neighborhood the server refuses to save, so the list shows what was saved', async () => {
+    draft();
+    fake.tables.neighborhoods = () => ok(NEIGHBORHOODS);
+    fake.tables.provider_neighborhoods = (call: TableCall) =>
+      call.op === 'insert' ? ruleError('neighborhood_unavailable') : ok(selected.map(id => ({ neighborhood_id: id })));
+    const user = userEvent.setup();
+    renderPro('/pro/cadastro');
+
+    expect(await screen.findByText('Nenhum bairro escolhido.')).toBeInTheDocument();
+    await user.click(await screen.findByRole('checkbox', { name: /Lapa/ }));
+    expect(await screen.findByText('Nenhum bairro escolhido.')).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: /Lapa/ })).not.toBeChecked();
+  });
+
+  it('asks for the documents the policy requires, sends them to the upload function and lists them', async () => {
     draft();
     const user = userEvent.setup();
     renderPro('/pro/cadastro');
@@ -230,15 +277,38 @@ describe('/pro/cadastro: steps of a draft provider', () => {
 
     await user.upload(screen.getByLabelText(/Enviar arquivo.*Documento com foto e selfie/), pdf());
 
-    await waitFor(() => expect(fake.uploads).toHaveLength(1));
-    expect(fake.uploads[0].bucket).toBe('provider-documents');
-    expect(fake.uploads[0].path).toMatch(/^prov-1\/documento_selfie-[a-z0-9]+-[a-z0-9]+\.pdf$/);
-    expect(fake.uploads[0].options).toMatchObject({ contentType: 'application/pdf', upsert: false });
-    const insert = fake.tableCalls.find(call => call.table === 'provider_documents' && call.op === 'insert');
-    expect(insert?.payload).toEqual({ provider_id: 'prov-1', step: 'documento_selfie', storage_path: fake.uploads[0].path });
+    await waitFor(() => expect(uploads).toHaveLength(1));
+    expect(uploads[0].get('step')).toBe('documento_selfie');
+    expect((uploads[0].get('file') as File).type).toBe('application/pdf');
+    expect(fake.tableCalls.filter(call => call.table === 'provider_documents' && call.op === 'insert')).toEqual([]);
 
     expect(await screen.findByText('Enviado, aguardando análise', { selector: 'span.inline-block' })).toBeInTheDocument();
     expect(screen.getAllByText('Não enviado')).toHaveLength(2);
+  });
+
+  it('photographs a document through the camera chooser, accepts only photos and uploads it', async () => {
+    draft();
+    const seen: Array<{ accept: string; capture: string | null }> = [];
+    vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(function (this: HTMLInputElement) {
+      seen.push({ accept: this.accept, capture: this.getAttribute('capture') });
+      Object.defineProperty(this, 'files', {
+        configurable: true,
+        value: [new File(['jpeg'], 'cpf.jpg', { type: 'image/jpeg' })],
+      });
+      this.dispatchEvent(new Event('change'));
+    });
+    const user = userEvent.setup();
+    renderPro('/pro/cadastro');
+
+    await user.click(await screen.findByRole('button', { name: /Fotografar.*CPF ou CNPJ/ }));
+
+    await waitFor(() => expect(uploads).toHaveLength(1));
+    expect(seen).toHaveLength(1);
+    expect(seen[0].capture).toBe('environment');
+    expect(seen[0].accept).toContain('image/jpeg');
+    expect(seen[0].accept).not.toContain('pdf');
+    expect(uploads[0].get('step')).toBe('cadastro_fiscal');
+    expect((uploads[0].get('file') as File).type).toBe('image/jpeg');
   });
 
   it('refuses a file of the wrong type or size before sending it', async () => {
@@ -254,18 +324,18 @@ describe('/pro/cadastro: steps of a draft provider', () => {
     Object.defineProperty(big, 'size', { value: 11 * 1024 * 1024 });
     await user.upload(input, big);
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('O arquivo precisa ter até 10 MB.'));
-    expect(fake.uploads).toEqual([]);
+    expect(uploads).toEqual([]);
   });
 
-  it('removes the file again when recording the document fails', async () => {
+  it('shows the sentence the upload function answers when it cannot record the document', async () => {
     draft();
-    const base = fake.tables.provider_documents;
-    fake.tables.provider_documents = (call: TableCall) => (call.op === 'insert' ? { data: null, error: { code: '42501', message: 'rls' } } : base(call));
+    const sentence = 'Não foi possível registrar o documento. Tente de novo.';
+    fake.functionsHandlers[UPLOAD] = () => functionError(502, 'upstream_error', sentence);
     const user = userEvent.setup();
     renderPro('/pro/cadastro');
     await user.upload(await screen.findByLabelText(/Enviar arquivo.*CPF ou CNPJ/), pdf());
-    expect(await screen.findByRole('alert')).toHaveTextContent('Você não tem permissão');
-    expect(fake.removed).toEqual([{ bucket: 'provider-documents', paths: [fake.uploads[0].path] }]);
+    expect(await screen.findByRole('alert')).toHaveTextContent(sentence);
+    expect(documents).toEqual([]);
   });
 
   it('shows a rejected document with the reason and lets the provider send another', async () => {
@@ -293,6 +363,42 @@ describe('/pro/cadastro: steps of a draft provider', () => {
     await waitFor(() => expect(fake.removed).toEqual([{ bucket: 'provider-documents', paths: ['prov-1/documento_selfie-a.pdf'] }]));
   });
 
+  it('offers to remove an unreviewed document while the registration is a draft', async () => {
+    draft();
+    documents = [
+      { id: 'doc-1', step: 'documento_selfie', storage_path: 'prov-1/documento_selfie-a.pdf', status: 'submitted', rejection_reason: null, expires_at: null, created_at: '2026-10-20T12:00:00Z' },
+    ];
+    renderPro('/pro/cadastro');
+    expect(await screen.findByRole('button', { name: 'Remover' })).toBeInTheDocument();
+    expect(screen.queryByText('Documento em análise: não pode ser removido agora.')).not.toBeInTheDocument();
+  });
+
+  it.each(['pending_review', 'approved', 'suspended'] as const)(
+    'hides the removal of an unreviewed document once the registration is %s, and says why',
+    async status => {
+      draft();
+      provider = providerRow({ status });
+      documents = [
+        { id: 'doc-1', step: 'documento_selfie', storage_path: 'prov-1/documento_selfie-a.pdf', status: 'submitted', rejection_reason: null, expires_at: null, created_at: '2026-10-20T12:00:00Z' },
+      ];
+      renderPro('/pro/cadastro');
+      expect(await screen.findByText('Documento em análise: não pode ser removido agora.')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Remover' })).not.toBeInTheDocument();
+    },
+  );
+
+  it('offers no removal for a reviewed document, and no review text for it', async () => {
+    draft();
+    documents = [
+      { id: 'doc-2', step: 'cadastro_fiscal', storage_path: 'prov-1/cadastro_fiscal-a.pdf', status: 'accepted', rejection_reason: null, expires_at: null, created_at: '2026-10-20T12:00:00Z' },
+      { id: 'doc-3', step: 'documento_selfie', storage_path: 'prov-1/documento_selfie-a.pdf', status: 'rejected', rejection_reason: 'Foto escura', expires_at: null, created_at: '2026-10-20T12:00:00Z' },
+    ];
+    renderPro('/pro/cadastro');
+    expect(await screen.findByText('Motivo da recusa: Foto escura')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Remover' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Documento em análise: não pode ser removido agora.')).not.toBeInTheDocument();
+  });
+
   it('records the consent before the certificate of criminal record is sent', async () => {
     draft('diarista');
     fake.tables.consents = (call: TableCall) =>
@@ -308,11 +414,25 @@ describe('/pro/cadastro: steps of a draft provider', () => {
     expect(input).toBeEnabled();
     await user.upload(input, pdf('certidao.pdf'));
 
-    await waitFor(() => expect(fake.uploads).toHaveLength(1));
+    await waitFor(() => expect(uploads).toHaveLength(1));
     const consent = fake.tableCalls.find(call => call.table === 'consents' && call.op === 'insert');
     // user_id and at belong to the server: the insert grant is by column
     expect(consent?.payload).toMatchObject({ purpose: 'background_check', granted: true });
     expect(consent?.payload).not.toHaveProperty('user_id');
+  });
+
+  it('says what withdrawing the consent leaves in place, and how a certificate can be removed', async () => {
+    draft('diarista');
+    fake.tables.consents = (call: TableCall) =>
+      call.op === 'insert'
+        ? ok({ id: 'c-new', at: '2026-10-22T12:00:00Z', ...(call.payload as object) })
+        : ok(baseTables({ provider: null }).consents({ table: 'consents', op: 'select', filters: [] }).data);
+    renderPro('/pro/cadastro');
+
+    const checkbox = await screen.findByRole('checkbox', { name: /Autorizo o WorkEasy a usar a certidão/ });
+    expect(checkbox).toHaveAccessibleName(/A retirada fica registrada, mas não apaga a certidão já enviada nem muda quem pode vê-la/);
+    expect(checkbox).toHaveAccessibleName(/Enquanto o cadastro estiver em rascunho e a certidão não tiver sido analisada, posso removê-la aqui/);
+    expect(checkbox).toHaveAccessibleName(/depois do envio para análise, não consigo removê-la, e a exclusão da minha conta também apaga a certidão/);
   });
 
   it('shows documents_missing translated, with the steps lacking, then the status after the review request', async () => {

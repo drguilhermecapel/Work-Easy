@@ -44,12 +44,12 @@ const RequestList: React.FC<{ userId: string }> = ({ userId }) => {
                     {REQUEST_STATUS_LABELS[request.status]}
                   </span>
                   {request.urgent && <span className="text-xs font-bold px-2 py-0.5 rounded-sm bg-amber-100 text-amber-800">Urgente</span>}
-                  <span className="text-xs text-gray-400">{formatDate(request.created_at)}</span>
+                  <span className="text-xs text-gray-500">{formatDate(request.created_at)}</span>
                 </div>
                 <p className="font-bold text-gray-900">{findOccupation(request.occupation_slug)?.name ?? request.occupation_slug}</p>
                 <p className="text-sm text-gray-500 truncate">{request.description}</p>
               </div>
-              <ChevronRight size={18} className="text-gray-400 shrink-0" aria-hidden="true" />
+              <ChevronRight size={18} className="text-gray-500 shrink-0" aria-hidden="true" />
             </Link>
           </li>
         ))}

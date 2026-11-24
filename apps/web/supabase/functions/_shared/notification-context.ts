@@ -92,6 +92,16 @@ export async function notificationContext(row: ContextRow, db: LookupDb): Promis
       set('neighborhood_name', text(neighborhood?.name));
       break;
     }
+    case 'pedido_novo': {
+      const request = text(params.request_id)
+        ? await db.one('requests', 'occupation_slug, neighborhood_id', 'id', String(params.request_id))
+        : null;
+      if (!request) break;
+      set('occupation_name', await occupationName(db, text(request.occupation_slug)));
+      const neighborhood = text(request.neighborhood_id) ? await db.one('neighborhoods', 'name', 'id', String(request.neighborhood_id)) : null;
+      set('neighborhood_name', text(neighborhood?.name));
+      break;
+    }
     default:
       break;
   }

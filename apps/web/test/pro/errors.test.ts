@@ -19,6 +19,12 @@ describe('errors of the Pro area', () => {
     }
   });
 
+  it('uses the sentences of lib/errors for the quote and CRM rules too', async () => {
+    expect((await proError(dbRule('quote_daily_limit'))).message).toMatch(/máximo de 30 orçamentos hoje/);
+    expect((await proError(dbRule('client_has_history'))).message).toBe(errorMessage(dbRule('client_has_history')));
+    expect((await proError(dbRule('client_has_history'))).code).toBe('client_has_history');
+  });
+
   it('translates the codes Edge Functions answer', async () => {
     const answered = (code: string) => toAppError({ error: { code, message: 'x' } });
     expect((await proError(answered('provider_payment_account_missing'))).message).toMatch(/Ative o recebimento/);

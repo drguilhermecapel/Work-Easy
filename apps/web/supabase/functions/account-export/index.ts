@@ -13,8 +13,10 @@ const deps: ExportDeps = {
     if (!caller) return null;
     return {
       user: caller.user,
-      async selectOwned(table, orFilter) {
-        return (must(await caller.db.from(table).select('*').or(orFilter).limit(10000)) as Row[] | null) ?? [];
+      async selectOwned(table, orFilter, columns) {
+        const select = columns?.length ? columns.join(', ') : '*';
+        // The column list is built at runtime, so the client cannot type the rows
+        return (must(await caller.db.from(table).select(select).or(orFilter).limit(10000)) as unknown as Row[] | null) ?? [];
       },
       async selectIn(table, column, values) {
         return (must(await caller.db.from(table).select('*').in(column, values).limit(10000)) as Row[] | null) ?? [];

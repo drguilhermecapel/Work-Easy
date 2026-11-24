@@ -6,6 +6,7 @@ import ErrorAlert from '../ErrorAlert';
 import HealthDataNotice from './HealthDataNotice';
 import { formatShiftPeriod, parseReaisToCents, toShiftPeriod } from './format';
 import { inputClass, primaryButton } from './styles';
+import { HINT_OBSERVACOES_CASA_PLANTAO } from './textHints';
 import { Field } from './ui';
 
 interface Props {
@@ -30,6 +31,7 @@ const ShiftForm: React.FC<Props> = ({ households, recipients, initialHouseholdId
 
   const people = recipients.filter(r => r.household_id === householdId);
   const period = day ? toShiftPeriod(day, start, end) : null;
+  const sameStartAndEnd = Boolean(day) && start !== '' && start === end;
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -37,6 +39,7 @@ const ShiftForm: React.FC<Props> = ({ households, recipients, initialHouseholdId
     setError(null);
     try {
       if (!householdId) throw new AppError('invalid_input', { message: 'Escolha a casa do plantão.' });
+      if (sameStartAndEnd) throw new AppError('invalid_input', { message: 'O fim do plantão não pode ser igual ao início. Informe outro horário de fim.' });
       if (!period) throw new AppError('invalid_input', { message: 'Informe o dia e os horários de início e de fim.' });
       const valueCents = parseReaisToCents(value);
       if (valueCents === null) throw new AppError('invalid_input', { message: 'Informe o valor do plantão em reais, por exemplo 280,00.' });
@@ -97,8 +100,9 @@ const ShiftForm: React.FC<Props> = ({ households, recipients, initialHouseholdId
       <p className="text-xs text-gray-500" aria-live="polite">
         {period
           ? `Plantão: ${formatShiftPeriod(period)} (horário de Brasília).`
-          : 'Horário de Brasília. Se o fim for antes do início, o plantão termina no dia seguinte (plantão noturno).'}
+          : 'Horário de Brasília. Se o fim for antes do início, o plantão termina no dia seguinte (plantão noturno). Início e fim iguais não são aceitos.'}
       </p>
+      <p className="text-xs text-gray-500">Cada plantão dura até 24 horas. Para um período maior, crie um plantão para cada trecho.</p>
       <Field
         id="plantao-valor"
         label="Valor do plantão (R$)"
@@ -114,7 +118,11 @@ const ShiftForm: React.FC<Props> = ({ households, recipients, initialHouseholdId
           autoComplete="off"
         />
       </Field>
-      <Field id="plantao-notas" label="Observações para o cuidador (opcional)" hint="Por exemplo: “levar documento na portaria”, “almoço já fica pronto”.">
+      <Field
+        id="plantao-notas"
+        label="Observações para o cuidador (opcional)"
+        hint={HINT_OBSERVACOES_CASA_PLANTAO}
+      >
         <textarea
           id="plantao-notas"
           className={inputClass}

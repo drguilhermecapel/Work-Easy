@@ -7,9 +7,24 @@ export interface ExportQuery {
   table: string;
   /** Rows match if ANY of these columns equals the user's id. */
   ownerColumns: string[];
+  /**
+   * Columns to read. Required for tables whose API role has column grants only (no table-level
+   * SELECT): `select *` is refused there. Undefined reads every column.
+   */
+  columns?: string[];
   /** Columns never included in the export (secrets, internal pointers). */
   omit?: string[];
 }
+
+/** Granted to the API role (migrations/20261019000006_payments.sql). `raw` (gateway payload) is never granted. */
+const PAYMENT_COLUMNS = [
+  'id', 'booking_id', 'quote_id', 'provider_id', 'payer_id', 'asaas_payment_id', 'method', 'amount_cents',
+  'platform_fee_cents', 'status', 'escrow', 'invoice_url', 'pix_qr_code', 'pix_payload', 'due_date',
+  'created_at', 'updated_at',
+];
+
+/** Granted to the API role: no `api_key_secret_id` (the Vault reference). */
+const PROVIDER_PAYMENT_ACCOUNT_COLUMNS = ['provider_id', 'asaas_account_id', 'asaas_wallet_id', 'status', 'created_at'];
 
 export const EXPORT_PLAN: ExportQuery[] = [
   { table: 'profiles', ownerColumns: ['id'] },
@@ -24,9 +39,9 @@ export const EXPORT_PLAN: ExportQuery[] = [
   { table: 'requests', ownerColumns: ['client_id'] },
   { table: 'proposals', ownerColumns: ['provider_id'] },
   { table: 'bookings', ownerColumns: ['client_id', 'provider_id'] },
-  { table: 'provider_payment_accounts', ownerColumns: ['provider_id'], omit: ['api_key_secret_id'] },
+  { table: 'provider_payment_accounts', ownerColumns: ['provider_id'], columns: PROVIDER_PAYMENT_ACCOUNT_COLUMNS, omit: ['api_key_secret_id'] },
   { table: 'customer_payment_profiles', ownerColumns: ['user_id'] },
-  { table: 'payments', ownerColumns: ['payer_id', 'provider_id'], omit: ['raw'] },
+  { table: 'payments', ownerColumns: ['payer_id', 'provider_id'], columns: PAYMENT_COLUMNS, omit: ['raw'] },
   { table: 'subscriptions', ownerColumns: ['provider_id'] },
   { table: 'quotes', ownerColumns: ['provider_id'] },
   { table: 'reviews', ownerColumns: ['client_id', 'provider_id'] },
@@ -40,10 +55,18 @@ export const EXPORT_PLAN: ExportQuery[] = [
   { table: 'data_requests', ownerColumns: ['user_id'] },
 ];
 
-/** Rows that hang off the user's households (care line). */
-export const HOUSEHOLD_CHILDREN: Array<{ table: string; column: string }> = [
-  { table: 'care_recipients', column: 'household_id' },
-  { table: 'shifts', column: 'household_id' },
+/**
+ * Rows that hang off rows already read, matched by the ids of those rows. They are readable under RLS
+ * for the user even when the parent belongs to someone else (the other party of a booking, request or
+ * household). Listed in order: a parent may come from an earlier entry (the shifts of a household).
+ */
+export const LINKED_CHILDREN: Array<{ parent: string; table: string; column: string }> = [
+  { parent: 'households', table: 'care_recipients', column: 'household_id' },
+  { parent: 'households', table: 'shifts', column: 'household_id' },
+  { parent: 'bookings', table: 'booking_events', column: 'booking_id' },
+  { parent: 'requests', table: 'proposals', column: 'request_id' },
+  { parent: 'shifts', table: 'checkins', column: 'shift_id' },
+  { parent: 'shifts', table: 'daily_reports', column: 'shift_id' },
 ];
 
 /** PostgREST `or` filter: `client_id.eq.<id>,provider_id.eq.<id>`. */

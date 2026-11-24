@@ -110,10 +110,11 @@ describe('/pro/plantoes (caregiver)', () => {
       expect(await within(offers).findByText('ter., 15/01/2030, 08:00 às 20:00')).toBeInTheDocument();
       expect(within(offers).getByText('Cuidado de Lúcia · Bairro Lapa')).toBeInTheDocument();
       expect(within(offers).getByText('Valor: R$ 280,00')).toBeInTheDocument();
-      expect(within(offers).getByText(/Observações da família: Almoço já fica pronto/)).toBeInTheDocument();
-      // No contact, preferences, birth year, family value or house name reach the caregiver
+      // The family's notes reach only the caregiver a shift belongs to, so an offer does not show them
+      expect(within(offers).queryByText(/Observações da família/)).not.toBeInTheDocument();
+      // No contact, preferences, birth year, family value, house name or notes reach the caregiver
       const page = document.body.textContent ?? '';
-      expect(page).not.toMatch(/Filho 11|Gosta de rádio|1940|Casa da vó/);
+      expect(page).not.toMatch(/Filho 11|Gosta de rádio|1940|Casa da vó|Almoço já fica pronto/);
       expect(fake.tableCalls.some(call => call.table === 'shifts' || call.table === 'care_recipients' || call.table === 'households')).toBe(false);
     });
 
@@ -171,16 +172,15 @@ describe('/pro/plantoes (caregiver)', () => {
       expect(screen.queryByRole('button', { name: 'Aceitar plantão' })).not.toBeInTheDocument();
     });
 
-    it('explains the labor lock when the database refuses the acceptance', async () => {
+    it('refuses the acceptance under a labor lock with the plain sentence, revealing no contact or record', async () => {
       offeredShift();
-      world.rpcErrors.accept_shift_offer = 'labor_lock';
+      // Even if the database gives the detail of the rule, the screen does not show it
+      world.rpcErrors.accept_shift_offer = 'labor_lock: o telefone confere com uma entrada do prestador';
       renderCare('/pro/plantoes');
       await userEvent.click(await screen.findByRole('button', { name: 'Aceitar plantão' }));
       const alert = await screen.findByRole('alert');
-      expect(alert).toHaveTextContent('Limite de 2 dias por semana com o mesmo cuidador');
-      expect(alert).toHaveTextContent(/passaria de 2 dias diferentes na mesma semana/);
-      expect(alert).toHaveTextContent(/LC 150\/2015/);
-      expect(alert).toHaveTextContent(/a família pode contratar você diretamente, fora do WorkEasy/);
+      expect(alert).toHaveTextContent('Não é possível aceitar este pedido agora. Fale com a equipe do WorkEasy.');
+      expect(alert).not.toHaveTextContent(/telefone|entrada|cadastro|LC 150|contrat|Limite/i);
       // The offer stays: the caregiver may try another shift or wait for the family
       expect(screen.getByRole('button', { name: 'Aceitar plantão' })).toBeInTheDocument();
     });
@@ -375,8 +375,12 @@ describe('/pro/plantoes (caregiver)', () => {
     it('sends meals, activities, mood and notes as plain text, with a notice that it is not clinical', async () => {
       renderCare('/pro/plantoes');
       const form = await screen.findByRole('form', { name: 'Relatório do dia' });
-      expect(within(form).getByText(/O WorkEasy não guarda dados de saúde/)).toBeInTheDocument();
+      expect(within(form).getByText(/O WorkEasy não pede dados de saúde/)).toBeInTheDocument();
       expect(within(form).getByText(/Não registre remédios, doses, sintomas nem diagnósticos/)).toBeInTheDocument();
+      // Each field of the report has its tip under it
+      for (const label of ['Refeições', 'Atividades', 'Humor', 'Observações']) {
+        expect(within(form).getByLabelText(label)).toHaveAccessibleDescription(/^Registre o que aconteceu no plantão, em frases curtas\./);
+      }
       await userEvent.type(within(form).getByLabelText('Refeições'), 'Almoço e lanche');
       await userEvent.type(within(form).getByLabelText('Atividades'), 'Caminhada no jardim');
       await userEvent.type(within(form).getByLabelText('Humor'), 'Animada');

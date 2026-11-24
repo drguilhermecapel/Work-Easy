@@ -1,7 +1,7 @@
 -- Providers: RLS per role, registry rule, protected status, service units, documents
 -- and storage, review submission, search ordering and the public page.
 begin;
-select plan(111);
+select plan(112);
 select has_function('tests', 'setup_fixture', 'test helpers are installed (run 00_helpers first)');
 select tests.setup_fixture();
 
@@ -89,12 +89,16 @@ select throws_ok(format($$insert into public.provider_documents (provider_id, st
                  'document path must be inside the own folder');
 select throws_ok($$update public.provider_documents set status = 'accepted'$$, '42501', null,
                  'provider cannot accept the own document');
-select lives_ok(format($$insert into storage.objects (bucket_id, name) values ('provider-documents', %L)$$,
-                       tests.uid('provider_a') || '/rg.png'),
-                'provider uploads into the own folder of provider-documents');
+select throws_ok(format($$insert into storage.objects (bucket_id, name) values ('provider-documents', %L)$$,
+                        tests.uid('provider_a') || '/rg.png'),
+                 '42501', null, 'provider cannot upload into the own folder: the upload function writes the bucket');
 select throws_ok(format($$insert into storage.objects (bucket_id, name) values ('provider-documents', %L)$$,
                         tests.uid('provider_c') || '/rg.png'),
                  '42501', null, 'provider cannot upload into another folder');
+-- The upload function writes with the service role: the file of the document record above is in the bucket
+select tests.authenticate_service();
+insert into storage.objects (bucket_id, name) values ('provider-documents', tests.uid('provider_a') || '/rg.png');
+select tests.authenticate_as('provider_a');
 select tests.authenticate_as('client_a');
 select is((select count(*)::int from storage.objects where bucket_id = 'provider-documents'), 0,
           'other users cannot read provider documents in storage');
@@ -115,9 +119,11 @@ insert into public.provider_documents (provider_id, step, storage_path) values
   (tests.uid('client_b'), 'cadastro_fiscal', tests.uid('client_b') || '/cpf.pdf');
 select throws_ok($$select public.submit_provider_for_review()$$, 'P0001', 'documents_missing',
                  'document records without the uploaded files do not count');
+select tests.authenticate_service();
 insert into storage.objects (bucket_id, name) values
   ('provider-documents', tests.uid('client_b') || '/selfie.png'),
   ('provider-documents', tests.uid('client_b') || '/cpf.pdf');
+select tests.authenticate_as('client_b');
 select is(public.submit_provider_for_review()::text, 'pending_review', 'complete documents move the provider to review');
 select throws_ok($$select public.submit_provider_for_review()$$, 'P0001', 'invalid_transition',
                  'a provider in review cannot submit again');
@@ -136,6 +142,7 @@ select lives_ok($$select public.become_provider('Faxina C', 't-faxina-c', 't-dom
 insert into public.provider_documents (provider_id, step, storage_path) values
   (tests.uid('client_c'), 'documento_selfie', tests.uid('client_c') || '/selfie.png'),
   (tests.uid('client_c'), 'cadastro_fiscal', tests.uid('client_c') || '/cpf.pdf');
+select tests.authenticate_service();
 insert into storage.objects (bucket_id, name) values
   ('provider-documents', tests.uid('client_c') || '/selfie.png'),
   ('provider-documents', tests.uid('client_c') || '/cpf.pdf');
@@ -292,20 +299,22 @@ select is((select metadata from storage.objects where name = tests.uid('provider
           'the owner cannot replace an uploaded document (no update policy)');
 select results_eq($$select regexp_replace(name, '^.*/', '') from storage.objects
                      where bucket_id = 'provider-documents' and name like tests.uid('provider_a') || '/%' order by 1$$,
-                  array['accepted.pdf', 'rejected.pdf'],
-                  'the owner deletes unreviewed and unreferenced files only; another provider deletes nothing');
+                  array['accepted.pdf', 'rejected.pdf', 'rg.png', 'submitted.pdf'],
+                  'an approved provider deletes only unreferenced files (its submitted file is locked); another provider deletes nothing');
 select tests.authenticate_as('admin');
 delete from storage.objects where bucket_id = 'provider-documents' and name = tests.uid('provider_a') || '/rejected.pdf';
 select tests.clear_authentication();
 select is((select count(*)::int from storage.objects where bucket_id = 'provider-documents'
             and name = tests.uid('provider_a') || '/rejected.pdf'), 0, 'an admin may delete a reviewed file');
 
--- admin cannot accept a document whose file is missing
+-- admin cannot accept a document whose file is missing (the file goes; its row stays, as in a
+-- lost upload: the owner can no longer remove a document under review)
+select tests.clear_authentication();
+delete from storage.objects where bucket_id = 'provider-documents' and name = tests.uid('provider_a') || '/submitted.pdf';
 select tests.authenticate_as('admin');
 select throws_ok(format($$select public.admin_review_document(%L, true)$$,
                         (select id from public.provider_documents where storage_path = tests.uid('provider_a') || '/submitted.pdf')),
                  'P0001', 'not_allowed', 'an admin cannot accept a document that has no file in the bucket');
--- (the file of submitted.pdf was deleted above)
 
 -- ---------------------------------------------------------------- search and public page
 select tests.clear_authentication();
@@ -331,11 +340,20 @@ begin
 end;
 $$;
 
+-- Providers with fewer than 3 reviews rotate by day (never by name), so the test derives the
+-- expected order of the two of them from the same key the function uses.
+create temp table expected_order as
+  select row_number() over () as position, slug
+    from (select 't-davi' as slug union all select 't-carla' union all
+          (select pr.slug from public.providers pr where pr.slug in ('t-ana', 't-eva')
+            order by md5(pr.id::text || private.sp_date(now())::text), pr.id)) o;
+grant select on expected_order to anon, authenticated;
+
 select tests.authenticate_anon();
 select results_eq(
   $$select slug from public.search_providers('t-reparo', tests.neighborhood('t-bairro-1'))$$,
-  array['t-davi', 't-carla', 't-ana', 't-eva'],
-  'with rating_ranking: rated providers by average, then the rest by name');
+  $$select slug from expected_order order by position$$,
+  'with rating_ranking: rated providers by average, then the rest in the rotation of the day, not by name');
 select is((select rating_avg from public.search_providers('t-reparo') where slug = 't-davi'), 5.00::numeric,
           'search returns the average rating');
 select is((select count(*)::int from public.search_providers('t-reparo', tests.neighborhood('t-bairro-2'))), 0,
@@ -344,8 +362,11 @@ select is((select rating_avg from public.search_providers('t-medico')), null,
           'without rating_ranking no rating is returned');
 select is((select count(*)::int from public.search_providers('t-domestica')), 1,
           'draft and pending providers are not listed');
-select results_eq($$select slug from public.search_providers('t-reparo', null, 2, 1)$$, array['t-carla', 't-ana'],
+select results_eq($$select slug from public.search_providers('t-reparo', null, 2, 1)$$,
+                  $$select slug from public.search_providers('t-reparo', null, 100, 0) offset 1 limit 2$$,
                   'limit and offset page through the ranking');
+select is((select slug from public.search_providers('t-reparo', null, 1, 1)), 't-carla',
+          'the second place of the ranking is still the second best average');
 select is((select rating_count from public.search_providers('t-reparo') where slug = 't-eva'), 2,
           'fewer than 3 reviews are counted but do not rank (Eva stays below Carla with a 5.0 average)');
 select is(public.get_provider_page('t-ana') -> 'provider' ->> 'display_name', 'Ana Teste', 'anon reads the public page');
@@ -356,6 +377,10 @@ select is(jsonb_array_length(public.get_provider_page('t-davi') -> 'reviews'), 3
 select tests.clear_authentication();
 insert into public.provider_occupations (provider_id, occupation_slug, registry_number, registry_uf, approved)
 values (tests.uid('provider_e'), 't-medico', '777', 'SP', true);
+-- Provider B changed its registry number after the confirmation, so the approval went away. The draw
+-- needs both providers offered: the test session sets it back, as the fixture does (no documents here).
+update public.provider_occupations set approved = true
+ where provider_id = tests.uid('provider_b') and occupation_slug = 't-medico';
 create temp table expected_draw as
   select po.provider_id, row_number() over (order by md5(po.provider_id::text || (now() at time zone 'America/Sao_Paulo')::date::text), po.provider_id) as rn
     from public.provider_occupations po

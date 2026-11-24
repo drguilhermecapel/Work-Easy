@@ -42,7 +42,7 @@ const ReviewPanel: React.FC<Props> = ({ booking, payments, review, publicRatings
   } else if (!payments.some(isPaid) || booking.origin !== 'platform') {
     body = (
       <p className="text-sm text-gray-600 flex items-start gap-2">
-        <Info size={16} className="shrink-0 mt-0.5 text-gray-400" aria-hidden="true" />
+        <Info size={16} className="shrink-0 mt-0.5 text-gray-500" aria-hidden="true" />
         <span>A avaliação só pode ser feita depois de um atendimento concluído e pago pelo app.</span>
       </p>
     );
@@ -73,7 +73,7 @@ const ReviewPanel: React.FC<Props> = ({ booking, payments, review, publicRatings
             value={comment}
             onChange={e => setComment(e.target.value)}
           />
-          <p className="text-xs text-gray-400 text-right">{comment.length}/{COMMENT_MAX}</p>
+          <p className="text-xs text-gray-500 text-right">{comment.length}/{COMMENT_MAX}</p>
         </div>
         {publicRatings === false && <p className="text-xs text-gray-500">{PRIVATE_NOTE}</p>}
         <ErrorAlert error={error} />

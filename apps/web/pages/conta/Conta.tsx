@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
-import { CheckCircle2, Download, FileCheck2, LogOut, Trash2, UserRound } from 'lucide-react';
+import { Ban, CheckCircle2, Download, FileCheck2, LogOut, Trash2, UserRound } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { backendEnabled } from '../../lib/supabase';
 import { useAsync } from '../../lib/useAsync';
 import { downloadJson } from '../../lib/download';
 import { clearRequestDraft } from '../../lib/requestDraft';
 import { formatPhoneBR } from '../../lib/phone';
-import { APP_TIME_ZONE, todayInSaoPaulo } from '../../lib/timezone';
+import { APP_TIME_ZONE, formatDateBR, todayInSaoPaulo } from '../../lib/timezone';
 import { CONSENT_VERSIONS } from '../../config/legal';
 import {
   DELETE_CONFIRMATION,
@@ -17,7 +17,9 @@ import {
   listConsents,
   recordConsent,
   updateProfile,
+  withdrawBackgroundCheck,
 } from '../../services/account';
+import { listMyBlocks, unblockUser } from '../../services/safety';
 import type { ConsentPurpose, ConsentRow, ProfileRow } from '../../services/types';
 import BackendNotice from '../../components/BackendNotice';
 import ErrorAlert from '../../components/ErrorAlert';
@@ -135,13 +137,21 @@ const CONSENTS: Array<{ purpose: ConsentPurpose; title: string; description: str
   {
     purpose: 'background_check',
     title: 'Consulta de antecedentes',
-    description: 'Para profissionais cuja ocupação exige certidão de antecedentes criminais no cadastro.',
+    description:
+      'Para profissionais cuja ocupação exige certidão de antecedentes criminais no cadastro. Ao retirar o consentimento, a certidão já enviada é removida depois de 30 dias da retirada, na rotina diária. A retirada fica registrada e não muda quem pode vê-la até a remoção. Você remove a certidão no cadastro só enquanto ele está em rascunho e a certidão ainda não foi analisada. Depois do envio para análise, você não consegue removê-la; a exclusão da sua conta também apaga a certidão.',
     revocable: true,
   },
   {
     purpose: 'location',
     title: 'Localização',
     description: 'Usar a localização do aparelho, por exemplo no registro de entrada e saída de plantões.',
+    revocable: true,
+  },
+  {
+    purpose: 'ai_assist',
+    title: 'Ajuda com inteligência artificial',
+    description:
+      'Enviar o texto que você escreve nos assistentes (sugestão de orçamento, resumo da semana) a um serviço de inteligência artificial de terceiros. Sem este consentimento os assistentes ficam desligados para você; o resto do app funciona igual.',
     revocable: true,
   },
 ];
@@ -157,7 +167,9 @@ const ConsentsSection: React.FC<{ userId: string }> = ({ userId }) => {
     setBusyPurpose(purpose);
     setError(null);
     try {
-      await recordConsent(userId, purpose, granted);
+      // Withdrawing the background check also marks its files for deletion, in the same call.
+      if (purpose === 'background_check' && !granted) await withdrawBackgroundCheck();
+      else await recordConsent(userId, purpose, granted);
       history.reload();
     } catch (err) {
       setError(err);
@@ -166,7 +178,7 @@ const ConsentsSection: React.FC<{ userId: string }> = ({ userId }) => {
     }
   };
 
-  if (history.loading && !history.data) return <p role="status" className="text-sm text-gray-400">Carregando consentimentos…</p>;
+  if (history.loading && !history.data) return <p role="status" className="text-sm text-gray-500">Carregando consentimentos…</p>;
   if (history.error && !history.data) return <ErrorAlert error={history.error} />;
 
   const rows: ConsentRow[] = history.data ?? [];
@@ -235,14 +247,17 @@ const ExportSection: React.FC = () => {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [done, setDone] = useState(false);
+  const [incomplete, setIncomplete] = useState(false);
 
   const run = async () => {
     setBusy(true);
     setError(null);
     setDone(false);
+    setIncomplete(false);
     try {
-      const data = await exportMyData();
+      const data = (await exportMyData()) as { unavailable?: unknown[] } | null;
       downloadJson(data, `workeasy-meus-dados-${todayInSaoPaulo()}.json`);
+      setIncomplete((data?.unavailable?.length ?? 0) > 0);
       setDone(true);
     } catch (err) {
       setError(err);
@@ -258,6 +273,11 @@ const ExportSection: React.FC = () => {
       </p>
       <ErrorAlert error={error} />
       {done && <p role="status" className="text-sm text-green-700">Arquivo gerado. Confira seus downloads.</p>}
+      {incomplete && (
+        <p role="alert" className="text-sm text-amber-700">
+          Parte dos seus dados não pôde ser incluída no arquivo. Tente gerar de novo mais tarde.
+        </p>
+      )}
       <button type="button" className={`${secondaryButton} inline-flex items-center gap-2`} onClick={run} disabled={busy}>
         <Download size={16} aria-hidden="true" /> {busy ? 'Gerando arquivo…' : 'Baixar meus dados'}
       </button>
@@ -288,8 +308,9 @@ const DeleteSection: React.FC<{ onDeleted: () => void }> = ({ onDeleted }) => {
   return (
     <form onSubmit={run} className="space-y-3">
       <p className="text-sm text-gray-600">
-        Seus dados pessoais são apagados e você sai do app. Pagamentos e atendimentos já realizados continuam registrados de
-        forma anonimizada, sem seu nome e contatos, porque a lei fiscal obriga a guardar esses registros.
+        Seus dados pessoais são apagados e você sai do app. As notas dos plantões das suas casas e os textos do relatório diário
+        (refeições, atividades, humor e observações) também são apagados. Pagamentos e atendimentos já realizados continuam
+        guardados sem identificação, porque a lei fiscal obriga a guardar esses registros.
       </p>
       <div>
         <label htmlFor="conta-excluir" className="block text-sm font-medium text-gray-700 mb-1">
@@ -313,6 +334,58 @@ const DeleteSection: React.FC<{ onDeleted: () => void }> = ({ onDeleted }) => {
         <Trash2 size={16} aria-hidden="true" /> {busy ? 'Excluindo…' : 'Excluir minha conta'}
       </button>
     </form>
+  );
+};
+
+const BlocksSection: React.FC = () => {
+  const blocks = useAsync(listMyBlocks, 'blocks');
+  const [error, setError] = useState<unknown>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const remove = async (blockedId: string) => {
+    setBusy(blockedId);
+    setError(null);
+    try {
+      await unblockUser(blockedId);
+      blocks.reload();
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-gray-600">
+        Quem você bloqueou não aparece nas suas buscas e não troca pedidos nem propostas com você. A pessoa não é avisada.
+      </p>
+      <ErrorAlert error={blocks.error ?? error} />
+      {blocks.data && blocks.data.length === 0 && <p className="text-sm text-gray-500">Você não bloqueou ninguém.</p>}
+      {blocks.data && blocks.data.length > 0 && (
+        <ul className="divide-y divide-gray-100">
+          {blocks.data.map(block => {
+            const name = block.label ?? (block.origin === 'request' ? 'Cliente de um pedido' : 'Profissional');
+            return (
+              <li key={block.ref} className="py-2 flex flex-wrap items-center justify-between gap-3">
+                <span className="text-sm text-gray-800">
+                  {name} <span className="text-gray-500">· desde {formatDateBR(block.created_at)}</span>
+                </span>
+                <button
+                  type="button"
+                  className={secondaryButton}
+                  disabled={busy === block.ref}
+                  onClick={() => remove(block.ref)}
+                  aria-label={`Desbloquear ${name}`}
+                >
+                  Desbloquear
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 };
 
@@ -412,6 +485,13 @@ const Conta: React.FC = () => {
           Cada decisão fica registrada com data e versão do texto. Revogar não apaga o histórico.
         </p>
         <ConsentsSection key={consentsVersion} userId={authUser.id} />
+      </section>
+
+      <section className={card} aria-labelledby="conta-bloqueios">
+        <h2 id="conta-bloqueios" className="font-bold text-gray-800 flex items-center gap-2 mb-2">
+          <Ban size={18} className="text-primary" aria-hidden="true" /> Bloqueios
+        </h2>
+        <BlocksSection />
       </section>
 
       <section className={card} aria-labelledby="conta-exportar">

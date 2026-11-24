@@ -12,6 +12,9 @@
 //   https://docs.asaas.com/reference/listar-cobrancas-de-uma-assinatura  GET /v3/subscriptions/{id}/payments
 //   https://docs.asaas.com/reference/remover-assinatura            DELETE /v3/subscriptions/{id}
 //   https://docs.asaas.com/docs/sobre-os-webhooks                  asaas-access-token header
+//   (read 2026-11-24, docs only, nothing called) GET /v3/accounts?cpfCnpj (listAccounts, no apiKey in items),
+//   POST /v3/accounts/{id}/accessTokens (createAccessToken, apiKey returned once, needs panel + IP whitelist),
+//   GET/POST /v3/webhooks and PUT /v3/webhooks/{id} (the authToken never comes back; max 10 per account)
 // Authentication: `access_token` header. Sandbox: https://api-sandbox.asaas.com/v3
 
 import type { AsaasSplitItem } from './split.ts';
@@ -94,6 +97,40 @@ export interface AsaasWebhookConfig {
   apiVersion?: number;
 }
 
+/** A webhook as Asaas lists it: the authToken is never returned, only `hasAuthToken`. */
+export interface AsaasWebhook {
+  id: string;
+  name?: string;
+  url: string;
+  email?: string;
+  enabled?: boolean;
+  interrupted?: boolean;
+  apiVersion?: number;
+  hasAuthToken?: boolean;
+  sendType?: string;
+  events?: string[];
+}
+
+/** PUT /v3/webhooks/{id}: every field is optional and an omitted one keeps its value. */
+export type UpdateWebhookInput = Partial<Omit<AsaasWebhookConfig, 'apiVersion' | 'email'>>;
+
+export interface AsaasList<T> {
+  hasMore: boolean;
+  totalCount?: number;
+  limit?: number;
+  offset?: number;
+  data: T[];
+}
+
+/** An item of GET /v3/accounts (no key: Asaas shows it only when the account is created). */
+export interface AsaasAccountSummary {
+  id: string;
+  walletId?: string;
+  cpfCnpj?: string;
+  email?: string;
+  name?: string;
+}
+
 export interface CreateAccountInput {
   name: string;
   email: string;
@@ -137,7 +174,8 @@ export interface AsaasSubscription {
 
 export interface AsaasClientOptions {
   apiKey: string;
-  baseUrl?: string;
+  /** Required, with no default: the environment is chosen by the caller (asaasBaseUrl in _shared/config.ts). */
+  baseUrl: string;
   fetch: FetchLike;
   timeoutMs?: number;
   userAgent?: string;
@@ -148,7 +186,8 @@ export class AsaasClient {
 
   constructor(private readonly options: AsaasClientOptions) {
     if (!options.apiKey) throw new Error('Asaas API key is required');
-    this.baseUrl = (options.baseUrl || ASAAS_SANDBOX_URL).replace(/\/+$/, '');
+    if (!options.baseUrl) throw new Error('Asaas base URL is required');
+    this.baseUrl = options.baseUrl.replace(/\/+$/, '');
     if (!/^https:\/\//.test(this.baseUrl)) throw new Error('ASAAS_BASE_URL must use https');
   }
 
@@ -157,7 +196,7 @@ export class AsaasClient {
     return new AsaasClient({ ...this.options, apiKey });
   }
 
-  async request<T>(method: 'GET' | 'POST' | 'DELETE', path: string, body?: unknown): Promise<T> {
+  async request<T>(method: 'GET' | 'POST' | 'PUT' | 'DELETE', path: string, body?: unknown): Promise<T> {
     const headers: Record<string, string> = {
       access_token: this.options.apiKey,
       Accept: 'application/json',
@@ -231,6 +270,49 @@ export class AsaasClient {
     return { id: raw.id, walletId: raw.walletId, apiKey: raw.apiKey ?? raw.accessToken?.apiKey ?? null };
   }
 
+  /**
+   * Subaccounts of the root account filtered by CPF/CNPJ (digits). The filter is Asaas', so the
+   * caller must still compare `cpfCnpj` of each item; it is not known whether it matches partially.
+   */
+  async listAccounts(filter: { cpfCnpj: string; offset?: number; limit?: number }): Promise<AsaasList<AsaasAccountSummary>> {
+    const query = new URLSearchParams({
+      cpfCnpj: filter.cpfCnpj, offset: String(filter.offset ?? 0), limit: String(Math.min(filter.limit ?? 100, 100)),
+    });
+    return normalizeList(await this.request('GET', `/accounts?${query}`));
+  }
+
+  /**
+   * New API key of a subaccount (POST /v3/accounts/{id}/accessTokens), shown once. Needs the ROOT
+   * key, subaccount key management enabled in the Asaas panel and the egress IP whitelisted; when
+   * one is missing Asaas answers 401/403 (AsaasError). `apiKey` is null if the response has none.
+   */
+  async createAccessToken(
+    accountId: string,
+    input: { name?: string; expirationDate?: string } = {},
+  ): Promise<{ id: string | null; apiKey: string | null }> {
+    const raw = await this.request<{ id?: string; apiKey?: string; accessToken?: { apiKey?: string } }>(
+      'POST',
+      `/accounts/${encodeURIComponent(accountId)}/accessTokens`,
+      input,
+    );
+    return { id: raw.id ?? null, apiKey: raw.apiKey ?? raw.accessToken?.apiKey ?? null };
+  }
+
+  /** One page of the webhooks of the account that owns the key (max 100 per page). */
+  async listWebhooks(page: { offset?: number; limit?: number } = {}): Promise<AsaasList<AsaasWebhook>> {
+    const query = new URLSearchParams({ offset: String(page.offset ?? 0), limit: String(Math.min(page.limit ?? 100, 100)) });
+    return normalizeList(await this.request('GET', `/webhooks?${query}`));
+  }
+
+  /** Asaas allows 10 webhooks per account; a given authToken is returned only if Asaas generated it. */
+  createWebhook(input: AsaasWebhookConfig): Promise<AsaasWebhook> {
+    return this.request('POST', '/webhooks', input);
+  }
+
+  updateWebhook(webhookId: string, input: UpdateWebhookInput): Promise<AsaasWebhook> {
+    return this.request('PUT', `/webhooks/${encodeURIComponent(webhookId)}`, input);
+  }
+
   createSubscription(input: CreateSubscriptionInput): Promise<AsaasSubscription> {
     return this.request('POST', '/subscriptions', input);
   }
@@ -250,6 +332,10 @@ export class AsaasClient {
   deleteSubscription(subscriptionId: string): Promise<{ deleted: boolean; id: string }> {
     return this.request('DELETE', `/subscriptions/${encodeURIComponent(subscriptionId)}`);
   }
+}
+
+function normalizeList<T>(raw: Partial<AsaasList<T>>): AsaasList<T> {
+  return { ...raw, hasMore: raw.hasMore === true, data: Array.isArray(raw.data) ? raw.data : [] };
 }
 
 async function orNullOn404<T>(call: Promise<T>): Promise<T | null> {

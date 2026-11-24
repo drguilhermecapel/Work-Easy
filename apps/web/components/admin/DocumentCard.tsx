@@ -37,7 +37,7 @@ const DocumentCard: React.FC<{ document: AdminDocument; onChanged: () => void }>
         <span className="text-xs text-gray-500">Enviado em {formatDateTime(doc.created_at)}</span>
       </div>
       <h3 className="font-semibold text-gray-900 break-words flex items-start gap-2">
-        <FileText size={16} className="shrink-0 mt-1 text-gray-400" aria-hidden="true" /> {label}
+        <FileText size={16} className="shrink-0 mt-1 text-gray-500" aria-hidden="true" /> {label}
       </h3>
       <p className="text-xs text-gray-500 break-all mt-0.5">{doc.storage_path.split('/').slice(1).join('/') || doc.storage_path}</p>
       {doc.expires_at && <p className="text-xs text-gray-500 mt-0.5">Validade informada: {formatDateBR(doc.expires_at)}</p>}
@@ -92,7 +92,10 @@ const DocumentCard: React.FC<{ document: AdminDocument; onChanged: () => void }>
             description={
               <>
                 <p>Use se o documento foi aceito por engano ou perdeu a validade. Ele passa a rejeitado e o prestador vê o motivo.</p>
-                <p>Uma ocupação que já foi aprovada com este documento continua aprovada: retire a aprovação dela se for o caso.</p>
+                <p>
+                  As ocupações aprovadas que precisavam deste documento perdem a aprovação automaticamente, a menos que outro documento aceito
+                  cubra a mesma etapa. Para voltar a aprovar, use Aprovar ocupação.
+                </p>
               </>
             }
             reason="required"

@@ -4,3 +4,10 @@ Disallow: /entrar
 Disallow: /conta
 Disallow: /pedido
 Disallow: /dashboard
+Disallow: /atendimentos
+Disallow: /cuidado
+Disallow: /admin
+Disallow: /pro/
+Disallow: /pro$
+Disallow: /orcamento/
+Disallow: /search

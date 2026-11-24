@@ -41,7 +41,14 @@ describe('health data guard', () => {
 describe('care errors', () => {
   it('translates the rules lib/errors does not know', () => {
     expect(careError(dbRule('checkin_window')).message).toMatch(/2 horas antes a 2 horas depois do início/);
-    expect(careError(dbRule('offer_limit')).message).toMatch(/no máximo 10 cuidadores por plantão e 30 ofertas novas por dia/);
+    expect(careError(dbRule('offer_limit')).message).toMatch(/no máximo 10 cuidadores por plantão e 30 ofertas em 24 horas/);
+  });
+
+  it('translates the rules of shifts, offers and households with the sentence of lib/errors', () => {
+    expect(careError(dbRule('shift_too_long')).message).toBe('Um plantão pode durar no máximo 60 dias corridos. Para um período maior, crie um plantão para cada trecho.');
+    expect(careError(dbRule('offer_declined')).message).toBe('Este cuidador recusou este plantão e não pode ser convidado de novo.');
+    expect(careError(dbRule('household_has_shifts')).message).toMatch(/^Esta casa tem plantões e não pode ser apagada\./);
+    expect(careError(dbRule('household_has_shifts')).code).toBe('household_has_shifts');
   });
 
   it('lets an operation say what a rule means for it', () => {
@@ -104,6 +111,18 @@ describe('shift period typed in São Paulo time', () => {
     const period = toShiftPeriod('2030-01-15', '19:00', '07:00');
     expect(period?.start.toISOString()).toBe('2030-01-15T22:00:00.000Z');
     expect(period?.end.toISOString()).toBe('2030-01-16T10:00:00.000Z');
+  });
+
+  it('accepts 23h59, the longest shift when times are typed to the minute', () => {
+    const period = toShiftPeriod('2030-01-15', '08:00', '07:59');
+    expect(period?.start.toISOString()).toBe('2030-01-15T11:00:00.000Z');
+    expect(period?.end.toISOString()).toBe('2030-01-16T10:59:00.000Z');
+    expect((period!.end.getTime() - period!.start.getTime()) / 3_600_000).toBeCloseTo(23 + 59 / 60, 10);
+  });
+
+  it('refuses an end equal to the start, which would be a shift of zero or of 24 hours', () => {
+    expect(toShiftPeriod('2030-01-15', '08:00', '08:00')).toBeNull();
+    expect(toShiftPeriod('2030-01-15', '00:00', '00:00')).toBeNull();
   });
 
   it('rejects missing or malformed values', () => {

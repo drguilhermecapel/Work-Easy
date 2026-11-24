@@ -1,6 +1,6 @@
 import {
   asaasClient, audit, authenticate, config, findOpenPayment, hasPaidPayment, insertPayment, logError, markPaymentCanceled, must, now,
-  readSecret, serve,
+  readProviderAccount, readSecret, serve,
 } from '../_runtime/supabase.ts';
 import {
   type ChargesCreateDeps, handler, type OwnBooking, type ProviderClient, type ProviderQuote,
@@ -18,10 +18,8 @@ const deps: ChargesCreateDeps = {
     const { db, user } = caller;
     return {
       user,
-      async getProvider() {
-        return must(await db.from('providers').select('id, plan').eq('id', user.id).maybeSingle()) as
-          | { id: string; plan: string }
-          | null;
+      getProvider() {
+        return readProviderAccount(db, user.id);
       },
       async getBooking(id) {
         return must(
@@ -36,14 +34,18 @@ const deps: ChargesCreateDeps = {
         return must(
           await db
             .from('quotes')
-            .select('id, provider_id, provider_client_id, client_name, client_phone, title, total_cents, status')
+            .select('id, provider_id, provider_client_id, title, total_cents, status')
             .eq('id', id)
             .maybeSingle(),
         ) as ProviderQuote | null;
       },
       async getProviderClient(id) {
         return must(
-          await db.from('provider_clients').select('name, phone, email, client_id').eq('id', id).maybeSingle(),
+          await db
+            .from('provider_clients')
+            .select('provider_id, name, phone, email, cpf_cnpj, client_id')
+            .eq('id', id)
+            .maybeSingle(),
         ) as ProviderClient | null;
       },
     };

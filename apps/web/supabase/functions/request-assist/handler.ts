@@ -2,11 +2,19 @@
 // draft { occupation_slug, urgent, summary } with Claude on the server. The
 // occupation is chosen only among catalog candidates and validated again
 // here. Without ANTHROPIC_API_KEY the function answers 503. Every call costs
-// money on the platform's account, so each user gets `hourlyLimit` calls per
-// hour (429 above it). The quota is taken atomically in the database
-// (take_assist_quota: one counter per user and clock hour) before the model is
-// called, so a burst of simultaneous requests cannot pass the limit.
+// money on the platform's account, so each user gets `hourlyLimit` calls in any
+// 60-minute window (429 above it). The quota is taken atomically in the database
+// (take_assist_quota: the calls granted to the user in the last 60 minutes) before
+// the model is called, so a burst of simultaneous requests cannot pass the limit.
+//
+// Off by default: the text leaves the platform for a third-party model, so the
+// function answers 503 feature_disabled until platform_settings holds
+// `request_assist_enabled` as JSON true (an admin sets it with admin_set_setting).
+// A missing key or any other value keeps it off. While on, the text reaches the
+// model only after redactPersonalData (redact.ts): no CPF, CNPJ, phone, e-mail,
+// link or CEP.
 
+import { AI_CONSENT_REQUIRED_MESSAGE, type AiUsage } from '../_shared/ai-model.ts';
 import {
   ASSIST_SYSTEM_PROMPT, AssistOutputError, assistSchema, buildAssistUserMessage, type OccupationCandidate,
   parseAssistOutput, rankOccupations, TEXT_MAX, TEXT_MIN,
@@ -14,6 +22,10 @@ import {
 import { type AuthUser, type BaseDeps, corsOf, validated } from '../_shared/handler-kit.ts';
 import { errors, HttpError, readJson, route } from '../_shared/http.ts';
 import { object, string } from '../_shared/validate.ts';
+import { redactPersonalData } from './redact.ts';
+
+/** platform_settings.request_assist_enabled: only the JSON boolean true turns the assistant on. */
+export const requestAssistSwitchOn = (value: unknown): boolean => value === true;
 
 export interface ClassifyRequest {
   system: string;
@@ -26,19 +38,15 @@ export type ClassifyResult =
   | { kind: 'refusal' }
   | { kind: 'incomplete'; reason: string };
 
-export interface AssistUsage {
-  /**
-   * Consumes one call of the current hour for `userId` (take_assist_quota). Resolves false,
-   * without consuming anything, when `limit` calls were already made this hour. A database
-   * failure rejects: the model is never called without a granted quota.
-   */
-  take(userId: string, limit: number): Promise<boolean>;
-}
+/** The same quota and consent rule of the other assistants (see AiUsage). */
+export type AssistUsage = AiUsage;
 
 export interface AssistDeps extends BaseDeps {
+  /** platform_settings.request_assist_enabled is true (see requestAssistSwitchOn). A read failure rejects: nothing is sent. */
+  featureEnabled(): Promise<boolean>;
   /** Null when ANTHROPIC_API_KEY is not set. */
   classify: ((request: ClassifyRequest) => Promise<ClassifyResult>) | null;
-  /** Calls per user per hour (ASSIST_HOURLY_LIMIT). */
+  /** Calls per user in any 60-minute window (ASSIST_HOURLY_LIMIT). */
   hourlyLimit: number;
   usage: AssistUsage;
   session(req: Request): Promise<{ user: AuthUser; listOccupations(): Promise<OccupationCandidate[]> } | null>;
@@ -48,18 +56,27 @@ const Body = object({ text: string({ min: TEXT_MIN, max: TEXT_MAX }) });
 
 export function handler(req: Request, deps: AssistDeps): Promise<Response> {
   return route(req, { methods: ['POST'], ...corsOf(deps), onError: deps.logError }, async () => {
+    // Checked first: while the switch is off, no session, quota or model call happens
+    if (!(await deps.featureEnabled())) {
+      throw new HttpError(503, 'feature_disabled', 'O assistente de pedidos está desligado nesta plataforma. Preencha o pedido manualmente.');
+    }
     const session = await deps.session(req);
     if (!session) throw errors.unauthorized();
     const classify = deps.classify;
     if (!classify) {
       throw new HttpError(503, 'assist_not_configured', 'O assistente de pedidos depende de configuração no servidor (ANTHROPIC_API_KEY).');
     }
-    const { text } = validated(Body, await readJson(req));
+    // What the model receives: the text without contact and document numbers
+    const text = redactPersonalData(validated(Body, await readJson(req)).text);
 
+    // Consent first, like the other assistants: without the recorded agreement nothing is sent and no quota is spent
+    if (deps.hourlyLimit >= 1 && !(await deps.usage.consented(session.user.id))) {
+      throw new HttpError(403, 'assist_consent_required', AI_CONSENT_REQUIRED_MESSAGE);
+    }
     if (deps.hourlyLimit < 1 || !(await deps.usage.take(session.user.id, deps.hourlyLimit))) {
       throw errors.tooMany(
         'assist_rate_limited',
-        'Você atingiu o limite de pedidos organizados pelo assistente nesta hora. Tente de novo mais tarde ou preencha o pedido manualmente.',
+        'Você atingiu o limite de pedidos organizados pelo assistente nos últimos 60 minutos. Tente de novo mais tarde ou preencha o pedido manualmente.',
       );
     }
 

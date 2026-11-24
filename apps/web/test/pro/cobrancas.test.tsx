@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { baseTables, functionData, functionError, ok, providerRow, signInProvider, type ProFake, type Result } from './fake';
+import { PAYMENT_METHOD_LABELS, PAYMENT_STATUS_LABELS } from '../../components/pro/labels';
+import { blobHead, blobText, captureDownloads } from './download';
+import { baseTables, functionData, functionError, ok, providerRow, signInProvider, type ProFake, type Result, type TableCall } from './fake';
 
 vi.mock('../../lib/supabase', async () => {
   const { createProFake } = await import('./fake');
@@ -73,6 +75,11 @@ const PAYMENT = {
   created_at: '2030-01-05T12:00:00Z',
 };
 
+const CLIENTS = [
+  { id: 'cli-1', client_id: null, name: 'Carlos Dias', phone: '+5511987654321', email: null, notes: null, origin: 'own', created_at: '2026-10-01T00:00:00Z', cpf_cnpj: null },
+  { id: 'cli-2', client_id: null, name: 'Ana Souza', phone: null, email: null, notes: null, origin: 'own', created_at: '2026-10-02T00:00:00Z', cpf_cnpj: '52998224725' },
+];
+
 let account: string | null;
 
 const setup = (provider: ReturnType<typeof providerRow>) => {
@@ -82,7 +89,12 @@ const setup = (provider: ReturnType<typeof providerRow>) => {
     payments: () => ok([PAYMENT, { ...PAYMENT, id: 'pay-00', amount_cents: 30000, status: 'received', pix_payload: null, invoice_url: null, quote_id: 'q-x', platform_fee_cents: 1200 }]),
     bookings: () => ok([BOOKING, { ...BOOKING, id: 'b-plat', origin: 'platform' }, { ...BOOKING, id: 'b-canceled', status: 'canceled' }]),
     quotes: () => ok([QUOTE, { ...QUOTE, id: 'q-draft', status: 'sent' }]),
-    provider_clients: () => ok([{ id: 'cli-1', client_id: null, name: 'Carlos Dias', phone: '+5511987654321', email: null, notes: null, origin: 'own', created_at: '2026-10-01T00:00:00Z' }]),
+    provider_clients: (call: TableCall) =>
+      call.op === 'insert'
+        ? ok({ id: 'cli-new', client_id: null, email: null, notes: null, origin: 'own', created_at: '2026-11-01T00:00:00Z', cpf_cnpj: null, ...(call.payload as object) })
+        : call.op === 'update'
+          ? ok({ id: 'cli-1', client_id: null, name: 'Carlos Dias', phone: '+5511987654321', email: null, notes: null, origin: 'own', created_at: '2026-10-01T00:00:00Z', ...(call.payload as object) })
+          : ok(CLIENTS),
   };
 };
 
@@ -150,32 +162,26 @@ describe('/pro/cobrancas: charging', () => {
     expect(within(select).getAllByRole('option')).toHaveLength(3);
   });
 
-  it('creates a Pix charge for an own booking and shows the copy-and-paste code, QR and invoice', async () => {
+  it('creates a Pix charge for an own booking: saves the document in the CRM, then sends no payer data', async () => {
     fake.functionsHandlers['charges-create'] = () => functionData(CHARGE);
     const user = userEvent.setup();
     renderPro('/pro/cobrancas?atendimento=b-1');
 
-    // Coming from the agenda: the booking is already chosen and the client's data filled in
+    // Coming from the agenda: the booking is already chosen and its CRM client is the payer
     expect(await screen.findByLabelText('O que cobrar')).toHaveValue('booking:b-1');
-    expect(screen.getByLabelText('Nome do cliente')).toHaveValue('Carlos Dias');
-    expect(screen.getByLabelText('Celular do cliente (opcional)')).toHaveValue('(11) 98765-4321');
+    expect(screen.getByText('Carlos Dias')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Cliente do seu CRM')).not.toBeInTheDocument();
 
     await user.type(screen.getByLabelText('CPF ou CNPJ do cliente'), VALID_CPF);
     fireEvent.change(screen.getByLabelText('Vencimento (opcional)'), { target: { value: '2030-01-16' } });
     await user.click(screen.getByRole('button', { name: 'Criar cobrança' }));
 
     expect(await screen.findByRole('heading', { name: 'Cobrança criada' })).toBeInTheDocument();
-    expect(fake.functionCalls).toEqual([
-      {
-        name: 'charges-create',
-        body: {
-          booking_id: 'b-1',
-          method: 'pix',
-          customer: { cpf_cnpj: '52998224725', name: 'Carlos Dias', phone: '+5511987654321' },
-          due_date: '2030-01-16',
-        },
-      },
-    ]);
+    const saved = fake.tableCalls.find(call => call.table === 'provider_clients' && call.op === 'update');
+    expect(saved?.payload).toEqual({ cpf_cnpj: '52998224725' });
+    // The payer's data lives in the CRM: the request names neither the document nor the client
+    expect(fake.functionCalls).toEqual([{ name: 'charges-create', body: { booking_id: 'b-1', method: 'pix', due_date: '2030-01-16' } }]);
+    expect(JSON.stringify(fake.functionCalls)).not.toMatch(/customer|cpf/);
     const result = screen.getByRole('heading', { name: 'Cobrança criada' }).closest('section') as HTMLElement;
     expect(within(result).getByLabelText('Pix copia e cola')).toHaveValue(PIX);
     expect(within(result).getByAltText('QR Code do Pix')).toHaveAttribute('src', 'data:image/png;base64,iVBORw0KGgo=');
@@ -187,38 +193,59 @@ describe('/pro/cobrancas: charging', () => {
     expect(await navigator.clipboard.readText()).toBe(PIX);
   });
 
-  it('charges an accepted quote and never sends card data (the card is paid on the Asaas page)', async () => {
+  it('charges an accepted quote with no CRM link by registering its client first, and never sends card data', async () => {
     fake.functionsHandlers['charges-create'] = () => functionData({ ...CHARGE, method: 'credit_card', pix: null, amount_cents: 450000, reused: true });
     const user = userEvent.setup();
     renderPro('/pro/cobrancas?orcamento=q-1');
     expect(await screen.findByLabelText('O que cobrar')).toHaveValue('quote:q-1');
     await user.selectOptions(screen.getByLabelText('Forma de pagamento'), 'credit_card');
+    await user.selectOptions(screen.getByLabelText('Cliente do seu CRM'), 'new');
     await user.type(screen.getByLabelText('CPF ou CNPJ do cliente'), '11.222.333/0001-81');
     await user.click(screen.getByRole('button', { name: 'Criar cobrança' }));
 
     expect(await screen.findByRole('heading', { name: 'Cobrança já existente' })).toBeInTheDocument();
     expect(screen.getByText(/O WorkEasy não recebe nem guarda dados de cartão/)).toBeInTheDocument();
-    expect(fake.functionCalls[0].body).toEqual({
-      quote_id: 'q-1',
-      method: 'credit_card',
-      customer: { cpf_cnpj: '11222333000181', name: 'Marta Lima' },
-    });
-    expect(JSON.stringify(fake.functionCalls)).not.toMatch(/card_number|cvv|creditCard/i);
+    const created = fake.tableCalls.find(call => call.table === 'provider_clients' && call.op === 'insert');
+    expect(created?.payload).toMatchObject({ name: 'Marta Lima', phone: null, cpf_cnpj: '11222333000181', provider_id: 'prov-1' });
+    expect(fake.functionCalls[0].body).toEqual({ quote_id: 'q-1', method: 'credit_card', provider_client_id: 'cli-new' });
+    expect(JSON.stringify(fake.functionCalls)).not.toMatch(/card_number|cvv|creditCard|customer|cpf/i);
     expect(screen.queryByLabelText(/número do cartão|cvv/i)).not.toBeInTheDocument();
   });
 
-  it('checks the target, the name and the document before calling the function', async () => {
+  it('lets an unlinked quote be charged to an existing CRM client that already has the document, without asking for it again', async () => {
+    fake.functionsHandlers['charges-create'] = () => functionData(CHARGE);
+    const user = userEvent.setup();
+    renderPro('/pro/cobrancas?orcamento=q-1');
+    await user.selectOptions(await screen.findByLabelText('Cliente do seu CRM'), 'cli-2');
+    expect(screen.getByLabelText('Trocar o CPF ou CNPJ (opcional)')).toHaveValue('');
+    await user.click(screen.getByRole('button', { name: 'Criar cobrança' }));
+
+    expect(await screen.findByRole('heading', { name: 'Cobrança criada' })).toBeInTheDocument();
+    expect(fake.tableCalls.filter(call => call.table === 'provider_clients' && call.op !== 'select')).toEqual([]);
+    expect(fake.functionCalls[0].body).toEqual({ quote_id: 'q-1', method: 'pix', provider_client_id: 'cli-2' });
+  });
+
+  it('checks the target, the payer and the document before calling the function', async () => {
     const user = userEvent.setup();
     renderPro('/pro/cobrancas');
     await screen.findByLabelText('O que cobrar');
     await user.click(screen.getByRole('button', { name: 'Criar cobrança' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Escolha o atendimento ou o orçamento a cobrar.');
 
+    // A quote without a CRM link needs the payer to be chosen
+    await user.selectOptions(screen.getByLabelText('O que cobrar'), 'quote:q-1');
+    await user.click(screen.getByRole('button', { name: 'Criar cobrança' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Escolha o cliente que paga.');
+
+    // A client with no stored document needs one, and it has to be a valid CPF or CNPJ
     await user.selectOptions(screen.getByLabelText('O que cobrar'), 'booking:b-1');
+    await user.click(screen.getByRole('button', { name: 'Criar cobrança' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Informe o CPF ou CNPJ para continuar.');
     await user.type(screen.getByLabelText('CPF ou CNPJ do cliente'), '123.456.789-00');
     await user.click(screen.getByRole('button', { name: 'Criar cobrança' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Informe um CPF ou CNPJ válido do cliente.');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Informe um CPF ou CNPJ válido.');
     expect(fake.functionCalls).toEqual([]);
+    expect(fake.tableCalls.filter(call => call.table === 'provider_clients' && call.op === 'update')).toEqual([]);
   });
 
   it.each<[label: string, answer: Result, message: RegExp]>([
@@ -227,6 +254,7 @@ describe('/pro/cobrancas: charging', () => {
     ['provider_payment_account_missing', functionError(409, 'provider_payment_account_missing'), /Ative o recebimento em Assinatura/],
     ['booking_not_chargeable', functionError(409, 'booking_not_chargeable'), /não pode ser cobrado na situação atual/],
     ['already_paid', functionError(409, 'already_paid'), /Este item já foi pago/],
+    ['customer_document_missing', functionError(409, 'customer_document_missing'), /Cadastre o CPF ou CNPJ do cliente no CRM/],
   ])('translates %s', async (_label, answer, message) => {
     fake.functionsHandlers['charges-create'] = () => answer;
     const user = userEvent.setup();
@@ -257,5 +285,54 @@ describe('/pro/cobrancas: charging', () => {
     expect(await screen.findByText(/Nada a cobrar por aqui ainda/)).toBeInTheDocument();
     expect(await screen.findByText(/Nenhuma cobrança ainda/)).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByRole('form', { name: 'Nova cobrança' })).not.toBeInTheDocument());
+  });
+});
+
+describe('/pro/cobrancas: invoice shortcut and CSV export', () => {
+  it('links a received payment to the national NFS-e issuer and says the app does not issue invoices', async () => {
+    setup(providerRow({ plan: 'pro' }));
+    renderPro('/pro/cobrancas');
+    const links = await screen.findAllByRole('link', { name: 'Emitir nota fiscal (NFS-e)' });
+    expect(links).toHaveLength(1);
+    expect(links[0]).toHaveAttribute('href', 'https://www.nfse.gov.br/EmissorNacional');
+    expect(links[0]).toHaveAttribute('target', '_blank');
+    expect(links[0]).toHaveAttribute('rel', expect.stringContaining('noopener'));
+    expect(links[0].closest('li')).toHaveTextContent(/R\$\s300,00/);
+    expect(screen.getByText(/O WorkEasy não emite nota fiscal/)).toBeInTheDocument();
+  });
+
+  it('offers no invoice shortcut while nothing was received', async () => {
+    setup(providerRow({ plan: 'pro' }));
+    fake.tables.payments = () => ok([PAYMENT]);
+    renderPro('/pro/cobrancas');
+    expect((await screen.findAllByText('Aguardando pagamento')).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('link', { name: /NFS-e/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/O WorkEasy não emite nota fiscal/)).not.toBeInTheDocument();
+  });
+
+  it('exports the charges as a CSV file that opens in Excel', async () => {
+    const downloads = captureDownloads();
+    const user = userEvent.setup();
+    setup(providerRow({ plan: 'pro' }));
+    renderPro('/pro/cobrancas');
+    await user.click(await screen.findByRole('button', { name: 'Exportar CSV' }));
+
+    expect(downloads).toHaveLength(1);
+    expect(downloads[0].filename).toMatch(/^cobrancas-workeasy-\d{4}-\d{2}-\d{2}\.csv$/);
+    expect(downloads[0].blob.type).toBe('text/csv;charset=utf-8');
+    expect(await blobHead(downloads[0].blob)).toEqual([0xef, 0xbb, 0xbf]);
+    const lines = (await blobText(downloads[0].blob)).split('\r\n');
+    expect(lines[0]).toBe('Criada em;Origem;Forma de pagamento;Valor (R$);Situação;Vencimento;Taxa da plataforma (R$)');
+    expect(lines).toContain(`05/01/2030;Atendimento;${PAYMENT_METHOD_LABELS.pix};90,00;${PAYMENT_STATUS_LABELS.pending};10/01/2030;0,00`);
+    expect(lines).toContain(`05/01/2030;Orçamento;${PAYMENT_METHOD_LABELS.pix};300,00;${PAYMENT_STATUS_LABELS.received};10/01/2030;12,00`);
+    expect(lines).toHaveLength(4); // header, two charges, the empty piece after the last line break
+  });
+
+  it('has nothing to export without charges', async () => {
+    setup(providerRow({ plan: 'pro' }));
+    fake.tables.payments = () => ok([]);
+    renderPro('/pro/cobrancas');
+    expect(await screen.findByText(/Nenhuma cobrança ainda/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Exportar CSV' })).not.toBeInTheDocument();
   });
 });

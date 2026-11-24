@@ -1,5 +1,5 @@
 import {
-  asaasClient, audit, authenticate, config, DbError, logError, must, now, serve, serviceClient, storeSecret,
+  asaasClient, audit, authenticate, config, DbError, logError, must, now, readProviderAccount, serve, serviceClient, storeSecret,
 } from '../_runtime/supabase.ts';
 import { isUniqueViolation } from '../_shared/handler-kit.ts';
 import { handler, type OnboardDeps, type PaymentAccount } from './handler.ts';
@@ -15,15 +15,14 @@ const deps: OnboardDeps = {
   asaas: asaasClient(),
   webhookUrl: config.supabaseUrl ? `${config.supabaseUrl.replace(/\/+$/, '')}/functions/v1/asaas-webhook` : null,
   webhookToken: config.asaas.webhookToken,
+  trialDocumentSecret: config.asaas.trialDocumentSecret,
   async session(req) {
     const caller = await authenticate(req);
     if (!caller) return null;
     return {
       user: caller.user,
-      async getProvider() {
-        return must(
-          await caller.db.from('providers').select('id, display_name').eq('id', caller.user.id).maybeSingle(),
-        ) as { id: string; display_name: string | null } | null;
+      getProvider() {
+        return readProviderAccount(caller.db, caller.user.id);
       },
     };
   },
@@ -36,6 +35,17 @@ const deps: OnboardDeps = {
           .eq('provider_id', providerId)
           .maybeSingle(),
       ) as PaymentAccount | null;
+    },
+    async accountLinkedToOther(asaasAccountId, providerId) {
+      const rows = must(
+        await serviceClient()
+          .from('provider_payment_accounts')
+          .select('provider_id')
+          .eq('asaas_account_id', asaasAccountId)
+          .neq('provider_id', providerId)
+          .limit(1),
+      ) as unknown[] | null;
+      return (rows?.length ?? 0) > 0;
     },
     async claimOnboarding(providerId) {
       const db = serviceClient();
@@ -56,7 +66,7 @@ const deps: OnboardDeps = {
           .lt('created_at', stale)
           .select('provider_id'),
       ) as unknown[] | null;
-      return (taken?.length ?? 0) > 0;
+      return (taken?.length ?? 0) > 0 ? 'resumed' : false;
     },
     async releaseOnboarding(providerId) {
       must(

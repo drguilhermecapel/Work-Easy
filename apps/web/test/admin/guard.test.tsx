@@ -35,12 +35,13 @@ describe('route guard of /admin (backend)', () => {
 
   it('guards every section, not only the panel', async () => {
     resetWorld({ isAdmin: false });
-    for (const path of ['/admin/configuracoes', '/admin/auditoria', '/admin/pagamentos', '/admin/lgpd', '/admin/disputas']) {
+    for (const path of ['/admin/configuracoes', '/admin/auditoria', '/admin/pagamentos', '/admin/lgpd', '/admin/disputas', '/admin/denuncias']) {
       const view = renderAdmin(path);
       expect(await screen.findByRole('heading', { name: 'Acesso restrito' })).toBeInTheDocument();
       view.unmount();
     }
-    expect(fake.rpcCalls.every(call => call.name === 'is_admin')).toBe(true);
+    // care_access is the menu's own question (is the care line listed for this account?), not an admin read
+    expect(fake.rpcCalls.every(call => call.name === 'is_admin' || call.name === 'care_access')).toBe(true);
     expect(queried('platform_settings')).toBe(false);
     expect(queried('audit_log')).toBe(false);
   });

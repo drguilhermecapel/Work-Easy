@@ -66,7 +66,7 @@ const ShiftItem: React.FC<{
           (shift.status === 'open' || shift.status === 'offered') && <p className="text-sm text-gray-600">{offersSummary(offers)}</p>
         )}
       </div>
-      <ChevronRight size={18} className="text-gray-400 shrink-0" aria-hidden="true" />
+      <ChevronRight size={18} className="text-gray-500 shrink-0" aria-hidden="true" />
     </Link>
   </li>
 );

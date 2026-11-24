@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { KeyRound, Mail, Smartphone } from 'lucide-react';
 import { useAuth, type OtpTarget } from '../../contexts/AuthContext';
 import { backendEnabled } from '../../lib/supabase';
+import { features } from '../../config/features';
 import { safeNext } from '../../lib/navigation';
 import { formatPhoneBR, toE164BR } from '../../lib/phone';
 import { acceptCurrentTerms } from '../../services/account';
@@ -25,9 +26,11 @@ const Entrar: React.FC = () => {
   const [params] = useSearchParams();
   const next = safeNext(params.get('next'));
 
-  const [channel, setChannel] = useState<Channel>('email');
+  const methods = features.loginMethods;
+  const [channel, setChannel] = useState<Channel>(methods[0] ?? 'email');
   const [contact, setContact] = useState('');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [declaredAge, setDeclaredAge] = useState(false);
   const [target, setTarget] = useState<OtpTarget | null>(null);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
@@ -99,12 +102,12 @@ const Entrar: React.FC = () => {
     else navigate(next, { replace: true });
   };
 
-  /** The box was checked before sending the code; the acceptance is recorded once the session exists. */
+  /** The boxes were checked before sending the code; the acceptance is recorded once the session exists. */
   const recordTerms = async (userId: string) => {
     setError(null);
     setBusy(true);
     try {
-      await acceptCurrentTerms(userId);
+      await acceptCurrentTerms(userId, { ageDeclared: declaredAge });
       setConsentUserId(null);
       navigate(next, { replace: true });
     } catch (err) {
@@ -155,13 +158,14 @@ const Entrar: React.FC = () => {
               Receba um código de 6 dígitos para entrar ou criar sua conta. Não há senha.
             </p>
 
-            <div role="group" aria-label="Receber o código por" className="grid grid-cols-2 gap-2 bg-gray-100 rounded-xl p-1">
+            {/* One way of signing in needs no choice (VITE_LOGIN_METHODS) */}
+            {methods.length > 1 && <div role="group" aria-label="Receber o código por" className="grid grid-cols-2 gap-2 bg-gray-100 rounded-xl p-1">
               {(
                 [
                   ['email', 'E-mail', Mail],
                   ['phone', 'Celular', Smartphone],
                 ] as const
-              ).map(([value, label, Icon]) => (
+              ).filter(([value]) => methods.includes(value)).map(([value, label, Icon]) => (
                 <button
                   key={value}
                   type="button"
@@ -172,13 +176,13 @@ const Entrar: React.FC = () => {
                     setError(null);
                   }}
                   className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium ${
-                    channel === value ? 'bg-white shadow-sm text-primary' : 'text-gray-500'
+                    channel === value ? 'bg-white shadow-sm text-primary' : 'text-gray-600'
                   }`}
                 >
                   <Icon size={16} aria-hidden="true" /> {label}
                 </button>
               ))}
-            </div>
+            </div>}
 
             <div>
               <label htmlFor="entrar-contato" className="block text-sm font-medium text-gray-700 mb-1">
@@ -194,7 +198,8 @@ const Entrar: React.FC = () => {
                 value={contact}
                 onChange={e => setContact(e.target.value)}
                 required
-                aria-describedby={channel === 'phone' ? 'entrar-sms-nota' : undefined}
+                aria-invalid={error ? true : undefined}
+                aria-describedby={[channel === 'phone' ? 'entrar-sms-nota' : '', error ? 'entrar-erro' : ''].filter(Boolean).join(' ') || undefined}
               />
               {channel === 'phone' && (
                 <p id="entrar-sms-nota" className="text-xs text-gray-500 mt-1">
@@ -214,20 +219,29 @@ const Entrar: React.FC = () => {
               />
               <span>
                 Li e aceito os{' '}
-                <Link to="/legal" className="text-primary underline">
+                <Link to="/termos" className="text-primary underline">
                   Termos de Uso
                 </Link>{' '}
                 e a{' '}
-                <Link to="/legal" className="text-primary underline">
+                <Link to="/privacidade" className="text-primary underline">
                   Política de Privacidade
                 </Link>
                 .
               </span>
             </label>
 
-            <ErrorAlert error={error} />
+            <label className="flex items-start gap-2 text-sm text-gray-700">
+              <input type="checkbox" className="mt-1" checked={declaredAge} onChange={e => setDeclaredAge(e.target.checked)} />
+              <span>Declaro que tenho 18 anos completos.</span>
+            </label>
 
-            <button type="submit" className={primaryButton} disabled={busy || !acceptedTerms || contact.trim() === ''}>
+            <ErrorAlert id="entrar-erro" error={error} />
+
+            <button
+              type="submit"
+              className={primaryButton}
+              disabled={busy || !acceptedTerms || !declaredAge || contact.trim() === ''}
+            >
               {busy ? 'Enviando…' : 'Enviar código'}
             </button>
           </form>
@@ -251,10 +265,13 @@ const Entrar: React.FC = () => {
                 value={code}
                 onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 required
+                autoFocus
+                aria-invalid={error ? true : undefined}
+                aria-describedby={error ? 'entrar-codigo-erro' : undefined}
               />
             </div>
 
-            <ErrorAlert error={error} />
+            <ErrorAlert id="entrar-codigo-erro" error={error} />
             {resent && !error && (
               <p role="status" className="text-sm text-green-700">
                 Enviamos um novo código.

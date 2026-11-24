@@ -3,7 +3,7 @@ import { Link, useLocation, useParams } from 'react-router-dom';
 import { CheckCircle2, ChevronLeft, Clock } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { backendEnabled } from '../../lib/supabase';
-import { todayInSaoPaulo } from '../../lib/timezone';
+import { formatDateBR, lastBookableDayInSaoPaulo, todayInSaoPaulo } from '../../lib/timezone';
 import type { Period } from '../../lib/tstzrange';
 import { useAsync } from '../../lib/useAsync';
 import { NOTES_MAX, availableSlots, bookDirect, getProviderPage, type PageService, type ProviderPage } from '../../services/discovery';
@@ -32,7 +32,10 @@ const BookingForm: React.FC<{ page: ProviderPage; userId: string | null }> = ({ 
 
   const service: PageService | undefined = services.find(s => s.id === serviceId);
   const duration = service?.duration_minutes ?? DEFAULT_DURATION;
-  const ready = service !== undefined && day !== '';
+  // A day past the one-year horizon has no slots in the database, so it is not asked for
+  const lastDay = lastBookableDayInSaoPaulo();
+  const beyondLastDay = day > lastDay;
+  const ready = service !== undefined && day !== '' && !beyondLastDay;
   const slots = useAsync(
     () => (ready ? availableSlots(provider.id, day, duration) : Promise.resolve([] as Period[])),
     ready ? `${provider.id}:${day}:${duration}` : 'idle',
@@ -110,16 +113,24 @@ const BookingForm: React.FC<{ page: ProviderPage; userId: string | null }> = ({ 
             id="agendar-dia"
             type="date"
             min={todayInSaoPaulo()}
+            max={lastDay}
             className={inputClass}
             value={day}
+            aria-invalid={beyondLastDay || undefined}
+            aria-describedby={beyondLastDay ? 'agendar-dia-limite' : undefined}
             onChange={e => {
               setDay(e.target.value);
               setChosen(null);
             }}
           />
+          {beyondLastDay && (
+            <p id="agendar-dia-limite" className="mt-2 text-sm text-red-700">
+              Só é possível agendar até {formatDateBR(lastDay)}, um ano à frente.
+            </p>
+          )}
         </div>
         <p className="text-xs text-gray-500">Horário de Brasília.{service && !service.duration_minutes && ' Sem duração cadastrada: mostramos horários de 1 hora.'}</p>
-        {!ready && <p className="text-sm text-gray-500">Escolha o serviço e o dia para ver os horários livres.</p>}
+        {!ready && !beyondLastDay && <p className="text-sm text-gray-500">Escolha o serviço e o dia para ver os horários livres.</p>}
         {ready && slots.loading && !slots.data && <PageStatus text="Buscando horários…" />}
         {ready && slots.data && slots.data.length === 0 && (
           <p className="text-sm text-gray-600 bg-gray-50 border border-gray-100 rounded-xl p-3">

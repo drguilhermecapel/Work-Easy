@@ -1,5 +1,7 @@
+import { features } from '../../config/features';
 import React, { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { Download } from 'lucide-react';
 import { findOccupation } from '../../catalog';
 import { AppError } from '../../lib/errors';
 import { formatCents } from '../../lib/money';
@@ -8,23 +10,33 @@ import { useAsync } from '../../lib/useAsync';
 import { createCharge, listMyPayments, type ChargeResult, type PaymentMethod, type PaymentRow } from '../../services/charges';
 import { getMyPaymentAccount } from '../../services/proBilling';
 import { listMyBookings, type BookingView } from '../../services/proAgenda';
-import { listClients } from '../../services/proClients';
+import { listClients, saveClient, saveClientDocument } from '../../services/proClients';
 import { formatPeriodBR } from '../../services/proFormat';
 import { listQuotes, type QuoteRow } from '../../services/quotes';
 import { formatPhoneBR } from '../../lib/phone';
+import { csvFileName, downloadCsv, paymentsCsv } from '../../services/proExport';
 import ErrorAlert from '../../components/ErrorAlert';
 import PageStatus from '../../components/PageStatus';
+import { NfseLink, NfseNote } from '../../components/pro/Nfse';
 import PixBox from '../../components/pro/PixBox';
 import ProPage from '../../components/pro/ProPage';
 import { useProvider } from '../../components/pro/proContext';
 import { PAYMENT_METHOD_LABELS, PAYMENT_STATUS_LABELS, PAYMENT_STATUS_STYLES, PROVIDER_STATUS_HELP } from '../../components/pro/labels';
 import { Badge, Card, EmptyState, Field, SectionTitle } from '../../components/pro/ui';
-import { inputClass, linkClass, primaryButton } from '../../components/pro/styles';
+import { inputClass, linkClass, primaryButton, secondaryButton } from '../../components/pro/styles';
 
 const CHARGEABLE: BookingView['status'][] = ['accepted', 'in_progress', 'completed'];
 /** Payments where the money came in: the item must not be charged again (charges-create refuses it too). */
 const PAID: PaymentRow['status'][] = ['confirmed', 'received', 'held', 'released'];
 const METHODS: PaymentMethod[] = ['pix', 'boleto', 'credit_card', 'undefined'];
+/** Payments the provider received: the service can be invoiced (the app only links to the issuer, it never issues). */
+const INVOICEABLE: PaymentRow['status'][] = ['confirmed', 'received', 'released'];
+
+const exportPayments = (payments: PaymentRow[]) =>
+  downloadCsv(
+    csvFileName('cobrancas', todayInSaoPaulo()),
+    paymentsCsv(payments, { method: PAYMENT_METHOD_LABELS, status: PAYMENT_STATUS_LABELS }),
+  );
 
 const load = async (providerId: string) => {
   const [payments, account, bookings, quotes, clients] = await Promise.all([
@@ -57,43 +69,43 @@ const ChargeResultCard: React.FC<{ result: ChargeResult }> = ({ result }) => (
       <Badge className={PAYMENT_STATUS_STYLES[result.status]}>{PAYMENT_STATUS_LABELS[result.status]}</Badge>
     </p>
     {result.reused && <p className="text-xs text-gray-500">Já havia uma cobrança aberta para este item; ela foi mantida.</p>}
-    <PixBox idPrefix="nova" pixPayload={result.pix?.payload ?? null} pixQrCode={result.pix?.qr_code_base64 ?? null} invoiceUrl={result.invoice_url} />
+    <PixBox idPrefix="nova" pixPayload={result.pix?.payload ?? null} pixQrCode={result.pix?.qr_code_base64 ?? null} invoiceUrl={result.invoice_url} amountCents={result.amount_cents} />
     {result.method === 'credit_card' && (
       <p className="text-xs text-gray-500">O cliente paga o cartão na página do Asaas. O WorkEasy não recebe nem guarda dados de cartão.</p>
     )}
   </Card>
 );
 
-const ChargeForm: React.FC<{ data: Data; initialTarget: string; onCreated: () => void }> = ({ data, initialTarget, onCreated }) => {
-  const clientName = (id: string | null) => data.clients.find(client => client.id === id)?.name ?? '';
-  const clientPhone = (id: string | null) => formatPhoneBR(data.clients.find(client => client.id === id)?.phone);
-  const defaults = (target: string): { name: string; phone: string } => {
-    const [kind, id] = target.split(':');
-    if (kind === 'booking') {
-      const booking = data.bookings.find(item => item.id === id);
-      return { name: booking?.clientName ?? '', phone: clientPhone(booking?.provider_client_id ?? null) };
-    }
-    const quote = data.quotes.find(item => item.id === id);
-    return { name: quote?.client_name ?? clientName(quote?.provider_client_id ?? null), phone: formatPhoneBR(quote?.client_phone) || clientPhone(quote?.provider_client_id ?? null) };
-  };
+const NEW_CLIENT = 'new';
 
+const ChargeForm: React.FC<{ data: Data; initialTarget: string; onCreated: () => void }> = ({ data, initialTarget, onCreated }) => {
+  const { provider } = useProvider();
   const [target, setTarget] = useState(initialTarget);
   const [method, setMethod] = useState<PaymentMethod>('pix');
   const [dueDate, setDueDate] = useState('');
   const [description, setDescription] = useState('');
+  const [pickedClient, setPickedClient] = useState('');
   const [cpfCnpj, setCpfCnpj] = useState('');
-  const [name, setName] = useState(() => defaults(initialTarget).name);
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState(() => defaults(initialTarget).phone);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [result, setResult] = useState<ChargeResult | null>(null);
 
+  const [kind, targetId] = target.split(':');
+  const booking = kind === 'booking' ? data.bookings.find(item => item.id === targetId) : undefined;
+  const quote = kind === 'quote' ? data.quotes.find(item => item.id === targetId) : undefined;
+  // A booking or a quote linked to a CRM client keeps that client: the function refuses any other one
+  const linkedId = booking?.provider_client_id ?? quote?.provider_client_id ?? null;
+  const chosenId = linkedId ?? pickedClient;
+  const client = data.clients.find(item => item.id === chosenId) ?? null;
+  // An unlinked quote can register its own client in the CRM from the name and the phone it carries
+  const canCreate = Boolean(quote && !linkedId && quote.client_name?.trim());
+  const creating = chosenId === NEW_CLIENT;
+  const needsDocument = creating || !client?.cpf_cnpj;
+
   const pick = (value: string) => {
     setTarget(value);
-    const next = defaults(value);
-    setName(next.name);
-    setPhone(next.phone);
+    setPickedClient('');
+    setCpfCnpj('');
   };
 
   const submit = async (event: React.FormEvent) => {
@@ -102,18 +114,32 @@ const ChargeForm: React.FC<{ data: Data; initialTarget: string; onCreated: () =>
     setError(null);
     setResult(null);
     try {
-      const [kind, id] = target.split(':');
-      if (!id || (kind !== 'booking' && kind !== 'quote')) throw new AppError('invalid_input', { message: 'Escolha o atendimento ou o orçamento a cobrar.' });
-      if (!name.trim()) throw new AppError('invalid_input', { message: 'Informe o nome do cliente.' });
+      if (!targetId || (kind !== 'booking' && kind !== 'quote')) throw new AppError('invalid_input', { message: 'Escolha o atendimento ou o orçamento a cobrar.' });
+      if (!chosenId) throw new AppError('invalid_input', { message: 'Escolha o cliente que paga.' });
+      if (needsDocument && !cpfCnpj.trim()) throw new AppError('cpf_cnpj_required');
+      // The payer's name and document come from the CRM record: save the document there first
+      let clientId = chosenId;
+      if (creating) {
+        const created = await saveClient({
+          providerId: provider.id,
+          name: quote?.client_name ?? '',
+          phone: formatPhoneBR(quote?.client_phone),
+          cpfCnpj,
+        });
+        clientId = created.id;
+      } else if (cpfCnpj.trim()) {
+        await saveClientDocument(chosenId, cpfCnpj);
+      }
       setResult(
         await createCharge({
-          target: { kind, id },
+          target: { kind, id: targetId },
           method,
           dueDate,
           description,
-          customer: { cpfCnpj, name, email, phone },
+          providerClientId: linkedId ? undefined : clientId,
         }),
       );
+      setCpfCnpj('');
       onCreated();
     } catch (err) {
       setError(err);
@@ -176,20 +202,45 @@ const ChargeForm: React.FC<{ data: Data; initialTarget: string; onCreated: () =>
         </Field>
         <fieldset className="space-y-3 border border-gray-100 rounded-xl p-3">
           <legend className="text-sm font-medium text-gray-700 px-1">Quem paga</legend>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field id="cob-nome" label="Nome do cliente">
-              <input id="cob-nome" className={inputClass} value={name} onChange={e => setName(e.target.value)} />
+          {!target ? (
+            <p className="text-sm text-gray-500">Escolha o que cobrar para ver o cliente.</p>
+          ) : linkedId ? (
+            <p className="text-sm text-gray-700">
+              Cliente: <strong>{client?.name ?? 'cliente do seu CRM'}</strong>
+            </p>
+          ) : (
+            <Field id="cob-cliente" label="Cliente do seu CRM" hint="O orçamento ainda não está ligado a um cliente do CRM.">
+              <select id="cob-cliente" className={inputClass} value={pickedClient} onChange={e => setPickedClient(e.target.value)}>
+                <option value="">Escolha…</option>
+                {canCreate && <option value={NEW_CLIENT}>{`Cadastrar ${quote?.client_name?.trim()} no CRM`}</option>}
+                {data.clients.map(item => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
             </Field>
-            <Field id="cob-documento" label="CPF ou CNPJ do cliente" hint="O Asaas exige o documento para emitir a cobrança.">
+          )}
+          {Boolean(chosenId) && (
+            <Field
+              id="cob-documento"
+              label={needsDocument ? 'CPF ou CNPJ do cliente' : 'Trocar o CPF ou CNPJ (opcional)'}
+              hint={
+                needsDocument
+                  ? 'O Asaas exige o documento para emitir a cobrança. Ele fica salvo no cadastro do cliente.'
+                  : 'O documento deste cliente já está salvo. Preencha só se precisar corrigi-lo.'
+              }
+            >
               <input id="cob-documento" className={inputClass} inputMode="numeric" autoComplete="off" value={cpfCnpj} onChange={e => setCpfCnpj(e.target.value)} />
             </Field>
-            <Field id="cob-email" label="E-mail do cliente (opcional)">
-              <input id="cob-email" className={inputClass} type="email" value={email} onChange={e => setEmail(e.target.value)} />
-            </Field>
-            <Field id="cob-telefone" label="Celular do cliente (opcional)">
-              <input id="cob-telefone" className={inputClass} type="tel" value={phone} onChange={e => setPhone(e.target.value)} />
-            </Field>
-          </div>
+          )}
+          <p className="text-xs text-gray-500">
+            O nome, o e-mail e o celular de quem paga vêm do cadastro em{' '}
+            <Link to="/pro/clientes" className={linkClass}>
+              Clientes
+            </Link>
+            .
+          </p>
         </fieldset>
         <p className="text-xs text-gray-500">
           A cobrança é feita na sua conta de recebimento no Asaas, sem taxa do WorkEasy. Cartão e boleto são pagos na página do Asaas: dados de
@@ -223,9 +274,14 @@ const PaymentItem: React.FC<{ payment: PaymentRow }> = ({ payment }) => (
       <details className="mt-3">
         <summary className="cursor-pointer text-sm text-primary font-medium">Pix e link da fatura</summary>
         <div className="mt-3">
-          <PixBox idPrefix={`pag-${payment.id}`} pixPayload={payment.pix_payload} pixQrCode={payment.pix_qr_code} invoiceUrl={payment.invoice_url} />
+          <PixBox idPrefix={`pag-${payment.id}`} pixPayload={payment.pix_payload} pixQrCode={payment.pix_qr_code} invoiceUrl={payment.invoice_url} amountCents={payment.amount_cents} />
         </div>
       </details>
+    )}
+    {INVOICEABLE.includes(payment.status) && (
+      <p className="mt-2">
+        <NfseLink />
+      </p>
     )}
   </Card>
 );
@@ -265,9 +321,11 @@ const Charges: React.FC = () => {
                 <p className="text-sm text-gray-700">
                   Cobrar clientes seus por Pix, boleto ou cartão faz parte do plano Pro. Seu plano atual é o grátis.
                 </p>
-                <Link to="/pro/assinatura" className={`${primaryButton} mt-3`}>
-                  Ver o plano Pro
-                </Link>
+                {features.proSalesEnabled && (
+                  <Link to="/pro/assinatura" className={`${primaryButton} mt-3`}>
+                    Ver o plano Pro
+                  </Link>
+                )}
               </Card>
             ) : !data.data.accountActive ? (
               <Card>
@@ -285,7 +343,19 @@ const Charges: React.FC = () => {
             )}
           </section>
           <section aria-labelledby="cob-lista" className="space-y-3">
-            <SectionTitle id="cob-lista">Suas cobranças</SectionTitle>
+            <SectionTitle
+              id="cob-lista"
+              action={
+                data.data.payments.length > 0 ? (
+                  <button type="button" className={secondaryButton} onClick={() => exportPayments(data.data?.payments ?? [])}>
+                    <Download size={16} aria-hidden="true" /> Exportar CSV
+                  </button>
+                ) : undefined
+              }
+            >
+              Suas cobranças
+            </SectionTitle>
+            {data.data.payments.some(payment => INVOICEABLE.includes(payment.status)) && <NfseNote />}
             {data.data.payments.length === 0 ? (
               <EmptyState>Nenhuma cobrança ainda. Quando você criar uma, ou um cliente pagar pelo app, ela aparece aqui.</EmptyState>
             ) : (

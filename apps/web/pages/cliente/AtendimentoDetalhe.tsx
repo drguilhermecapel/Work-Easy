@@ -86,7 +86,7 @@ const BookingDetail: React.FC<{ id: string; userId: string }> = ({ id, userId })
           </p>
         )}
         <p className="text-sm text-gray-700 flex items-center gap-1.5">
-          <CalendarDays size={16} className="shrink-0 text-gray-400" aria-hidden="true" /> {formatPeriod(booking.when)}
+          <CalendarDays size={16} className="shrink-0 text-gray-500" aria-hidden="true" /> {formatPeriod(booking.when)}
         </p>
         <p className="text-xs text-gray-500">Horário de Brasília.</p>
         {booking.price_cents > 0 && <p className="text-lg font-bold text-gray-900">{formatCents(booking.price_cents)}</p>}

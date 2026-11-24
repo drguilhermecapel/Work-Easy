@@ -6,15 +6,18 @@ import { formatCents } from '../../lib/money';
 import { formatPhoneBR } from '../../lib/phone';
 import { formatDateBR, todayInSaoPaulo } from '../../lib/timezone';
 import { useAsync } from '../../lib/useAsync';
+import { suggestionDrafts, withIntro, type QuoteSuggestion } from '../../services/aiAssist';
 import { listClients, type ClientRow } from '../../services/proClients';
 import { centsToInput, parseReaisToCents } from '../../services/proFormat';
 import {
+  ITEM_DESCRIPTION_MAX,
   deleteQuote,
   effectiveQuoteStatus,
   listQuotes,
   parseQuantity,
   quoteShareUrl,
   quoteTotalCents,
+  markQuoteCompleted,
   quoteWhatsAppUrl,
   saveQuote,
   setQuoteStatus,
@@ -25,6 +28,8 @@ import ErrorAlert from '../../components/ErrorAlert';
 import PageStatus from '../../components/PageStatus';
 import ProPage from '../../components/pro/ProPage';
 import { useProvider } from '../../components/pro/proContext';
+import QuoteAssist from '../../components/pro/QuoteAssist';
+import { NfseLink, NfseNote } from '../../components/pro/Nfse';
 import QuoteDocument from '../../components/pro/QuoteDocument';
 import { QUOTE_STATUS_LABELS, QUOTE_STATUS_STYLES } from '../../components/pro/labels';
 import { Badge, Card, ConfirmButton, CopyButton, EmptyState, Field, SectionTitle } from '../../components/pro/ui';
@@ -87,7 +92,7 @@ const SharePanel: React.FC<{ quote: QuoteRow }> = ({ quote }) => {
       <div className="flex flex-wrap items-center gap-3">
         <CopyButton text={url} label="Copiar link" />
         <a href={quoteWhatsAppUrl(quote)} target="_blank" rel="noopener noreferrer" className={secondaryButton}>
-          <MessageCircle size={16} aria-hidden="true" /> Abrir no WhatsApp
+          <MessageCircle size={16} aria-hidden="true" /> Enviar por WhatsApp
         </a>
         <a href={url} target="_blank" rel="noopener noreferrer" className={secondaryButton}>
           <ExternalLink size={16} aria-hidden="true" /> Ver como o cliente vê
@@ -137,6 +142,13 @@ const Editor: React.FC<{
 
   const setItem = (key: number, patch: Partial<ItemDraft>) =>
     setItems(current => current.map(item => (item.key === key ? { ...item, ...patch } : item)));
+
+  // The AI draft only fills the form: blank placeholder items give way, what was typed stays, nothing is saved
+  const applySuggestion = (suggestion: QuoteSuggestion) => {
+    const drafts = suggestionDrafts(suggestion).map(draft => ({ key: nextKey++, ...draft }));
+    setItems(current => [...current.filter(item => item.description.trim() || item.price.trim()), ...drafts]);
+    setNotes(current => withIntro(current, suggestion.intro));
+  };
 
   const persist = async (send: boolean) => {
     setBusy(true);
@@ -229,12 +241,14 @@ const Editor: React.FC<{
               </Field>
             </div>
 
+            <QuoteAssist providerId={providerId} onApply={applySuggestion} />
+
             <fieldset className="space-y-3">
               <legend className="text-sm font-medium text-gray-700 mb-1">Itens</legend>
               {items.map((item, index) => (
                 <div key={item.key} className="grid grid-cols-6 gap-2 items-end border border-gray-100 rounded-xl p-3">
                   <Field id={`orc-item-${item.key}-desc`} label={`Item ${index + 1}: descrição`} className="col-span-6">
-                    <input id={`orc-item-${item.key}-desc`} className={inputClass} value={item.description} onChange={e => setItem(item.key, { description: e.target.value })} />
+                    <input id={`orc-item-${item.key}-desc`} className={inputClass} maxLength={ITEM_DESCRIPTION_MAX} value={item.description} onChange={e => setItem(item.key, { description: e.target.value })} />
                   </Field>
                   <Field id={`orc-item-${item.key}-qtd`} label={`Item ${index + 1}: quantidade`} className="col-span-2">
                     <input id={`orc-item-${item.key}-qtd`} className={inputClass} inputMode="decimal" value={item.quantity} onChange={e => setItem(item.key, { quantity: e.target.value })} />
@@ -305,9 +319,15 @@ const Editor: React.FC<{
             <SectionTitle id="orc-compartilhar">Compartilhar</SectionTitle>
             <SharePanel quote={saved} />
             {saved.status === 'accepted' && (
-              <p className="text-sm mt-3">
-                O cliente aceitou. <Link to={`/pro/cobrancas?orcamento=${saved.id}`} className={linkClass}>Cobrar este orçamento</Link>
-              </p>
+              <div className="mt-3 space-y-1">
+                <p className="text-sm">
+                  O cliente aceitou. <Link to={`/pro/cobrancas?orcamento=${saved.id}`} className={linkClass}>Cobrar este orçamento</Link>
+                </p>
+                <p>
+                  <NfseLink />
+                </p>
+                <NfseNote />
+              </div>
             )}
             <div className="flex flex-wrap items-center gap-3 mt-4">
               {saved.status === 'sent' && (
@@ -396,13 +416,55 @@ const Quotes: React.FC = () => {
               {quote.client_name ?? 'Sem cliente'} · {formatCents(quote.total_cents)}
               {quote.valid_until ? ` · válido até ${formatDateBR(quote.valid_until)}` : ''}
             </p>
-            <button type="button" className={`${secondaryButton} mt-3`} onClick={() => setSelected(quote.id)} aria-label={`Abrir ${quote.title}`}>
-              Abrir
-            </button>
+            <div className="flex flex-wrap items-center gap-3 mt-3">
+              <button type="button" className={secondaryButton} onClick={() => setSelected(quote.id)} aria-label={`Abrir ${quote.title}`}>
+                Abrir
+              </button>
+              {effectiveQuoteStatus(quote, data.data?.today ?? '') === 'sent' && (
+                <a
+                  href={quoteWhatsAppUrl(quote)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={secondaryButton}
+                  aria-label={`Enviar por WhatsApp: ${quote.title}`}
+                >
+                  <MessageCircle size={16} aria-hidden="true" /> Enviar por WhatsApp
+                </a>
+              )}
+              {quote.status === 'accepted' && <CompletedToggle quote={quote} onChanged={data.reload} />}
+            </div>
           </Card>
         ))}
       </ul>
     </div>
+  );
+};
+
+/** The provider says the job of an accepted quote was done; the date feeds the owner's metrics and the provider's own record. */
+const CompletedToggle: React.FC<{ quote: QuoteRow; onChanged: () => void }> = ({ quote, onChanged }) => {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const done = Boolean(quote.completed_at);
+  const toggle = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await markQuoteCompleted(quote.id, !done);
+      onChanged();
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      {done && quote.completed_at && <span className="text-sm text-green-700">Serviço concluído em {formatDateBR(quote.completed_at)}</span>}
+      <button type="button" className={secondaryButton} disabled={busy} onClick={toggle} aria-label={`${done ? 'Desfazer conclusão' : 'Marcar como concluído'}: ${quote.title}`}>
+        {done ? 'Desfazer conclusão' : 'Marcar como concluído'}
+      </button>
+      <ErrorAlert error={error} />
+    </>
   );
 };
 

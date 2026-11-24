@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "TODO-TEAM-ID.br.com.workeasy",
+        "paths": ["/p/*", "/pedido"]
+      }
+    ]
+  }
+}

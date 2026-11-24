@@ -8,7 +8,8 @@ Plataforma para encontrar e contratar serviços e profissionais liberais de toda
 
 - Catálogo de 44 áreas e 1.710 serviços e profissões, cada um com política própria (o que será exigido, cobrança, limite trabalhista, quem pode prestar). Itens com `confidence: a_confirmar` ainda precisam de conferência por advogado.
 - Busca por nome e sinônimos, sugestões na página inicial e páginas por área e por serviço (também geradas como HTML estático para busca).
-- Com backend: pedido guiado, propostas, agendamento direto, orçamento por link público, avaliação só após atendimento pago, ferramenta do profissional (agenda, serviços, clientes, cobranças, assinatura), área de administração e linha de cuidado com plantões e check-in.
+- Com backend: pedido guiado, propostas, agendamento direto, orçamento por link público, avaliação só após atendimento pago, ferramenta do profissional (agenda, serviços, clientes, cobranças, assinatura), área de administração e linha de cuidado com plantões e check-in. A linha de cuidado fica fora do menu até o dono abri-la (`care_line_open`).
+- Também com backend: aviso ao profissional de pedido novo, lista de espera para bairros fora do piloto (`pilot_neighborhoods`), denúncia de perfil, avaliação e pedido, bloqueio entre contas, fila de denúncias em `/admin/denuncias` e a página pública `/excluir-conta`.
 - Sem backend: a demonstração anterior (perfis fictícios, painéis alternados pelo seletor de papel) e um pedido por WhatsApp se `VITE_CONCIERGE_WHATSAPP` estiver definido.
 - Contrato técnico em [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md); banco, funções e testes em `supabase/`.
 - Decisões de monetização, portões e perguntas para o advogado em [`docs/DECISOES.md`](docs/DECISOES.md).
@@ -52,7 +53,7 @@ Stack local (Docker): `npx supabase start -x studio,imgproxy,logflare,vector,sup
 - O Auth local limita os logins a 30 a cada 5 minutos por IP; uma execução usa cerca de 10. Se o limite for atingido, o teste espera e tenta de novo.
 - `npm test` não executa esses arquivos.
 
-**CI.** `.github/workflows/web-ci.yml` tem três jobs, todos com os mesmos filtros de caminho: `web` (lint, typecheck, testes, build), `database` (stack local, `supabase test db`, `npm run test:integration` e a conferência de que `lib/database.types.ts` está igual ao gerado) e `functions` (`deno check` e `deno lint`). Mudou uma assinatura no banco: edite a migration, rode `npx supabase db reset`, `npm run db:test` e `npm run db:types`, e faça o commit do arquivo gerado.
+**CI.** `.github/workflows/web-ci.yml` tem três jobs, todos com os mesmos filtros de caminho: `web` (lint, typecheck, testes, build, `npm run check:size` e `scripts/check-bundle-secrets.mjs`, que recusa chave de servidor no bundle, inclusive JWT com papel `service_role`), `database` (stack local, `supabase test db`, `npm run test:integration` e a conferência de que `lib/database.types.ts` está igual ao gerado) e `functions` (`deno check` e `deno lint`). Mudou uma assinatura no banco: edite a migration, rode `npx supabase db reset`, `npm run db:test` e `npm run db:types`, e faça o commit do arquivo gerado.
 
 ## Backend e variáveis de ambiente
 
@@ -65,13 +66,17 @@ Copie `.env.example` para `.env.local` e preencha:
 | `VITE_SUPABASE_URL` | URL do projeto Supabase. Vazia = modo demonstração. |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | Chave publicável (`sb_publishable_…`). |
 | `VITE_CONCIERGE_WHATSAPP` | Número da operação concierge, só dígitos com DDI (ex.: `5511999999999`). Sem backend, `/pedido` monta a mensagem e abre o WhatsApp para esse número; vazio = o pedido online aparece como ainda não disponível. |
-| `VITE_SITE_URL` | URL canônica do site (SEO e links dos e-mails de login). |
+| `VITE_SITE_URL` | URL canônica do site (SEO, links dos e-mails de login e links abertos no app nativo). |
+| `VITE_LOGIN_METHODS` | Abas de login: `email`, `phone` ou `email,phone`. Vazia = as duas. Use `email` enquanto não houver provedor de SMS. |
+| `VITE_STORE_BUILD` | `android` ou `ios` num build feito para loja: sem venda do Pro dentro do app e sem a linha de cuidado. Vazia nos demais. |
+| `VITE_SENTRY_DSN` | DSN do relato de erros (Sentry). Vazia = nada é enviado. |
+| `VITE_APP_VERSION` | Nome da versão enviado com o relato de erro; na publicação, o workflow usa o commit. |
 
 - **A chave publicável é pública por desenho.** Ela vai para o JavaScript que qualquer pessoa baixa; o que cada usuário pode ler ou gravar é decidido pelo banco (RLS e funções). Nunca use no app a chave secreta (`sb_secret_…`) nem a service role.
 - **Segredos ficam nas Edge Functions** (`supabase secrets set`): Asaas, WhatsApp Cloud API, Resend e IA. O teste `test/claims-guard.test.ts` reprova o código do cliente que citar essas chaves.
 - **Login por código** (`/entrar`): no Supabase Auth (Authentication → Email Templates), os modelos **"Confirm signup"** (primeiro acesso: a conta é criada no envio do código) e **"Magic Link"** (acessos seguintes) precisam conter `{{ .Token }}` para mostrar o código de 6 dígitos. Se só um deles tiver o código, quem cai no outro recebe apenas um link. Quem entra pelo link vai para `/conta`, que pede o aceite dos Termos e da Política de Privacidade antes de liberar novos pedidos (o mesmo vale para `/pedido`).
 - **Celular:** o código vai só por SMS e só para celular (11 dígitos com DDD); depende de um provedor de SMS configurado no Supabase Auth. O envio por WhatsApp não é oferecido nesta versão.
-- Com backend: `/entrar`, `/conta` (dados, consentimentos, cópia dos dados, exclusão da conta), `/pedido`, `/pedidos` e `/pedidos/:id`. Camada de dados em `lib/` (cliente único, erros em pt-BR), `services/` (uma função por operação) e `config/` (flags).
+- Com backend: `/entrar`, `/conta` (dados, consentimentos, bloqueios, cópia dos dados, exclusão da conta), `/excluir-conta` (pública), `/pedido`, `/pedidos` e `/pedidos/:id`. Camada de dados em `lib/` (cliente único, erros em pt-BR), `services/` (uma função por operação) e `config/` (flags).
 
 ## Plataformas
 
@@ -87,7 +92,7 @@ Um único código React é empacotado para seis plataformas.
 | Linux | Tauri 2 | `npm run desktop:build` (Rust + WebKitGTK 4.1) | `.deb` e `.AppImage` |
 
 - **Modos de build.** O site usa URLs limpas e service worker. Os apps nativos usam o build `--mode native` (`.env.native`), com URLs com `#` e sem service worker, porque são servidos de arquivos locais.
-- **CI.** O workflow `Release builds` (`.github/workflows/release.yml`) gera as seis saídas sob demanda ("Run workflow"), em tags `v*` e em pull requests que mudam o empacotamento nativo (`android/`, `ios/`, `src-tauri/`, dependências e configuração de build). Os artefatos ficam anexados à execução por 7 dias.
+- **CI.** O workflow `Release builds` (`.github/workflows/web-release.yml`) gera as seis saídas sob demanda ("Run workflow"), em tags `v*` e em pull requests que mudam o empacotamento nativo (`android/`, `ios/`, `src-tauri/`, dependências e configuração de build). Os artefatos ficam anexados à execução por 7 dias.
 - **Saídas sem assinatura.** O APK é de debug, o app iOS roda só no simulador e os instaladores desktop não são assinados (o Windows mostra o aviso do SmartScreen e o macOS pede para abrir pelo menu de contexto).
 - **Publicação nas lojas.** Exige conta Apple Developer de organização (US$ 99/ano, também usada para notarizar no macOS), conta Google Play de organização (US$ 25, taxa única), política de privacidade publicada e exclusão de conta dentro do app.
 
@@ -110,7 +115,7 @@ Cada página tem `<title>`, descrição e `canonical` próprios, Open Graph, JSO
 
 ## Segurança e alegações
 
-- **Nenhum segredo no cliente.** Variáveis `VITE_*` vão para o JavaScript público. Chaves de API, tokens e senhas pertencem a funções de servidor. O CI falha se encontrar uma chave no bundle.
+- **Nenhum segredo no cliente.** Variáveis `VITE_*` vão para o JavaScript público. Chaves de API, tokens e senhas pertencem a funções de servidor. O CI falha se encontrar uma chave no bundle (`scripts/check-bundle-secrets.mjs`).
 - **Nenhuma alegação sem implementação.** O teste `test/claims-guard.test.ts` falha se o código voltar a anunciar criptografia ponta a ponta, assinatura digital, selo de verificado, pagamento retido, estatísticas inventadas ou prazos que não existem. Uma frase só volta junto com a funcionalidade real e com a mudança correspondente no teste.
 
 ## Estrutura

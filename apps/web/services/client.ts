@@ -8,17 +8,32 @@ export const db = (): AppSupabaseClient => {
   return supabase;
 };
 
-/** Result of a PostgREST/RPC call → its data, or the error converted to AppError. */
-export const unwrap = <T>({ data, error }: { data: T | null; error: unknown }): T => {
+/**
+ * Result of a PostgREST/RPC call → its data, or the error converted to AppError.
+ *
+ * The client is typed with the generated database types, which check table, column and function
+ * names and the arguments of every call. The shape of what comes back is stated by the caller
+ * (`T`): the services narrow columns the generator cannot (ranges and JSON arrive as `unknown`
+ * and `Json`, text columns with a CHECK arrive as `string`).
+ */
+export const unwrap = <T>({ data, error }: { data: unknown; error: unknown }): T => {
   if (error) throw toAppError(error);
   if (data === null || data === undefined) throw new AppError('not_found');
-  return data;
+  return data as T;
 };
 
+/**
+ * A nullable argument of a database function. PostgREST takes `null` for it, and the screens
+ * send `null` on purpose ("no reason", "any neighborhood"); the generated types only describe
+ * an argument with a default as "may be left out". This states the intent and keeps the request
+ * exactly as it is sent: the value still travels as `null`.
+ */
+export const nullable = <T>(value: T | null): T | undefined => value as T | undefined;
+
 /** Like unwrap, but an absent row is a valid answer. */
-export const unwrapMaybe = <T>({ data, error }: { data: T | null; error: unknown }): T | null => {
+export const unwrapMaybe = <T>({ data, error }: { data: unknown; error: unknown }): T | null => {
   if (error) throw toAppError(error);
-  return data ?? null;
+  return (data ?? null) as T | null;
 };
 
 /** Calls an Edge Function that answers { ok, data | error } with the user's session. */

@@ -1,5 +1,6 @@
+import type { BookingStatus } from '../../services/bookings';
 import type { ProviderStatus } from '../../services/types';
-import type { AdminPaymentStatus, DataRequestStatus, DocumentStatus, RegistryStatus, StepState } from '../../services/admin';
+import type { AdminPaymentStatus, DataRequestStatus, DocumentStatus, RegistryStatus, StepState, SubscriptionStatus } from '../../services/admin';
 
 // Wording of the administration screens. "Confirmado pelo WorkEasy" is a person
 // checking the council's public lookup; the app never reads the council back.
@@ -103,6 +104,27 @@ export const DATA_REQUEST_STATUS_STYLES: Record<DataRequestStatus, string> = {
 };
 
 export const DATA_REQUEST_KIND_LABELS = { export: 'Cópia dos dados', delete: 'Exclusão da conta' } as const;
+
+/** Status of a booking in the funnel (METRIC_STATUS_LABELS says "Aceita" for it, which is right for a proposal). */
+export const BOOKING_FUNNEL_LABELS: Record<BookingStatus, string> = {
+  requested: 'Solicitado',
+  accepted: 'Aceito',
+  paid: 'Pago',
+  in_progress: 'Em andamento',
+  completed: 'Concluído',
+  released: 'Liberado',
+  canceled: 'Cancelado',
+  disputed: 'Em contestação',
+};
+
+/** Status of a Pro subscription (one per provider). */
+export const SUBSCRIPTION_STATUS_LABELS: Record<SubscriptionStatus, string> = {
+  trialing: 'Em teste grátis',
+  active: 'Ativa',
+  past_due: 'Pagamento atrasado',
+  pending: 'Aguardando o primeiro pagamento',
+  canceled: 'Cancelada',
+};
 
 /** Statuses of every entity of the metrics view, in plain words. */
 export const METRIC_ENTITY_LABELS = {

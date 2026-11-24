@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { ExternalLink } from 'lucide-react';
+import { features } from '../../config/features';
 import { AppError } from '../../lib/errors';
 import { formatCents } from '../../lib/money';
 import { formatDateBR } from '../../lib/timezone';
@@ -359,7 +360,20 @@ const Content: React.FC = () => {
           Atualizar situação
         </button>
       </div>
-      <SubscriptionSection version={version} />
+      {features.proSalesEnabled ? (
+        <SubscriptionSection version={version} />
+      ) : (
+        // A store build shows the plan and sells nothing: no price, no button and no link to pay elsewhere
+        <section aria-labelledby="ass-plano-atual" className="space-y-3">
+          <SectionTitle id="ass-plano-atual">Seu plano</SectionTitle>
+          <Card>
+            <p className="text-sm text-gray-700">
+              Seu plano atual é o <strong>{provider.plan === 'pro' ? 'Pro' : 'grátis'}</strong>. Nesta versão do aplicativo não é possível assinar nem
+              alterar o plano.
+            </p>
+          </Card>
+        </section>
+      )}
       <ReceivingSection version={version} />
     </div>
   );
