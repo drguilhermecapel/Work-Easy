@@ -49,6 +49,50 @@ describe('AsaasClient', () => {
     expect((await nested.client.createAccount({} as never)).apiKey).toBe('k2');
   });
 
+  it('lists subaccounts by CPF/CNPJ with the root key and no apiKey in the items', async () => {
+    const { client, calls } = asaasWith({
+      'GET /v3/accounts': { body: { object: 'list', hasMore: false, totalCount: 1, data: [{ id: 'acc_1', walletId: 'wal_1', cpfCnpj: '52998224725' }] } },
+    });
+    const page = await client.listAccounts({ cpfCnpj: '52998224725', limit: 500 });
+    expect(page.data).toEqual([{ id: 'acc_1', walletId: 'wal_1', cpfCnpj: '52998224725' }]);
+    expect(page.hasMore).toBe(false);
+    expect(calls[0].method).toBe('GET');
+    expect(new URL(calls[0].url).searchParams.get('cpfCnpj')).toBe('52998224725');
+    expect(new URL(calls[0].url).searchParams.get('limit')).toBe('100'); // Asaas caps at 100
+    expect(calls[0].headers.access_token).toBe('root-key');
+  });
+
+  it('creates an access token for a subaccount and reads the key from either place', async () => {
+    const top = asaasWith({ 'POST /v3/accounts/acc_1/accessTokens': { body: { id: 'tok_1', apiKey: 'new-key' } } });
+    expect(await top.client.createAccessToken('acc_1', { name: 'WorkEasy' })).toEqual({ id: 'tok_1', apiKey: 'new-key' });
+    expect(top.calls[0].body).toEqual({ name: 'WorkEasy' });
+    const nested = asaasWith({ 'POST /v3/accounts/acc_2/accessTokens': { body: { accessToken: { apiKey: 'k2' } } } });
+    expect(await nested.client.createAccessToken('acc_2')).toEqual({ id: null, apiKey: 'k2' });
+    const refused = asaasWith({
+      'POST /v3/accounts/acc_3/accessTokens': { status: 403, body: { errors: [{ code: 'access_denied', description: 'Acesso negado. Code: x' }] } },
+    });
+    const error = await refused.client.createAccessToken('acc_3').catch(e => e);
+    expect(error).toBeInstanceOf(AsaasError);
+    expect(error.status).toBe(403);
+  });
+
+  it('lists, creates and updates webhooks', async () => {
+    const { client, calls } = asaasWith({
+      'GET /v3/webhooks': { body: { hasMore: true, data: [{ id: 'wh_1', url: 'https://x/y', hasAuthToken: true }] } },
+      'POST /v3/webhooks': { body: { id: 'wh_2', url: 'https://x/z' } },
+      'PUT /v3/webhooks/wh_1': { body: { id: 'wh_1', url: 'https://x/y' } },
+    });
+    const page = await client.listWebhooks({ offset: 100, limit: 100 });
+    expect(page).toMatchObject({ hasMore: true, data: [{ id: 'wh_1' }] });
+    expect(new URL(calls[0].url).searchParams.get('offset')).toBe('100');
+    await client.createWebhook({
+      name: 'WorkEasy', url: 'https://x/z', email: 'a@b.com', enabled: true, interrupted: false, sendType: 'SEQUENTIALLY', events: ['PAYMENT_CREATED'],
+    });
+    await client.updateWebhook('wh_1', { enabled: true, interrupted: false });
+    expect(calls[1]).toMatchObject({ method: 'POST', body: { name: 'WorkEasy', sendType: 'SEQUENTIALLY' } });
+    expect(calls[2]).toMatchObject({ method: 'PUT', body: { enabled: true, interrupted: false } });
+  });
+
   it('switches API key for subaccount calls and encodes path ids', async () => {
     const { fetch, calls } = fakeFetch({ 'DELETE /v3/subscriptions/sub_1%2F..': { body: { deleted: true, id: 'sub_1' } } });
     const client = new AsaasClient({ apiKey: 'root', fetch, baseUrl: 'https://api.asaas.com/v3/' }).withApiKey('sub');

@@ -36,6 +36,17 @@ const deps: OnboardDeps = {
           .maybeSingle(),
       ) as PaymentAccount | null;
     },
+    async accountLinkedToOther(asaasAccountId, providerId) {
+      const rows = must(
+        await serviceClient()
+          .from('provider_payment_accounts')
+          .select('provider_id')
+          .eq('asaas_account_id', asaasAccountId)
+          .neq('provider_id', providerId)
+          .limit(1),
+      ) as unknown[] | null;
+      return (rows?.length ?? 0) > 0;
+    },
     async claimOnboarding(providerId) {
       const db = serviceClient();
       const inserted = await db.from('provider_payment_accounts').insert({ provider_id: providerId, status: 'creating' });
@@ -55,7 +66,7 @@ const deps: OnboardDeps = {
           .lt('created_at', stale)
           .select('provider_id'),
       ) as unknown[] | null;
-      return (taken?.length ?? 0) > 0;
+      return (taken?.length ?? 0) > 0 ? 'resumed' : false;
     },
     async releaseOnboarding(providerId) {
       must(
