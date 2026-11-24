@@ -245,6 +245,37 @@ describe('/pro/cobrancas: charging', () => {
     expect(fake.functionCalls[0].body).toEqual({ quote_id: 'q-1', method: 'pix', provider_client_id: 'cli-2' });
   });
 
+  it('ties each refusal to its own field: described by it, marked invalid, focused, and cleared when the field changes', async () => {
+    const user = userEvent.setup();
+    renderPro('/pro/cobrancas');
+    const target = await screen.findByLabelText('O que cobrar');
+    const submit = () => user.click(screen.getByRole('button', { name: 'Criar cobrança' }));
+
+    await submit();
+    expect(target).toHaveFocus();
+    expect(target).toHaveAttribute('aria-invalid', 'true');
+    expect(target).toHaveAccessibleDescription('Escolha o atendimento ou o orçamento a cobrar.');
+
+    await user.selectOptions(target, 'quote:q-1');
+    expect(target).not.toHaveAttribute('aria-invalid');
+    await submit();
+    const payer = screen.getByLabelText('Cliente do seu CRM');
+    expect(payer).toHaveFocus();
+    expect(payer).toHaveAccessibleDescription(/Escolha o cliente que paga\./);
+
+    await user.selectOptions(target, 'booking:b-1');
+    await submit();
+    const document = screen.getByLabelText('CPF ou CNPJ do cliente');
+    expect(document).toHaveFocus();
+    expect(document).toHaveAttribute('aria-invalid', 'true');
+    expect(document).toHaveAccessibleDescription(/Informe o CPF ou CNPJ para continuar\./);
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+
+    await user.type(document, '1');
+    expect(document).not.toHaveAttribute('aria-invalid');
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
   it('checks the target, the payer and the document before calling the function', async () => {
     const user = userEvent.setup();
     renderPro('/pro/cobrancas');
