@@ -36,7 +36,7 @@
     "react-router-dom": "7.18.4"
   },
   "devDependencies": {
-    "@capacitor/cli": "8.5.2",
+    "@capacitor/cli": "8.6.2",
     "@eslint/js": "10.0.1",
     "@tailwindcss/vite": "4.3.3",
     "@tauri-apps/cli": "2.12.1",
