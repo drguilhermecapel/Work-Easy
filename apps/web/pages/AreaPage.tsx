@@ -10,6 +10,7 @@ import { LAUNCH_NEIGHBORHOODS } from '../components/seo/launch';
 import { backendEnabled } from '../lib/supabase';
 import { Notice, OccupationCard, Paragraphs } from '../components/seo/Prose';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
+import { HandoffPending } from '../components/HandoffMarks';
 
 const OccupationList: React.FC<{ occupations: Occupation[]; policies?: Record<string, OccupationPolicy> }> = ({ occupations, policies }) => (
   <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -87,7 +88,14 @@ const AreaPage: React.FC = () => {
       {/* One boundary for both: they wait for the same rules, so the list with its badges and the facts under
           it appear together (two boundaries resolved one after the other). The facts come after the list, so
           nothing above them moves when the rules arrive. */}
-      <Suspense fallback={<OccupationList occupations={occupations} />}>
+      <Suspense
+        fallback={
+          <>
+            <OccupationList occupations={occupations} />
+            <HandoffPending />
+          </>
+        }
+      >
         <OccupationListWithPolicies areaSlug={area.slug} occupations={occupations} />
         <AreaFacts area={area} />
       </Suspense>

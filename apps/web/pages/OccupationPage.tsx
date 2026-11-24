@@ -20,6 +20,7 @@ import ProvidersSection from '../components/cliente/ProvidersSection';
 import { LinkList, NeighborhoodLinks, Notice, Paragraph, Paragraphs, PolicySections, ProseSection } from '../components/seo/Prose';
 import { LAUNCH_NEIGHBORHOODS, labelOf } from '../components/seo/launch';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
+import { HandoffPending } from '../components/HandoffMarks';
 
 // The text and the links of this page are the ones scripts/prerender.mjs writes into the static HTML
 // (catalog/prose.mjs), so nothing a crawler read there is missing once React takes over.
@@ -101,7 +102,14 @@ const OccupationPage: React.FC = () => {
       </header>
 
       {/* Tall on purpose: what loads in here is long, and the sections below must not slide up the screen while it does */}
-      <Suspense fallback={<div role="status" className="min-h-[70vh] text-sm text-gray-500">Carregando regras deste serviço…</div>}>
+      <Suspense
+        fallback={
+          <div role="status" className="min-h-[70vh] text-sm text-gray-500">
+            Carregando regras deste serviço…
+            <HandoffPending />
+          </div>
+        }
+      >
         <PolicyDetails occupation={occupation} area={area} />
       </Suspense>
 

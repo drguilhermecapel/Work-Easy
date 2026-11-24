@@ -10,6 +10,7 @@ import { SECTION, neighborhoodIntro, neighborhoodMeta, occupationSentences, requ
 import { LinkList, Notice, Paragraphs, PolicySections, ProseSection } from '../components/seo/Prose';
 import { labelOf } from '../components/seo/launch';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
+import { HandoffPending } from '../components/HandoffMarks';
 
 // /servicos/:slug/:bairro. The static copy of this page for the launch
 // categories is written by scripts/prerender.mjs; this one serves anyone
@@ -106,7 +107,14 @@ const OccupationNeighborhoodPage: React.FC = () => {
       </header>
 
       {/* Tall on purpose: what loads in here is long, and the sections below must not slide up the screen while it does */}
-      <Suspense fallback={<div role="status" className="min-h-[70vh] text-sm text-gray-500">Carregando regras deste serviço…</div>}>
+      <Suspense
+        fallback={
+          <div role="status" className="min-h-[70vh] text-sm text-gray-500">
+            Carregando regras deste serviço…
+            <HandoffPending />
+          </div>
+        }
+      >
         <Requirements occupation={occupation} area={area} neighborhood={neighborhood} />
       </Suspense>
 

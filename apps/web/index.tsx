@@ -1,10 +1,10 @@
 import React from 'react';
-import ReactDOM from 'react-dom/client';
 import App from './App';
 import ErrorBoundary from './components/ErrorBoundary';
 import PwaUpdateNotice from './components/PwaUpdateNotice';
 import { initNativeShell } from './platform/native';
 import { initObservability } from './lib/observability';
+import { mountWithStaticHandoff } from './lib/staticHandoff';
 import './index.css';
 
 void initNativeShell();
@@ -16,12 +16,15 @@ if (!rootElement) {
   throw new Error("Could not find root element to mount to");
 }
 
-const root = ReactDOM.createRoot(rootElement);
-root.render(
+// A content page prerendered by scripts/prerender.mjs stays on screen until React has the same route ready (lib/staticHandoff.tsx).
+// The native shells use hash URLs and have no static pages.
+mountWithStaticHandoff(
+  rootElement,
   <React.StrictMode>
     <ErrorBoundary>
       <App />
       <PwaUpdateNotice />
     </ErrorBoundary>
-  </React.StrictMode>
+  </React.StrictMode>,
+  { enabled: import.meta.env.VITE_ROUTER !== 'hash' },
 );

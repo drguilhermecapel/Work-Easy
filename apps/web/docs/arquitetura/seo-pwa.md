@@ -82,9 +82,10 @@ O que mudou nas rotas (todas as mudanças são visíveis para o usuário):
    a página montada tem mais links (352 contra 44), então o teste confere a presença do que existia, não a igualdade.
    Servido por `vite preview` com barra final, o resultado é o mesmo.
 
-**Limite honesto.** Durante o carregamento (JavaScript baixando), o usuário vê o HTML estático; quando o React monta,
-o conteúdo é trocado por um equivalente. Layout e classes são os mesmos nas listas de ocupações; nas demais seções
-o texto é igual, o desenho é parecido. Não há hidratação.
+**Limite honesto.** Durante o carregamento (JavaScript baixando), o usuário vê o HTML estático; quando a rota está
+pronta no React, o conteúdo é trocado por um equivalente (seção 10.1: a troca espera a rota estar pronta). Layout e
+classes são os mesmos nas listas de ocupações; nas demais seções o texto é igual, o desenho é parecido. Não há
+hidratação.
 
 ## 5. Guarda de conteúdo próprio ("3 frases próprias")
 
@@ -246,12 +247,96 @@ desempenho: diferenças menores que isso são ruído.
 
 **O que não foi feito, e por quê.**
 
-- Tirar o pacote de políticas e o catálogo do caminho crítico (carregamento sob demanda), ou hidratar o HTML estático
-  (`hydrateRoot`). São as alavancas reais do LCP, mas mexem em `catalog/` e no `AppShell`, que estão fora desta frente.
+- Tirar o pacote de políticas e o catálogo do caminho crítico (carregamento sob demanda): feito depois, com a divisão
+  por área. Hidratar o HTML estático (`hydrateRoot`): não é viável sem mismatch; a troca do LCP foi resolvida de
+  outro jeito, na seção 10.1.
 - Contraste da cor da marca: `#667eea` sobre branco dá cerca de 3,7:1, abaixo de 4,5:1 para texto pequeno. Os botões
   principais das ocupações (`bg-primary` com texto branco) e os links da home falham. Trocar a cor é decisão do dono do
   produto, e não foi feito.
 - Rodapé (`AppShell.tsx`) e home: fora das pastas desta frente.
+
+### 10.1 O HTML estático fica na tela até a rota estar pronta no React
+
+**Diagnóstico (24/11/2026).** `<div id="root">` recebe só o `<main data-prerendered>` da página (sem a barra de
+navegação). O `createRoot(#root).render()` do `index.tsx` apaga esse `<main>` na primeira confirmação e põe no lugar a
+casca do app com o `Suspense` de `AppShell.tsx`, cujo fallback é "Carregando…": a tela da rota (`lazy`) ainda precisa de
+mais uma ida à rede, e as regras da área (`policies-<área>`), de outra. Medido com Playwright (Chromium, CPU 4x, Fast 3G
+por CDP, 5 repetições) em `/categorias/limpeza`: o HTML estático pinta em 1,5 s; o React monta e apaga o estático em
+2,1 s; a tela da rota só chega em 3,3 s (em `/servicos/diarista`: 2,1 s e 4,6 s). São de 1,1 a 2,4 s com só a barra e
+"Carregando…" na tela.
+
+Por que o Lighthouse dá LCP de 12 s no relatório da seção 10 e o `PerformanceObserver` não: no Chromium com throttling
+real (CDP), o parágrafo estático é o maior elemento pintado, e o Chromium continua a reportá-lo como LCP depois de ele
+ser removido do DOM (uma única entrada de LCP, igual ao FCP, nas quatro páginas de conteúdo). O Lighthouse mede a página
+sem throttling e **projeta** o resultado para o perfil móvel (Lantern). No traço sem throttling o React termina antes de
+o parágrafo estático ser registrado como candidato, então o LCP observado é um elemento do React (o parágrafo de
+`AreaPage`, que o React pinta aos 0,6 s) e a projeção soma o caminho de rede e de CPU até ele: o pacote de entrada,
+o chunk da rota e o de políticas. É esse caminho que vira os 12 s. As duas leituras são verdadeiras e medem coisas
+diferentes: o LCP do `PerformanceObserver` já era bom e escondia o piscar; o do Lighthouse é o que a seção 10 acompanha.
+
+**Estratégia (a), contêiner separado.** `index.tsx` chama `mountWithStaticHandoff` (`lib/staticHandoff.ts`). Se o
+`#root` tem um `<main data-prerendered>`, o React monta num `<div hidden>` irmão dele e o HTML estático continua na
+tela, sem ser tocado. Dois marcadores sem saída visual (`components/HandoffMarks.tsx`) dizem quando trocar: `HandoffReady`
+(no mesmo `Suspense` das rotas, em `AppShell.tsx`: seu efeito só roda quando a tela da rota entrou) e `HandoffPending`
+(no fallback do `Suspense` interno de `AreaPage`, `OccupationPage` e `OccupationNeighborhoodPage`: enquanto as regras da
+área não chegam, o estático, que já as tem, fica). Quando a rota está pronta e nada está pendente, o estático sai e o
+contêiner aparece no mesmo passo. Sem página estática no `#root` (todas as outras rotas) ou com `VITE_ROUTER=hash` (os
+shells nativos), o React monta direto, como antes. Se a rota não ficar pronta em 15 s (chunk que não carrega, erro), a
+troca acontece mesmo assim.
+
+- **Foco, rolagem e links.** Se o foco estava num link do estático, vai para o mesmo link (mesmo `href` e texto) da
+  página nova, ou para o `<main>` se não houver; se estava fora da página estática, não muda. A posição de rolagem é
+  restaurada. Enquanto o React não troca, os links do estático são links comuns (navegação normal do navegador).
+- **`hydrateRoot` descartado.** A marcação do estático (strings de `catalog/prose.mjs`, sem a barra de navegação nem o
+  rodapé) não é a do React; hidratar daria mismatch e, no melhor caso, o React descartaria o estático do mesmo jeito.
+
+**Medição antes e depois.** Mesmo build, servido por um servidor estático local com URLs limpas e gzip (os números
+absolutos diferem dos da tabela acima, que usou outro servidor, mais lento; compare o antes com o depois, não com ela).
+Lighthouse 13.6.0, mobile simulado, 6 rodadas alternando antes e depois (mediana, faixa):
+
+| Página | LCP antes (ms) | LCP depois (ms) | Variação | FCP antes → depois | TBT antes → depois | Desempenho antes → depois |
+|---|---|---|---|---|---|---|
+| `/categorias/limpeza` | 3171 (3045–3209) | 751 (750–810) | -76% | 780 → 751 | 149 → 136 | 92 → 99 |
+| `/servicos/diarista` | 3382 (3357–3663) | 751 (750–810) | -78% | 751 → 751 | 237 → 230 | 88 → 96 |
+| `/servicos/diarista/moema` | 2916 (2893–3227) | 1382 (751–2552) | -53% | 751 → 751 | 190 → 151 | 92 → 98 |
+| `/categorias` | 2701 (2700–2790) | 751 (750–2640) | -72% | 751 → 751 | 159 → 187 | 95 → 98 |
+| `/` (sem página estática) | 3071 (2989–3202) | 3043 (3007–3122) | sem mudança | 751 → 751 | 190 → 185 | 91 → 92 |
+
+Em `/servicos/diarista/moema` e `/categorias` houve rodadas de depois com LCP alto (2,0 a 2,6 s), que não se repetiram em
+seis rodadas extras de `moema` (751 a 810 ms); a causa não foi esclarecida (a máquina é compartilhada). O TBT do Lighthouse
+varia mais que a mudança: as faixas de antes e depois se sobrepõem em todas as páginas (a mediana de `/categorias`
+subiu 28 ms, a das outras caiu ou ficou igual).
+
+Playwright (CDP: CPU 4x, Fast 3G, 5 repetições, `PerformanceObserver` de `paint` e de `largest-contentful-paint`):
+
+| Página | FCP = LCP antes (ms) | FCP = LCP depois (ms) | TBT antes → depois (ms) | JS carregado antes → depois |
+|---|---|---|---|---|
+| `/categorias/limpeza` | 1560 (1504–1604) | 1480 (1456–1492) | 233 → 97 | 241 → 243 KB |
+| `/servicos/diarista` | 1556 (1532–1592) | 1500 (1472–1508) | 327 → 228 | 252 → 253 KB |
+| `/servicos/diarista/moema` | 1480 (1448–1492) | 1472 (1452–1492) | 150 → 150 | 239 → 240 KB |
+| `/categorias` | 1492 (1468–1516) | 1484 (1452–1492) | 77 → 44 | 231 → 233 KB |
+| `/` | FCP 1960; LCP 3260 (3232–3428) | FCP 1984; LCP 3308 (3256–3500) | 0 → 0 | 226 → 228 KB |
+
+Aqui o LCP já era igual ao FCP (o estático), e continua: o ganho não aparece nesse número. O que muda é a janela com só
+"Carregando…" na tela: antes, o estático saía em 2,0 a 2,1 s e a página do React chegava em 3,1 a 4,6 s; depois, o
+estático fica até a troca (3,1 s em `/categorias`; 4,3 s em `limpeza` e `moema`; 5,6 s em `diarista`) e a troca já traz
+a página completa. Medido: o console não tem erro nem aviso; com Tab até um link do estático e rolagem de 300 px, o foco
+(mesmo link) e a rolagem (300 px) sobrevivem à troca.
+
+**Custo.** O React assume a navegação cerca de 1 s mais tarde (até chegarem as regras da área, que antes apareciam
+depois do fallback); nesse intervalo os links do estático navegam como páginas comuns. Os marcadores e o módulo somam
+cerca de 1 a 2 KB de JS a mais; `check-bundle-size` continua dentro do orçamento.
+
+**Testes.** `test/seo/static-handoff.test.tsx`: o estático (o mesmo nó) fica enquanto a tela da rota ou as regras não
+entraram; sai quando entram; foco e rolagem sobrevivem; rota sem estático e shell nativo montam direto; o limite de
+15 s troca mesmo assim; e, com o app de verdade sobre as páginas estáticas do build (`/categorias/limpeza`,
+`/servicos/diarista`, `/servicos/diarista/moema`), no instante em que o estático sai a tela do React já está completa e
+sem "Carregando…". `test/seo/hydration-parity.test.tsx` segue valendo para o DOM final.
+
+**Limites.** Perfil simulado em Chromium 1243 numa máquina compartilhada, com o servidor local; não é dado de campo. O
+LCP do Lighthouse é uma projeção. O LCP de `/` e das demais rotas sem página estática não mudou e continua dependendo do
+React. Não foi medido em aparelho real, nem com o service worker ativo (bloqueado nas medições), nem o efeito da
+troca tardia sobre a interação (INP).
 
 ## 11. PWA
 
@@ -334,8 +419,8 @@ regra entrou na lista de parágrafos repetidos permitidos, a introdução de bai
 ## 13. Limites e pendências
 
 - **Não publicado.** Nenhum número desta seção é de produção. Lighthouse em máquina compartilhada, com perfil simulado.
-- **Hidratação.** Não há `hydrateRoot`: o React troca o conteúdo pré-renderizado depois de montar. Texto, links e títulos
-  são os mesmos (seção 4), mas a troca é visível e atrasa o LCP (seção 10).
+- **Hidratação.** Não há `hydrateRoot`: o React troca o conteúdo pré-renderizado quando a rota está pronta (seção 10.1).
+  Texto, links e títulos são os mesmos (seção 4), mas a troca é visível (o layout ganha a barra e o rodapé).
 - **Conferência da seção 4.** Um rascunho anterior desta nota citava 69 páginas comparadas. Essa conferência não foi
   refeita nesta sessão, e o número saiu do texto. A conferência atual cobre cinco rotas.
 - **Conteúdo de outras frentes.** `data/static-pages.json` e `content/legal/*.md` ainda não existem: as páginas estáticas

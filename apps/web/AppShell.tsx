@@ -16,6 +16,7 @@ import { captacaoRoutes } from './pages/captacao/routes';
 import { plantoesRoutes } from './pages/pro/plantoes/routes';
 import AccessibilityLayer, { MAIN_ID } from './components/AccessibilityLayer';
 import RoutePrefetcher from './components/RoutePrefetcher';
+import { HandoffReady } from './components/HandoffMarks';
 
 // Each page is a separate chunk, so the first load only ships what it shows
 const Home = lazy(() => import('./pages/Home'));
@@ -61,6 +62,8 @@ const AppShell: React.FC = () => (
           {captacaoRoutes}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        {/* Tells index.tsx that the page of the route is in, so the static HTML can give way to it (lib/staticHandoff.tsx) */}
+        <HandoffReady />
       </Suspense>
     </main>
 
