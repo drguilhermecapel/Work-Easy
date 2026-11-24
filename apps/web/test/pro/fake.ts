@@ -112,6 +112,16 @@ export const acceptedConsents = (userId = USER_ID) =>
     at: '2026-10-01T10:00:00Z',
   }));
 
+/** The account already agreed to send text to the AI service (components/AiConsent.tsx). */
+export const aiConsent = (userId = USER_ID) => ({
+  id: 'c-ai_assist',
+  user_id: userId,
+  purpose: 'ai_assist' as const,
+  version: CONSENT_VERSIONS.ai_assist,
+  granted: true,
+  at: '2026-11-24T10:00:00Z',
+});
+
 export const occupationRow = (slug: string, overrides: Record<string, unknown> = {}) => ({
   occupation_slug: slug,
   is_primary: true,

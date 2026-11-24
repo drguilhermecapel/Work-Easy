@@ -84,6 +84,8 @@ export const CONSENT_VERSIONS: Record<ConsentPurpose, string> = {
   location: '2026-10',
   // The declaration that the person is 18 or over: its own text, asked of every account that lacks it
   age_declaration: '2026-11',
+  // Sending text to the third-party AI service (components/AiConsent.tsx); asked on first use of an assistant
+  ai_assist: '2026-11',
 };
 
 export interface CompanyInfo {

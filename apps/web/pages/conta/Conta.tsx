@@ -147,6 +147,13 @@ const CONSENTS: Array<{ purpose: ConsentPurpose; title: string; description: str
     description: 'Usar a localização do aparelho, por exemplo no registro de entrada e saída de plantões.',
     revocable: true,
   },
+  {
+    purpose: 'ai_assist',
+    title: 'Ajuda com inteligência artificial',
+    description:
+      'Enviar o texto que você escreve nos assistentes (sugestão de orçamento, resumo da semana) a um serviço de inteligência artificial de terceiros. Sem este consentimento os assistentes ficam desligados para você; o resto do app funciona igual.',
+    revocable: true,
+  },
 ];
 
 const PURPOSE_TITLES = Object.fromEntries(CONSENTS.map(c => [c.purpose, c.title])) as Record<ConsentPurpose, string>;

@@ -6,6 +6,7 @@ import { useAsync } from '../../lib/useAsync';
 import { QUOTE_ASSIST_LIMITS, suggestQuote, type QuoteSuggestion, type ReferencePrice } from '../../services/aiAssist';
 import { listMyOccupations } from '../../services/providers';
 import { listMyServices, type ServiceRow } from '../../services/proServices';
+import AiConsent from '../AiConsent';
 import ErrorAlert from '../ErrorAlert';
 import { inputClass, primaryButton, secondaryButton } from './styles';
 import { Field } from './ui';
@@ -143,7 +144,11 @@ const QuoteAssist: React.FC<{ providerId: string; onApply: (suggestion: QuoteSug
       </div>
     );
   }
-  return <Panel providerId={providerId} onApply={onApply} onClose={() => setOpen(false)} />;
+  return (
+    <AiConsent>
+      <Panel providerId={providerId} onApply={onApply} onClose={() => setOpen(false)} />
+    </AiConsent>
+  );
 };
 
 export default QuoteAssist;

@@ -3,6 +3,7 @@ import { ShieldAlert, Sparkles } from 'lucide-react';
 import { formatDateBR } from '../../lib/timezone';
 import { summarizeWeek, type WeekSummary as WeekSummaryData } from '../../services/aiAssist';
 import type { Household } from '../../services/care';
+import AiConsent from '../AiConsent';
 import ErrorAlert from '../ErrorAlert';
 import { card, primaryButton } from './styles';
 
@@ -105,6 +106,7 @@ const WeekSummary: React.FC<{ households: Household[] }> = ({ households }) => {
       <p role="note" className="text-sm text-gray-700">
         {WEEK_SUMMARY_NOTICE}
       </p>
+      <AiConsent>
       <div className="flex flex-wrap gap-3">
         {households.map(household => (
           <button
@@ -118,6 +120,7 @@ const WeekSummary: React.FC<{ households: Household[] }> = ({ households }) => {
           </button>
         ))}
       </div>
+      </AiConsent>
       <ErrorAlert error={error} />
       {result && (
         <div className="space-y-1">

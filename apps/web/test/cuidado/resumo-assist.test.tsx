@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { CONSENT_VERSIONS } from '../../config/legal';
 import { functionData, functionError } from '../pro/fake';
 import { CAREGIVER_ID, FAMILY_ID, household, newWorld, recipient, shiftRow, useWorld, type CareWorld, type FakeSupabase } from './fake';
 
@@ -50,6 +51,8 @@ beforeEach(() => {
   sessionStorage.clear();
   fake.reset();
   world = newWorld(FAMILY_ID);
+  // The family already agreed to send text to the AI service (components/AiConsent.tsx)
+  world.consents.push({ id: 'c-ai', user_id: FAMILY_ID, purpose: 'ai_assist', version: CONSENT_VERSIONS.ai_assist, granted: true, at: '2030-01-03T10:00:00Z' });
   useWorld(fake, world);
   fake.functionsHandlers['care-summary'] = () => functionData(SUMMARY);
 });

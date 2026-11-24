@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { baseTables, functionData, functionError, ok, providerRow, signInProvider, type ProFake, type TableCall } from './fake';
+import { CONSENT_VERSIONS } from '../../config/legal';
+import { acceptedConsents, aiConsent, baseTables, functionData, functionError, ok, providerRow, signInProvider, type ProFake, type TableCall } from './fake';
 
 vi.mock('../../lib/supabase', async () => {
   const { createProFake } = await import('./fake');
@@ -60,14 +61,23 @@ const quoteRow = (overrides: Row = {}): Row => ({
 
 let quotes: Row[];
 let services: Row[];
+/** Consent history of the provider; the tests of the agreement itself start without the AI purpose. */
+let consents: Row[];
 
 beforeEach(() => {
   fake.reset();
   signInProvider(fake);
   quotes = [];
   services = [service(), service({ id: 'svc-2', title: 'Visita técnica', price_min_cents: 8000, price_max_cents: 12000, unit: 'visita' })];
+  consents = [aiConsent(), ...acceptedConsents()];
   fake.tables = {
     ...baseTables({ provider: providerRow() }),
+    consents: (call: TableCall) => {
+      if (call.op !== 'insert') return ok(consents);
+      const row = { id: 'c-new', user_id: 'prov-1', at: '2026-11-24T12:00:00Z', ...(call.payload as Row) };
+      consents = [row, ...consents];
+      return ok(row);
+    },
     provider_clients: () => ok([]),
     provider_occupations: () => ok([
       { occupation_slug: 'eletricista', is_primary: false, registry_number: null, registry_uf: null, registry_status: 'not_required', approved: true },
@@ -92,6 +102,33 @@ const ask = async (user: ReturnType<typeof userEvent.setup>) => {
 };
 
 const savedWrites = () => fake.tableCalls.filter(call => call.table === 'quotes' && call.op !== 'select');
+
+describe('/pro/orcamentos: consent before the AI', () => {
+  it('asks for the agreement on first use, records it with the version of the text, and only then shows the assistant', async () => {
+    consents = acceptedConsents();
+    const user = userEvent.setup();
+    await openEditor(user);
+    expect(screen.queryByRole('group', { name: 'Sugestão de itens com IA' })).toBeNull();
+    expect(screen.getByText(/serviço de inteligência artificial de terceiros/)).toBeInTheDocument();
+    expect(fake.functionCalls.some(call => call.name === 'quote-assist')).toBe(false);
+
+    await user.click(screen.getByRole('button', { name: 'Concordo e quero usar' }));
+    expect(await screen.findByRole('group', { name: 'Sugestão de itens com IA' })).toBeInTheDocument();
+    expect(fake.tableCalls.find(call => call.table === 'consents' && call.op === 'insert')?.payload).toEqual({
+      purpose: 'ai_assist',
+      granted: true,
+      version: CONSENT_VERSIONS.ai_assist,
+    });
+  });
+
+  it('asks again after the consent was withdrawn', async () => {
+    consents = [{ ...aiConsent(), granted: false }, ...acceptedConsents()];
+    const user = userEvent.setup();
+    await openEditor(user);
+    expect(screen.queryByRole('group', { name: 'Sugestão de itens com IA' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Concordo e quero usar' })).toBeInTheDocument();
+  });
+});
 
 describe('/pro/orcamentos: Sugerir itens com IA', () => {
   it('says that the text goes to an AI service, before anything is sent', async () => {
