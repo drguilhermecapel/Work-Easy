@@ -154,7 +154,12 @@ select lives_ok($$select public.admin_resolve_report((select id from ids where n
                 'the administration closes a report');
 select throws_ok($$select public.admin_resolve_report((select id from ids where name = 'rep1'), 'dismissed')$$, 'P0001', 'invalid_transition',
                  'a closed report is not closed again');
-select is((select count(*)::int from public.audit_log where action = 'report.resolved'), 1, 'closing a report is audited');
+-- Only this report's entries: audit_log keeps what other runs committed (the integration suite
+-- resolves a report of its own), so a count over the whole table depends on the database's past.
+select is((select count(*)::int from public.audit_log
+            where action = 'report.resolved' and entity = 'content_report'
+              and entity_id = (select id::text from ids where name = 'rep1')),
+          1, 'closing a report is audited');
 select tests.clear_authentication();
 
 -- ---------------------------------------------------------------------------
@@ -212,7 +217,10 @@ select lives_ok(format($$insert into public.shifts (household_id, period, rate_c
                        (select id from ids where name = 'house'), tests.sp_period(tests.at(5, 0, '08:00'), 12)),
                 'the administration creates a shift for the family');
 select tests.clear_authentication();
-select is((select count(*)::int from public.audit_log where action = 'shift.created_by_admin'), 1, 'and that is audited');
+select is((select count(*)::int from public.audit_log
+            where action = 'shift.created_by_admin' and entity = 'shift'
+              and entity_id in (select s.id::text from public.shifts s where s.household_id = (select id from ids where name = 'house'))),
+          1, 'and that is audited');
 
 -- ---------------------------------------------------------------------------
 -- Review fixes (migration 20261124100009)
