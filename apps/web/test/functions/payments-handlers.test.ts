@@ -675,6 +675,10 @@ describe('asaas-onboard', () => {
     noKey?: boolean;
     asaasFails?: boolean;
     provider?: ProviderAccount;
+    claim?: boolean | 'resumed';
+    /** extra Asaas routes (GET /v3/accounts, POST .../accessTokens) */
+    routes?: Parameters<typeof asaasWith>[0];
+    linkedToOther?: boolean;
   } = {}) {
     const saved: PaymentAccount[] = [];
     const secrets: Array<[string, string]> = [];
@@ -687,6 +691,7 @@ describe('asaas-onboard', () => {
       'POST /v3/accounts': over.asaasFails
         ? { status: 400, body: { errors: [{ code: 'invalid_cpfCnpj', description: 'CPF já cadastrado.' }] } }
         : { body: { id: 'acc_1', walletId: 'wal_1', ...(over.noKey ? {} : { apiKey: '$aact_sub' }) } },
+      ...over.routes,
     });
     const deps: OnboardDeps = {
       ...baseDeps,
@@ -698,7 +703,8 @@ describe('asaas-onboard', () => {
       session: async () => ({ user: PROVIDER, getProvider: async () => over.provider ?? APPROVED }),
       admin: {
         getPaymentAccount: async () => over.existing ?? null,
-        claimOnboarding: async () => !over.busy,
+        claimOnboarding: async () => (over.busy ? false : over.claim ?? true),
+        accountLinkedToOther: async () => over.linkedToOther === true,
         releaseOnboarding: async id => void released.push(id),
         storeSecret: async (providerId, secret) => {
           if (vaultCalls++ < (over.vaultFailures ?? 0)) throw new Error('vault down');
@@ -852,6 +858,127 @@ describe('asaas-onboard', () => {
       existing: { provider_id: PROVIDER.id, asaas_account_id: 'acc_0', asaas_wallet_id: 'wal_0', api_key_secret_id: 'k', status: 'active' },
     }).deps));
     expect(again.body.error.code).toBe('already_onboarded');
+  });
+
+  describe('recovering an interrupted activation', () => {
+    const FOUND = { id: 'acc_9', walletId: 'wal_9', cpfCnpj: '529.982.247-25', name: 'Ana' };
+    const list = (data: unknown[]) => ({ 'GET /v3/accounts': { body: { object: 'list', hasMore: false, data } } });
+    const token = { 'POST /v3/accounts/acc_9/accessTokens': { body: { id: 'tok_1', apiKey: '$aact_new_key' } } };
+    const paths = (calls: Array<{ method: string; url: string }>) => calls.map(c => `${c.method} ${new URL(c.url).pathname}`);
+
+    it('a fresh claim creates as before and does not search', async () => {
+      const { deps, calls } = onboardDeps({ claim: true, routes: list([FOUND]) });
+      const res = await read(await onboard(post('asaas-onboard', fiscal), deps));
+      expect(res.status).toBe(201);
+      expect(res.body.data.recovered).toBeUndefined();
+      expect(paths(calls)).toEqual(['POST /v3/accounts']);
+    });
+
+    it('a resumed claim with no account in Asaas creates it', async () => {
+      const { deps, calls, saved } = onboardDeps({ claim: 'resumed', routes: list([]) });
+      const res = await read(await onboard(post('asaas-onboard', fiscal), deps));
+      expect(res.status).toBe(201);
+      expect(res.body.data.recovered).toBeUndefined();
+      expect(paths(calls)).toEqual(['GET /v3/accounts', 'POST /v3/accounts']);
+      expect(new URL(calls[0].url).searchParams.get('cpfCnpj')).toBe(VALID_CPF);
+      expect(calls[0].headers.access_token).toBe('root-key');
+      expect(saved[0]).toMatchObject({ asaas_account_id: 'acc_1', status: 'active' });
+    });
+
+    it('a resumed claim with one account does not create: it issues a new key and saves the row', async () => {
+      const { deps, calls, saved, secrets, audits } = onboardDeps({ claim: 'resumed', routes: { ...list([FOUND]), ...token } });
+      const res = await read(await onboard(post('asaas-onboard', fiscal), deps));
+      expect(res.status).toBe(201);
+      expect(paths(calls)).toEqual(['GET /v3/accounts', 'POST /v3/accounts/acc_9/accessTokens']);
+      expect(calls[1].body).toEqual({ name: 'WorkEasy' });
+      expect(calls[1].headers.access_token).toBe('root-key');
+      expect(secrets).toEqual([[PROVIDER.id, '$aact_new_key']]);
+      expect(saved[0]).toMatchObject({
+        provider_id: PROVIDER.id, asaas_account_id: 'acc_9', asaas_wallet_id: 'wal_9', api_key_secret_id: 'secret-uuid', status: 'active',
+      });
+      expect(res.body.data).toMatchObject({ recovered: true, wallet_id: 'wal_9', own_charges_enabled: true, webhook_registered: false });
+      expect(audits.map(a => a.action)).toEqual(['payment_account.recovered']);
+      expect(JSON.stringify([res.body, audits])).not.toContain('$aact_new_key');
+    });
+
+    it('keeps the account without a key when Asaas refuses to issue one (panel or IP not set up)', async () => {
+      const refused = { 'POST /v3/accounts/acc_9/accessTokens': { status: 403, body: { errors: [{ code: 'access_denied', description: 'Acesso negado. Code: abc' }] } } };
+      const { deps, saved, secrets, audits } = onboardDeps({ claim: 'resumed', routes: { ...list([FOUND]), ...refused } });
+      const res = await read(await onboard(post('asaas-onboard', fiscal), deps));
+      expect(res.status).toBe(201);
+      expect(secrets).toEqual([]);
+      expect(saved[0]).toMatchObject({ asaas_account_id: 'acc_9', asaas_wallet_id: 'wal_9', api_key_secret_id: null, status: 'key_not_returned' });
+      expect(res.body.data).toMatchObject({ recovered: true, own_charges_enabled: false });
+      expect(res.body.data.message).toContain('suporte');
+      expect(audits.map(a => a.action)).toEqual(['payment_account.recovered_without_key']);
+    });
+
+    it('answers 409 onboarding_ambiguous and creates nothing when two accounts match', async () => {
+      const { deps, calls, saved, released, audits } = onboardDeps({
+        claim: 'resumed', routes: list([FOUND, { ...FOUND, id: 'acc_10', walletId: 'wal_10' }]),
+      });
+      const res = await read(await onboard(post('asaas-onboard', fiscal), deps));
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('onboarding_ambiguous');
+      expect(paths(calls)).toEqual(['GET /v3/accounts']);
+      expect(saved).toEqual([]);
+      expect(released).toEqual([]); // the claim stays: a blind retry would create another account
+      expect(audits.map(a => a.action)).toEqual(['payment_account.onboarding_ambiguous']);
+    });
+
+    it('ignores items whose cpfCnpj or walletId do not match the request', async () => {
+      const other = { id: 'acc_7', walletId: 'wal_7', cpfCnpj: '11222333000181' };
+      const noWallet = { id: 'acc_8', cpfCnpj: VALID_CPF };
+      const { deps, calls, saved } = onboardDeps({ claim: 'resumed', routes: list([other, noWallet]) });
+      const res = await read(await onboard(post('asaas-onboard', fiscal), deps));
+      expect(res.status).toBe(201);
+      expect(paths(calls)).toEqual(['GET /v3/accounts', 'POST /v3/accounts']);
+      expect(saved[0]).toMatchObject({ asaas_account_id: 'acc_1' });
+    });
+
+    it('does not create when the lookup itself fails, and keeps the claim', async () => {
+      const { deps, calls, released } = onboardDeps({
+        claim: 'resumed', routes: { 'GET /v3/accounts': { status: 500, body: {} } },
+      });
+      const res = await read(await onboard(post('asaas-onboard', fiscal), deps));
+      expect(res.status).toBe(502);
+      expect(paths(calls)).toEqual(['GET /v3/accounts']);
+      expect(released).toEqual([]);
+    });
+
+    it('refuses to hand over an account that already belongs to another provider', async () => {
+      const { deps, saved, calls } = onboardDeps({ claim: 'resumed', linkedToOther: true, routes: { ...list([FOUND]), ...token } });
+      const res = await read(await onboard(post('asaas-onboard', fiscal), deps));
+      expect(res.body.error.code).toBe('onboarding_ambiguous');
+      expect(saved).toEqual([]);
+      expect(paths(calls)).toEqual(['GET /v3/accounts']);
+    });
+
+    it('after a 400 from createAccount, one lookup finds the account and recovers it', async () => {
+      const { deps, calls, saved, released } = onboardDeps({ asaasFails: true, routes: { ...list([FOUND]), ...token } });
+      const res = await read(await onboard(post('asaas-onboard', fiscal), deps));
+      expect(res.status).toBe(201);
+      expect(res.body.data.recovered).toBe(true);
+      expect(paths(calls)).toEqual(['POST /v3/accounts', 'GET /v3/accounts', 'POST /v3/accounts/acc_9/accessTokens']);
+      expect(saved[0]).toMatchObject({ asaas_account_id: 'acc_9', status: 'active' });
+      expect(released).toEqual([]);
+    });
+
+    it('after a 400 with no account found, releases the claim and shows the Asaas message', async () => {
+      const { deps, released, saved } = onboardDeps({ asaasFails: true, routes: list([]) });
+      const res = await read(await onboard(post('asaas-onboard', fiscal), deps));
+      expect(res.status).toBe(502);
+      expect(res.body.error.message).toContain('CPF já cadastrado');
+      expect(released).toEqual([PROVIDER.id]);
+      expect(saved).toEqual([]);
+    });
+
+    it('does not search after a non-400 failure of createAccount', async () => {
+      const { deps, calls } = onboardDeps({ routes: { 'POST /v3/accounts': { status: 500, body: {} }, ...list([FOUND]) } });
+      const res = await read(await onboard(post('asaas-onboard', fiscal), deps));
+      expect(res.status).toBe(502);
+      expect(paths(calls)).toEqual(['POST /v3/accounts']);
+    });
   });
 });
 

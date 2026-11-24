@@ -56,6 +56,8 @@ curl "${H[@]}" -d '{"action":"cancel"}' $BASE/subscriptions-manage
 curl "${H[@]}" -X POST $BASE/account-export
 curl "${H[@]}" -d '{"confirm":"EXCLUIR"}' $BASE/account-delete
 curl "${H[@]}" -d '{"text":"Tem um vazamento embaixo da pia, preciso hoje"}' $BASE/request-assist
+# só administrador ($JWT de um admin); nunca testada no Asaas real: primeiro dry_run no sandbox (RUNBOOKS, "Re-registrar o webhook das subcontas")
+curl "${H[@]}" -d '{"provider_id":"<uuid>","dry_run":true}' $BASE/asaas-webhooks-sync
 
 curl -H "asaas-access-token: $ASAAS_WEBHOOK_TOKEN" -H 'Content-Type: application/json' \
   -d '{"id":"evt_teste_1","event":"PAYMENT_RECEIVED","payment":{"id":"pay_xxx","dueDate":"2026-10-19"}}' $BASE/asaas-webhook

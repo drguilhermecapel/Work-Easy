@@ -21,7 +21,7 @@ describe('supabase/config.toml: verify_jwt', () => {
   }
 
   it('user-facing functions keep the gateway JWT check', () => {
-    for (const name of ['charges-create', 'subscriptions-manage', 'asaas-onboard', 'account-export', 'payments-create', 'provider-document-upload']) {
+    for (const name of ['charges-create', 'subscriptions-manage', 'asaas-onboard', 'account-export', 'payments-create', 'provider-document-upload', 'asaas-webhooks-sync']) {
       expect(functionBlock(name) ?? '').not.toMatch(/verify_jwt\s*=\s*false/);
     }
   });

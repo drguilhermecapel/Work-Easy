@@ -1047,13 +1047,13 @@ Estes pontos foram encontrados ao ler o código e conferir o banco. Não foram c
 2. **Evento sem cobrança não se reaplica.** Quando a cobrança ainda não existe no banco, o webhook responde 200 como `unknown_payment` e marca o evento como concluído. A corrida é real: `payments-create` grava a linha **depois** do `POST /payments` no Asaas. Não há reprocessamento automático nem alerta. **Corrigido em 24/11/2026 (DD67).** O evento de dinheiro sem cobrança local continua respondido com 200, mas não é mais marcado como concluído: fica com `processed_at` nulo e grava `payment_event.unknown_payment` no `audit_log`. Uma nova entrega do Asaas (ou o reenvio pelo painel) é aplicada. Continua sem reprocessamento automático: ver "Procedimentos da rodada de 24/11/2026", item 3.
 3. **Transição recusada some.** Em `asaas-webhook`, quando a regra do banco recusa a transição do atendimento, a função só registra no log e na resposta. Não grava `payment_event` nem `audit_log`. O pagamento fica `received` e o atendimento fica para trás sem trilha no banco. **Corrigido em 24/11/2026 (DD67).** A recusa grava `booking.transition_refused` no `audit_log` (entidade `bookings`, com a regra, o pagamento e o evento).
 4. **Exclusão de conta pode parar em `processing`.** Se `deleteAuthUser` falha depois da anonimização, a função responde 500 e não marca `failed`. A linha de `data_requests` fica em `processing`. A anonimização já aconteceu. **Corrigido em 24/11/2026 (DD69).** A função marca o pedido como `failed` e grava `account.delete_auth_failed`; a resposta continua 500 `auth_delete_failed`.
-5. **Ativação de conta pode criar subconta duplicada.** Se a função cai depois de `createAccount` e antes de `savePaymentAccount`, a chave se perde e a reserva é retomada depois de 5 minutos, chamando `createAccount` de novo. Comportamento do Asaas para CPF ou CNPJ repetido **[incerto]**. **Parcial em 24/11/2026 (DD70).** A gravação da conta é tentada 3 vezes; se nenhuma funciona, `payment_account.orphan` guarda os ids do Asaas e a reserva não é liberada. Se o processo cair entre `createAccount` e a gravação, a retomada da reserva depois de 5 minutos ainda pode chamar `createAccount` de novo: corrigir isso exige consultar as subcontas no Asaas, chamada ainda não conferida (R5 e T3 de `docs/pesquisa/asaas.md`).
+5. **Ativação de conta pode criar subconta duplicada.** Se a função cai depois de `createAccount` e antes de `savePaymentAccount`, a chave se perde e a reserva é retomada depois de 5 minutos, chamando `createAccount` de novo. Comportamento do Asaas para CPF ou CNPJ repetido **[incerto]**. **Parcial em 24/11/2026 (DD70); recuperação implementada depois (DD80), só com fakes.** A gravação da conta é tentada 3 vezes; se nenhuma funciona, `payment_account.orphan` guarda os ids do Asaas. Agora, quando `claimOnboarding` retoma uma reserva parada, `asaas-onboard` busca a subconta por `GET /v3/accounts?cpfCnpj=` antes de criar: com uma conta que bate, gera chave nova (`POST /v3/accounts/{id}/accessTokens`) e responde `recovered: true`; com duas ou mais, responde 409 `onboarding_ambiguous`. **Nada disso foi chamado no Asaas real.** A geração de chave exige painel e IP autorizado (ver "Recuperar ativação interrompida" abaixo) **[incerto]**.
 6. **Pro não rebaixa sem job.** Em `ed8aa38`, `providers.plan` não volta a `free` quando o período pago acaba e nenhum evento chega. O job que faz isso (`workeasy-expire-pro-plans`) está no HEAD `5805947` e na base local, mas não em `ed8aa38`; não verifiquei a aplicação em produção.
 7. **Duas fontes para a carência do Pro.** `PRO_GRACE_DAYS` (função) e `platform_settings.pro_grace_days` (job [SEG-S1]) precisam ser iguais, e nada as sincroniza. **Corrigido em 24/11/2026 (DD68).** O webhook lê `platform_settings.pro_grace_days`; `PRO_GRACE_DAYS` vale só quando a chave não pode ser lida.
 8. **Duplicata de notificação.** Se a gravação do resultado falha depois do envio, a linha fica em `sending` e é reenviada depois de 10 minutos. Não confirmei se a Cloud API do WhatsApp aceita chave de idempotência **[incerto]**.
 9. **Agendador silencioso.** O job de disparo aparece como `succeeded` mesmo com o Vault vazio (conferido localmente: execuções `succeeded` sem chaves). Só `net._http_response` mostra a chamada real.
 10. **Aprovação sobrevive a arquivo perdido.** Restauro ou sumiço de arquivo não revoga a aprovação. O trigger `provider_documents_revoke_approvals` (disparado por mudança de `status`, `step` ou `provider_id`, e por exclusão) revoga só quando o passo deixa de estar coberto por documento aceito.
-11. **Reregistro de webhook de subconta não existe.** Trocar `ASAAS_WEBHOOK_TOKEN` exige atualizar cada subconta, e nada no código faz isso. **Não feito em 24/11/2026.** Depende de `GET` e `POST /v3/webhooks` com a chave da subconta, caminho ainda não conferido contra o Asaas (T3 de `docs/pesquisa/asaas.md`).
+11. **Reregistro de webhook de subconta.** Trocar `ASAAS_WEBHOOK_TOKEN` exige atualizar cada subconta. **Implementado em 24/11/2026 (DD79), só com fakes: a função `asaas-webhooks-sync` existe e foi testada, mas nunca foi chamada no Asaas real.** Usa `GET`, `POST` e `PUT /v3/webhooks` com a chave da subconta, caminhos conferidos só na documentação (T3 de `docs/pesquisa/asaas.md`, seção 18). A primeira execução deve ser `dry_run` no sandbox. Procedimento em "Re-registrar o webhook das subcontas" abaixo.
 12. **Documentação desatualizada.** `supabase/functions/README.md` está correto: `verify_jwt = false` para `asaas-webhook` e `notify-dispatch` está em `supabase/config.toml` (linhas 408 a 412). Errado é o comentário do workflow `deploy-supabase.yml` ("config.toml has no [functions] entries"); a flag `--no-verify-jwt` é redundante, mas não quebra. `ARQUITETURA.md` (linhas 438 a 441) lista dois agendamentos; o banco local tem sete: `notification-counts-retention`, `product-events-retention`, `workeasy-booking-reminders`, `workeasy-dispatch-notifications`, `workeasy-expire-booking-requests`, `workeasy-expire-pro-plans` e `workeasy-expire-stale`. Cinco não estão listados no `ARQUITETURA.md`, todos com migração no HEAD. **Atualizado em 24/11/2026.** O comentário do workflow foi corrigido. `ARQUITETURA.md` agora lista os agendamentos numa tabela própria: as migrações criam oito (os sete acima e `retention-purge-daily`).
 13. **Entrega do Asaas.** `ARQUITETURA.md` afirma que o Asaas "entrega ao menos uma vez e fora de ordem". A página "Sobre os webhooks" confirma entrega "at least once" (o mesmo evento pode chegar mais de uma vez). Sobre ordem, ela só remete à página de tipos de envio (sequencial ou não sequencial), não aberta **[incerto]**.
 14. **Deriva da base local.** O banco local tem as 36 migrações de HEAD `5805947`; em `ed8aa38` faltam 20 (`20261109000001` a `20261109300006`). Testes e consultas feitos nele refletem o HEAD, não necessariamente o `main` nem a produção.
@@ -1186,3 +1186,61 @@ Não há automação: depois da exclusão da conta, a chave da subconta pode nã
 3. Peça a remoção da subconta ao Asaas. O caminho (painel, API ou atendimento) não foi conferido [incerto]; registre no `audit_log`, com a service role, o que foi pedido e a resposta.
 4. Não remova enquanto houver cobrança em aberto, disputa ou obrigação fiscal pendente na subconta.
 
+### 6. Re-registrar o webhook das subcontas (`asaas-webhooks-sync`, DD79)
+
+**Aviso.** A função foi escrita a partir da documentação do Asaas e testada só com fakes. **Nunca foi executada contra o Asaas real.** A primeira execução deve ser `dry_run`, no sandbox, numa conta só. Tudo marcado [incerto] abaixo depende de comportamento real.
+
+**Quando usar.** Depois de trocar `ASAAS_WEBHOOK_TOKEN` (caso 6 deste documento, rotação de segredos), para conferir se a subconta recebeu o webhook no onboarding (R5), ou quando eventos de cobrança própria não chegam e o webhook da subconta está `interrupted` ou foi apagado no painel do prestador.
+
+**Quem chama.** Só administrador: o JWT do usuário precisa passar em `public.is_admin()`. Outro papel recebe 403 `not_allowed`. A função usa a chave de cada subconta guardada no Vault, nunca a chave da conta-raiz, porque a documentação não diz se a raiz enxerga webhooks de subconta.
+
+**Corpo** (todos opcionais): `provider_id` (uuid; uma conta só), `dry_run` (boolean), `cursor` (uuid, o `next_cursor` da chamada anterior), `limit` (1 a 50; padrão 20).
+
+```bash
+BASE=https://<projeto>.supabase.co/functions/v1
+H=(-H "Authorization: Bearer $ADMIN_JWT" -H "apikey: $ANON" -H 'Content-Type: application/json')
+
+# 1. Uma conta, sem escrever nada (sempre primeiro, no sandbox)
+curl "${H[@]}" -d '{"provider_id":"<uuid>","dry_run":true}' $BASE/asaas-webhooks-sync
+
+# 2. Uma conta, de verdade
+curl "${H[@]}" -d '{"provider_id":"<uuid>"}' $BASE/asaas-webhooks-sync
+
+# 3. Todas, em lotes: repita com o next_cursor até remaining ser 0 (next_cursor null)
+curl "${H[@]}" -d '{"dry_run":true,"limit":20}' $BASE/asaas-webhooks-sync
+curl "${H[@]}" -d '{"limit":20,"cursor":"<next_cursor>"}' $BASE/asaas-webhooks-sync
+```
+
+**Resposta.** `{ dry_run, processed, created, updated, unchanged_dry_run, key_rejected, failed, rate_limited, remaining, next_cursor, results[] }`. Cada item de `results` é `{ provider_id, result, code?, would?, duplicates? }`. A resposta e a auditoria nunca levam chave de subconta nem token. A execução grava uma entrada `asaas_webhooks.sync` no `audit_log` (contagens e códigos, sem segredo).
+
+| `result` | O que significa | O que fazer |
+|---|---|---|
+| `unchanged_dry_run` | `dry_run`: nada foi escrito. `would` diz o que uma execução real faria (`create` ou `update`) | Conferir o `would` esperado; só então rodar sem `dry_run` |
+| `created` | Não havia webhook com a nossa URL; foi criado (`name` `WorkEasy`, `apiVersion` 3, `SEQUENTIALLY`, token derivado) | Nada. Conferir no painel da subconta, se for a primeira execução real |
+| `updated` | Havia webhook com a nossa URL; foi regravado (`url`, token derivado, `enabled: true`, `interrupted: false`, `SEQUENTIALLY`, eventos). O token não volta na listagem, então a regravação é o único jeito de garanti-lo | Nada |
+| `key_rejected` | O Asaas respondeu 401 ou 403 à chave da subconta: revogada, expirada ou sem acesso (R9) **[incerto]** | A subconta precisa de chave nova (ver "Recuperar ativação interrompida"); depois rode de novo para essa conta |
+| `failed` com `code` `too_many_webhooks` | A subconta já tem 10 webhooks e nenhum é o nosso. Nada foi criado | O prestador ou o suporte apaga um webhook que não usa no painel do Asaas; rode de novo |
+| `failed` com `code` `email_missing` | Faltou o e-mail que o Asaas exige na criação: nem o login do prestador nem `EMAIL_FROM` têm endereço | Configurar `EMAIL_FROM` e rodar de novo |
+| `failed` com `code` `key_missing` | A conta está na lista mas o Vault não devolveu a chave | Caso 3 deste documento |
+| `failed` com outro `code` | Erro do Asaas (por exemplo 400 ou 422) ou falha de rede (`timeout`, `unexpected`). O código é o `code` do Asaas | Se o código é do Asaas, ler `errors[]` no log da função e corrigir a causa; se é `timeout` ou `http_5xx`, rodar de novo mais tarde |
+| `duplicates` (campo extra) | Mais de um webhook com a nossa URL na subconta; só o primeiro foi tocado | Apagar o excedente no painel |
+
+**429 (`rate_limited: true`).** O lote parou no primeiro 429 do Asaas (cota de 25.000 requisições por conta a cada 12 horas; sem `Retry-After`). Espere alguns minutos e repita com o `next_cursor` devolvido. Se `next_cursor` vier nulo com `rate_limited` verdadeiro, o 429 veio já na primeira conta: recomece sem `cursor`.
+
+**O que não confere.** A função não lê o authToken do webhook (o Asaas não o devolve), então nunca sabe se o token atual está certo; ela só o regrava. Também não verifica se o evento chega: confira com um pagamento de teste no sandbox (T3 de `docs/pesquisa/asaas.md`).
+
+### 7. Recuperar ativação interrompida (`asaas-onboard`, DD80)
+
+**Aviso.** Implementado e testado só com fakes; nunca chamado no Asaas real **[incerto]**.
+
+**O que mudou.** Se a função cai depois de `createAccount` e antes de gravar a conta, a reserva (`creating`) é retomada depois de 5 minutos. Agora, nesse caso, `asaas-onboard` busca `GET /v3/accounts?cpfCnpj=<dígitos>` com a chave da conta-raiz antes de criar:
+
+- **Nenhuma conta.** Cria como antes.
+- **Uma conta** (só vale item com `cpfCnpj` igual ao do pedido, com `id` e `walletId`; e que não esteja ligada a outro prestador no banco). Não cria outra. Gera chave nova com `POST /v3/accounts/{id}/accessTokens` (nome `WorkEasy`, sem expiração), guarda no Vault, grava a linha com `status = 'active'` e responde 201 com `recovered: true`. O `audit_log` recebe `payment_account.recovered`. O webhook dessa conta não é registrado aqui: rode `asaas-webhooks-sync` para o prestador.
+- **Geração de chave recusada (401 ou 403).** A conta é gravada com `status = 'key_not_returned'` e o prestador recebe a mensagem de suporte. O `audit_log` recebe `payment_account.recovered_without_key`.
+- **Duas ou mais contas, ou conta já ligada a outro prestador.** Responde 409 `onboarding_ambiguous` e grava `payment_account.onboarding_ambiguous`. Nada é criado e a reserva não é liberada. Decida no painel do Asaas qual conta é do prestador.
+- **Falha na própria busca.** Responde 502 sem criar e sem liberar a reserva; o prestador pode tentar de novo.
+
+Depois de um 400 em `createAccount`, a função faz **uma** busca por `cpfCnpj` e, se achar a conta, entra no mesmo fluxo. A resposta do Asaas a CPF repetido não está documentada, então não há código de erro tratado.
+
+**Pré-requisito da geração de chave (painel e IP) [incerto].** Segundo a documentação, `POST /v3/accounts/{id}/accessTokens` exige (a) a chave da conta-pai, (b) gestão de chaves de subconta habilitada no painel web do Asaas, (c) IP Whitelist ativa e (d) o IP de saída das Edge Functions autorizado nela. Sem isso o Asaas recusa e a conta fica `key_not_returned`. O IP de saída das Edge Functions do Supabase não é fixo por padrão **[incerto]**: confirme com o Supabase e com o Asaas antes de depender desse caminho. Enquanto não houver chave, o suporte gera a chave no painel do Asaas e a grava como no caso 3 deste documento.
