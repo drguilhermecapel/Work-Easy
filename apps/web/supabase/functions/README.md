@@ -5,6 +5,7 @@ Contrato: `docs/ARQUITETURA.md` (seção "Edge Functions").
 ```
 _shared/            regras puras (sem Deno.*, sem npm:), testadas com Vitest em test/functions
 _runtime/           integração Deno: env, clientes Supabase, operações de banco reutilizadas
+_test/              roda os testes de test/functions em Deno (npm run test:deno); não é publicado
 <nome>/handler.ts   handler(req, deps): toda a lógica da função, com dependências injetadas
 <nome>/index.ts     monta as dependências reais e chama Deno.serve
 ```
@@ -18,6 +19,8 @@ deno check --config supabase/functions/deno.json supabase/functions/*/index.ts
 (cd supabase/functions && deno lint)
 npx vitest run test/functions
 npx eslint test/functions --max-warnings 0   # supabase/functions é do Deno e está fora do eslint
+npm run test:deno                            # os mesmos testes de test/functions, em Deno (_test/deno.json)
+npm run test:e2e-functions                   # ponta a ponta no edge-runtime com APIs falsas (RUNBOOKS)
 ```
 
 O `--config` é necessário: a partir da raiz do app, sem ele o Deno usa o

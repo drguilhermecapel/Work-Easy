@@ -15,6 +15,7 @@
     "test:watch": "vitest",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:deno": "deno test --frozen --config supabase/functions/_test/deno.json --allow-read=.",
+    "test:e2e-functions": "node scripts/e2e-functions.mjs",
     "check:size": "node scripts/check-bundle-size.mjs",
     "db:seed": "node scripts/generate-seed.mjs",
     "db:types": "supabase gen types typescript --local > lib/database.types.ts",
