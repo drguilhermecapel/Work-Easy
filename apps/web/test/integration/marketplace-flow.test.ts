@@ -947,8 +947,11 @@ describe('fluxo do produto contra o Supabase real', () => {
       );
       expect(found.map(r => r.provider_id)).not.toContain(provider.id);
 
-      const quote = must(await world.service.from('quotes').select('client_name, client_phone, total_cents').eq('provider_id', provider.id).eq('title', 'Limpeza pós-obra').single(), 'orçamento');
-      expect(quote).toEqual({ client_name: null, client_phone: null, total_cents: 34990 });
+      const quotes = must(await world.service.from('quotes').select('title, client_name, client_phone, total_cents').eq('provider_id', provider.id), 'orçamentos');
+      // o título é texto livre e pode citar o cliente: a exclusão o troca (migração 010); o valor fica para a contabilidade
+      expect(quotes.length).toBeGreaterThan(0);
+      for (const q of quotes) expect(q).toMatchObject({ title: 'Orçamento removido', client_name: null, client_phone: null });
+      expect(quotes.map(q => q.total_cents)).toContain(34990);
       const payment = must(await world.service.from('payments').select('amount_cents, provider_id').eq('id', paymentId).single(), 'pagamento');
       expect(payment).toEqual({ amount_cents: 18000, provider_id: provider.id });
     });
