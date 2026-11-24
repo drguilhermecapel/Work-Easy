@@ -4,7 +4,10 @@
 // Everything in dist/ is downloaded by anyone, so only the publishable key (sb_publishable_...) or
 // the legacy anon JWT may be there (lib/supabaseKey.ts makes the app refuse anything else, but by
 // then the key would already be public). This looks for:
-//   - "sb_secret_" and the name SUPABASE_SERVICE_ROLE;
+//   - a Supabase secret key: "sb_secret_" followed by the key itself (16 or more key characters). The bare
+//     prefix is NOT a finding: supabase-js carries the literal "sb_secret_" to refuse secret keys in a browser,
+//     so every build with Supabase has it (the first version of this check failed on it);
+//   - the name SUPABASE_SERVICE_ROLE;
 //   - any JWT whose payload says role "service_role" (the legacy service key has no telling prefix);
 //   - optionally (--key <value>, or the VITE_SUPABASE_PUBLISHABLE_KEY variable with --env) the key the
 //     build was given, before it is embedded.
@@ -36,6 +39,8 @@ export const jwtRole = token => {
   }
 };
 
+// A secret key is the prefix plus the key; the prefix alone is a string of the library
+const SECRET_KEY = /sb_secret_[A-Za-z0-9_-]{16,}/;
 const JWT = /eyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g;
 // Text files only: a key never hides inside an image, and reading binaries as text is slow and noisy
 const TEXT = /\.(?:html?|js|mjs|cjs|css|json|map|txt|xml|webmanifest|svg)$/i;
@@ -43,7 +48,7 @@ const TEXT = /\.(?:html?|js|mjs|cjs|css|json|map|txt|xml|webmanifest|svg)$/i;
 /** What is wrong with a piece of text, as a list of reasons (empty = nothing). */
 export const findSecrets = text => {
   const found = [];
-  if (text.includes('sb_secret_')) found.push('chave secreta do Supabase (sb_secret_)');
+  if (SECRET_KEY.test(text)) found.push('chave secreta do Supabase (sb_secret_...)');
   if (text.includes('SUPABASE_SERVICE_ROLE')) found.push('nome SUPABASE_SERVICE_ROLE');
   for (const token of text.match(JWT) ?? []) {
     if (jwtRole(token) === 'service_role') {
@@ -63,7 +68,9 @@ const walk = dir =>
 const main = () => {
   const problems = [];
   if (givenKey !== undefined && givenKey !== '') {
+    // The key given to the build is refused by its prefix, whatever follows: it is the value that would be embedded
     const inKey = findSecrets(givenKey);
+    if (givenKey.startsWith('sb_secret_')) inKey.push('chave secreta do Supabase (sb_secret_...)');
     if (inKey.length > 0 || jwtRole(givenKey) === 'service_role') {
       problems.push(`VITE_SUPABASE_PUBLISHABLE_KEY: ${inKey.join(', ') || 'JWT com papel service_role'}. Use somente a chave publicável.`);
     }

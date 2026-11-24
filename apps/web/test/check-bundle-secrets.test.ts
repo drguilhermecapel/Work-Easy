@@ -38,10 +38,16 @@ describe('check-bundle-secrets', () => {
   });
 
   it('refuses a secret key by its prefix', () => {
-    const result = run(['--dist', makeDist('const key="sb_secret_abc123";')]);
+    const result = run(['--dist', makeDist('const key="sb_secret_abcdefghij0123456789";')]);
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('assets/index-AbC123xY.js');
     expect(result.stderr).toContain('sb_secret_');
+  });
+
+  it('does not mistake the prefix string that supabase-js carries for a key', () => {
+    // supabase-js has the literal "sb_secret_" to refuse secret keys in a browser: every build with Supabase has it
+    const dist = makeDist('if(e.startsWith("sb_secret_"))throw new Error("Forbidden use of secret API key in browser");const p="sb_secret_";');
+    expect(run(['--dist', dist]).status).toBe(0);
   });
 
   it('refuses a legacy service_role key, which has no telling prefix', () => {
@@ -74,7 +80,7 @@ describe('check-bundle-secrets: where it runs from', () => {
     const folder = join(base, 'x#y%z', 'scripts');
     mkdirSync(folder, { recursive: true });
     copyFileSync(SCRIPT, join(folder, 'check-bundle-secrets.mjs'));
-    const dist = makeDist('const key="sb_secret_abc123";');
+    const dist = makeDist('const key="sb_secret_abcdefghij0123456789";');
     const result = spawnSync(process.execPath, [join(folder, 'check-bundle-secrets.mjs'), '--dist', dist], { encoding: 'utf8' });
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('sb_secret_');

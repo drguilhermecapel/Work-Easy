@@ -44,8 +44,11 @@
 //     what any page pays; all 44 together are 232.0 kB (more than the 192.1 kB of the single file,
 //     because small files compress worse) and are fetched only by the few screens that need every
 //     rule. Budget: 8.4 kB plus about 15%, 10 kB. `total` no longer counts the area chunks: it was
-//     632.0 kB with the single file and is 441.7 kB without them (budget 510 kB). `policiesAll`
-//     is reported by --json and has no budget.
+//     632.0 kB with the single file. Without the rules it is 441.7 kB in the demo build and 522.5 kB in the
+//     production build (VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY set: supabase-js is about 80 kB), which
+//     is the one the deploy measures: budget 600 kB (522.5 plus about 15%). The first figure given for this
+//     budget, 510 kB, came from the demo build and would have failed the first production deploy.
+//     `policiesAll` is reported by --json and has no budget.
 //
 // No dependencies. Exit code 0 = within budget, 1 = over budget, 2 = no build to read.
 
@@ -61,7 +64,7 @@ export const BUDGETS_KB = {
   catalog: 135,
   policies: 10,
   css: 16,
-  total: 510,
+  total: 600,
 };
 
 const LABELS = {
