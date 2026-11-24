@@ -43,6 +43,11 @@ jobs:
       VITE_SAC_EMAIL: ${{ vars.VITE_SAC_EMAIL }}
       VITE_SAC_WHATSAPP: ${{ vars.VITE_SAC_WHATSAPP }}
       VITE_LEGAL_STATUS: ${{ vars.VITE_LEGAL_STATUS }}
+      VITE_LOGIN_METHODS: ${{ vars.VITE_LOGIN_METHODS }}
+      # Error reporting: without the DSN the production build reports nothing (lib/observability.ts).
+      # The DSN is public by design; the release is the commit being published.
+      VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
+      VITE_APP_VERSION: ${{ github.sha }}
     defaults:
       run:
         working-directory: apps/web
@@ -73,9 +78,10 @@ jobs:
               exit 1
             fi
           done
-          # Only the publishable key may reach the client (lib/supabaseKey.ts).
-          if [ "${VITE_SUPABASE_PUBLISHABLE_KEY#sb_secret_}" != "$VITE_SUPABASE_PUBLISHABLE_KEY" ]; then
-            echo "::error::VITE_SUPABASE_PUBLISHABLE_KEY recebeu uma chave secreta. Use somente a chave publicável."
+          # Only the publishable key may reach the client (lib/supabaseKey.ts): refuses sb_secret_ and
+          # a legacy service_role JWT before anything is built with it.
+          if ! node scripts/check-bundle-secrets.mjs --dist .no-build-yet --env; then
+            echo "::error::VITE_SUPABASE_PUBLISHABLE_KEY recebeu uma chave de servidor. Use somente a chave publicável."
             exit 1
           fi
         env:
@@ -99,12 +105,15 @@ jobs:
       - name: Build do site (inclui a pré-renderização)
         run: npm run build
 
+      - name: Conferir o tamanho da carga inicial
+        run: npm run check:size
+
       - name: Conferir cabeçalhos e HTML gerado
         run: node scripts/check-headers.mjs --dist dist
 
       - name: Conferir que o bundle público não tem segredos
         run: |
-          if grep -rIlE "sb_secret_|SUPABASE_SERVICE_ROLE" dist/; then
+          if ! node scripts/check-bundle-secrets.mjs --dist dist; then
             echo "::error::Padrão de segredo encontrado no bundle público."
             exit 1
           fi

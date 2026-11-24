@@ -1,7 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- route table: the lazy pages are not exported */
 import { lazy } from 'react';
 import { Navigate, Route } from 'react-router-dom';
-import { DashboardRedirect, RegisterProviderRedirect } from './redirects';
 
 // Each page is a separate chunk, so the first load only ships what it shows
 const SearchPage = lazy(() => import('../Search'));
@@ -15,6 +14,10 @@ const HealthSearch = lazy(() => import('../HealthSearch'));
 const DoctorProfile = lazy(() => import('../DoctorProfile'));
 const CatalogSearch = lazy(() => import('./CatalogSearch'));
 const FutureFeaturePage = lazy(() => import('./FutureFeaturePage'));
+// The redirects read the catalog (571 kB of JSON). Imported statically here they pulled it into
+// the entry chunk of every visit; as a chunk of their own the catalog stays out of the first load.
+const DashboardRedirect = lazy(() => import('./redirects').then(module => ({ default: module.DashboardRedirect })));
+const RegisterProviderRedirect = lazy(() => import('./redirects').then(module => ({ default: module.RegisterProviderRedirect })));
 
 /** Demo mode (no backend): the prototype screens with fictitious data. */
 export const demoRoutes = (

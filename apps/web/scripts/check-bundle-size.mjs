@@ -33,6 +33,16 @@
 //   budget   (kB gz)   initial 190   | home 325   | route 15  | catalog 135   | policies 155
 //                      css 16   | total 680
 //
+// Revision of 2026-11-24. Two things were found when this script started to run in CI:
+//   - initial measured 229.4 kB: pages/prototype/redirects.tsx imported the catalog statically and
+//     pulled areas.json into the entry chunk. The redirects are now a lazy chunk and initial is back
+//     to 114.7 kB on the demo build (the catalog is its own chunk again: 114.6 kB). Budget unchanged.
+//   - policies measured 192.1 kB against 155: the fourth verification round of the catalog added the
+//     list of sources to each policy (about 338 kB of the 1.8 MB of JSON). That growth was a decision,
+//     the chunk is still loaded only by the pages that show the rules of a service, and nothing on the
+//     first load depends on it, so the budget follows the data: 192.1 kB plus about 15% = 220 kB.
+//     Splitting policies.json by area would make each page load only its own rules; it is not done.
+//
 // No dependencies. Exit code 0 = within budget, 1 = over budget, 2 = no build to read.
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
@@ -45,7 +55,7 @@ export const BUDGETS_KB = {
   home: 325,
   route: 15,
   catalog: 135,
-  policies: 155,
+  policies: 220,
   css: 16,
   total: 680,
 };
