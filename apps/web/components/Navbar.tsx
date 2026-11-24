@@ -31,19 +31,19 @@ const Navbar: React.FC = () => {
             {demo && <div className="hidden lg:flex ml-8 bg-gray-100 rounded-full p-1 items-center">
                <button 
                  onClick={() => switchRole(UserType.CLIENT)}
-                 className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${user.type === UserType.CLIENT ? 'bg-white shadow-sm text-primary' : 'text-gray-500'}`}
+                 className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${user.type === UserType.CLIENT ? 'bg-white shadow-sm text-primary' : 'text-gray-600'}`}
                >
                  Cliente
                </button>
                <button 
                  onClick={() => switchRole(UserType.PROVIDER, false)}
-                 className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${user.type === UserType.PROVIDER && !user.isHealthProfessional ? 'bg-white shadow-sm text-primary' : 'text-gray-500'}`}
+                 className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${user.type === UserType.PROVIDER && !user.isHealthProfessional ? 'bg-white shadow-sm text-primary' : 'text-gray-600'}`}
                >
                  Prestador
                </button>
                <button 
                  onClick={() => switchRole(UserType.PROVIDER, true)}
-                 className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${user.isHealthProfessional ? 'bg-teal-500 shadow-sm text-white' : 'text-gray-500'}`}
+                 className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${user.isHealthProfessional ? 'bg-teal-500 shadow-sm text-white' : 'text-gray-600'}`}
                >
                  Médico
                </button>
@@ -88,9 +88,10 @@ const Navbar: React.FC = () => {
                 <Link
                   to={demo ? '/profile/me' : '/conta'}
                   className="flex items-center space-x-2 text-gray-700 hover:text-primary"
-                  aria-label={`Perfil de ${accountName}`}
                 >
+                  {/* The name comes from the text, not from aria-label: the visible initials stay part of it (WCAG 2.5.3) */}
                   <Avatar name={accountName} className="w-8 h-8 text-xs border border-gray-200" />
+                  <span className="sr-only">Perfil de {accountName}</span>
                 </Link>
               )}
             </div>

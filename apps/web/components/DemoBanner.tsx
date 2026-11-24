@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 const DemoBanner: React.FC = () => {
   if (useAuth().mode !== 'demo') return null;
   return (
+    <aside aria-label="Aviso de demonstração">
     <div
       role="note"
       className="bg-amber-100 text-amber-900 text-xs sm:text-sm text-center px-4 py-2 flex items-center justify-center gap-2 print:hidden"
@@ -16,6 +17,7 @@ const DemoBanner: React.FC = () => {
         pagamento ou verificação reais.
       </span>
     </div>
+    </aside>
   );
 };
 

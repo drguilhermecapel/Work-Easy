@@ -4,6 +4,7 @@ import { Star, MapPin, Clock, MessageCircle, X } from 'lucide-react';
 import { MOCK_PROVIDERS } from '../constants';
 import Avatar from '../components/Avatar';
 import { formatBRL } from '../utils/format';
+import { useFocusTrap } from '../lib/useFocusTrap';
 
 const Profile: React.FC = () => {
   const { id } = useParams();
@@ -13,6 +14,7 @@ const Profile: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedService, setSelectedService] = useState(provider?.services[0]?.id || '');
   const [description, setDescription] = useState('');
+  const dialogRef = useFocusTrap<HTMLDivElement>(isModalOpen, () => setIsModalOpen(false));
 
   if (!provider) {
     return <div className="p-8 text-center">Profissional não encontrado</div>;
@@ -163,10 +165,10 @@ const Profile: React.FC = () => {
       {/* Request Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="orcamento-titulo" tabIndex={-1} className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="bg-gray-50 px-6 py-4 border-b flex justify-between items-center">
-              <h3 className="font-bold text-lg">Solicitar Orçamento</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
+              <h3 id="orcamento-titulo" className="font-bold text-lg">Solicitar Orçamento</h3>
+              <button type="button" aria-label="Fechar" onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-gray-700"><X size={24} aria-hidden="true" /></button>
             </div>
             
             <form onSubmit={handleRequestSubmit} className="p-6 space-y-4">
