@@ -1,5 +1,7 @@
 # Supabase em produção: dossiê e runbook
 
+> **Nota de versão (24/11/2026):** este estudo foi escrito sobre a CLI 2.121.0. O repositório usa agora a CLI 3.4.0, em que `--linked` e `--project-ref` são obsoletos (o deploy usa `--remote`). As citações `[CLI 2.121.0]` valem para aquela versão; confira `--help` antes de usar um comando.
+
 Documento técnico para o owner e para quem executar a publicação do WorkEasy.
 **Não é parecer jurídico.** Nada foi criado nem executado em nenhum projeto Supabase remoto (no banco local, só consultas de leitura),
 e nenhum arquivo do repositório foi alterado.

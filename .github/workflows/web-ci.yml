@@ -125,3 +125,6 @@ jobs:
         run: deno check --frozen --config supabase/functions/deno.json supabase/functions/*/index.ts
       - name: deno lint
         run: deno lint --config supabase/functions/deno.json supabase/functions
+      # Os testes de test/functions rodam também no runtime Deno (substituto do vitest em supabase/functions/_test).
+      - name: deno test
+        run: deno test --frozen --config supabase/functions/_test/deno.json --allow-read=.
