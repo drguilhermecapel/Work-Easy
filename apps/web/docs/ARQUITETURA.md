@@ -465,12 +465,13 @@ Os horários são os do banco (UTC no Supabase). A remoção de antecedentes ret
 (`background-check-purge`) não é criada por migração: o dono a agenda
 (`docs/operacao/11-agendamento-de-rotinas.md`).
 
-**Rodada de 24/11/2026** (`20261124100001` a `20261124100006`)
+**Rodada de 24/11/2026** (`20261124100001` a `20261124100008`; a 07 valida as duas chaves do piloto e a 08 faz a exclusão de conta apagar também a cidade do perfil, o texto livre das propostas e a lista de espera)
 
 - Chaves novas de `platform_settings`, públicas: `care_line_open` (false: a linha Cuidado só
   aparece no menu de administradores e de contas que já estão nela) e `pilot_neighborhoods`
   (`[]`: lista de slugs dos bairros que o formulário de pedido oferece; vazia = todos).
-  `admin_set_setting` aceita as duas sem conferir tipo; a tela lê só booleano e lista de textos.
+  Desde a migração `20261124100007`, `admin_set_setting` confere as duas: `care_line_open` só
+  aceita verdadeiro ou falso e `pilot_neighborhoods` só aceita lista de slugs de bairros que existem.
 - `care_access()` (authenticated): verdadeiro para quem tem casa, oferta de plantão ou plantão.
 - `waitlist_entries` (`id`, `user_id`, `neighborhood_id`, `occupation_slug null`,
   `occupation_key` gerada, `created_at`; única por conta, bairro e serviço). RLS: a conta lê,

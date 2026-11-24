@@ -25,15 +25,15 @@
 | # | Achado (23/10/2026) | Efeito | O que fazer |
 |---|---|---|---|
 | 1 | **"Resposta dentro da janela de 24 h é grátis" já não vale sem ressalva.** A página de preços da Meta diz que desde 1º/10/2026 as mensagens de serviço só são grátis até 1.000 por mês por número, e que as de utilidade enviadas em resposta ao usuário (janela aberta) voltaram a ser cobradas [M1][M25]. O site comercial da Meta ainda diz que não cobra nos dois casos [M2]. | Todo aviso entregue pode custar. Sem forma de pagamento, a Meta deixa de entregar mensagens de serviço depois da cota. | Seguir a página de desenvolvedores (mais detalhada e datada). Cadastrar forma de pagamento. Conferir o objeto `pricing` do webhook de status nas primeiras mensagens. `[incerto]`: duas páginas da Meta se contradizem. |
-| 2 | **Dois dos seis corpos do código podem não passar na análise.** `proposta_recebida` começa com variável e põe as variáveis fora de ordem (contraria duas regras escritas); `lembrete_atendimento` termina em variável seguida só de ponto final (contraria a regra se o ponto não contar) [M6][M3]. | Sem ajuste, a análise pode recusar o modelo. | Usar o corpo da seção 4 no WhatsApp. O e-mail fica como está. |
+| 2 | **Dois dos dez corpos do código podem não passar na análise.** `proposta_recebida` começa com variável e põe as variáveis fora de ordem (contraria duas regras escritas); `lembrete_atendimento` termina em variável seguida só de ponto final (contraria a regra se o ponto não contar) [M6][M3]. | Sem ajuste, a análise pode recusar o modelo. | Usar o corpo da seção 4 no WhatsApp. O e-mail fica como está. |
 | 3 | **Não existe opt-in de WhatsApp nem opt-out.** `private.notify` manda WhatsApp para todo `auth.users.phone` confirmado. Esse número foi confirmado por código no login; o enum `consent_purpose` não tem propósito para avisos por WhatsApp; não há preferência de canal. | A Meta exige opt-in de quem vai receber [P1]; a LGPD exige revogação a qualquer momento (art. 8º, §5º) [L1] `[incerto]`. Hoje não há como parar o WhatsApp de uma pessoa sem apagar o telefone dela. | **Bloqueio de go-live.** Itens G1 a G3 da seção 11. |
 | 4 | **WhatsApp só alcança quem entra por celular**, e o canal é fixo na hora de enfileirar. Não achei tela para confirmar celular em conta criada por e-mail (não há `updateUser` no app). Sem credencial do WhatsApp, a linha vira `skipped` e a pessoa fica sem aviso mesmo com e-mail confirmado. | Se o lançamento oferecer só login por e-mail, o canal WhatsApp fica sem destinatários. Se oferecer celular e o WhatsApp falhar, não há fallback. | O dossiê I02 recomenda lançar com login e avisos por e-mail e deixar celular e WhatsApp para a fase 2. Lacunas 1 e 2 (seção 11.4). |
 | 5 | **A política da Meta lista bens e serviços proibidos que o catálogo toca**, e a lista de violações cita serviços veterinários, de banho e tosa e de hospedagem de animais [P1][M19]. A área `pets` tem 42 ocupações. | Risco de restrição do número, que também envia os avisos das demais ocupações. | Lista de exclusão (e-mail em vez de WhatsApp) até resposta da Meta e parecer. Seção 10. |
 | 6 | **Os modelos levam nome da ocupação, data e nome da outra parte.** Nas 443 ocupações de saúde isso pode ser "dado referente à saúde" (LGPD, art. 5º, II) [L1] `[incerto]`, e a Meta diz para não usar o WhatsApp com informação de saúde quando a regulação proibir [P1]. | Possível dado sensível indo para a Meta. | `[CONDICIONAL: depende de parecer]`. Seções 10 e 12. |
-| 7 | **O plano Pro (R$ 49/mês) não pode ser vendido nem renovado por WhatsApp.** A lista de violações proíbe "links to or processing of any subscription sales, renewals, or upgrades" [M19]. | Avisos de fim do teste e de cobrança do Pro ficam em e-mail e no app. | Nenhum dos seis modelos toca no Pro. Não criar modelo novo para isso. |
+| 7 | **O plano Pro (R$ 49/mês) não pode ser vendido nem renovado por WhatsApp.** A lista de violações proíbe "links to or processing of any subscription sales, renewals, or upgrades" [M19]. | Avisos de fim do teste e de cobrança do Pro ficam em e-mail e no app. | Nenhum dos dez modelos toca no Pro. Não criar modelo novo para isso. |
 | 8 | **OTP por WhatsApp é possível com o Send SMS hook** (planos Free e Pro), mas não existe no código: `services/auth.ts` pede `channel: 'sms'` e a tela diz SMS [S1][S2]. | Exige função nova, segredos, modelo de autenticação e textos novos. | Seção 5. O dossiê I02 trata como fase 2. |
 
-**Ordem sugerida:** (1) resolver G1 a G3 no código; (2) registrar os seis modelos pelo JSON; (3) conferir `status` e `category` aprovados; (4) testar com 2 ou 3 pessoas que deram opt-in; (5) só então gravar `WHATSAPP_TOKEN` e `WHATSAPP_PHONE_NUMBER_ID`.
+**Ordem sugerida:** (1) resolver G1 a G3 no código; (2) registrar os dez modelos de utilidade pelo JSON; (3) conferir `status` e `category` aprovados; (4) testar com 2 ou 3 pessoas que deram opt-in; (5) só então gravar `WHATSAPP_TOKEN` e `WHATSAPP_PHONE_NUMBER_ID`.
 
 ---
 
@@ -41,9 +41,9 @@
 
 Fontes lidas: `_shared/notifications.ts`, `_shared/notification-context.ts`, `notify-dispatch/handler.ts`, migrações `20261019000008_notifications.sql` e `20261019000009_care.sql`, `docs/ARQUITETURA.md`.
 
-### 2.1 Os seis tipos
+### 2.1 Os dez tipos
 
-Só existem estes seis; a migração 08 limita `notifications.template` a esta lista com `check`.
+Só existem estes dez (`Object.keys(TEMPLATES).length` em `_shared/notifications.ts`); `notifications.template` é limitada a esta lista por um `check` (`notifications_template_check`), redefinido a cada modelo novo; a versão vigente é a da migração `20261124100004`.
 
 | # | Nome (= nome do modelo) | Quem recebe | Quando é enfileirado | Variáveis, na ordem do código |
 |---|---|---|---|---|
@@ -51,12 +51,15 @@ Só existem estes seis; a migração 08 limita `notifications.template` a esta l
 | 2 | `atendimento_confirmado` | cliente **e** profissional | `bookings` passa a `accepted` (`bookings_50_notify`) | `occupation_name`, `starts_at`, `other_party_name` |
 | 3 | `lembrete_atendimento` | cliente **e** profissional | no mesmo evento, agendado para 24 h antes do início, só se faltar mais de 24 h; vira `skipped` se o atendimento for cancelado | as mesmas de `atendimento_confirmado` |
 | 4 | `pagamento_recebido` | profissional | `payments` passa a `received` ou `confirmed` (uma vez por pagamento) | `amount_cents`, `client_name` |
-| 5 | `orcamento_respondido` | profissional | `quotes` passa a `accepted` ou `declined` | `quote_title`, `response` |
+| 5 | `orcamento_respondido` | profissional | `quotes` passa a `accepted` ou `declined` | `response` |
 | 6 | `plantao_oferecido` | cuidador | `shift_offers` com status `offered` (`shift_offers_notify`, migração 09) | `starts_at`, `neighborhood_name` |
+| 7 | `agendamento_solicitado` | prestador | `INSERT` em `bookings` com status `requested` (gatilho `bookings_51_notify_request`, função `private.notify_booking_requested`, migração `20261109300006`) | `starts_at` |
+| 8 | `shift_canceled_by_deletion` | quem ficou com o plantão: a família (dona da casa), o cuidador designado e os cuidadores com oferta aberta; nunca a conta excluída | `public.cancel_shifts_for_user_deletion`, chamada por `account-delete` (criada em `20261110600007`; versão vigente em `20261118600012`), a cada plantão cancelado pela exclusão da conta | nenhuma |
+| 9 | `booking_canceled_by_deletion` | a outra parte do atendimento aceito (atendimento próprio, sem conta de cliente, não avisa ninguém) | `public.cancel_unpaid_accepted_bookings_for_user`, chamada por `account-delete` (migração `20261110600007`), a cada atendimento cancelado pela exclusão da conta | nenhuma |
 
 Um atendimento aceito gera até **4** mensagens (2 confirmações + 2 lembretes).
 
-**Atualização de 24/11/2026.** A lista do banco hoje tem **10** modelos (`notifications_template_check`, migração `20261124100004`). Além dos seis acima: `agendamento_solicitado` (prestador, pedido de agendamento direto), `shift_canceled_by_deletion` e `booking_canceled_by_deletion` (contraparte, na exclusão de conta, sem variáveis) e `pedido_novo` (seção 4.6-A). Os três primeiros ainda não têm ficha neste documento nem entrada no JSON.
+**Atualização de 24/11/2026.** A lista do banco hoje tem **10** modelos (`notifications_template_check`, migração `20261124100004`). Os seis primeiros são os do desenho original; `agendamento_solicitado`, `shift_canceled_by_deletion` e `booking_canceled_by_deletion` (linhas 7 a 9) e `pedido_novo` (linha 10, seção 4.6-A) vieram depois. Fichas: 4.6-B a 4.6-D e 4.6-A.
 
 | # | Nome | Quem recebe | Quando é enfileirado | Variáveis, na ordem do código |
 |---|---|---|---|---|
@@ -71,11 +74,10 @@ Um pedido novo gera, portanto, até 30 mensagens, uma por prestador. O teto diá
 | `provider_name` | `providers.display_name`, gravado pelo gatilho em `params` | texto |
 | `occupation_name` | consulta da função: `occupations.name` pelo `occupation_slug` do pedido (`requests`) ou do atendimento (`bookings`) | texto |
 | `price_cents` | `proposals.price_cents` em `params` | `R$ 1.234,56` (`formatBRL`, espaço simples) |
-| `starts_at` | `lower(period)` do atendimento ou do plantão, em `params` | `dd/mm/aaaa às HH:MM`, fuso `America/Sao_Paulo` |
+| `starts_at` | `lower(period)` do atendimento, do plantão ou do pedido de agendamento, em `params` | `dd/mm/aaaa às HH:MM`, fuso `America/Sao_Paulo` |
 | `other_party_name` | consulta: se o destinatário é o profissional, nome do cliente (`profiles.full_name` ou `provider_clients.name`); se é o cliente, `params.provider_name` ou `providers.display_name` | texto |
 | `amount_cents` | `payments.amount_cents` em `params` | `R$ 350,00` |
 | `client_name` | consulta: `profiles.full_name` de quem pagou; senão `quotes.client_name`; senão `provider_clients.name` do atendimento | texto |
-| `quote_title` | `quotes.title` (apelido `title` em `params`); **texto livre digitado pelo profissional** | texto |
 | `response` | `quotes.status` (apelido `status`) | `aceito` ou `recusado` |
 | `neighborhood_name` | consulta: plantão, casa, bairro (`neighborhoods.name`) | texto |
 
@@ -135,9 +137,12 @@ Os valores de texto passam por `formatParam`: máximo de 300 caracteres, quebras
 | 4.2 | `atendimento_confirmado` | UTILITY | cliente e profissional | 3 | igual ao código |
 | 4.3 | `lembrete_atendimento` | UTILITY | cliente e profissional | 3 | **diferente** (o do código termina em variável) |
 | 4.4 | `pagamento_recebido` | UTILITY | profissional | 2 | igual ao código |
-| 4.5 | `orcamento_respondido` | UTILITY | profissional | 2 | com frase final acrescentada |
+| 4.5 | `orcamento_respondido` | UTILITY | profissional | 1 | igual ao código |
 | 4.6 | `plantao_oferecido` | UTILITY, com risco alto de virar MARKETING | cuidador | 2 | igual ao código |
 | 4.6-A | `pedido_novo` (24/11/2026) | UTILITY, com risco alto de virar MARKETING | profissional | 2 | igual ao código |
+| 4.6-B | `agendamento_solicitado` (24/11/2026) | UTILITY | prestador | 1 | igual ao código |
+| 4.6-C | `shift_canceled_by_deletion` (24/11/2026) | UTILITY | família, cuidador | 0 | igual ao código |
+| 4.6-D | `booking_canceled_by_deletion` (24/11/2026) | UTILITY | a outra parte do atendimento | 0 | igual ao código |
 
 Valores comuns a todos: idioma `pt_BR`; formato `POSITIONAL`; sem cabeçalho; sem botões; rodapé `Aviso automático do WorkEasy` (28 caracteres, estático, não promete canal de resposta); validade `message_send_ttl_seconds: 43200`.
 
@@ -252,17 +257,16 @@ Esperado: `status` = `APPROVED`, `category` = `UTILITY`, `correct_category` vazi
 | Campo | Valor |
 |---|---|
 | Categoria | **UTILITY** |
-| Corpo | `O orçamento "{{1}}" foi {{2}} pelo cliente. Os detalhes estão no WorkEasy.` |
-| Aparece assim | O orçamento "Troca da fiação da cozinha" foi aceito pelo cliente. Os detalhes estão no WorkEasy. |
+| Corpo | `Um orçamento seu foi {{1}} pelo cliente. Abra o WorkEasy para ver os detalhes.` |
+| Aparece assim | Um orçamento seu foi aceito pelo cliente. Abra o WorkEasy para ver os detalhes. |
 | E-mail, assunto | `Orçamento respondido` |
-| E-mail, corpo | `O orçamento "Troca da fiação da cozinha" foi aceito pelo cliente.` |
+| E-mail, corpo | igual ao WhatsApp |
 
 | Variável | Chave no código | Exemplo para a Meta |
 |---|---|---|
-| `{{1}}` | `quote_title` (apelido de `title`) | Troca da fiação da cozinha |
-| `{{2}}` | `response` (apelido de `status`) | aceito |
+| `{{1}}` | `response` (apelido de `status`) | aceito |
 
-**Por que utilidade.** Atualização sobre um orçamento enviado pelo próprio destinatário. **Por que a frase final:** o texto do código tem 2 variáveis em cerca de 33 caracteres fixos; a Meta reprova "too many variable parameters relative to the message length" [M6] e não vi o limite publicado nas páginas que li. A frase final sobe os fixos para 64 sem mudar o sentido. `quote_title` é texto livre do profissional e vai para a Meta (seção 12).
+**Por que utilidade.** Atualização sobre um orçamento enviado pelo próprio destinatário. **Por que uma variável só:** o título do orçamento é texto livre do profissional; o código o deixou de fora da mensagem (comentário em `TEMPLATES`), então nada digitado por terceiros vai para a Meta neste modelo. A versão anterior deste documento tinha 2 variáveis (`quote_title`, `response`); se um modelo com 2 variáveis já foi registrado, ele não serve mais (erro 132000, seção 2.4).
 
 ### 4.6 `plantao_oferecido`
 
@@ -297,6 +301,65 @@ Esperado: `status` = `APPROVED`, `category` = `UTILITY`, `correct_category` vazi
 | `{{2}}` | `neighborhood_name` | Vila Mariana |
 
 **Risco de categoria.** É o mesmo de `plantao_oferecido` (4.6): a mensagem oferece uma oportunidade de trabalho, e a Meta pode tratá-la como marketing. Não li de novo as páginas da Meta para este modelo; vale o que está na seção 3, conferido em 23/10/2026 `[incerto]` para a data de hoje. A descrição do pedido é texto livre do cliente e não entra na mensagem. O nome da ocupação vai para a Meta, inclusive nas áreas de saúde e cuidado (lacuna 9 da seção 11.4). Antes de ligar: registrar o modelo com 2 variáveis, conferir `status` e `category` aprovados e cumprir os portões da seção 11.1.
+
+### 4.6-B `agendamento_solicitado` (acrescentado em 24/11/2026)
+
+| Campo | Valor |
+|---|---|
+| Categoria | **UTILITY** |
+| Idioma | `pt_BR` |
+| Corpo | `Há uma solicitação de agendamento para {{1}}. Abra o WorkEasy para aceitar ou recusar.` |
+| Aparece assim | Há uma solicitação de agendamento para 30/10/2026 às 07:00. Abra o WorkEasy para aceitar ou recusar. |
+| E-mail, assunto | `Solicitação de agendamento` |
+| E-mail, corpo | igual ao WhatsApp |
+
+| Variável | Chave no código | Exemplo para a Meta |
+|---|---|---|
+| `{{1}}` | `starts_at` | 30/10/2026 às 07:00 |
+
+**Quando é enviado.** Ao prestador, quando um cliente cria um pedido de agendamento direto: `INSERT` em `bookings` com status `requested` (gatilho `bookings_51_notify_request`, função `private.notify_booking_requested`, migração `20261109300006`). Uma mensagem por pedido.
+
+**Por que utilidade.** Atualização sobre um pedido que o próprio destinatário precisa responder. Só a data entra na mensagem: nome do cliente, ocupação e observações ficam no app.
+
+**Sem aprovação do Meta, o envio por WhatsApp não acontece.** O código usa o nome `agendamento_solicitado`, o idioma `pt_BR` e 1 variável; sem modelo `APPROVED` com esse nome, o envio falha (4xx, `failed`, sem nova tentativa; seção 2.3). O e-mail segue normalmente, se o prestador tem e-mail confirmado.
+
+### 4.6-C `shift_canceled_by_deletion` (acrescentado em 24/11/2026)
+
+| Campo | Valor |
+|---|---|
+| Categoria | **UTILITY** |
+| Idioma | `pt_BR` |
+| Corpo | `Um plantão com você foi cancelado porque a conta da outra parte foi excluída.` (sem variáveis) |
+| Aparece assim | igual ao corpo |
+| E-mail, assunto | `Plantão cancelado` |
+| E-mail, corpo | igual ao WhatsApp |
+
+**Variáveis.** Nenhuma: o corpo não tem `{{n}}`, o JSON não leva `example` e o envio não leva componente (`components: []`).
+
+**Quando é enviado.** Quando uma conta é excluída e o plantão dela é cancelado (`public.cancel_shifts_for_user_deletion`, chamada por `account-delete`; criada em `20261110600007`, versão vigente em `20261118600012`). Recebem: a família dona da casa, o cuidador designado e os cuidadores com oferta aberta; a conta excluída nunca é avisada. Uma mensagem por pessoa e por plantão.
+
+**Por que utilidade.** Atualização de um serviço que a pessoa tinha combinado. Não promove nada. O corpo é curto e sem variável; a Meta pode achá-lo curto demais `[incerto]`, mas não há o que acrescentar sem mudar o código.
+
+**Sem aprovação do Meta, o envio por WhatsApp não acontece.** Sem modelo `APPROVED` com este nome, o envio falha e fica `failed`. O e-mail segue. Como a pessoa pode perder o plantão sem saber, vale registrar este modelo antes de ligar o canal.
+
+### 4.6-D `booking_canceled_by_deletion` (acrescentado em 24/11/2026)
+
+| Campo | Valor |
+|---|---|
+| Categoria | **UTILITY** |
+| Idioma | `pt_BR` |
+| Corpo | `Uma reserva com você foi cancelada porque a conta da outra parte foi excluída.` (sem variáveis) |
+| Aparece assim | igual ao corpo |
+| E-mail, assunto | `Reserva cancelada` |
+| E-mail, corpo | igual ao WhatsApp |
+
+**Variáveis.** Nenhuma: o corpo não tem `{{n}}`, o JSON não leva `example` e o envio não leva componente (`components: []`).
+
+**Quando é enviado.** Quando uma conta é excluída e o atendimento aceito dela é cancelado (`public.cancel_unpaid_accepted_bookings_for_user`, chamada por `account-delete`, migração `20261110600007`). Recebe a outra parte (cliente ou prestador); atendimento próprio, sem conta de cliente, não avisa ninguém. Uma mensagem por atendimento.
+
+**Por que utilidade.** Mesma razão de 4.6-C.
+
+**Sem aprovação do Meta, o envio por WhatsApp não acontece.** Sem modelo `APPROVED` com este nome, o envio falha e fica `failed`. O e-mail segue.
 
 ### 4.7 Cabeçalho, rodapé e botões
 
@@ -498,6 +561,10 @@ Resposta automática única da opção B (mensagem de serviço, dentro da janela
 | `pagamento_recebido` | profissional; 1 por pagamento | Utilidade | 1 × tarifa | não repete em `received` para `confirmed` |
 | `orcamento_respondido` | profissional; 1 por resposta | Utilidade | 1 × tarifa | |
 | `plantao_oferecido` | cuidador; 1 por oferta | Utilidade, risco de Marketing | 1 × tarifa de utilidade; se reclassificado, tarifa de marketing | ver 4.6 e 4.8 |
+| `pedido_novo` | até 30 prestadores por pedido | Utilidade, risco de Marketing | até 30 × tarifa | ver 4.6-A e 4.8 |
+| `agendamento_solicitado` | prestador; 1 por pedido de agendamento | Utilidade | 1 × tarifa | ver 4.6-B |
+| `shift_canceled_by_deletion` | família, cuidador designado e cuidadores com oferta; 1 por pessoa e plantão | Utilidade | 1 × tarifa por pessoa | ver 4.6-C |
+| `booking_canceled_by_deletion` | a outra parte; 1 por atendimento | Utilidade | 1 × tarifa | ver 4.6-D |
 | `codigo_de_verificacao` `[PLANEJADO]` | quem pede código por celular; 1 por pedido | Autenticação | 1 × tarifa de autenticação; **reenvios e abuso multiplicam** | a tarifa "authentication-international" só se aplica a empresa sediada em outro país que passe de 750 mil mensagens em 30 dias para países que a têm; a página não cita o Brasil [M22] |
 | `avisos_ativados` `[PLANEJADO]` | quem ativa o WhatsApp; 1 por ativação | Utilidade | 1 × tarifa | |
 | Resposta livre a quem escreveu (SAIR, aviso automático) | quem escreveu | Serviço | 1.000 por mês por número sem cobrança; depois, a tarifa de utilidade do país [M25] | depois da cota, exige forma de pagamento cadastrada |
@@ -533,7 +600,7 @@ Catálogo em 23/10/2026: 1.710 ocupações em 44 áreas (`catalog/areas.json`). 
 | Armas | lista "Firearms"; exemplos de violação "Promoting safety training or licenses for legal weapons" e "Gun ranges" [P1][M19] | `instrutor-de-tiro-esportivo-e-clube-de-tiro`, `seguranca-pessoal-e-escolta` (escolta armada), `avaliacao-psicologica-porte-de-arma` | lista de exclusão |
 | Álcool | "Alcohol and tobacco" na lista [P1]; `ALCOHOL`: "may not transact in the sale of alcohol" [M19] | `cervejeiro-e-bebidas-artesanais`; `bartender` e `sommelier` são serviço, não venda `[incerto]` | lista de exclusão para a primeira; as outras, dúvida para a Meta |
 | Assinaturas digitais | `DIGITAL_SERVICES_PRODUCTS`: "including links to or processing of any subscription sales, renewals, or upgrades" [M19] | plano **Pro** | nunca vender, renovar nem cobrar o Pro por WhatsApp; fim de teste só por e-mail e app |
-| Identificadores sensíveis | "Don't share or ask people to share full length individual payment card numbers, financial account numbers, personal ID card numbers, or other sensitive identifiers." [P1] | os seis modelos não levam nada disso | nunca pôr CPF, CNPJ, chave Pix ou cartão em variável |
+| Identificadores sensíveis | "Don't share or ask people to share full length individual payment card numbers, financial account numbers, personal ID card numbers, or other sensitive identifiers." [P1] | os dez modelos não levam nada disso | nunca pôr CPF, CNPJ, chave Pix ou cartão em variável |
 | Comércio | "When you offer goods or services for sale, Meta considers all messages and media related to your goods or services, including any descriptions, prices, fees, taxes, and/or any required legal disclosures, to constitute transactions." [M6]. A política diz que vale para quem usa Catálogo ou "any other commerce experiences to sell goods or services" [P1]. "Commerce content may not promote the buying, selling, or trading of services, except on the WhatsApp Business app or through Appointments in Facebook or Instagram." [P2] | `proposta_recebida` e `pagamento_recebido` citam preço de serviços de terceiros. O WorkEasy não usa Catálogo, nem pagamento pelo WhatsApp | `[incerto]` se um aviso de preço é "commerce experience". Mitigação: nenhum catálogo, nenhum link de pagamento, nenhuma lista de preços no WhatsApp. Perguntar à Meta |
 | Emprego | "Commerce content may not promote job opportunities." [P2] | `plantao_oferecido`; ocupações `recrutamento-e-selecao`, `agencia-de-empregos-trabalho-temporario-e-terceirizacao` | `[incerto]`, ver 4.6 |
 | Perfil e suporte | "Maintain a WhatsApp Business profile with customer support contact information" [P1] | exige e-mail do SAC e site | `[E-MAIL DO SAC]`, `[DOMÍNIO DO WORKEASY]` |
@@ -562,7 +629,7 @@ Não grave `WHATSAPP_TOKEN` e `WHATSAPP_PHONE_NUMBER_ID` em produção antes de 
 | G1 | Opt-in de WhatsApp com texto A, gravado em `consents` | linha com `granted = true` e versão do texto | `[PLANEJADO]` |
 | G2 | Opt-out funcionando (interruptor e pular `queued`) | revogar e conferir que a fila ficou `skipped` | `[PLANEJADO]` |
 | G3 | `private.notify` respeita G1, G2 e a lista de exclusão, com e-mail como reserva | teste de banco (pgTAP) novo | `[PLANEJADO]` |
-| G4 | Seis modelos `APPROVED` e `category` = `UTILITY` | comando de 4.0 | pendente |
+| G4 | Dez modelos `APPROVED` e `category` = `UTILITY` | comando de 4.0 | pendente |
 | G5 | Conta de mensagens **em BRL**, forma de pagamento no Billing Hub, perfil do WhatsApp Business com e-mail do SAC e site, verificação do negócio (sobe de 250 para 2.000 contatos únicos por 24 h) | painel da Meta | dossiê I02 |
 | G6 | Segredos no Supabase (`WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `SITE_URL`, `CRON_SECRET`, `RESEND_API_KEY`, `EMAIL_FROM`) e no Vault (`notify_dispatch_url`, `cron_secret`) | `docs/RUNBOOKS.md` (I04) e dossiê I02 | pendente |
 | G7 | Teste com 2 ou 3 pessoas que deram opt-in, em número com WhatsApp e em número sem; enviar com e sem o `+` no destino (2.3) | conferir `notifications.status` e, no webhook, `pricing` | pendente |
@@ -613,7 +680,7 @@ O despachante só olha o status HTTP; o `error.code` não é gravado. Para inves
 6. Sem chave de idempotência no envio por WhatsApp (o e-mail usa `Idempotency-Key`): um tempo esgotado depois de a Meta aceitar a mensagem gera nova tentativa e possível duplicata. Não vi se a Cloud API oferece idempotência `[incerto]`.
 7. Nenhum teste compara os modelos registrados com `TEMPLATES`; o teste atual só confere que cada chave aparece em `body`.
 8. `pagamento_recebido` diz "recebido pelo Asaas" também em `confirmed` (ver 4.4).
-9. Ocupação, contraparte e `quote_title` (texto livre) vão para a Meta, inclusive nas áreas de saúde e cuidado; não há variante genérica.
+9. Ocupação e contraparte vão para a Meta, inclusive nas áreas de saúde e cuidado; não há variante genérica.
 10. Não há lista de exclusão por ocupação.
 11. OTP por WhatsApp não existe (seção 5); o README diz que o envio por WhatsApp não é oferecido, e as notificações usam WhatsApp: vale esclarecer a frase. Além disso, `docs/ARQUITETURA.md`, linha 798 (rota `/entrar`), diz "e-mail ou WhatsApp/SMS", e o L01 (item 14) já registra essa divergência.
 
@@ -626,7 +693,7 @@ Os artigos da LGPD citados nesta seção não foram reconferidos: o Planalto blo
 1. **Base legal dos avisos por WhatsApp.** Consentimento (LGPD art. 7º, I e art. 8º) ou execução de contrato (art. 7º, V)? A Meta exige opt-in de qualquer forma. O item 13.2 do rascunho dos Termos (L01) já fala em avisos por WhatsApp: isso basta como opt-in, ou vale o texto A, separado? Se for consentimento por escrito, precisa de cláusula destacada (art. 8º, §1º)? [L1] A L03 (item 3.7) já usa a base do art. 7º, V, para esses avisos, e o Texto A pede consentimento: o conflito precisa de resposta antes do G1.
 2. **Dado de saúde nas mensagens.** Nome de ocupação de saúde + data + contraparte em aviso constitui "dado referente à saúde" (art. 5º, II) e exige consentimento específico e destacado (art. 11, I)? Existe regulação brasileira que proíba esse envio a sistemas sem "heightened requirements" (regra da Meta)? Não pesquisei normas de conselhos profissionais sobre mensagens por aplicativo.
 3. **Meta como operadora, transferência internacional e Política de Privacidade.** A Meta recebe número e texto dos avisos. Tratar na L03 (`docs/juridico/03-politica-de-privacidade.md`).
-4. **Texto livre.** `quote_title` e nomes digitados por terceiros vão para a Meta. Limitar o conteúdo?
+4. **Texto livre.** Nomes digitados por terceiros vão para a Meta (o título do orçamento já ficou de fora). Limitar o conteúdo?
 5. **Revogação.** Prazo para cumprir o pedido, registro da revogação e por quanto tempo guardar a prova do opt-in e do opt-out.
 6. **Número novo.** O consentimento acompanha o titular ou o número?
 7. **Mensagem de oferta de plantão** a prestador autônomo: tem implicação além da política da Meta? (vínculo e LC 150: ver pergunta 4 de `docs/DECISOES.md`.)

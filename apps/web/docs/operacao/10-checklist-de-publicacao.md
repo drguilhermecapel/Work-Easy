@@ -243,7 +243,7 @@ Configuração de Auth (o que o `config.toml` descreve x o que deve existir no p
 | 9 | Conta Cloudflare, projeto Pages, domínio e HTTPS | Conta | Dono e Técnico | Depende de ação | `infra.md`, passos 8 e 10 |
 | 10 | GitHub: ambiente `production` com revisores, regra para `main`, proteção de branch, reporte privado e Dependabot | Ação | Técnico e Dono | Depende de ação | `infra.md`, passos 11 a 13 |
 | 11 | Conta Asaas de produção: contrato, verificação e conta bancária | Conta e contrato | Dono e Contador | Depende de ação | `DECISOES.md`, seção 8, item 5 |
-| 12 | WhatsApp Business: os nove templates aprovados com os nomes exatos (um por nome em `TEMPLATES`, `_shared/notifications.ts`); provedor de código por SMS ou WhatsApp | Conta | Dono | Depende de ação | `supabase/functions/README.md`; `_shared/notifications.ts`; `app-store.md`, B2 |
+| 12 | WhatsApp Business: os dez templates aprovados com os nomes exatos (um por nome em `TEMPLATES`, `_shared/notifications.ts`); provedor de código por SMS ou WhatsApp | Conta | Dono | Depende de ação | `supabase/functions/README.md`; `_shared/notifications.ts`; `app-store.md`, B2 |
 | 13 | Resend: domínio de envio e remetente | Conta | Técnico e Dono | Depende de ação | `_shared/config.ts` |
 | 14 | Anthropic: chave, faturamento e teto de uso | Conta e financeiro | Dono | Depende de ação | `request-assist/index.ts` |
 | 15 | Sentry: conta e região (União Europeia ou Estados Unidos) | Conta e decisão | Dono | **Pendente** | `observabilidade.md`, §5 |
