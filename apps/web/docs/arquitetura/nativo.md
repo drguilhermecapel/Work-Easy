@@ -328,4 +328,4 @@ presença do filtro `autoVerify` e do host no manifesto mesclado do `.aab` e o l
 
 - **Versionamento SemVer (`MAJOR.MINOR.PATCH`) sincronizado:** manter a mesma versão semântica entre `apps/web/package.json`, `apps/web/src-tauri/tauri.conf.json`, `apps/web/src-tauri/Cargo.toml`, Android `versionName` (`-PappVersionName`) e iOS `MARKETING_VERSION`.
 - **Números de build inteiros estritamente crescentes:** usar inteiros estritamente crescentes a cada pacote publicado para Android `versionCode` (`-PappVersionCode`) e iOS `CURRENT_PROJECT_VERSION`.
-- **Regra de incremento e tag git:** incrementar `PATCH` para correções, `MINOR` para novas funcionalidades retrocompatíveis e `MAJOR` para quebras de contrato; registrar a tag git `web-vX.Y.Z` por release publicada.
+- **Regra de incremento e tag git:** incrementar `PATCH` para correções, `MINOR` para novas funcionalidades retrocompatíveis e `MAJOR` para quebras de contrato; registrar a tag git `vX.Y.Z` por release publicada (acompanhando o gatilho `v*` de `.github/workflows/web-release.yml`).
