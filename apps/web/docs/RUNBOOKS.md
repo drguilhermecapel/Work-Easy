@@ -1248,7 +1248,8 @@ Depois de um 400 em `createAccount`, a função faz **uma** busca por `cpfCnpj` 
 ## Rodar as funções localmente com a CA do proxy
 
 Provado em 24/11/2026 (DD94). O edge-runtime 1.77.4 ignora `DENO_CERT` ao ler o lockfile e o npm. No arquivo de ambiente do `supabase functions serve` (fora do repositório) use `DENO_TLS_CA_STORE=system` e `SSL_CERT_FILE=<caminho dentro do contêiner>` apontando para um pacote de certificados com a CA do proxy; um caminho que funcionou foi o volume `supabase_edge_runtime_workeasy` montado em `/root/.cache/deno`. A verificação de TLS fica ligada. Para apontar `ASAAS_BASE_URL` para um Asaas falso local, ele precisa ser HTTPS (o `AsaasClient` recusa `http://`), com certificado assinado por uma CA que esteja no mesmo pacote, e `APP_ENV` não pode ser `production`. Para falsificar Resend, WhatsApp e a API da Anthropic é preciso mapear os hosts no contêiner, o que o `functions serve` não permite: o agente de verificação subiu o mesmo contêiner com `docker run`. Não é necessário relé TCP quando o contêiner alcança o registro do npm.
+
 ## Reversão do site no Cloudflare Pages
+
 - **Via painel do Cloudflare:** acesse **Workers & Pages** -> selecione o projeto -> **Deployments** -> abra o menu do último deploy íntegro -> **Rollback to this deployment**.
 - **Alternativa via GitHub Actions:** reexecute o workflow `deploy-web.yml` no commit anterior íntegro.
-- 

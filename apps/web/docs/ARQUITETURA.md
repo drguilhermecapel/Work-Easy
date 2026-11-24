@@ -460,12 +460,14 @@ As migrações criam oito agendamentos:
 | `product-events-retention` | 03:17 | apaga eventos de produto antigos |
 | `notification-counts-retention` | 03:23 | apaga contadores do teto diário de notificações |
 | `retention-purge-daily` | 03:00 | `run_retention_purge()` |
- O agendamento `workeasy-background-check-purge` roda às 03:20 UTC (`20 3 * * *`, 00:20 em Brasília). O contrato do módulo Pro (incluindo `workeasy-booking-reminders` e demais pontos de manutenção) está em `docs/arquitetura/pro-lacunas.md` (§7).
+
+O agendamento `workeasy-background-check-purge` (criado pelo dono, não por migração) roda às 03:20 UTC (`20 3 * * *`, 00:20 em Brasília). O contrato do módulo Pro (incluindo `workeasy-booking-reminders` e demais pontos de manutenção) está em `docs/arquitetura/pro-lacunas.md` (§7).
+
 Os horários são os do banco (UTC no Supabase). A remoção de antecedentes retirados
 (`background-check-purge`) não é criada por migração: o dono a agenda
 (`docs/operacao/11-agendamento-de-rotinas.md`).
 
-**Rodada de 24/11/2026** (`20261124100001` a `20261124100008`; a 07 valida as duas chaves do piloto e a 08 faz a exclusão de conta apagar também a cidade do perfil, o texto livre das propostas e a lista de espera)
+**Rodada de 24/11/2026** (`20261124100001` a `20261124100010`; a 07 valida as duas chaves do piloto, a 08 faz a exclusão de conta apagar também a cidade do perfil, o texto livre das propostas e a lista de espera, a 09 reúne as correções da revisão adversarial e a 10 troca os títulos livres de orçamentos e serviços na exclusão do prestador)
 
 - Chaves novas de `platform_settings`, públicas: `care_line_open` (false: a linha Cuidado só
   aparece no menu de administradores e de contas que já estão nela) e `pilot_neighborhoods`
