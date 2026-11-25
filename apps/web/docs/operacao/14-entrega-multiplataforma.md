@@ -69,3 +69,9 @@ Nenhuma despesa adicional foi autorizada ou realizada nesta fase. Certificados, 
 O ensaio de 25/11/2026 recebeu no alias controlado a confirmação padrão por link. O app pede um código numérico de seis dígitos. O usuário temporário permaneceu sem sessão e foi removido após o ensaio.
 
 O workflow Supabase tem o modo `auth_templates_only`. Selecione esse modo com `dry_run=true` para listar os campos divergentes ou com `dry_run=false` para aplicar os dois modelos versionados. Use a branch `main` e o ambiente `production`. O token de gerenciamento precisa ter acesso à leitura e atualização de Auth no projeto WorkEasy. O job limita a atualização aos assuntos e corpos de confirmação e login. Após a publicação, renove o ensaio com um alias controlado para validar o código recebido, a sessão e a remoção da conta de teste.
+
+O deploy web verifica se os dois modelos remotos correspondem ao repositório antes de publicar. Também confirma que a origem canônica pertence ao projeto Pages, que a branch de produção é `main` e que o domínio personalizado, quando usado, está ativo. Ao final, o workflow verifica que o endereço público serve o SHA publicado em `/.well-known/workeasy-release.json` e repete as sondagens das rotas.
+
+Em nova verificação de produção, oito agendamentos do banco estavam ativos. Os cinco de frequência subdiária tinham última execução bem-sucedida. A consulta não retornou execução para os três agendamentos diários. O cofre do projeto ainda precisa das entradas `notify_dispatch_url` e `cron_secret` para o despachante de notificações. O agendamento de `background-check-purge` também precisa de configuração antes de uso operacional.
+
+A função Asaas retornou 503 com `webhook_not_configured` a uma sonda sem credencial e sem evento. Comissão e custódia permanecem desligadas. A validação de cobrança e reentrega no Asaas depende da configuração do ambiente e de credenciais de sandbox.
