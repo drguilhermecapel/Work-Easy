@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       macos_universal:
-        description: Verificar somente o DMG macOS arm64 e Intel
+        description: Verificar o DMG macOS arm64 e Intel
         type: boolean
         default: false
       windows_install_smoke:
@@ -228,7 +228,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 45
     needs: production-config
-    if: ${{ !cancelled() && !inputs.macos_universal && (needs.production-config.result == 'success' || needs.production-config.result == 'skipped') }}
+    if: ${{ !cancelled() && (!inputs.macos_universal || inputs.windows_install_smoke) && (needs.production-config.result == 'success' || needs.production-config.result == 'skipped') }}
     env:
       VITE_APP_VERSION: ${{ github.sha }}
       VITE_SUPABASE_URL: ${{ needs.production-config.outputs.VITE_SUPABASE_URL }}
@@ -289,7 +289,7 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 60
     needs: production-config
-    if: ${{ !cancelled() && !inputs.windows_install_smoke && (needs.production-config.result == 'success' || needs.production-config.result == 'skipped') }}
+    if: ${{ !cancelled() && (!inputs.windows_install_smoke || inputs.macos_universal) && (needs.production-config.result == 'success' || needs.production-config.result == 'skipped') }}
     env:
       VITE_APP_VERSION: ${{ github.sha }}
       VITE_SUPABASE_URL: ${{ needs.production-config.outputs.VITE_SUPABASE_URL }}
