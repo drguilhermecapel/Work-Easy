@@ -145,9 +145,10 @@ jobs:
           cache: npm
           cache-dependency-path: apps/web/package-lock.json
       - run: npm ci
-      # Com o edge-runtime: é nele que as funções rodam.
+      # Sem o edge-runtime: o script sobe o dele com `supabase functions serve` (e recusa rodar se já
+      # houver um de pé, para não derrubar a sessão de outra pessoa).
       - name: Subir a stack local
-        run: npx supabase start -x studio,imgproxy,logflare,vector,supavisor,realtime
+        run: npx supabase start -x studio,imgproxy,logflare,vector,supavisor,realtime,edge-runtime
       # Resend, WhatsApp e o SDK da Anthropic usam hosts https fixos na porta 443: o node do
       # servidor falso precisa abrir essa porta sem rodar como root.
       - name: O node pode abrir a porta 443
