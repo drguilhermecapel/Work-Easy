@@ -15,6 +15,10 @@ Monorepo B2C/B2G. **O produto real é `apps/web`** (com backend em Supabase). `s
   as imagens ao Google e **não consulta antecedentes** (o resultado é sempre revisão manual). Sem autenticação nem limite de
   uso, ele não pode ficar exposto numa URL pública.
 - **CORS fechado por padrão**: defina `CORS_ALLOWED_ORIGINS` com as origens exatas.
+- **Toda resposta leva `X-Work-Easy-Demo`**, inclusive um erro 500 não tratado (DD107).
+- **Não há destino de publicação da API.** `render.yaml` e `cloudbuild.yaml` foram removidos (DD95); se existir um
+  serviço antigo no painel do Render ou um gatilho no Cloud Build, desligá-lo é ação do dono. O `docker-compose.yml` da
+  raiz é só para uso local e lê a senha do banco do `.env` (ignorado pelo git).
 - Detalhes, variáveis e como ligar a demo: [`services/api/README.md`](services/api/README.md).
 
 ## Estrutura do monorepo
@@ -26,7 +30,19 @@ Monorepo B2C/B2G. **O produto real é `apps/web`** (com backend em Supabase). `s
 | `apps/web-prefeitura` | Protótipo do portal municipal (B2G), com dados fictícios |
 | `apps/web` | App React com o catálogo de serviços e profissões liberais de todas as áreas. Roda como site (PWA), Android, iOS, Windows, macOS e Linux, e tem backend próprio em Supabase (`apps/web/supabase`). Veja [`apps/web/README.md`](apps/web/README.md) |
 
-`apps/web` é independente do restante: sem as variáveis do Supabase ele roda com dados de demonstração, e a CI dele
-(`.github/workflows/web-ci.yml`) só dispara quando algo em `apps/web` muda. Recursos que dependem de parecer jurídico,
-como pagamento retido e comissão, ficam desligados por padrão nele (`platform_settings`).
+`apps/web` é independente do restante: sem as variáveis do Supabase ele roda com dados de demonstração. Recursos que
+dependem de parecer jurídico, como pagamento retido e comissão, ficam desligados por padrão nele (`platform_settings`).
+
+## Workflows (`.github/workflows/`)
+
+| Workflow | Quando roda | O que faz |
+|---|---|---|
+| `web-ci.yml` | push em `main`/`develop` e pull request que mudam `apps/web/**` (ou o próprio arquivo) | jobs `web` (lint, typecheck, Vitest, build e verificadores), `database` (pgTAP, integração e tipos do banco) `functions` (`deno check`, `deno lint`, `deno test`) e `functions-e2e` (ponta a ponta das Edge Functions no edge-runtime, com serviços externos falsos). Detalhes em [`apps/web/README.md`](apps/web/README.md) |
+| `web-release.yml` | sob demanda, tags `v*` e pull requests que mudam o empacotamento nativo | builds sem assinatura de site, Android, iOS, Windows, macOS e Linux |
+| `ci-security.yml` | push em `main`/`develop` e pull request que mudam `services/api/**` | `pytest` do protótipo `services/api` (Python 3.12) |
+| `deploy-web.yml` | só manual, a partir de `main`, digitando `DEPLOY` e com aprovação do ambiente `production` | build e publicação do site no Cloudflare Pages |
+| `deploy-supabase.yml` | só manual, com aprovação do ambiente `production` | migrações, catálogo e Edge Functions; com `dry_run` (padrão) nada é publicado |
+
+Nenhum dos dois workflows de publicação foi executado até hoje: não há ambiente de produção. O que falta para publicar,
+em ordem, está no topo de [`apps/web/docs/operacao/10-checklist-de-publicacao.md`](apps/web/docs/operacao/10-checklist-de-publicacao.md).
 
