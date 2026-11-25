@@ -13,6 +13,10 @@ on:
         description: 'Digite DEPLOY para publicar em produção'
         required: true
         type: string
+      sync_auth_templates:
+        description: 'Aplicar e conferir os modelos de código de acesso antes de publicar o site'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -73,6 +77,18 @@ jobs:
             exit 1
           fi
 
+      - name: Aplicar ou conferir os modelos de login no Supabase Auth
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_AUTH_CONFIG_TOKEN || secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: ${{ vars.SUPABASE_PROJECT_ID }}
+          SYNC_AUTH_TEMPLATES: ${{ inputs.sync_auth_templates }}
+        run: |
+          if [[ "$SYNC_AUTH_TEMPLATES" == true ]]; then
+            python3 scripts/supabase-auth-templates.py --apply
+          else
+            python3 scripts/supabase-auth-templates.py --verify
+          fi
+
       - uses: actions/setup-node@v7
         with:
           node-version: 22
@@ -91,12 +107,6 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
         run: node scripts/cloudflare-pages-release.mjs project
-
-      - name: Conferir os modelos de login no Supabase Auth
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_PROJECT_ID: ${{ vars.SUPABASE_PROJECT_ID }}
-        run: python3 scripts/supabase-auth-templates.py --verify
 
       # Wrangler comes from its own lock (tools/wrangler/package-lock.json, exact version and
       # integrity hashes), installed only here: the other jobs never download it.

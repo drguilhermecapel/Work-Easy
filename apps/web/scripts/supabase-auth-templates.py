@@ -32,13 +32,26 @@ def request_config(token, method, payload=None):
     request = Request(
         f"https://api.supabase.com/v1/projects/{PRODUCTION_PROJECT}/config/auth",
         data=json.dumps(payload).encode("utf-8") if payload is not None else None,
-        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "User-Agent": "WorkEasy-Release/1.0",
+        },
         method=method,
     )
     try:
         with urlopen(request, timeout=20) as response:
             return json.load(response) if method == "GET" else None
     except HTTPError as error:
+        if error.code == 403:
+            media_type = error.headers.get_content_type()
+            if media_type == "text/html":
+                hint = "Resposta HTML. Confira os controles de rede e a origem da resposta."
+            else:
+                scope = "auth:read" if method == "GET" else "auth:write"
+                hint = f"Confira o acesso ao projeto WorkEasy e a autorização {scope} no Supabase."
+            raise SystemExit(f"Supabase Management API recusou {method}: HTTP 403. {hint}") from None
         raise SystemExit(f"Supabase Management API recusou {method}: HTTP {error.code}.") from None
     except (URLError, TimeoutError, ValueError):
         raise SystemExit(f"Falha ao consultar a configuração de Auth via {method}.") from None
