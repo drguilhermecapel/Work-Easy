@@ -9,6 +9,10 @@ on:
         description: Verificar somente o DMG macOS arm64 e Intel
         type: boolean
         default: false
+      windows_install_smoke:
+        description: Verificar instalação, abertura e remoção dos dois pacotes Windows
+        type: boolean
+        default: false
   push:
     tags: ['v*']
   # Only the changes that can break a native build (the macOS and Windows runners are slower), not every UI change
@@ -111,7 +115,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 45
     needs: production-config
-    if: ${{ !cancelled() && !inputs.macos_universal && (needs.production-config.result == 'success' || needs.production-config.result == 'skipped') }}
+    if: ${{ !cancelled() && !inputs.macos_universal && !inputs.windows_install_smoke && (needs.production-config.result == 'success' || needs.production-config.result == 'skipped') }}
     env:
       VITE_APP_VERSION: ${{ github.sha }}
       VITE_SUPABASE_URL: ${{ needs.production-config.outputs.VITE_SUPABASE_URL }}
@@ -268,6 +272,10 @@ jobs:
           else
             npx tauri build --bundles msi,nsis -- --locked
           fi
+      - name: Ensaiar instalação, abertura e remoção no Windows
+        if: inputs.windows_install_smoke
+        shell: pwsh
+        run: ./scripts/check-windows-installers.ps1 -BundleDir src-tauri/target/release/bundle
       - uses: actions/upload-artifact@v7
         with:
           name: workeasy-windows
@@ -281,7 +289,7 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 60
     needs: production-config
-    if: ${{ !cancelled() && (needs.production-config.result == 'success' || needs.production-config.result == 'skipped') }}
+    if: ${{ !cancelled() && !inputs.windows_install_smoke && (needs.production-config.result == 'success' || needs.production-config.result == 'skipped') }}
     env:
       VITE_APP_VERSION: ${{ github.sha }}
       VITE_SUPABASE_URL: ${{ needs.production-config.outputs.VITE_SUPABASE_URL }}
