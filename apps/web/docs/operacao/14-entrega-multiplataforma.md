@@ -75,3 +75,7 @@ O deploy web verifica se os dois modelos remotos correspondem ao repositório an
 Em nova verificação de produção, oito agendamentos do banco estavam ativos. Os cinco de frequência subdiária tinham última execução bem-sucedida. A consulta não retornou execução para os três agendamentos diários. O cofre do projeto ainda precisa das entradas `notify_dispatch_url` e `cron_secret` para o despachante de notificações. O agendamento de `background-check-purge` também precisa de configuração antes de uso operacional.
 
 A função Asaas retornou 503 com `webhook_not_configured` a uma sonda sem credencial e sem evento. Comissão e custódia permanecem desligadas. A validação de cobrança e reentrega no Asaas depende da configuração do ambiente e de credenciais de sandbox.
+
+## Ensaio dos instaladores Windows
+
+O modo manual `windows_install_smoke=true` em Web release builds usa um runner descartável Windows x64. O job gera EXE e MSI, registra SHA-256 e Authenticode e executa cada instalador em um diretório próprio. O ensaio exige a abertura de uma janela do executável instalado e a remoção desse executável após rodar o desinstalador. O tempo observado mede até a abertura da janela. Esse ensaio usa o perfil de verificação. Os testes com backend e assinatura, a atualização entre versões e o uso em máquinas dos usuários permanecem como etapas de aceitação dos pacotes finais.
