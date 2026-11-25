@@ -35,14 +35,20 @@ supabase/
   tests/database/*.test.sql   pgTAP: RLS, triggers, funções
   functions/
     _shared/                  lógica pura (sem APIs do Deno), testada com Vitest
-    <nome>/index.ts           handler fino de cada Edge Function
+    _runtime/                 integração Deno: env, clientes Supabase e Anthropic
+    _test/                    roda os testes de test/functions em Deno (npm run test:deno); não é publicado
+    <nome>/handler.ts         toda a lógica da função, com dependências injetadas
+    <nome>/index.ts           monta as dependências reais e chama Deno.serve
 scripts/
   generate-seed.mjs           catalog/*.json + data/neighborhoods.json → supabase/seed.sql e supabase/catalog.sql
   prerender.mjs               páginas estáticas de SEO + sitemap (fase 3)
+  check-*.mjs                 verificadores do CI e da publicação (tamanho, segredos, cabeçalhos, loja, deep links, catálogo)
+  e2e-functions.mjs           ponta a ponta das Edge Functions no edge-runtime local (npm run test:e2e-functions)
 lib/
   supabase.ts                 cliente único (ou null no modo demonstração)
-  database.types.ts           gerado por `supabase gen types typescript --local`
+  database.types.ts           gerado por `supabase gen types typescript` (banco local; `npm run db:types`)
   errors.ts                   tradução de erros do banco para mensagens em pt-BR
+  staticHandoff.ts            troca do HTML pré-renderizado pela tela do React (ver "Troca do HTML estático")
 services/                     acesso a dados por domínio (funções tipadas)
 config/features.ts            flags de build e de runtime
 pages/<área>/...              telas novas por área (pro, cliente, admin, cuidado, conta)
@@ -115,7 +121,10 @@ data_request_kind:    export | delete
 
 ### Tabelas por domínio
 
-Colunas listadas sem `created_at timestamptz default now()`, que toda tabela tem.
+Colunas listadas sem `created_at timestamptz default now()`, que toda tabela tem. Os nomes
+curtos de migração usados abaixo (`01_identity.sql`, `05_bookings.sql` etc.) são os arquivos
+`supabase/migrations/202610190000NN_<nome>.sql` e `202610220000NN_<nome>.sql` (12 e 13) da primeira rodada; as migrações seguintes são
+citadas pelo número completo (109 arquivos em 25/11/2026).
 
 **Identidade** (`01_identity.sql`)
 
@@ -428,8 +437,9 @@ Colunas listadas sem `created_at timestamptz default now()`, que toda tabela tem
   (cuidador). **Só contato confirmado pelo Auth recebe mensagem:** WhatsApp para
   `auth.users.phone` com `phone_confirmed_at`, e-mail para `auth.users.email` com
   `email_confirmed_at`. O `profiles.phone` digitado pelo usuário nunca é destino; sem
-  contato confirmado nada é enfileirado. Há um teto de envios por destinatário e dia de São Paulo (`notification_daily_cap`, padrão 50; 0 desliga os envios). Em produção, o cadastro por senha fica desligado
-  (login por código) ou exige confirmação.
+  contato confirmado nada é enfileirado. Há um teto de envios por destinatário e dia de São Paulo (`notification_daily_cap`, padrão 50; 0 desliga os envios). Não há cadastro por senha: a conta nasce no
+  primeiro login por código (`shouldCreateUser: true`, `services/auth.ts`), então o cadastro
+  (`[auth] enable_signup`) fica ligado e a confirmação de e-mail e de telefone também.
 - `claim_notifications(p_limit int)` (service role): marca `sending`, grava
   `claimed_at = now()`, soma 1 em `attempts` e devolve um lote vencido, com
   `for update skip locked`. Também retoma linhas em `sending` com `claimed_at` de mais de
@@ -653,17 +663,21 @@ troca a frase quando o texto do prestador difere do geral (hoje, `provider_payme
 
 ## Edge Functions
 
-Handlers finos em `supabase/functions/<nome>/index.ts`; regras puras em
-`supabase/functions/_shared/*.ts` (sem `Deno.*`, sem imports `npm:`), testadas
-com Vitest a partir de `test/functions/*.test.ts`. Toda função valida o JWT do
-usuário (exceto webhook e cron), responde JSON `{ ok, data | error }` e grava
-`audit_log` nas ações de dinheiro.
+Cada função tem `supabase/functions/<nome>/handler.ts` (a lógica, com dependências
+injetadas) e um `index.ts` fino que monta as dependências reais; regras puras em
+`supabase/functions/_shared/*.ts` (sem `Deno.*`, sem imports `npm:`). Os testes de
+`test/functions/*.test.ts` rodam no Vitest e, sem alteração, no Deno (`npm run test:deno`);
+`npm run test:e2e-functions` exercita as funções no edge-runtime local com serviços externos
+falsos (os dois rodam no CI). Toda função valida o JWT do usuário (exceto `asaas-webhook`,
+`notify-dispatch` e `background-check-purge`, com `verify_jwt = false` no `config.toml`,
+que conferem o próprio segredo), responde JSON `{ ok, data | error }` e grava `audit_log`
+nas ações de dinheiro. São 15 funções:
 
 | Função | Quem chama | O que faz |
 |---|---|---|
-| `asaas-onboard` | prestador | cria subconta Asaas (`POST /accounts`) com os dados fiscais enviados; guarda `walletId`; a chave da subconta vai para o Vault (`store_provider_payment_secret`); registra na subconta um webhook com token próprio (ver "Webhook") |
+| `asaas-onboard` | prestador | cria subconta Asaas (`POST /accounts`) com os dados fiscais enviados; guarda `walletId`; a chave da subconta vai para o Vault (`store_provider_payment_secret`); registra na subconta um webhook com token próprio (ver "Webhook"); ao retomar uma reserva parada, procura a conta por CPF/CNPJ antes de criar (ver "Conta de recebimento") |
 | `payments-create` | cliente | cobra um atendimento `accepted`: garante o cliente no Asaas (`POST /customers`), cria a cobrança (`POST /payments`) com `split` para a carteira do prestador (percentual do valor líquido que corresponde a valor − taxa); Pix devolve QR (`GET /payments/{id}/pixQrCode`) |
-| `charges-create` | prestador Pro | cobrança de cliente próprio ou de orçamento aceito, na subconta do prestador, sem taxa |
+| `charges-create` | prestador Pro | cobrança de atendimento próprio ou de orçamento aceito, na subconta do prestador, sem taxa; o pagador é um cliente do CRM (`provider_client_id`, com CPF/CNPJ no cadastro), nunca um `customer` enviado pelo app (400) |
 | `payments-void` | cliente ou prestador do atendimento | depois que o atendimento está `canceled`, remove no Asaas (`DELETE /payments/{id}`) as cobranças `pending` dele, na conta certa (raiz para `platform`, subconta para `own`), e marca `payments.status = 'canceled'` (a escrita só atinge pagamento ainda `pending`: um pagamento que o webhook confirmou ou recebeu entre a leitura e a escrita não é sobrescrito); idempotente; chamada por `services/bookings.ts` e `services/proAgenda.ts` depois de um cancelamento bem-sucedido |
 | `asaas-webhook` | Asaas | valida `asaas-access-token`, grava `payment_events` (idempotente por id do evento), confere a cobrança no Asaas, atualiza `payments` e chama `transition_booking` (`PAYMENT_RECEIVED`/`PAYMENT_CONFIRMED` → `paid`; `PAYMENT_REFUNDED` → `payments.refunded` e atendimento `paid` → `canceled`); pagamento recebido de atendimento já `canceled` não reativa o atendimento e é reembolsado (ver "Webhook") |
 | `subscriptions-manage` | prestador | assina ou cancela o Pro (`POST /subscriptions`, ciclo mensal) e atualiza `subscriptions`/`providers.plan` |
@@ -673,6 +687,14 @@ usuário (exceto webhook e cron), responde JSON `{ ok, data | error }` e grava
 | `provider-document-upload` | prestador | recebe um documento de verificação (`step`, `file`, multipart), confere o tipo pelos bytes, recusa HEIC (415), remove o metadado no servidor e grava no bucket `provider-documents/<provider_id>/` com a service role, junto com o registro em `provider_documents`; conta excluída é recusada; 60 arquivos por pasta (409 `document_limit`) |
 | `background-check-purge` | agendador (`x-cron-secret`) | remove os arquivos de antecedentes cuja revogação de consentimento tem mais de 30 dias; a linha fica `purged` quando há revisão ou auditoria, senão é apagada; responde `{ purged, failed }`; o agendamento é ação do dono (`docs/operacao/11-agendamento-de-rotinas.md`) |
 | `request-assist` | cliente (fase 3) | transforma texto livre em pedido estruturado (ocupação, urgência, resumo) com Claude Haiku 5.5 no servidor; limite por usuário em qualquer janela de 60 minutos, compartilhado com `quote-assist` e `care-summary` (padrão 10; 429); responde 503 sem `ANTHROPIC_API_KEY`; nenhuma tela chama a função hoje |
+| `quote-assist` | prestador | rascunho de itens de orçamento e texto de abertura a partir da descrição do trabalho; não grava nada e só devolve preço que aponte para um preço de referência enviado; mesma cota e mesmo 503 (contrato em `docs/arquitetura/ia-no-servidor.md`) |
+| `care-summary` | família (linha de cuidado) | resumo não clínico dos relatórios de plantão dos últimos 7 dias de uma casa; mesma cota e mesmo 503 (`ia-no-servidor.md`) |
+| `asaas-webhooks-sync` | administrador (JWT e `is_admin`) | confere e refaz o webhook de cada subconta com a chave dela (`GET /v3/webhooks`, depois `PUT` ou `POST`); lotes de até 50 contas (padrão 20) com `next_cursor`; `dry_run` não escreve; uma entrada `asaas_webhooks.sync` por execução (DD79, DD85); nunca chamada contra o Asaas real |
+
+Os três assistentes (`request-assist`, `quote-assist`, `care-summary`) recusam com 403
+`assist_consent_required`, antes de gastar cota ou chamar o modelo, quando a última decisão
+da conta sobre o consentimento `ai_assist` não é uma concessão (DD62, DD88). Na build iOS
+os assistentes não aparecem (DD78).
 
 Asaas: autenticação pelo cabeçalho `access_token`; valores em reais com duas
 casas (converter de centavos); conferir a documentação oficial
@@ -741,11 +763,20 @@ banco. Mudou aqui, muda `supabase/functions` no mesmo commit.
 **Cobranças (`payments-create`, `charges-create`)**
 
 - Idempotência: uma cobrança `pending` por atendimento (ou orçamento). A função
-  devolve a existente se o método é o mesmo e o vencimento não passou; se o
-  método mudou ou venceu, remove a antiga no Asaas (`DELETE /payments/{id}`),
-  marca `canceled` e cria outra. Se o Asaas recusa remover (já paga), devolve a
+  devolve a existente se o método é o mesmo e o vencimento não passou; em
+  `charges-create` também precisa ser **o mesmo pagador**: o cliente Asaas da cobrança
+  aberta (`customer` em `payments.raw`, lido com 1 `GET` no Asaas) tem de ter
+  `externalReference` `provider_client:<id>` do cliente do CRM pedido (DD108). Se o
+  método mudou, o pagador é outro (ou desconhecido, ou foi removido) ou o vencimento
+  passou, remove a antiga no Asaas (`DELETE /payments/{id}`), marca `canceled` e cria outra. Se o Asaas recusa remover (já paga), devolve a
   existente. Se o `insert` falha, a cobrança criada no Asaas é removida, para não
   restar cobrança sem linha em `payments`.
+- Pagador de `charges-create` (DD98, DD101, DD102): o corpo leva `provider_client_id`; nome,
+  e-mail, telefone e CPF/CNPJ vêm do cadastro do cliente em `provider_clients`. Sem documento no
+  cadastro, 409 `customer_document_missing`. O formulário de `/pro/cobrancas` usa o cliente já
+  ligado ao atendimento ou ao orçamento, ou deixa escolher (ou criar a partir do nome e do celular
+  do orçamento), salva o CPF/CNPJ só nessa coluna (`saveClientDocument`) antes de cobrar e reutiliza o
+  cliente criado se a cobrança falhar e for repetida. A tela Clientes também cadastra e edita o CPF/CNPJ.
 - Descrição na fatura do Asaas: `payments-create` manda sempre `WorkEasy: atendimento`.
   `charges-create` manda o campo opcional "Descrição na fatura" do prestador (até 300 caracteres,
   em `/pro/cobrancas`) quando ele vem preenchido; vazio, manda `WorkEasy: atendimento` (cobrança de
@@ -912,9 +943,11 @@ banco. Mudou aqui, muda `supabase/functions` no mesmo commit.
 
 | Rota | Quem | Tela |
 |---|---|---|
-| `/entrar` | todos | login por código (e-mail ou WhatsApp/SMS) |
+| `/entrar` | todos | login por código (e-mail ou SMS; abas escolhidas por `VITE_LOGIN_METHODS`) |
 | `/conta` | logado | dados, consentimentos, bloqueios, exportar dados, excluir conta |
 | `/excluir-conta` | público | como excluir a conta e o que acontece com os dados (exigência das lojas); a exclusão em si é em `/conta` |
+| `/legal`, `/termos`, `/privacidade`, `/sac` | público | textos jurídicos (`config/legal.ts`); com aviso de rascunho enquanto `VITE_LEGAL_STATUS` não for `vigente` |
+| `/para-profissionais`, `/para-familias`, `/como-funciona` | público | páginas de captação (`pages/captacao/`) |
 | `/pedido` | cliente | pedido guiado: ocupação (busca), bairro, descrição, datas; sem backend gera mensagem de WhatsApp para a operação |
 | `/pedidos`, `/pedidos/:id` | cliente | meus pedidos, propostas recebidas, aceitar |
 | `/atendimentos`, `/atendimentos/:id` | cliente/prestador | detalhes, pagar, cancelar, concluir, avaliar |
@@ -924,19 +957,36 @@ banco. Mudou aqui, muda `supabase/functions` no mesmo commit.
 | `/pro` | prestador | painel: hoje, próximos atendimentos, pedidos abertos, pendências do cadastro |
 | `/pro/cadastro` | prestador | onboarding: ocupação, registro, bairros, documentos exigidos pela política; a autorização de antecedentes grava `background_check` antes do primeiro envio dessa certidão |
 | `/pro/servicos`, `/pro/agenda`, `/pro/pedidos`, `/pro/orcamentos`, `/pro/clientes`, `/pro/cobrancas`, `/pro/assinatura` | prestador | ferramenta Pro |
-| `/pro/plantoes` | cuidador | plantões oferecidos, check-in/out, relatório do dia |
-| `/cuidado` | família | casa, assistido, plantões, relatórios |
+| `/pro/plantoes` | cuidador | plantões oferecidos, check-in/out, relatório do dia (`pages/pro/plantoes/routes.tsx`) |
+| `/cuidado`, `/cuidado/plantoes`, `/cuidado/plantoes/:id`, `/cuidado/relatorios` | família | casa e assistido, plantões, detalhe do plantão, relatórios e resumo da semana |
 | `/admin` | admin | painel com as métricas |
 | `/admin/prestadores` | admin | lista pesquisável de prestadores (nome, situação, ocupações): fila de análise (padrão) ou todos, por situação |
 | `/admin/prestadores/:id` | admin | detalhe: documentos que a política exige por ocupação e o estado de cada um, registro informado, aprovar ocupação, aprovar, suspender e reativar prestador (motivo obrigatório), revisar documentos |
 | `/admin/disputas`, `/admin/pagamentos`, `/admin/auditoria`, `/admin/lgpd` | admin | contestações, cobranças (no topo, "Exigem atenção": reembolso recusado e pagamento recebido depois do cancelamento ainda sem tratamento, com link para o pagamento e a ação "marcar como tratado" com motivo), histórico de ações (o prestador de cada linha leva ao detalhe), pedidos de dados |
 | `/admin/denuncias` | admin | fila de denúncias de perfis, avaliações e pedidos; encerrar com providência ou arquivar, com anotação |
-| `/admin/configuracoes` | admin | `platform_settings`; comissão e pagamento retido ficam desligados e dependem de parecer jurídico e de conta Asaas configurada |
+| `/admin/configuracoes` | admin | `platform_settings`; comissão e pagamento retido ficam desligados e dependem de parecer jurídico e de conta Asaas configurada; seção "Lançamento" com `care_line_open` e `pilot_neighborhoods` (DD76) |
+| `/categorias`, `/categorias/:slug`, `/servicos/:slug` | público | catálogo por área e por serviço (pré-renderizadas) |
 | `/servicos/:slug/:bairro` | público | página de SEO por ocupação e bairro (pré-renderizada) |
 
-As rotas de demonstração atuais continuam. Telas novas vivem em
+As rotas de demonstração atuais continuam (`pages/prototype/routes.tsx`). Telas novas vivem em
 `pages/<área>/` e cada área exporta seu bloco de rotas em
-`pages/<área>/routes.tsx`, ligado em `AppShell.tsx`.
+`pages/<área>/routes.tsx`, ligado em `AppShell.tsx`. As rotas da linha Cuidado (`/cuidado/*` e
+`/pro/plantoes`) só são registradas fora da build de loja (`features.careLineInBuild`; DD59, DD71):
+numa build com `VITE_STORE_BUILD` elas caem na rota `*`, que volta para `/`. Fora da loja, o menu
+só mostra a linha para quem tem `care_access()` ou quando `care_line_open` é verdadeiro.
+
+### Troca do HTML estático
+
+As páginas de catálogo pré-renderizadas (`/categorias`, áreas, serviços e serviço por bairro) chegam
+com o texto dentro de `<div id="root">`. O `index.tsx` chama `mountWithStaticHandoff`
+(`lib/staticHandoff.ts`): o React monta num contêiner oculto ao lado do estático, que fica na tela
+até a rota estar pronta (`HandoffReady` e `HandoffPending`, em `components/HandoffMarks.tsx`), e a
+troca é única, preservando foco (o link equivalente é procurado primeiro no `<main>`) e rolagem
+(DD96, DD106). Não há `hydrateRoot`. Se a rota não fica pronta em 15 s, a troca acontece assim
+mesmo. Se o `ErrorBoundary` captura um erro antes da troca (um chunk que não carrega), a troca é
+cancelada: o estático fica, com foco e rolagem intactos, e um aviso `role="status"` oferece
+"Recarregar" (DD108). Sem página estática (demais rotas) ou nos apps nativos (rota por hash), o
+React monta direto. Medições e detalhes: `docs/arquitetura/seo-pwa.md`, seção 10.1.
 
 ## Testes e CI
 
@@ -972,15 +1022,17 @@ As rotas de demonstração atuais continuam. Telas novas vivem em
     documentos exigidos, revogação da aprovação quando um documento é rejeitado.
   - Limites: o Auth local aceita 30 logins por 5 minutos por IP (`[auth.rate_limit]`); uma execução usa
     cerca de 10, e o helper espera e tenta de novo se o limite for atingido. As Edge Functions não sobem
-    nesse teste (têm Vitest próprio, `deno check` e `deno lint`).
+    nesse teste (têm Vitest e Deno próprios, `deno check`, `deno lint` e o ponta a ponta).
 - **CI** (`.github/workflows/web-ci.yml`, com os mesmos filtros de caminho): `web` (lint, typecheck,
-  Vitest, build); `database` (`supabase/setup-cli` na versão do `package.json`, `supabase start -x
+  Vitest, build, `npm run check:size`, `npm run check:store-bundle -- --store none`,
+  `npm run check:app-links` e a varredura de segredos do bundle com `scripts/check-bundle-secrets.mjs`); `database` (`supabase/setup-cli` na versão do `package.json`, `supabase start -x
   studio,imgproxy,logflare,vector,supavisor,realtime,edge-runtime`, `supabase test db`,
   `npm run test:integration` com as variáveis de `supabase status -o env`, e a conferência de que
   `lib/database.types.ts` é igual ao que `supabase gen types typescript --local` gera agora; o
-  teste falha com a diferença) e `functions` (`deno check --frozen` e `deno lint` com
-  `supabase/functions/deno.json`, Deno 2.9.6). O job `web` roda também
-  `npm run check:size` e `scripts/check-bundle-secrets.mjs` depois do build.
+  teste falha com a diferença), `functions` (`deno check --frozen` e `deno lint` com
+  `supabase/functions/deno.json`, e `deno test` com `supabase/functions/_test/deno.json`, Deno 2.9.6)
+  e `functions-e2e` (stack local com o edge-runtime e `npm run test:e2e-functions`). A CLI do
+  Supabase é a 3.4.0 do `package.json`, conferida pelo próprio job.
 - **Regra de migração (única).** Migração já aplicada ou mesclada não se edita. Mudou algo no
   banco: crie uma migração nova, rode `npx supabase db reset`, `npm run db:test` e
   `npm run db:types`, e faça o commit do arquivo gerado. Editar a migração só vale enquanto ela

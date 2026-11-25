@@ -52,13 +52,13 @@ Fonte: `.github/workflows/web-release.yml` (lido em 08/11/2026).
 
 Pontos que mudam decisões:
 
-- **Gatilhos:** só `workflow_dispatch` e tags `v*` (bloco `on:`). Não há gatilho de pull request nem de push de branch.
+- **Gatilhos:** `workflow_dispatch`, tags `v*` e, desde DD90, pull requests que mudam o empacotamento nativo (`android/`, `ios/`, `src-tauri/`, `platform/`, dependências e configuração de build). Não há gatilho de push de branch.
 - **Retenção:** `retention-days: 7` em todos os uploads. Não existe etapa que crie release no GitHub.
 - **Segredos e variáveis:** nenhum job passa `secrets.*` nem `VITE_*`.
 - **Testes:** só o job Linux roda `npm test` antes do build. Windows e macOS não rodam testes.
 - **Comando:** `npm run desktop:build` é `tauri build` (`package.json`).
 
-Divergências na documentação. Não corrigi os arquivos; estão listadas na seção 12.
+Divergências na documentação. Não corrigi os arquivos; estão listadas na seção 12. **Estado em 25/11/2026:** as quatro linhas abaixo estão resolvidas. O `web-release.yml` voltou a ter gatilho de pull request (só para mudanças no empacotamento nativo, DD90), o README do app cita o arquivo certo e descreve a liberação do macOS em Ajustes do Sistema > Privacidade e Segurança, e o `nativo.md` não fala mais em geração "em pull request".
 
 | Onde | O que o texto diz | O que o arquivo faz |
 |---|---|---|
@@ -481,6 +481,8 @@ Checklist antes de qualquer distribuição desktop:
 ---
 
 ## 12. Problemas encontrados (não corrigidos)
+
+Estado em 25/11/2026: os itens 1, 2, 5 e 14 estão resolvidos (ver a nota da tabela de divergências). Os itens 6 e 7 mudaram com DD104: o `Info.plist` não tem mais a chave de localização, e o texto da câmera fala só da foto dos documentos do cadastro. A CSP do Tauri (`style-src 'unsafe-inline'`) é risco aceito no DD111. A política de versão está no DD112 (`docs/arquitetura/nativo.md`, seção 9). Os demais itens seguem como estavam.
 
 1. **Documentação do workflow desatualizada.** `apps/web/README.md` (linha 90) cita `release.yml`, "Release builds", com gatilho de pull request. O arquivo real é `web-release.yml`, sem gatilho de pull request. `docs/DECISOES.md` não cita workflow.
 2. **Comentário enganoso no workflow.** O topo de `web-release.yml` (linhas 3 a 6) diz que há disparo em pull request que muda o empacotamento. O bloco `on:` não tem isso.

@@ -26,14 +26,21 @@ npm run dev     # http://localhost:3000
 | Script | O que faz |
 |---|---|
 | `npm run dev` | Servidor de desenvolvimento |
-| `npm run build` | Typecheck e build de produção em `dist/` |
+| `npm run build` | Typecheck, build de produção em `dist/` e pré-renderização (`scripts/prerender.mjs`) |
+| `npm run build:native` | Build dos apps nativos (`--mode native`, sem páginas pré-renderizadas) |
 | `npm run preview` | Serve o build de produção |
 | `npm run lint` | ESLint, sem avisos tolerados |
 | `npm run typecheck` | TypeScript em modo estrito |
 | `npm test` | Testes com Vitest (unitários e de tela; não precisam de banco) |
 | `npm run test:integration` | Fluxo do produto contra a stack Supabase real (exige `supabase start`) |
+| `npm run test:deno` | Os testes de `test/functions` rodados no Deno 2.9.6 (`supabase/functions/_test/deno.json`, lock próprio, `--frozen`) |
+| `npm run test:e2e-functions` | Ponta a ponta das Edge Functions no edge-runtime local, com Asaas, Resend, WhatsApp e Anthropic falsos (`scripts/e2e-functions.mjs`; requisitos em `docs/RUNBOOKS.md`) |
+| `npm run check:size` | Orçamento de tamanho do bundle (`scripts/check-bundle-size.mjs`), depois do build |
+| `npm run check:store-bundle -- --store android\|ios\|none` | Diz para qual loja o bundle de `dist/` foi gerado e falha se não for o esperado |
+| `npm run check:app-links` | Coerência dos arquivos de deep link (App Links e Universal Links); com `-- --strict`, falha enquanto houver host de exemplo, impressão digital ou Team ID `TODO` |
 | `npm run db:test` | pgTAP: RLS, triggers e funções do banco (`supabase test db`) |
 | `npm run db:types` | Regenera `lib/database.types.ts` a partir do banco local |
+| `npm run db:seed` | Regenera `supabase/seed.sql` e `supabase/catalog.sql` a partir de `catalog/*.json` e `data/neighborhoods.json` |
 
 ## Testes
 
@@ -43,8 +50,12 @@ npm run dev     # http://localhost:3000
 | Banco (pgTAP) | `npm run db:test` | stack local de pé |
 | Integração (Vitest, node, API real) | `npm run test:integration` | stack local de pé |
 | Edge Functions (tipos e lint) | `deno check --frozen --config supabase/functions/deno.json supabase/functions/*/index.ts` e `deno lint --config supabase/functions/deno.json supabase/functions` | Deno 2.9.6 |
+| Edge Functions no Deno | `npm run test:deno` | Deno 2.9.6 |
+| Edge Functions ponta a ponta | `npm run test:e2e-functions` | stack local de pé (com o edge-runtime), Docker, `psql`, `openssl` e a porta 443 livre (no CI, `setcap` no node) |
 
-Stack local (Docker): `npx supabase start -x studio,imgproxy,logflare,vector,supavisor,realtime,edge-runtime` aplica as migrations e o `supabase/seed.sql`. Para recomeçar do zero: `npx supabase db reset`.
+Em 25/11/2026 o Vitest tem 147 arquivos e 4.111 testes; o banco tem 109 migrações em `supabase/migrations/` e 89 arquivos pgTAP em `supabase/tests/database/`.
+
+Stack local (Docker): `npx supabase start -x studio,imgproxy,logflare,vector,supavisor,realtime,edge-runtime` aplica as migrations e o `supabase/seed.sql`. Para recomeçar do zero: `npx supabase db reset`. `npx supabase` usa a CLI 3.4.0 fixada no `package.json` (a mesma dos workflows). Na CLI 3 os comandos de banco são locais por padrão; para o projeto vinculado use `--remote` (`--linked` é obsoleto).
 
 **Teste de integração.** Os arquivos de `test/integration/` falam com o Supabase de verdade por `@supabase/supabase-js`, pela mesma API que a interface usa, e cobrem o caminho completo: pedido do cliente, cadastro e aprovação do prestador, propostas e `proposal_limit`, aceite, trava trabalhista, pagamento como o webhook faz, avaliação, vazamento entre contas, orçamento público e LGPD. A URL e as chaves vêm de `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` e `SUPABASE_SERVICE_ROLE_KEY`; sem elas, o teste lê `npx supabase status -o env`. Com a stack parada ele falha logo no início e diz como subir.
 
@@ -53,7 +64,7 @@ Stack local (Docker): `npx supabase start -x studio,imgproxy,logflare,vector,sup
 - O Auth local limita os logins a 30 a cada 5 minutos por IP; uma execução usa cerca de 10. Se o limite for atingido, o teste espera e tenta de novo.
 - `npm test` não executa esses arquivos.
 
-**CI.** `.github/workflows/web-ci.yml` tem três jobs, todos com os mesmos filtros de caminho: `web` (lint, typecheck, testes, build, `npm run check:size`, `scripts/check-bundle-secrets.mjs`, que recusa chave de servidor no bundle, inclusive JWT com papel `service_role`, `npm run check:store-bundle -- --store none`, que confirma que o site não é build de loja, e `npm run check:app-links`, que acusa contradição entre os arquivos de deep link e só lista as pendências do dono), `database` (Supabase CLI 3, a mesma versão do `package.json`; stack local, `supabase test db`, `npm run test:integration` e a conferência de que `lib/database.types.ts` está igual ao gerado) e `functions` (`deno check` e `deno lint`). As actions de terceiros ficam fixadas por SHA de commit, e os workflows são lidos com parser de YAML em `test/ops/workflows.test.ts`. Mudou uma assinatura no banco: edite a migration, rode `npx supabase db reset`, `npm run db:test` e `npm run db:types`, e faça o commit do arquivo gerado.
+**CI.** `.github/workflows/web-ci.yml` tem quatro jobs, todos com os mesmos filtros de caminho: `web` (lint, typecheck, testes, build, `npm run check:size`, `scripts/check-bundle-secrets.mjs`, que recusa chave de servidor no bundle, inclusive JWT com papel `service_role`, `npm run check:store-bundle -- --store none`, que confirma que o site não é build de loja, e `npm run check:app-links`, que acusa contradição entre os arquivos de deep link e só lista as pendências do dono), `database` (Supabase CLI 3, a mesma versão do `package.json`; stack local, `supabase test db`, `npm run test:integration` e a conferência de que `lib/database.types.ts` está igual ao gerado), `functions` (`deno check`, `deno lint` e `deno test`, o mesmo que `npm run test:deno`) e `functions-e2e`, que sobe a stack local com o edge-runtime e roda `npm run test:e2e-functions` (Asaas, Resend, WhatsApp e Anthropic falsos em HTTPS local; nada sai para a internet). As actions de terceiros ficam fixadas por SHA de commit, e os workflows são lidos com parser de YAML em `test/ops/workflows.test.ts`. Mudou algo no banco: crie uma migration nova (migration aplicada ou mesclada não se edita; `docs/ARQUITETURA.md`, "Testes e CI"), rode `npx supabase db reset`, `npm run db:test` e `npm run db:types`, e faça o commit do arquivo gerado.
 
 ## Backend e variáveis de ambiente
 
@@ -71,6 +82,8 @@ Copie `.env.example` para `.env.local` e preencha:
 | `VITE_STORE_BUILD` | `android` ou `ios` num build feito para loja: sem venda do Pro dentro do app e sem a linha de cuidado. Vazia nos demais. |
 | `VITE_SENTRY_DSN` | DSN do relato de erros (Sentry). Vazia = nada é enviado. |
 | `VITE_APP_VERSION` | Nome da versão enviado com o relato de erro; na publicação, o workflow usa o commit. |
+| `VITE_COMPANY_NAME`, `VITE_COMPANY_CNPJ`, `VITE_COMPANY_ADDRESS`, `VITE_SAC_EMAIL`, `VITE_SAC_WHATSAPP` | Dados da empresa e do SAC nas páginas jurídicas (`config/legal.ts`). |
+| `VITE_LEGAL_STATUS` | `vigente` só depois do parecer do advogado; vazia = as páginas jurídicas mostram aviso de rascunho. |
 
 - **A chave publicável é pública por desenho.** Ela vai para o JavaScript que qualquer pessoa baixa; o que cada usuário pode ler ou gravar é decidido pelo banco (RLS e funções). Nunca use no app a chave secreta (`sb_secret_…`) nem a service role.
 - **Segredos ficam nas Edge Functions** (`supabase secrets set`): Asaas, WhatsApp Cloud API, Resend e IA. O teste `test/claims-guard.test.ts` reprova o código do cliente que citar essas chaves.
@@ -93,7 +106,7 @@ Um único código React é empacotado para seis plataformas.
 
 - **Modos de build.** O site usa URLs limpas e service worker. Os apps nativos usam o build `--mode native` (`.env.native`), com URLs com `#` e sem service worker, porque são servidos de arquivos locais.
 - **CI.** O workflow `Release builds` (`.github/workflows/web-release.yml`) gera as seis saídas sob demanda ("Run workflow"), em tags `v*` e em pull requests que mudam o empacotamento nativo (`android/`, `ios/`, `src-tauri/`, dependências e configuração de build). Os artefatos ficam anexados à execução por 7 dias.
-- **Saídas sem assinatura.** O APK é de debug, o app iOS roda só no simulador e os instaladores desktop não são assinados (o Windows mostra o aviso do SmartScreen e o macOS pede para abrir pelo menu de contexto).
+- **Saídas sem assinatura.** O APK é de debug, o app iOS roda só no simulador e os instaladores desktop não são assinados (o Windows mostra o aviso do SmartScreen e o macOS bloqueia a primeira abertura até a pessoa liberar em Ajustes do Sistema > Privacidade e Segurança; ver `docs/lojas/desktop-e-assinatura.md`).
 - **Publicação nas lojas.** Exige conta Apple Developer de organização (US$ 99/ano, também usada para notarizar no macOS), conta Google Play de organização (US$ 25, taxa única), política de privacidade publicada e exclusão de conta dentro do app.
 
 O `.npmrc` liga `legacy-peer-deps` por causa de um bug do npm 10 ao resolver os pares opcionais do Vitest; os pares necessários estão declarados explicitamente no `package.json`.
@@ -123,11 +136,17 @@ Cada página tem `<title>`, descrição e `canonical` próprios, Open Graph, JSO
 ```
 AppShell.tsx      layout e rotas (cada página é carregada sob demanda)
 App.tsx           provedores e roteador (BrowserRouter no site, HashRouter nos apps nativos)
-pages/            telas
+index.tsx         montagem; nas páginas pré-renderizadas, troca o HTML estático pelo React (lib/staticHandoff.ts)
+pages/            telas (cada área exporta suas rotas em pages/<área>/routes.tsx)
 components/       componentes compartilhados
+lib/, services/   cliente Supabase, erros em pt-BR e uma função por operação
+config/           flags de build e de execução, textos legais, bairros
 utils/            datas, moeda e busca (funções puras, testadas)
-platform/         integração com os apps nativos (botão voltar do Android)
+platform/         integração com os apps nativos (botão voltar do Android, deep links, arquivos)
 constants.tsx     catálogo e dados fictícios
+supabase/         migrations, pgTAP, seed, catálogo e Edge Functions
+scripts/          pré-renderização, verificadores do CI, seed, healthcheck e checagens diárias
+docs/             arquitetura, decisões, runbooks, lojas, operação e textos jurídicos
 test/             testes
 android/, ios/    projetos nativos do Capacitor
 src-tauri/        app desktop (Tauri) para Windows, macOS e Linux

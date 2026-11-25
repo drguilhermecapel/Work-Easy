@@ -14,9 +14,9 @@
 
 - **Todo bloco SQL foi executado no banco local dentro de `begin; ... rollback;`** em 2026-11-08. Os `<...>` foram trocados por UUID zerado ou texto de teste. Como o banco local está vazio, as consultas retornam zero linhas. O que foi confirmado: sintaxe, nomes de colunas e tipos, e execução sem erro, exceto S09 e S44, que terminam em `not_allowed` (esperado sem atendimento real). Na revisão de 2026-11-08 os 51 blocos foram reexecutados nesse modo, e S43 foi trocada por consulta sobre `audit_log` (item 2).
 - **Não confirmado:** o caminho de sucesso das funções de reparo (`transition_booking`, `private.expire_pro_plans`, `vault.update_secret`). Sem atendimento, pagamento ou perfil reais, a validação parou na exceção `not_allowed` (atendimento inexistente), que é o comportamento esperado.
-- **Versão da CLI (24/11/2026):** os comandos deste documento foram conferidos na CLI 2.121.0. O repositório usa agora a **CLI 3.4.0** (`package.json` e workflows). Na 3, `--linked` e `--project-ref` são obsoletos e continuam funcionando com aviso; o `deploy-supabase.yml` já usa `--remote` e `--yes` (DD110). Ao seguir um passo manual, confira `npx supabase <comando> --help` na versão instalada.
-- **Comandos da CLI** (`supabase secrets`, `functions`, `migration repair`, `db dump`, `db push`) conferidos na ajuda da CLI 2.121.0, a mesma versão do workflow `.github/workflows/deploy-supabase.yml`.
-- **Atenção:** a validação inicial ocorreu com 36 migrações (HEAD `5805947`); a base atual conta com 109 migrações (até `20261124100010_deletion_clears_titles.sql`), validadas por 87 arquivos pgTAP no CI. Em `ed8aa38` faltam 20 (`20261109000001` a `20261109300006`); `20261108100000` está nos dois commits. As migrações `20261109000001` a `20261109000007` foram aplicadas a partir do worktree `SEG-S1` (branch `plan/seg-S1-nucleo-banco`). Procedimentos que dependem delas estão marcados **[SEG-S1]**: a tag indica a origem, não a ausência no HEAD.
+- **Versão da CLI:** o repositório usa a **CLI 3.4.0** (`package.json` e workflows, DD110). Os comandos deste documento foram escritos na CLI 2.121.0 e, em 25/11/2026, reconferidos na ajuda da 3.4.0 (`npx supabase <comando> --help`): na 3, os comandos de banco (`db push`, `db dump`, `db query`, `migration repair`, `migration list`) são **locais por padrão** e só falam com o projeto vinculado com `--remote`; `secrets` e `functions` usam o projeto vinculado, ou outro com `--remote=<ref>`. `--linked` ainda funciona, com o aviso "deprecated and will be removed in v4". Mudança em projeto hospedado pede confirmação (`--yes` a pula). O `deploy-supabase.yml` já usa `--remote` e `--yes`. Nenhum desses comandos foi executado contra um projeto hospedado.
+- **Comandos da CLI** (`supabase secrets`, `functions`, `migration repair`, `db dump`, `db push`): sintaxe conferida na ajuda da 3.4.0, a mesma versão do workflow `.github/workflows/deploy-supabase.yml`.
+- **Atenção:** a validação inicial ocorreu com 36 migrações (HEAD `5805947`); a base atual conta com 109 migrações (até `20261124100010_deletion_clears_titles.sql`, contadas com `ls` em 25/11/2026), validadas por 89 arquivos pgTAP (`supabase/tests/database/`) no CI. Em `ed8aa38` faltam 20 (`20261109000001` a `20261109300006`); `20261108100000` está nos dois commits. As migrações `20261109000001` a `20261109000007` foram aplicadas a partir do worktree `SEG-S1` (branch `plan/seg-S1-nucleo-banco`). Procedimentos que dependem delas estão marcados **[SEG-S1]**: a tag indica a origem, não a ausência no HEAD.
 
 ## Fontes abertas nesta revisão
 
@@ -31,6 +31,7 @@
 | Resend, Idempotency keys | https://resend.com/docs/dashboard/emails/idempotency-keys | 2026-11-08 | Cabeçalho `Idempotency-Key`; janela de 24 h; 409 com payload diferente; até 256 caracteres |
 | Supabase, Rotate a leaked API key | https://supabase.com/docs/guides/security/rotate-leaked-api-keys | 2026-11-08 | Ordem de troca de chave secreta e service_role; desativação das chaves legadas |
 | Supabase CLI 2.121.0 | ajuda local (`supabase <comando> --help`) | 2026-11-08 | Sintaxe de `secrets`, `functions delete`, `migration repair`, `db dump`, `db push` |
+| Supabase CLI 3.4.0 | ajuda local (`npx supabase <comando> --help`) | 2026-11-25 | `--remote` no lugar de `--linked` e `--project-ref`; `--yes`; `db push --dry-run` e `--skip-vault` |
 
 Não abertos ou não localizados (ficam como **[incerto]** no texto):
 
@@ -596,8 +597,8 @@ commit;
 
 ```bash
 # arquivo fora do repositório, com uma linha NOME=valor; apague o arquivo depois
-supabase secrets set --project-ref "$SUPABASE_PROJECT_ID" --env-file /caminho/fora/do/repositorio/novo.env
-supabase secrets unset --project-ref "$SUPABASE_PROJECT_ID" NOME_DO_SEGREDO   # só para remover
+supabase secrets set --remote="$SUPABASE_PROJECT_ID" --env-file /caminho/fora/do/repositorio/novo.env
+supabase secrets unset --remote="$SUPABASE_PROJECT_ID" NOME_DO_SEGREDO   # só para remover
 ```
 
 O código lê as variáveis na inicialização do módulo (`config` em `supabase/functions/_runtime/supabase.ts`). Se uma instância já estiver rodando, pode haver intervalo com o valor antigo. Confirme com uma chamada de teste depois da troca **[incerto: propagação do secret sem redeploy não verificada]**.
@@ -692,7 +693,7 @@ select a.provider_id, a.status
 
 **Prevenção.**
 - Escolha a retenção de PITR conforme a janela de perda aceitável. Não encontrei um RPO definido no repositório nesta revisão **[lacuna]**.
-- Exporte periodicamente com `supabase db dump --linked -f <caminho fora do repositório>` (o dump tem dados pessoais: não o versione).
+- Exporte periodicamente com `supabase db dump --remote -f <caminho fora do repositório>` (o dump tem dados pessoais: não o versione).
 - Ensaie um restauro em projeto novo antes de precisar. Não encontrei frequência definida no repositório nesta revisão.
 
 ---
@@ -701,7 +702,7 @@ select a.provider_id, a.status
 
 **Sintoma.** O workflow "Publicar Supabase" falhou no passo de migrações ou o banco ficou em estado que o código não espera.
 
-**Como o deploy funciona** (`.github/workflows/deploy-supabase.yml`): execução manual, dry run por padrão. Aplica com `supabase db push --linked --skip-vault --yes` e, depois, o catálogo de produção (`supabase/catalog.sql`, com `supabase db query --linked -f`, em uma transação). `supabase/seed.sql` (desenvolvimento) nunca é aplicado. O catálogo sobrescreve áreas, ocupações, políticas e bairros com os valores do repositório: altere o catálogo só no repositório. Publica funções em outro passo; `asaas-webhook` e `notify-dispatch` com `--no-verify-jwt`. Grupo de concorrência único, sem cancelar execução em andamento. O campo opcional `ref` publica as funções de novo a partir de um commit anterior (ver "Reverter Edge Functions", no fim deste documento). Com `dry_run` ligado nada é publicado, com ou sem `ref`: nem migração, nem catálogo, nem função; o resumo da execução lista o que seria publicado.
+**Como o deploy funciona** (`.github/workflows/deploy-supabase.yml`): execução manual, dry run por padrão. Aplica com `supabase db push --remote --skip-vault --yes` e, depois, o catálogo de produção (`supabase/catalog.sql`, com `supabase db query --remote --yes -f`, em uma transação), só se o arquivo for igual ao gerado (`scripts/check-catalog-sql.mjs`). `supabase/seed.sql` (desenvolvimento) nunca é aplicado. O catálogo sobrescreve áreas, ocupações, políticas e bairros com os valores do repositório: altere o catálogo só no repositório. Publica funções em outro passo; `asaas-webhook`, `notify-dispatch` e `background-check-purge` com `--no-verify-jwt`. Grupo de concorrência único, sem cancelar execução em andamento. O campo opcional `ref` publica as funções de novo a partir de um commit anterior (ver "Reverter Edge Functions", no fim deste documento). Com `dry_run` ligado nada é publicado, com ou sem `ref`: nem migração, nem catálogo, nem função; o resumo da execução lista o que seria publicado.
 
 **Diagnóstico.**
 
@@ -723,21 +724,21 @@ select to_regclass('public.<tabela>') as tabela_existe;
 3. Lista do que falta aplicar, sem aplicar nada:
 
 ```bash
-supabase db push --linked --skip-vault --dry-run
+supabase db push --remote --skip-vault --dry-run
 ```
 
 **Correção.**
 
 1. **Não rode o workflow de novo** antes de entender o estado.
-2. **Não altere migração já aplicada.** A regra é criar uma migração nova, não editar uma já aplicada. Atenção: `ARQUITETURA.md`, na seção "Testes e CI", manda editar a migração quando muda assinatura do banco. Essa contradição está no Apêndice A. Até ser resolvida, prefira migração nova. Se o arquivo que falhou tem erro, o correto é uma migração nova com o timestamp seguinte, que trate o estado parcial.
+2. **Não altere migração já aplicada.** A regra é criar uma migração nova, não editar uma já aplicada (regra única em `ARQUITETURA.md`, "Testes e CI", desde 24/11/2026). Se o arquivo que falhou tem erro, o correto é uma migração nova com o timestamp seguinte, que trate o estado parcial.
 3. **Estado parcial.** Não verifiquei se a CLI aplica cada arquivo numa transação só **[incerto]**. Presuma estado parcial até conferir os objetos com S41.
-4. **Histórico do banco.** Só use `supabase migration repair --status applied|reverted <versão> --linked` depois de decidir o estado real. `reverted` apenas marca o histórico; não desfaz o SQL.
+4. **Histórico do banco.** Só use `supabase migration repair --status applied|reverted <versão> --remote` depois de decidir o estado real. `reverted` apenas marca o histórico; não desfaz o SQL.
 
 ```bash
-supabase migration repair --status applied <versão> --linked
+supabase migration repair --status applied <versão> --remote
 ```
 
-5. **Publicação de funções incompleta.** Rode de novo. Mantenha a flag `--no-verify-jwt` para `asaas-webhook` e `notify-dispatch`, como o workflow faz. Ela também está em `supabase/config.toml` (`[functions.asaas-webhook]` e `[functions.notify-dispatch]`, `verify_jwt = false`), e o README das funções diz isso.
+5. **Publicação de funções incompleta.** Rode de novo. Mantenha a flag `--no-verify-jwt` para `asaas-webhook`, `notify-dispatch` e `background-check-purge`, como o workflow faz. Ela também está em `supabase/config.toml` (`[functions.<nome>]`, `verify_jwt = false`, para as três), e o README das funções diz isso.
 6. **Reteste.** Rode o workflow com dry run ligado, depois com a publicação de funções, conforme o caso. Os dois passos pedem a aprovação do ambiente `production` (`infra.md`).
 
 **Verificação.** S40 mostra a migração nova na lista. S41 confirma o objeto. Os testes pgTAP rodam em banco local (`supabase test db`), nunca no de produção.
@@ -960,11 +961,11 @@ Alavancas que existem hoje. Confira o efeito de cada uma antes de acionar.
 
 | Alavanca | Efeito verificado no código | Como acionar | Como desfazer | Como confirmar |
 |---|---|---|---|---|
-| Assistente de IA (`request-assist`, `quote-assist`, `care-summary`) | 429 `assist_rate_limited` antes de qualquer consulta (`takeQuota`, `hourlyLimit < 1`) | `supabase secrets set --project-ref "$SUPABASE_PROJECT_ID" ASSIST_HOURLY_LIMIT=0` | `ASSIST_HOURLY_LIMIT=10` (padrão) | Chamada de teste responde 429 |
+| Assistente de IA (`request-assist`, `quote-assist`, `care-summary`) | 429 `assist_rate_limited` antes de qualquer consulta (`takeQuota`, `hourlyLimit < 1`) | `supabase secrets set --remote="$SUPABASE_PROJECT_ID" ASSIST_HOURLY_LIMIT=0` | `ASSIST_HOURLY_LIMIT=10` (padrão) | Chamada de teste responde 429 |
 | Comissão | `compute_platform_fee` devolve 0 quando `commission_enabled` é falso. Já é o padrão. | Tela `/admin/configuracoes`, ou `admin_set_setting('commission_enabled', 'false'::jsonb)` | Só com parecer jurídico e conta Asaas configurada (ARQUITETURA) | S36 |
 | Teste grátis do Pro | Quem nunca assinou deixa de receber teste quando `pro_trial_days` é 0 | `admin_set_setting('pro_trial_days', '0'::jsonb)` logado como admin. Há o campo "Dias de teste" em `/admin/configuracoes` (`components/admin/settingDefs.ts`). Sem sessão de admin, use S35. | `admin_set_setting('pro_trial_days', '30'::jsonb)` | S36 |
 | Disparo de mensagens | Para de chamar `notify-dispatch`. Linhas ficam `queued`, vencidas. | S37 | S38 | S39 e S18 |
-| Cobrança de um tipo (ex.: `payments-create`) | Sem nova cobrança enquanto a função não existir | `supabase functions delete payments-create --project-ref "$SUPABASE_PROJECT_ID"`. A CLI não remove o arquivo local. | `supabase functions deploy payments-create --project-ref "$SUPABASE_PROJECT_ID"` | Chamada responde 404 |
+| Cobrança de um tipo (ex.: `payments-create`) | Sem nova cobrança enquanto a função não existir | `supabase functions delete payments-create --remote="$SUPABASE_PROJECT_ID"`. A CLI não remove o arquivo local. | `supabase functions deploy payments-create --remote="$SUPABASE_PROJECT_ID"` | Chamada responde 404 |
 | Prestador | Sai da busca e da página pública | Tela `/admin/prestadores/:id`: suspender com motivo | Reativar pela mesma tela. Reativar não aprova ocupação. | Busca não lista o prestador |
 | Ocupação de um prestador | Sai da busca e para de receber pedidos daquela ocupação | Tela de prestador: retirar aprovação da ocupação, com motivo | Aprovar de novo (exige documentos da política) | Busca |
 | Webhook do Asaas (`asaas-webhook`) | **Não recomendado.** Sem `ASAAS_WEBHOOK_TOKEN` ou `ASAAS_API_KEY` a função responde 503 antes de gravar. O Asaas reenvia; após 15 falhas seguidas a fila pode parar. | Remover o secret (`supabase secrets unset`) | Recolocar o secret | S01 e S03 depois do retorno |
@@ -1021,9 +1022,9 @@ select cron.schedule('workeasy-dispatch-notifications', '* * * * *', 'select pri
 **Antes (um a dois dias antes).**
 
 - [ ] Confirme o backup: plano do projeto e janela de retenção (item 7).
-- [ ] Faça um dump manual: `supabase db dump --linked -f <caminho fora do repositório>`. O arquivo tem dados pessoais: guarde fora do repositório.
+- [ ] Faça um dump manual: `supabase db dump --remote -f <caminho fora do repositório>`. O arquivo tem dados pessoais: guarde fora do repositório.
 - [ ] Registre o estado: S39 (agendamentos), S40 (migrações), S36 (chaves), S16 (fila), S01 (eventos parados).
-- [ ] Dry run: `supabase db push --linked --skip-vault --dry-run`.
+- [ ] Dry run: `supabase db push --remote --skip-vault --dry-run`.
 - [ ] Teste local: `supabase db reset` e `supabase test db`.
 - [ ] Avise quem opera. Defina a janela.
 
@@ -1265,7 +1266,7 @@ Duas camadas, ambas a partir de `apps/web`:
 ## Reversão do site no Cloudflare Pages
 
 - **Via painel do Cloudflare:** acesse **Workers & Pages** -> selecione o projeto -> **Deployments** -> abra o menu do último deploy íntegro -> **Rollback to this deployment**.
-- **Alternativa via GitHub Actions:** reexecute o workflow `deploy-web.yml` no commit anterior íntegro.
+- **Alternativa via GitHub Actions:** o `deploy-web.yml` só publica a partir de `main` e não tem campo de commit. Reexecute (Re-run) uma execução anterior que publicou o commit íntegro, ou reverta o commit em `main` e publique de novo. Nenhum dos dois caminhos foi ensaiado.
 
 ## Reverter Edge Functions
 

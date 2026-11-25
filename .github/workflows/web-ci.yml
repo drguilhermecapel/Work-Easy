@@ -128,3 +128,38 @@ jobs:
       # Os testes de test/functions rodam também no runtime Deno (substituto do vitest em supabase/functions/_test).
       - name: deno test
         run: deno test --frozen --config supabase/functions/_test/deno.json --allow-read=.
+
+  # Ponta a ponta das Edge Functions no edge-runtime (DD109): Asaas, Resend, WhatsApp e Anthropic
+  # falsos em HTTPS local; nada sai para a internet. O script cria e apaga os próprios dados.
+  functions-e2e:
+    name: Edge Functions (ponta a ponta no edge-runtime)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci
+      # Com o edge-runtime, para a imagem e o volume de cache existirem no runner limpo.
+      - name: Subir a stack local
+        run: npx supabase start -x studio,imgproxy,logflare,vector,supavisor,realtime
+      # O script sobe o próprio runtime com `supabase functions serve` e recusa rodar com um já de pé
+      # (para não derrubar a sessão de outra pessoa). Neste runner descartável o contêiner é só nosso.
+      - name: Liberar o edge-runtime para o functions serve do script
+        run: docker rm -f supabase_edge_runtime_workeasy
+      # Resend, WhatsApp e o SDK da Anthropic usam hosts https fixos na porta 443: o node do
+      # servidor falso precisa abrir essa porta sem rodar como root.
+      - name: O node pode abrir a porta 443
+        run: sudo setcap 'cap_net_bind_service=+ep' "$(readlink -f "$(command -v node)")"
+      - name: Ponta a ponta
+        run: npm run test:e2e-functions
+      - name: Diagnóstico da stack (só se algo falhou)
+        if: failure()
+        run: |
+          npx supabase status || true
+          docker ps -a --format 'table {{.Names}}\t{{.Status}}'

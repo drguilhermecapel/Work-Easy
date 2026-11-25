@@ -20,13 +20,13 @@ usuários reais e os workflows de publicação ainda não foram executados.
 | Política de segurança | `.github/SECURITY.md` | Como reportar falhas e o escopo | Aponta para o reporte privado do GitHub (ativado pelo dono em 24/11/2026); os prazos de resposta ficam a confirmar por ele |
 | Checklist de PR | `.github/pull_request_template.md` | Lembretes de testes, alegações, migrations e segredos | Ativo |
 
-Workflows que já existiam e não foram alterados: `.github/workflows/web-ci.yml`
-(qualidade, banco e funções em PR e `main`), `.github/workflows/web-release.yml`
-(builds de site, Android, Windows, macOS, iOS e Linux) e
-`.github/workflows/ci-security.yml` (`services/api`, código do owner).
+Workflows de integração (rodam em push e pull request, DD90): `.github/workflows/web-ci.yml`
+(jobs `web`, `database`, `functions` e `functions-e2e`), `.github/workflows/web-release.yml`
+(builds de site, Android, Windows, macOS, iOS e Linux; sob demanda, tags `v*` e pull requests que
+mudam o empacotamento nativo) e `.github/workflows/ci-security.yml` (`pytest` de `services/api`).
 
-Nenhum workflow novo tem gatilho `push` ou `pull_request`. Um branch ou um PR
-nunca publica nada.
+Os dois workflows de publicação (`deploy-web.yml` e `deploy-supabase.yml`) não têm gatilho
+`push` nem `pull_request`. Um branch ou um PR nunca publica nada.
 
 ## Cabeçalhos HTTP
 
@@ -158,7 +158,7 @@ definidos à mão com `supabase secrets set` ou pelo painel. Lista do
   `CRON_SECRET`, `SITE_URL`.
 - Opcionais, conforme o canal ligado: `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`,
   `WHATSAPP_GRAPH_VERSION`, `RESEND_API_KEY`, `EMAIL_FROM`, `ANTHROPIC_API_KEY`
-  (função `request-assist`), `ASSIST_HOURLY_LIMIT`, `PRO_GRACE_DAYS`.
+  (`request-assist`, `quote-assist` e `care-summary`), `ASSIST_HOURLY_LIMIT`, `PRO_GRACE_DAYS`.
 - Não defina `ALLOW_DEV_ORIGINS` em produção.
 - Injetados pelo próprio Supabase: `SUPABASE_URL`, a chave publicável e a chave
   secreta do projeto.
@@ -183,7 +183,8 @@ Ordem sugerida para a primeira publicação. Nenhum passo é automático.
    descreve o ambiente local); provedor de SMS ou WhatsApp e de e-mail para o
    OTP. O `config.toml` traz valores de teste locais e não devem ser copiados.
 4. Definir os secrets das Edge Functions (lista acima) com
-   `supabase secrets set --project-ref <ref> --env-file <arquivo fora do repositório>`.
+   `supabase secrets set --remote=<ref> --env-file <arquivo fora do repositório>` (CLI 3.4.0;
+   `--project-ref` é da CLI 2).
    Não versione esse arquivo.
 5. Rodar **Publicar Supabase** com `dry_run` ligado e revisar a lista de migrations.
    Depois, com `dry_run` desligado e `deploy_functions` ligado. Os dois passos pedem
@@ -227,12 +228,12 @@ Ordem sugerida para a primeira publicação. Nenhum passo é automático.
   catálogo, nem função); o resumo do job lista o que seria publicado. O catálogo só é aplicado
   depois de `scripts/check-catalog-sql.mjs`: o arquivo tem de ser igual ao gerado por
   `scripts/generate-seed.mjs` e ter só upserts nas quatro tabelas do catálogo, lido valor a valor.
-- O wrangler vem de um lock próprio, `apps/web/tools/wrangler` (versão exata 4.164.0, hashes
+- O wrangler vem de um lock próprio, `apps/web/tools/wrangler` (versão exata 4.166.0 desde o commit `5c7d0d1`, hashes
   de integridade, `npm ci` só no job de publicação), não de `npx --yes`. Fica fora do
   `package.json` do app para os outros jobs não baixarem o `workerd` (cerca de 130 MB, com
   script de instalação). A 4.152.0 anterior trazia um `undici` com alertas do `npm audit`
-  (um alto); a 4.164.0 tem 0. As flags `--project-name`, `--branch` e `--commit-hash` foram
-  conferidas com `wrangler pages deploy --help` na 4.164.0.
+  (um alto); a 4.164.0 tinha 0. As flags `--project-name`, `--branch` e `--commit-hash` foram
+  conferidas com `wrangler pages deploy --help` na 4.164.0; a 4.166.0 não foi reconferida.
 - O `supabase/config.toml` tem entradas `[functions]` com `verify_jwt = false` para
   `asaas-webhook`, `notify-dispatch` e `background-check-purge`. O workflow passa
   também `--no-verify-jwt` na publicação das três; a flag é redundante e fica como
@@ -253,7 +254,8 @@ Ordem sugerida para a primeira publicação. Nenhum passo é automático.
 Aplicadas em 24/11/2026: `persist-credentials: false` nos checkouts de `web-ci.yml` e
 `web-release.yml`; `npm run check:size` e `scripts/check-bundle-secrets.mjs` depois do build
 em `web-ci.yml` e em `deploy-web.yml` (a segunda recusa também JWT com papel `service_role`);
-Rust fixo em 1.90.0 em `web-release.yml`, a versão de `src-tauri/Cargo.toml`. As demais
+Rust fixo em 1.90.0 em `web-release.yml`, a versão de `src-tauri/Cargo.toml`; actions de terceiros
+por SHA (DD110). As demais
 continuam como recomendação: filtro de caminhos mais estreito no job `database`, build sem
 pré-renderização em pull request, `check-headers.mjs` no CI,
 jobs de macOS e Windows só em tag e sob demanda, versão fixa dos runners e `npm test` fora
@@ -279,9 +281,8 @@ dos pull requests de empacotamento.
   dois jobs só em `workflow_dispatch` e em tags `v*`.
 - `macos-latest` e `windows-latest` mudam de versão sem aviso. Fixar a versão
   do runner deixa o build reproduzível.
-- `dtolnay/rust-toolchain@stable` não fixa a versão do Rust. Fixar um
-  `toolchain` explícito.
+- Aplicado: o Rust é fixo em 1.90.0 (o action aponta para a ponta do branch `1.90.0`, por SHA).
 - A permissão `contents: read` no topo está correta. Se a publicação de releases
   for criada, dar `contents: write` só ao job que a faz.
 - `npm test` roda de novo aqui, depois de `web-ci`. Manter em tags e remover dos PRs.
-- Os `checkout` podem receber `persist-credentials: false`.
+- Aplicado: `persist-credentials: false` em todos os `checkout`.

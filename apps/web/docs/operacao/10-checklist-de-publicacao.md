@@ -4,17 +4,33 @@
 
 | Campo | Valor |
 |---|---|
-| Data de referência | 2026-11-09 |
-| Base | commit `329b0cd`, branch `wt/deploy-checklist` |
-| Caminhos | Sem prefixo, relativos a `apps/web/`. Os demais são da raiz do repositório (`.github/`, `services/`, `docker-compose.yml`, `render.yaml`, `cloudbuild.yaml`). |
+| Data de referência | 2026-11-09; status revisto em 2026-11-25 contra o `main` (merge `aed8449`), depois de DD101 a DD112 |
+| Base | commit `329b0cd` na primeira versão; revisão de 25/11/2026 sobre `aed8449` |
+| Caminhos | Sem prefixo, relativos a `apps/web/`. Os demais são da raiz do repositório (`.github/`, `services/`, `docker-compose.yml`). `render.yaml` e `cloudbuild.yaml` foram removidos (DD95). |
 | Status | **Feito no repositório**: código, configuração ou workflow existe neste commit. **Depende de conta ou ação do dono**: exige conta, painel ou decisão fora do repositório. **Pendente**: falta no repositório, está em conflito entre documentos ou não foi verificado. |
 | Responsáveis | **Técnico**, **Dono**, **Contador**. Assuntos jurídicos ficam com o dono, com parecer de advogado. |
-| Limites desta revisão | Leitura de arquivos, busca e consulta à ajuda da CLI do Supabase 2.121.0. Não foram executados build, testes completos, workflows nem chamadas a serviços externos. |
+| Limites desta revisão | Primeira versão: leitura de arquivos e ajuda da CLI do Supabase 2.121.0. Revisão de 25/11/2026: leitura de arquivos e workflows, ajuda da CLI 3.4.0 e `npx vitest run` (147 arquivos, 4.111 testes). Nenhum workflow de publicação foi executado e nenhum serviço externo foi chamado. |
+
+## O que falta para publicar (só ações do dono)
+
+Tudo o que dependia só do repositório para a primeira publicação do site está feito (seções abaixo, "Feito no repositório"); o que resta depende de conta, painel, decisão ou parecer. Em ordem:
+
+1. **Girar as credenciais expostas** nas contas dos provedores: a senha antiga do Postgres (no histórico do git), a chave de API do Asaas e o segredo do webhook, e a chave do Gemini se algum build público a usou. Reescrever o histórico não substitui a troca (bloqueio 1; pendências 21 e 24; DD100).
+2. **Abrir as contas**: Supabase de produção (região, plano, backup ou PITR), Cloudflare Pages (Direct Upload), Asaas de produção (com a pessoa jurídica e o contador), Resend, Anthropic e, se quiser relato de erros, Sentry. Para os apps: Apple Developer e Google Play Console de organização (D-U-N-S). Pendências 1, 8, 9, 11 e 13 a 17.
+3. **Escolher o domínio** e, com ele: `VITE_SITE_URL` e `SITE_URL`; Site URL e redirecionamentos no painel de Auth; o host real no `AndroidManifest.xml` e em `App.entitlements`; a impressão digital da chave de assinatura do Play em `public/.well-known/assetlinks.json` e o Team ID em `public/.well-known/apple-app-site-association`. `npm run check:app-links -- --strict` só passa quando os três estiverem preenchidos (`nativo.md`, seção 8; DD104).
+4. **Preencher variáveis e segredos**: ambiente `production` do GitHub (seções 1.1 e 1.2) e segredos das Edge Functions (seção 1.3), inclusive `APP_ENV=production`, `ASAAS_BASE_URL` e `TRIAL_DOCUMENT_SECRET`; ativar o hook de autenticação no painel (pendência 25).
+5. **Parecer do advogado** sobre os textos propostos (`docs/juridico/12`), Termos, Privacidade e SAC; só então `VITE_LEGAL_STATUS=vigente`. Indicar o encarregado (pendências 3 a 7 e 22).
+6. **WhatsApp Business**: aprovar os dez modelos com os nomes exatos (`pedido_novo` com 2 variáveis, `orcamento_respondido` com 1; DD65, DD87) e decidir o provedor de SMS do login por telefone (sem ele, `VITE_LOGIN_METHODS=email`). Pendência 12.
+7. **Ensaiar o `deploy-supabase.yml` com `dry_run` ligado**: a CLI 3.4.0 nunca rodou contra um projeto hospedado (DD110). Ensaiar também o `ref` de reversão (DD103). Só depois a publicação real, e conferir as contagens do catálogo.
+8. **Rotinas no Vault e agendamentos**: gravar `notify_dispatch_url` e `cron_secret` no Vault, agendar `background-check-purge` (`docs/operacao/11-agendamento-de-rotinas.md`), conferir os oito agendamentos do `pg_cron` (S39) e escolher quem roda a checagem diária e o monitor externo (`docs/operacao/12` e `13`).
+9. **Painéis antigos**: conferir se existe serviço do `workeasy-api` no Render ou gatilho no Cloud Build e desligá-lo (DD95; pendência 23).
+10. **GitHub**: definir os prazos de resposta de `.github/SECURITY.md` (hoje "a confirmar pelo dono"), proteger `main` exigindo os checks do `web-ci`, revisar a lista do Dependabot e decidir se o repositório fica público (se virar privado, reabrir a decisão de custo do Actions, DD90; pendências 10, 20 e 28).
+11. **Só para os apps de loja**: decisões D1 a D6 (iOS) e D1 a D7 (Android), incluindo manter ou não a IA no Android (DD104); chave de upload do Android fora do repositório; teste em aparelho; distribuição e assinatura do desktop (pendências 16 a 19 e 27).
 
 ## Bloqueios antes da primeira publicação
 
 1. **Credencial versionada.** `docker-compose.yml` (raiz) não traz mais a senha: desde o commit `0f8c4fd`, `POSTGRES_PASSWORD` vem do `.env`, que o git ignora. O valor antigo continua no histórico do git (introduzido em `97e8dd5`), e o repositório é público. Trocar a senha em todo ambiente em que ela tenha sido usada e não reproduzir o valor em lugar nenhum. Responsável: Técnico e Dono (pendência 24). **Pendente** (a troca; o arquivo já está corrigido).
-2. **Catálogo vazio em produção.** O workflow aplicava só migrações. Feito no repositório: depois das migrações, o workflow aplica `supabase/catalog.sql` (só com `dry_run` desligado). O arquivo sai do mesmo gerador do seed e tem só as quatro tabelas de catálogo. Falta a primeira execução e a conferência das contagens (44 áreas, 1.710 ocupações, 1.710 políticas, 96 bairros). Responsável: Técnico. **Pendente de execução.**
+2. **Catálogo vazio em produção.** O workflow aplicava só migrações. Feito no repositório: depois das migrações, o workflow aplica `supabase/catalog.sql` (só com `dry_run` desligado). O arquivo sai do mesmo gerador do seed e tem só as quatro tabelas de catálogo. Desde DD110 o workflow só aplica o arquivo se ele for idêntico ao gerado e tiver só upserts nas tabelas do catálogo (`scripts/check-catalog-sql.mjs`). Falta a primeira execução e a conferência das contagens (44 áreas, 1.710 ocupações, 1.710 políticas, 96 bairros). Responsável: Técnico. **Pendente de execução.**
 3. **Asaas no sandbox por padrão.** Feito no repositório: em produção (`APP_ENV=production`, ou `SITE_URL` público sem `APP_ENV`), `ASAAS_BASE_URL` é obrigatória e o sandbox é recusado. Sem ela, as funções que falam com o Asaas respondem 503 e registram `ConfigError`. Em produção, CORS para localhost fica fechado. Falta definir `APP_ENV=production` e `ASAAS_BASE_URL=https://api.asaas.com/v3` nos segredos de produção. Responsável: Técnico. **Depende de ação.**
 4. **Configuração de Auth não vai para produção.** `supabase/config.toml` descreve só o ambiente local (Site URL em localhost, redirecionamentos, templates, provedor de SMS de teste). O workflow não executa `supabase config push`. Configurar no painel. Responsável: Técnico. **Depende de ação.**
 5. **Textos legais e lojas.** Termos, Privacidade e SAC em `content/legal/` são textos de elaboração (menos de 400 bytes cada). Sem `VITE_LEGAL_STATUS=vigente`, após parecer, todas as páginas jurídicas mostram aviso de rascunho. Responsável: Dono, com advogado. **Pendente.**
@@ -40,6 +56,8 @@ Todas são lidas no código. Para o build de produção, são definidas como var
 | `VITE_SENTRY_DSN` | variável `production`, repassada pelo workflow desde 24/11/2026 | pública (não é segredo, mas não se versiona) | Dono (conta e região) | Feito no repositório; **depende de conta ou ação do dono** (criar a variável) | `lib/observability.ts`; `observabilidade.md` §5 |
 | `VITE_APP_VERSION` | o workflow envia o commit publicado (`github.sha`) | pública | Técnico | Feito no repositório | `lib/observability.ts` |
 | `VITE_ROUTER` | `.env.native` (nativos usam `hash`); padrão `browser` | pública | Técnico | Feito no repositório | `.env.native`; `vite-env.d.ts` |
+| `VITE_LOGIN_METHODS` | variável `production` | pública | Dono | Depende de decisão: `email` enquanto não houver provedor de SMS; vazia = e-mail e telefone | `deploy-web.yml`; `README.md` |
+| `VITE_STORE_BUILD` | só nos builds de loja (`android` ou `ios`); nunca no site | pública | Técnico | Feito no repositório: o CI confere que o site não é build de loja (`check:store-bundle -- --store none`) | `scripts/check-store-bundle.mjs`; DD71, DD104 |
 
 Achados:
 
@@ -57,7 +75,7 @@ Achados:
 | `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_PAGES_PROJECT` | variáveis | `deploy-web.yml` | Técnico | Depende de conta | `infra.md` |
 | `SUPABASE_PROJECT_ID` | variável | `deploy-supabase.yml` | Técnico | Depende de conta | `infra.md` |
 
-O ambiente `production` precisa de revisores obrigatórios e de regra de branch `main` (`infra.md`, "Ambientes e variáveis"). Os dois workflows de publicação exigem aprovação desse ambiente. **Depende de ação no GitHub.**
+O ambiente `production` precisa de revisores obrigatórios e de regra de branch `main` (`infra.md`, "Ambientes e variáveis"). Os dois workflows de publicação exigem aprovação desse ambiente. O dono informou em 24/11/2026 que criou o ambiente com revisor obrigatório (lista no fim deste documento; não conferível a partir do repositório). **Depende de ação no GitHub:** a regra de branch e a proteção de `main` com os checks do `web-ci`.
 
 ### 1.3 Segredos das Edge Functions (no Supabase)
 
@@ -78,6 +96,7 @@ Definidos com `supabase secrets set` ou pelo painel. Os workflows nunca os defin
 | `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` | opcionais (sem elas: `skipped`) | envio por WhatsApp Cloud API | Dono (conta Meta) | Depende de conta e de templates aprovados | `_shared/config.ts`; `supabase/functions/README.md` |
 | `WHATSAPP_GRAPH_VERSION` | opcional (padrão `v26.0`) | versão da API | Técnico | Feito no repositório | `.env.example` |
 | `RESEND_API_KEY`, `EMAIL_FROM` | opcionais (sem elas: `skipped`) | e-mail transacional | Dono (domínio de envio) | Depende de conta e de domínio | `_shared/config.ts` |
+| `TRIAL_DOCUMENT_SECRET` | sim, para o teste grátis do Pro (sem ele, o teste responde indisponível) | vínculo HMAC entre o CPF/CNPJ do teste e a conta de recebimento | Técnico | Depende de ação (gerar valor). Não consta em `supabase/functions/.env.example` | `_shared/config.ts`; `asaas-onboard`; `subscriptions-manage`; DD51 |
 
 Injetadas pelo próprio Supabase (não definir): `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEYS` ou `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` ou `SUPABASE_SECRET_KEYS`. **Feito (plataforma).**
 
@@ -101,15 +120,15 @@ Proteção: `.env` e `.env.*` estão no `.gitignore`. Só `.env.example` e `.env
 | Projeto de produção | Depende de conta | Ainda não criado (`infra.md`, passo 1). A região está registrada como decisão em `apps/web/docs/DECISOES.md`, seção 8, item 5 ("região São Paulo"). Não conferido no painel. |
 | Versão do Postgres | Depende de conta (conferir) | `supabase/config.toml` linha 41: `major_version = 17`. Conferir com `SHOW server_version` no projeto de produção, porque o arquivo pede que as duas versões sejam iguais. |
 | Plano, backup e PITR | **Pendente** (decisão do dono) | Backup diário: 7 dias no plano Pro e 14 no Team (`RUNBOOKS` item 7). PITR é pago e não consta como contratado. Não há RPO nem frequência de ensaio de restauração no repositório. |
-| Migrações | Feito no repositório (workflow) | 95 arquivos em `supabase/migrations/` no HEAD `cef8acc` (40 no commit `329b0cd`, base desta revisão): 11 de 2026-10-19, 2 de 2026-10-22, 2 de 2026-10-23, 1 de 2026-11-08, 24 de 2026-11-09, 35 de 2026-11-10 e 20 de 2026-11-18. Aplicadas pela ordem do nome. **Não há migração de reversão.** Workflow: dry run por padrão e, depois, `supabase db push --linked --skip-vault --yes`. CLI fixada em 2.121.0 (`package.json`, `deploy-supabase.yml`). |
-| Contagem de migrações | **Pendente** | O `RUNBOOKS` foi conferido no commit `5805947`, com 36 migrações. No HEAD `cef8acc` são 95 (40 em `329b0cd`). Conferir a lista com a consulta S40 antes e depois do dry run. |
+| Migrações | Feito no repositório (workflow) | 109 arquivos em `supabase/migrations/` (contados com `ls` em 25/11/2026; o último é `20261124100010_deletion_clears_titles.sql`). Aplicadas pela ordem do nome. **Não há migração de reversão.** Workflow: `dry_run` por padrão (nada é publicado, DD110) e, depois, `supabase db push --remote --skip-vault --yes`. CLI fixada em 3.4.0 (`package.json` e workflows, conferida pelo próprio job). |
+| Contagem de migrações | Feito no repositório; conferir em produção | O `RUNBOOKS` cita as 109 migrações. Conferir a lista com a consulta S40 antes e depois do primeiro `dry_run`. |
 | Carga do catálogo | **Feito no repositório** (bloqueio 2); falta a primeira execução | O workflow aplica `supabase/catalog.sql` depois das migrações, só com `dry_run` desligado. O arquivo tem 44 áreas, 1.710 ocupações, 1.710 políticas e 96 bairros, nas quatro tabelas de catálogo, e sai do mesmo gerador do seed (`scripts/generate-seed.mjs`). Não usa `--include-seed`: o seed de desenvolvimento pode ganhar dados de teste. Testes em `test/seed.test.ts`. |
 | Configuração de Auth | Depende de ação (painel) | Tabela própria logo abaixo. |
-| `verify_jwt` por função | Feito no repositório; teste pendente | `supabase/config.toml` linhas 407 a 415: `asaas-webhook`, `notify-dispatch` e `background-check-purge` com `verify_jwt = false`. O workflow passa `--no-verify-jwt` só às duas primeiras; `background-check-purge` vai sem a flag e depende do `config.toml`. Conferir no painel do Supabase que a verificação de JWT dela está desligada: uma chamada sem JWT dá 401 nos dois casos, então não serve de teste. As outras onze usam o padrão, que exige JWT. Após a publicação, chamar cada uma das onze sem JWT e esperar 401. |
-| Edge Functions | Feito no repositório | Catorze funções em `supabase/functions/`: `account-delete`, `account-export`, `asaas-onboard`, `asaas-webhook`, `background-check-purge`, `care-summary`, `charges-create`, `notify-dispatch`, `payments-create`, `payments-void`, `provider-document-upload`, `quote-assist`, `request-assist` e `subscriptions-manage`. `_shared` e `_runtime` são bibliotecas. Publicação em passo separado (`deploy_functions`). |
+| `verify_jwt` por função | Feito no repositório; conferir após publicar | `supabase/config.toml` linhas 410 a 417: `asaas-webhook`, `notify-dispatch` e `background-check-purge` com `verify_jwt = false`. O workflow passa `--no-verify-jwt` às três (a flag é redundante com o `config.toml` e fica como segunda guarda). As outras doze usam o padrão, que exige JWT. Após a publicação, chamar cada uma das doze sem JWT e esperar 401. |
+| Edge Functions | Feito no repositório | Quinze funções em `supabase/functions/`: `account-delete`, `account-export`, `asaas-onboard`, `asaas-webhook`, `asaas-webhooks-sync` (só administrador, DD79), `background-check-purge`, `care-summary`, `charges-create`, `notify-dispatch`, `payments-create`, `payments-void`, `provider-document-upload`, `quote-assist`, `request-assist` e `subscriptions-manage`. `_shared`, `_runtime` e `_test` não são funções. Publicação em passo separado (`deploy_functions`). Provadas no CI em Node, em Deno (`deno test`) e de ponta a ponta no edge-runtime com serviços falsos (job `functions-e2e`); nunca contra Asaas, WhatsApp, Resend ou Anthropic reais. |
 | Bucket de documentos | Feito no repositório | Bucket privado `provider-documents`, criado pela migração de prestadores (comentário em `config.toml`, linhas 121 e 122). Limite de arquivo local de 50 MiB (`config.toml`, linha 119). Conferir no painel. |
 | Agendamentos (`pg_cron`) | Feito no repositório; conferir após publicar | Oito agendamentos nas migrações: `notification-counts-retention`, `product-events-retention`, `retention-purge-daily` (03:00 UTC, chama `run_retention_purge()`), `workeasy-booking-reminders`, `workeasy-dispatch-notifications`, `workeasy-expire-booking-requests`, `workeasy-expire-pro-plans` e `workeasy-expire-stale`. O `retention-purge-daily` só é criado se o `pg_cron` estiver instalado; sem ele, a migração emite aviso. `background-check-purge` não tem agendamento nas migrações: é ação do dono (`docs/operacao/11-agendamento-de-rotinas.md`). `docs/ARQUITETURA.md` atualizado (8 agendamentos + `workeasy-background-check-purge` `20 3 * * *`). Conferir com S39. |
-| Testes de banco e integração | Feito (workflow manual); não executado aqui | pgTAP em `supabase/tests/database/`; integração em `test/integration/`. `web-ci.yml` é só `workflow_dispatch`. Não rodado nesta sessão (sem Docker). |
+| Testes de banco e integração | Feito no repositório | pgTAP (89 arquivos em `supabase/tests/database/`) e integração (`test/integration/`) no job `database` do `web-ci.yml`, que roda em push e pull request desde DD90. Não rodados na revisão de 25/11/2026 (sem stack local). |
 
 Configuração de Auth (o que o `config.toml` descreve x o que deve existir no painel de produção):
 
@@ -117,12 +136,12 @@ Configuração de Auth (o que o `config.toml` descreve x o que deve existir no p
 |---|---|---|---|
 | Site URL | `http://localhost:3000` (linha 162) | igual a `VITE_SITE_URL` | **Pendente** |
 | Redirecionamentos | localhost, `https://localhost`, `capacitor://localhost`, `http://tauri.localhost`, `tauri://localhost` (linhas 168 a 174) | domínio de produção e as origens dos apps | **Pendente** |
-| Confirmação de e-mail e de telefone | ligada (linhas 238 e 287) | manter ligada | Confirmar |
-| Cadastro por senha | `enable_signup = true` (linha 187) | `ARQUITETURA.md` ("Notificações") diz que em produção fica desligado ou exige confirmação. Login é por código | **Decisão** do dono e técnico |
-| Templates de e-mail | `magic_link` e `confirmation`, com `{{ .Token }}` (linhas 259 a 267); arquivos em `supabase/templates/` | colar assunto e HTML no painel | Arquivos feitos; ação **pendente** |
-| Provedor de SMS ou WhatsApp para o código | placeholders `local-placeholder` e número de teste fixo (linhas 296 a 325) | provedor real. Não copiar o bloco local | Depende de conta. Não existe hoje (`app-store.md`, B2 e B8) |
+| Confirmação de e-mail e de telefone | ligada (linhas 239 e 289) | manter ligada | Confirmar |
+| Cadastro de contas | `[auth] enable_signup = true` (linha 187); provedores de e-mail e SMS com `enabled = true` (linhas 233 e 286, chave da CLI 3 desde 25/11/2026) | manter ligado: não há cadastro por senha, e a conta nasce no primeiro login por código (`shouldCreateUser: true`, `services/auth.ts`); desligar impede o primeiro acesso | Confirmar no painel |
+| Templates de e-mail | `magic_link` e `confirmation`, com `{{ .Token }}` (linhas 262 a 268); arquivos em `supabase/templates/` | colar assunto e HTML no painel | Arquivos feitos; ação **pendente** |
+| Provedor de SMS ou WhatsApp para o código | placeholders `local-placeholder` e número de teste fixo (linhas 299 a 328) | provedor real. Não copiar o bloco local | Depende de conta. Não existe hoje (`app-store.md`, B2 e B8) |
 | SMTP de e-mail | sem SMTP próprio no arquivo (bloco comentado) | definir o provedor no painel | **Decisão pendente** |
-| MFA para administradores | TOTP desligado (linhas 333 a 335) | exigir em produção? | **Pendente** (`RUNBOOKS`, apêndice A, item 15) |
+| MFA para administradores | TOTP desligado (linhas 336 e 337) | exigir em produção? | **Pendente** (`RUNBOOKS`, apêndice A, item 15) |
 | Validade do token | 3600 s (linha 176) | padrão | Feito |
 
 ---
@@ -154,7 +173,7 @@ Configuração de Auth (o que o `config.toml` descreve x o que deve existir no p
 |---|---|---|
 | Build de produção | Feito no repositório | `npm ci`, lint, testes e `npm run build` (tsc, vite e prerender), com Node 22 (`deploy-web.yml`). Não executado nesta sessão. |
 | Pré-renderização | Feito; depende de variável | 13.005 páginas medidas em 8 de novembro (`infra.md`, "Cabeçalhos HTTP"). Sitemap, canonical e linha `Sitemap:` do robots dependem de `VITE_SITE_URL`. |
-| Publicação | Feito no repositório | `wrangler pages deploy dist --branch main` (wrangler 4.164.0 pelo lock em `tools/wrangler`), só a partir de `main`, com a palavra `DEPLOY` digitada e aprovação do ambiente `production` (`deploy-web.yml`). |
+| Publicação | Feito no repositório | `wrangler pages deploy dist --branch main` (wrangler 4.166.0 pelo lock em `tools/wrangler`), só a partir de `main`, com a palavra `DEPLOY` digitada e aprovação do ambiente `production` (`deploy-web.yml`). |
 | Projeto Pages | Depende de conta | Tipo Direct Upload, branch de produção `main`, domínio customizado. Não verificado se um projeto com integração Git aceita esse envio (`infra.md`, passo 8). |
 | Cabeçalhos (`public/_headers`) | Feito no repositório; teste em produção pendente | CSP, HSTS de um ano sem subdomínios, `nosniff`, `X-Frame-Options: DENY`, `Permissions-Policy` (geolocalização e câmera só do próprio site), COOP, CORP e cache. Validado localmente com `check-headers.mjs` e Chromium (`infra.md`), não no Cloudflare. Depois de publicar: `curl -sI https://<domínio>/`. |
 | Política de conteúdo: pontos abertos | **Pendente** | (a) `connect-src` já libera `*.ingest.sentry.io`, `*.ingest.de.sentry.io` e `*.ingest.us.sentry.io`; ligar o relato de erros depende de conta Sentry e de `VITE_SENTRY_DSN` no workflow (seção 1.1). (b) `connect-src` libera só `*.supabase.co` e os hosts do Sentry, e `img-src` não libera `*.supabase.co` (libera `'self'`, `data:` e `blob:`); domínio próprio para a API exige mudança. (c) `public/.well-known/apple-app-site-association` já configurado com `Content-Type: application/json` em `public/_headers` (`e8ba931`). |
@@ -184,7 +203,7 @@ Configuração de Auth (o que o `config.toml` descreve x o que deve existir no p
 | Privacidade iOS | Feito parcialmente | `PrivacyInfo.xcprivacy` existe e está no alvo do Xcode; em 24/11/2026 saiu dele a localização precisa e do `Info.plist` a chave de localização (o Cuidado não entra na build de loja), e o texto de câmera passou a falar só da foto de documento. Lista de dados depende de revisão do advogado e do encarregado (`nativo.md`, 3.2; `app-store.md`, 5.5). `ITSAppUsesNonExemptEncryption` não declarado: decisão do responsável pela loja. |
 | Rede nativa | Feito no repositório | `cleartext: false` no Capacitor; origens de CORS fixas nas funções (`docs/ARQUITETURA.md`, "CORS"). |
 | Bloqueios de loja | **Pendente** (dono e técnico) | Apple: B1 a B8 (`app-store.md`, seção 0). Google Play: B01 a B14 (`google-play.md`, seção 1). Os principais: textos legais, backend de produção, venda do Pro dentro do app, denúncia e bloqueio de conteúdo, conteúdo de demonstração no build, página web de exclusão de conta e login do revisor. |
-| Build e release nativos | Feito no repositório | `web-release.yml` (manual ou tag `v*`) gera seis alvos sem assinatura. Não executado nesta sessão. |
+| Build e release nativos | Feito no repositório | `web-release.yml` (manual, tag `v*` e pull requests que mudam o empacotamento nativo) gera seis alvos sem assinatura; passou no head do PR #4 (DD100). O `.aab` de loja sai por `scripts/android-release.sh`, provado com chave descartável (DD104). |
 | Verificação em aparelho | **Pendente** | Lista em `nativo.md`, seções 2.4, 3.4 e 6. |
 | CSP do Tauri | Risco aceito, registrado (DD111) | `style-src 'unsafe-inline'` mantido por React e Tailwind (`nativo.md`, 4.1). |
 
@@ -243,7 +262,7 @@ Configuração de Auth (o que o `config.toml` descreve x o que deve existir no p
 | 9 | Conta Cloudflare, projeto Pages, domínio e HTTPS | Conta | Dono e Técnico | Depende de ação | `infra.md`, passos 8 e 10 |
 | 10 | GitHub: ambiente `production` com revisores, regra para `main`, proteção de branch, reporte privado e Dependabot | Ação | Técnico e Dono | Depende de ação | `infra.md`, passos 11 a 13 |
 | 11 | Conta Asaas de produção: contrato, verificação e conta bancária | Conta e contrato | Dono e Contador | Depende de ação | `DECISOES.md`, seção 8, item 5 |
-| 12 | WhatsApp Business: os dez templates aprovados com os nomes exatos (um por nome em `TEMPLATES`, `_shared/notifications.ts`); provedor de código por SMS ou WhatsApp | Conta | Dono | Depende de ação | `supabase/functions/README.md`; `_shared/notifications.ts`; `app-store.md`, B2 |
+| 12 | WhatsApp Business: os dez templates aprovados com os nomes exatos (um por nome em `TEMPLATES`, `_shared/notifications.ts`), com `pedido_novo` de 2 variáveis e `orcamento_respondido` de 1 (DD65, DD87); provedor de código por SMS ou WhatsApp | Conta | Dono | Depende de ação | `supabase/functions/README.md`; `_shared/notifications.ts`; `app-store.md`, B2 |
 | 13 | Resend: domínio de envio e remetente | Conta | Técnico e Dono | Depende de ação | `_shared/config.ts` |
 | 14 | Anthropic: chave, faturamento e teto de uso | Conta e financeiro | Dono | Depende de ação | `request-assist/index.ts` |
 | 15 | Sentry: conta e região (União Europeia ou Estados Unidos) | Conta e decisão | Dono | **Pendente** | `observabilidade.md`, §5 |
@@ -253,13 +272,16 @@ Configuração de Auth (o que o `config.toml` descreve x o que deve existir no p
 | 19 | Desktop: distribuição direta ou loja, assinatura de Windows e macOS, atualizador | Decisão e custo | Dono | **Pendente** | `desktop-e-assinatura.md`, seção 0 |
 | 20 | Repositório público ou privado | Decisão | Dono | **Pendente** | `DECISOES.md`, seção 8, item 1, pede repositório privado. O pedido de trabalho trata o repositório como público |
 | 21 | Chave do Gemini: confirmar se algum build público a usou e rotacionar, se for o caso | Segurança | Dono e Técnico | **Pendente** | `DECISOES.md`, seção 8, item 2 |
-| 22 | IA de terceiros: aviso que nomeie o provedor e aceite registrado | Jurídico e produto | Dono e advogado | **Pendente** | `app-store.md`, B8 |
+| 22 | IA de terceiros: aviso que nomeie o provedor e aceite registrado | Jurídico e produto | Dono e advogado | Feito no repositório (aceite `ai_assist` registrado e exigido pelo servidor, DD62 e DD88; assistentes fora da build iOS, DD78); **pendente** o texto e a base legal pelo advogado (`docs/juridico/12`) e a decisão de manter a IA no Android (DD104) | `app-store.md`, B8 |
 | 23 | Destino da API em `services/`: `render.yaml` e `cloudbuild.yaml` foram **removidos** (DD95); o serviço `workeasy-api` é protótipo e não tem destino de publicação. Se existir um serviço no painel do Render ou um gatilho no Cloud Build criado antes, desligue-o: o repositório já não o descreve [incerto: o painel não é visível daqui] | Técnico e decisão | Dono | **Decidido; conferir painéis** | `services/api/` |
 | 24 | Rotação das credenciais nas contas do provedor: chave de API do Asaas, senha do banco de produção e segredo do webhook. A troca é obrigatória; reescrever o histórico do repositório não a substitui. Ver também o bloqueio 1 e a lacuna de rotação do token do webhook (seção 3) | Segurança | Dono e Técnico | **Pendente** | `DECISOES.md`, seção "Decisões delegadas (2026-11-09)", DD06; seção 7 ("Segredo comprometido") |
 | 25 | Ativar o hook de autenticação no painel, para o registro de data, hora e tipo de evento de login. Os dois blocos de hook de autenticação do `config.toml` (`before_user_created`, linha 307, e `custom_access_token`, linha 312) estão comentados | Configuração | Dono e Técnico | **Pendente** | `supabase/config.toml`, linha 312; `DECISOES.md`, DD22 |
 | 26 | Conferir em produção o agendamento `retention-purge-daily` (pg_cron, 03:00 UTC) e o expurgo de `run_retention_purge()`: provas de consentimento após `retain_until` (5 anos a partir da exclusão, na cópia pseudonimizada), eventos de acesso após 6 meses e eventos de uso do assistente após 1 dia. Já feito no repositório (migrações `20261118200002`, `20261118600002` e `20261118600010`) | Retenção | Dono e Técnico | **Depende de ação** (verificar no painel) | `DECISOES.md`, DD22, DD23 e DD39; seção 6 ("Retenção") |
 | 27 | Teste em aparelho Android da captura de foto com a pasta restrita (FileProvider), antes da publicação | Teste | Técnico | **Pendente** | Commit `49cef45`; seção 5 ("Permissões Android" e "Verificação em aparelho"); `DECISOES.md`, DD08 |
-| 28 | Tornar o repositório privado antes da publicação. É a recomendação registrada; a decisão de publicar fica com o dono (ver pendência 20) | Ação | Dono | **Pendente** | `DECISOES.md`, DD07; pendência 20 acima |
+| 28 | Tornar o repositório privado antes da publicação. É a recomendação registrada; a decisão de publicar fica com o dono (ver pendência 20). Se virar privado, reabrir a decisão de custo do GitHub Actions (DD90) | Ação | Dono | **Pendente** | `DECISOES.md`, DD07 e DD90; pendência 20 acima |
+| 29 | Primeiro ensaio do `deploy-supabase.yml` com `dry_run` ligado, sem e com `ref`: a CLI 3.4.0 e a reversão de funções nunca rodaram contra projeto hospedado | Ensaio | Dono e Técnico | **Pendente** (depende da pendência 8) | DD103, DD110; seção 7 ("Reverter Edge Functions") |
+| 30 | Prazos de resposta de `.github/SECURITY.md` (confirmar recebimento, primeira avaliação, correção) | Decisão | Dono | **Pendente** ("a confirmar pelo dono") | `.github/SECURITY.md`; DD103 |
+| 31 | `TRIAL_DOCUMENT_SECRET` definido nas Edge Functions (seção 1.3) | Segredo | Técnico | Depende de ação | DD51; DD100 |
 
 ---
 
@@ -276,7 +298,8 @@ Estes pontos não bloqueiam a publicação, mas podem levar a uma decisão errad
 | `.github/workflows/deploy-supabase.yml` (comentário) | `config.toml` sem entradas de função | Tem. Comentário corrigido em 24/11/2026 |
 | `apps/web/docs/ARQUITETURA.md` ("Notificações") | Dois agendamentos | Oito em `pg_cron` nas migrações (inclui `retention-purge-daily`). `ARQUITETURA.md` ganhou a tabela dos oito em 24/11/2026 |
 | `apps/web/docs/operacao/08` (citado em `observabilidade.md`, §6) | Arquivo não existe na árvore de trabalho | Existe neste commit |
-| `apps/web/docs/RUNBOOKS.md` | 36 migrações, commit `5805947` | 95 migrações no HEAD `cef8acc` (40 em `329b0cd`) |
+| `apps/web/docs/RUNBOOKS.md` | 36 migrações, commit `5805947` | Resolvido: o documento cita as 109 migrações (25/11/2026) e os comandos da CLI 3.4.0 (`--remote` no lugar de `--linked` e `--project-ref`) |
+| `apps/web/docs/lojas/desktop-e-assinatura.md` | `web-release.yml` sem gatilho de pull request; README com o nome errado do workflow e com "menu de contexto" no macOS | Resolvido: o workflow tem gatilho de pull request desde DD90, e o documento e o README foram atualizados em 25/11/2026 |
 | `apps/web/docs/ARQUITETURA.md` ("Testes e CI") x `RUNBOOKS` (apêndice A, item 16) | Editar migração aplicada x criar migração nova | Resolvido em 24/11/2026: regra única em `ARQUITETURA.md` (migração aplicada não se edita) |
 | `apps/web/docs/lojas/google-play.md`, B05 | Faixa de protótipo em toda tela | `producao-vs-demonstracao.md` registra a correção com backend, com pendências na seção 8. Conferir no build |
 
@@ -285,7 +308,7 @@ Estes pontos não bloqueiam a publicação, mas podem levar a uma decisão errad
 ## Verificação após a primeira publicação
 
 - `curl -sI https://<domínio>/`: CSP, HSTS e `cache-control` (`infra.md`, passo 10).
-- Chamada sem JWT às onze funções de usuário: espera-se 401. Webhook com token errado: 401. `notify-dispatch` e `background-check-purge` sem `x-cron-secret`: recusados.
+- Chamada sem JWT às doze funções que exigem JWT: espera-se 401. Webhook com token errado: 401. `notify-dispatch` e `background-check-purge` sem `x-cron-secret`: recusados.
 - Contagem de áreas, ocupações, políticas e bairros: 44, 1.710, 1.710 e 96.
 - Consultas do `RUNBOOKS`: S40 (migrações), S39 (agendamentos), S21 (Vault), S20 (respostas HTTP), S18 (fila vencida).
 - Login por código chega ao e-mail real com o template certo.

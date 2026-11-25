@@ -25,7 +25,7 @@ Cada expurgo grava `document.purged` em `audit_log`, com `kept` indicando se a l
 Use o mesmo valor que o `notify-dispatch` já usa. Sem ele a função responde 503.
 
 ```bash
-supabase secrets set CRON_SECRET='<valor>' --project-ref <ref>
+supabase secrets set CRON_SECRET='<valor>' --remote=<ref>   # CLI 3.4.0; sem --remote, vale o projeto vinculado
 ```
 
 Não grave o valor no repositório.

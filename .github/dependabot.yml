@@ -20,8 +20,9 @@ updates:
           - minor
           - patch
     ignore:
-      # typescript-eslint (peer typescript < 6.1) recusa carregar com o TypeScript 7:
-      # o lint quebra. Reabrir quando o typescript-eslint suportar o 7.
+      # typescript-eslint (8.74.0: peer typescript >=4.8.4 <6.1.0) recusa carregar com o
+      # TypeScript 7: o lint quebra. O app está no 6.0.3, o último aceito. Reabrir quando
+      # o typescript-eslint suportar o 7.
       - dependency-name: typescript
         update-types: ["version-update:semver-major"]
       # Os tipos acompanham o Node do CI e dos builds (22): a major 26 liberaria APIs
