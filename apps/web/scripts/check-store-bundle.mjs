@@ -11,6 +11,7 @@
 // It does NOT prove that the screens are hidden: the code of the Pro sale, of the care line and of the AI
 // assistants stays in the files (the flags are read at run time, so nothing is tree-shaken); what the flag
 // does is decide, when the app runs, whether it is shown. That is covered by test/web/store-build*.test.tsx.
+// For iOS, also check that the legacy prototype routes and their page chunks were eliminated.
 //
 // Usage: node scripts/check-store-bundle.mjs --store android|ios|none [--dist dist]
 // Exit code: 0 = the bundle is for the expected store, 1 = it is for another, 2 = nothing to read.
@@ -74,6 +75,14 @@ const main = () => {
   if (actual !== expected) {
     console.error(`check-store-bundle: "${dist}" foi feito para "${actual}", e era esperado "${expected}". Refaça o build com VITE_STORE_BUILD=${expected === 'none' ? '(vazio)' : expected}.`);
     return 1;
+  }
+  if (actual === 'ios') {
+    const prototypeChunk = /[/\\](?:Verification|HealthSearch|DoctorProfile|TeleconsultationRoom|MedicalRecords|FutureFeaturePage|ProviderRegistration|Dashboard)-[^/\\]+\.js$/;
+    const prototypeRoute = /\bpath\s*:\s*["'`]\/(?:verification|health|doctor\/:id|teleconsultation\/:sessionId|medical-records)["'`]/;
+    if (walk(dist).some(path => path.endsWith('.js') && (prototypeChunk.test(path) || prototypeRoute.test(readFileSync(path, 'utf8'))))) {
+      console.error('check-store-bundle: o bundle iOS ainda contém rotas ou telas de protótipo.');
+      return 1;
+    }
   }
   console.log(`check-store-bundle: "${dist}" é um bundle ${expected === 'none' ? 'sem build de loja' : `de loja (${expected})`}.`);
   return 0;

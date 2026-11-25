@@ -3,17 +3,17 @@ import { lazy } from 'react';
 import { Navigate, Route } from 'react-router-dom';
 
 // Each page is a separate chunk, so the first load only ships what it shows
-const SearchPage = lazy(() => import('../Search'));
-const Profile = lazy(() => import('../Profile'));
-const Dashboard = lazy(() => import('../Dashboard'));
-const Verification = lazy(() => import('../Verification'));
-const ProviderRegistration = lazy(() => import('../ProviderRegistration'));
-const TeleconsultationRoom = lazy(() => import('../TeleconsultationRoom'));
-const MedicalRecords = lazy(() => import('../MedicalRecords'));
-const HealthSearch = lazy(() => import('../HealthSearch'));
-const DoctorProfile = lazy(() => import('../DoctorProfile'));
+const SearchPage = /* @__PURE__ */ lazy(() => import('../Search'));
+const Profile = /* @__PURE__ */ lazy(() => import('../Profile'));
+const Dashboard = /* @__PURE__ */ lazy(() => import('../Dashboard'));
+const Verification = /* @__PURE__ */ lazy(() => import('../Verification'));
+const ProviderRegistration = /* @__PURE__ */ lazy(() => import('../ProviderRegistration'));
+const TeleconsultationRoom = /* @__PURE__ */ lazy(() => import('../TeleconsultationRoom'));
+const MedicalRecords = /* @__PURE__ */ lazy(() => import('../MedicalRecords'));
+const HealthSearch = /* @__PURE__ */ lazy(() => import('../HealthSearch'));
+const DoctorProfile = /* @__PURE__ */ lazy(() => import('../DoctorProfile'));
 const CatalogSearch = lazy(() => import('./CatalogSearch'));
-const FutureFeaturePage = lazy(() => import('./FutureFeaturePage'));
+const FutureFeaturePage = /* @__PURE__ */ lazy(() => import('./FutureFeaturePage'));
 // The redirects read the catalog (571 kB of JSON). Imported statically here they pulled it into
 // the entry chunk of every visit; as a chunk of their own the catalog stays out of the first load.
 const DashboardRedirect = lazy(() => import('./redirects').then(module => ({ default: module.DashboardRedirect })));
@@ -36,21 +36,23 @@ export const demoRoutes = (
   </>
 );
 
-/**
- * With a backend no fictitious data may appear. The old URLs keep working, each
- * one redirected to its real equivalent, replaced by a real page, or explained as
- * a future feature.
- */
+/** Live routes and redirects shared by the site and the store builds. */
 export const backendRoutes = (
   <>
     <Route path="/search" element={<CatalogSearch />} />
-    <Route path="/health" element={<FutureFeaturePage kind="saude" />} />
-    <Route path="/doctor/:id" element={<FutureFeaturePage kind="medico" />} />
     <Route path="/profile/me" element={<Navigate to="/conta" replace />} />
     <Route path="/profile/:id" element={<Navigate to="/categorias" replace />} />
     <Route path="/dashboard" element={<DashboardRedirect />} />
-    <Route path="/verification" element={<FutureFeaturePage kind="verificacao" />} />
     <Route path="/register-provider" element={<RegisterProviderRedirect />} />
+  </>
+);
+
+/** Explanatory pages for old URLs on the site and other non-iOS builds. */
+export const futureRoutes = (
+  <>
+    <Route path="/health" element={<FutureFeaturePage kind="saude" />} />
+    <Route path="/doctor/:id" element={<FutureFeaturePage kind="medico" />} />
+    <Route path="/verification" element={<FutureFeaturePage kind="verificacao" />} />
     <Route path="/teleconsultation/:sessionId" element={<FutureFeaturePage kind="teleconsulta" />} />
     <Route path="/medical-records" element={<FutureFeaturePage kind="prontuario" />} />
   </>

@@ -23,12 +23,12 @@ Fontes são citadas como **[A1]** a **[A16]** (seção 16). Caminhos de arquivo 
 | # | Bloqueio | Diretriz | Seção |
 |---|---|---|---|
 | B1 | Termos de Uso, Política de Privacidade e SAC são rascunhos "em elaboração" (`content/legal/*.md`). A ficha exige link da política no App Store Connect e no app. | 5.1.1(i), 1.5 | 3.5 |
-| B2 | Backend não implantado. Sem conta de demonstração para o revisor. O login é só por código; o SMS depende de um provedor que não existe. | 2.1(a) | 7 |
+| B2 | Backend implantado em 25/11/2026. Faltam conta de revisão e confirmação da entrega de código por e-mail em aparelho físico. | 2.1(a) | 7 |
 | B3 | O plano Pro (R$ 49/mês) é cobrado por fora do app (Asaas, `subscriptions-manage`). Recurso digital tem de usar compra no app. | 3.1.1 | 3.2 **Estado em 24/11/2026:** com `VITE_STORE_BUILD=ios` a build não vende, não anuncia e não aponta para o pagamento do Pro (DD71). Vender no iOS continua dependendo da decisão D1. |
 | B4 | Avaliações, pedidos e propostas são conteúdo de usuário sem denúncia, bloqueio nem filtro. | 1.2 | 9 **Estado em 24/11/2026:** feito no repositório (DD63): denúncia de perfil, avaliação e pedido, bloqueio entre contas e fila no admin. Não há filtro automático de texto; propostas não têm botão de denúncia. |
 | B5 | A conta Apple precisa ser de **organização**: pessoa jurídica, D-U-N-S e site público no domínio da empresa. A pessoa jurídica ainda não existe. | Inscrição; 5.1.1(ix) | 2 |
-| B6 | A build com backend ainda contém rotas de funcionalidade futura (`/verification`, `/health`, `/doctor/:id`, `/teleconsultation/:sessionId`, `/medical-records`) e textos de protótipo. | 2.1(a), 2.5.19 | 3.9 **Estado em 24/11/2026:** os links de demonstração de `AreaPage` e os textos de protótipo de `index.html` saíram. As rotas de funcionalidade futura continuam na build. |
-| B7 | A ficha de privacidade e o `PrivacyInfo.xcprivacy` não batem com os fluxos reais (faltam endereço, dados financeiros, dados de produto e, se o Sentry for ligado, diagnósticos). | 5.1.1(i); precisão da ficha | 5 |
+| B6 | O bundle iOS exclui as rotas e telas de demonstração e funcionalidade futura. A revisão de conteúdo continua pendente. | 2.1(a), 2.5.19 | 3.9. O verificador de bundle e o teste de rotas cobrem o perfil iOS. |
+| B7 | O manifesto declara endereço, dados financeiros e dados de produto. A ficha e as categorias condicionais ainda dependem de revisão. | 5.1.1(i); precisão da ficha | 5 |
 | B8 | Recursos de IA de terceiros enviam texto ao provedor (resumo do Cuidado e rascunho de orçamento). Há aviso genérico na tela ("serviço de inteligência artificial de terceiros", sem nomear o provedor), sem aceite registrado. | 5.1.2(i) | 3.8 **Estado em 24/11/2026:** há aceite registrado (consentimento `ai_assist`, DD62) antes do primeiro uso. Em build iOS nenhum dos dois recursos chega ao usuário (ver D6). O provedor continua sem nome na tela e o texto depende do advogado. |
 
 **Riscos que podem reprovar mesmo com os bloqueios resolvidos:**
@@ -142,8 +142,8 @@ A conta precisa ser de **organização** (ver também B5 e a decisão de abrir a
 |---|---|---|---|
 | **1.2** Conteúdo gerado por usuário | "such apps must include: A method for filtering objectionable material ...; A mechanism to report offensive content and timely responses to concerns; The ability to block abusive users from the service; Published contact information so users can easily reach you" [A1] | Avaliações, pedidos, propostas e relatórios são visíveis a outras pessoas. Não há denúncia, bloqueio nem filtro. Contato publicado: SAC, ainda rascunho. | **B4.** Seção 9. |
 | **1.5** Informação do desenvolvedor | "Make sure your app and its Support URL include an easy way to contact you" [A1] | Campo de URL de suporte: sem página publicada. | Publicar `/sac` com canal real (F16). |
-| **2.1(a)** Completude | "placeholder text, empty websites, and other temporary content should be scrubbed before submission ... include demo account info (and turn on your back-end service!) if your app includes a login. ... Ensure the demo mode exhibits your app's full features and functionality." [A1] | Backend desligado. Sem conta de revisão. Textos "em elaboração". | **B1, B2, B6.** Seção 7. |
-| **2.5.19** Funções ocultas | "Don't include any hidden, dormant, or undocumented features in your app" [A1] | Rotas de funcionalidade futura aparecem na build com backend (F09). | **B6.** Remover da build iOS. |
+| **2.1(a)** Completude | "placeholder text, empty websites, and other temporary content should be scrubbed before submission ... include demo account info (and turn on your back-end service!) if your app includes a login. ... Ensure the demo mode exhibits your app's full features and functionality." [A1] | Backend implantado. Conta de revisão pendente. Textos "em elaboração". | **B1, B2, B6.** Seção 7. |
+| **2.5.19** Funções ocultas | "Don't include any hidden, dormant, or undocumented features in your app" [A1] | O verificador exige a ausência das rotas de protótipo no bundle iOS. | **B6.** Conferir a IPA exportada. |
 | **3.1.1** Compra no app | "If you want to unlock features or functionality within your app, (by way of example: subscriptions, ...) you must use in-app purchase." [A1] | Plano Pro cobrado por Asaas fora do app. | **B3.** Seção 3.2. |
 | **3.1.3(d)** Serviço em tempo real entre duas pessoas | "If your app enables the purchase of real-time person-to-person services between two individuals (for example tutoring students, medical consultations, real estate tours, or fitness training), you may use purchase methods other than in-app purchase to collect those payments. One-to-few and one-to-many real-time services must use in-app purchase." [A1] | Pode servir para aulas individuais, mas não para aulas em grupo. | Ver 3.2. |
 | **3.1.3(e)** Bens e serviços fora do app | "If your app enables people to purchase physical goods or services that will be consumed outside of the app, you must use purchase methods other than in-app purchase to collect those payments, such as Apple Pay or traditional credit card entry." [A1] | Pagamento de pintura, faxina e reparo na casa do cliente, por Pix ou cartão. É o caso previsto. | Ver 3.2 (resposta pronta). |
@@ -209,9 +209,7 @@ A função `care-summary` envia ao provedor de IA os campos de texto dos relató
 
 ### 3.9 Conta de demonstração e rotas futuras (2.1(a), 2.5.19)
 
-Na build com backend, o app continua com as rotas de funcionalidade futura. Por exemplo, `/verification` mostra "Verificação de identidade" como funcionalidade futura; `/health`, `/doctor/:id`, `/teleconsultation/:sessionId` e `/medical-records` mostram páginas de aviso (F09; `docs/arquitetura/producao-vs-demonstracao.md` §3).
-
-Não é necessário mostrar essas telas na build de loja. **Ação:** tirar da build iOS as rotas `/verification`, `/health`, `/doctor/:id`, `/teleconsultation/:sessionId`, `/medical-records` e as rotas de protótipo, e fazer a checagem de que nenhum menu aponta para elas. [PLANEJADO]
+No site, as URLs antigas ainda levam às páginas de aviso. O perfil `VITE_STORE_BUILD=ios` usa as rotas do produto. As telas de demonstração e os avisos de `/verification`, `/health`, `/doctor/:id`, `/teleconsultation/:sessionId` e `/medical-records` ficam fora do JavaScript distribuído. A interface direciona essas URLs à página inicial. A validação da IPA verifica essa condição novamente.
 
 ### 3.10 Demonstração sem backend (F14)
 
@@ -371,9 +369,9 @@ Finalidades usadas: **App Functionality** (funcionalidade do app) e **Analytics*
 | Contact Info | Name | Sim | Sim | Não | App Functionality | `profiles.full_name`; `providers.display_name` | Declarado no manifesto |
 | Contact Info | Email Address | Sim | Sim | Não | App Functionality | login por código (F01); avisos por e-mail | Declarado |
 | Contact Info | Phone Number | Sim | Sim | Não | App Functionality | `profiles.phone`; WhatsApp de avisos | Declarado. SMS é [PLANEJADO]. |
-| Contact Info | Physical Address | Sim (profissional) | Sim | Não | App Functionality | endereço e CEP no cadastro de recebimento (Asaas, `docs/juridico/03` §2.1 D) | **Falta no manifesto** |
+| Contact Info | Physical Address | Sim (profissional) | Sim | Não | App Functionality | endereço e CEP no cadastro de recebimento (Asaas, `docs/juridico/03` §2.1 D) | Declarado |
 | Contact Info | Other User Contact Info | Sim | Sim | Não | App Functionality | `provider_clients` (nome, telefone e e-mail de clientes, digitados pelo profissional); contato de emergência de `care_recipients` | Declarado |
-| Financial Info | Other Financial Info | Sim (profissional) | Sim | Não | App Functionality | renda informada e CPF/CNPJ no cadastro de recebimento | **Falta no manifesto.** [incerto: categoria para CPF/CNPJ; ver seção 17] |
+| Financial Info | Other Financial Info | Sim (profissional) | Sim | Não | App Functionality | renda informada e CPF/CNPJ no cadastro de recebimento | Declarado para renda informada. Confirmar a classificação do CPF e do CNPJ na seção 17. |
 | Financial Info | Payment Info | **Não** | — | — | — | cartão digitado na página do Asaas; o app não recebe o número (F04) | — |
 | Identifiers | User ID | Sim | Sim | Não | App Functionality | `auth.uid()` | Declarado |
 | Identifiers | Device ID | Não encontrado | — | — | — | busca no código | — |
@@ -384,7 +382,7 @@ Finalidades usadas: **App Functionality** (funcionalidade do app) e **Analytics*
 | User Content | Emails or Text Messages | Não | — | — | — | o app envia WhatsApp e e-mail, não recebe | [incerto] |
 | User Content | Customer Support | Não, se o SAC for só e-mail externo | — | — | — | — | [incerto] |
 | Purchases | Purchase History | Sim | Sim | Não | App Functionality | `payments`, `bookings`, `subscriptions` | Declarado |
-| Usage Data | Product Interaction | Sim | Sim (`user_id`; vira nulo na exclusão) | Não | **Analytics** | `product_events` (F13) | **Falta no manifesto e na política** |
+| Usage Data | Product Interaction | Sim | Sim (`user_id`; vira nulo na exclusão) | Não | **Analytics** | `product_events` (F13) | Declarado no manifesto. Revisão da política pendente. |
 | Health & Fitness | Health | Não de propósito; texto livre pode conter | — | — | — | `findHealthTerm`; F03 | Decisão (seção 17, Q2) |
 | Sensitive Info | Sensitive Info | Decisão | — | — | — | selfie como biometria e certidão de antecedentes (`docs/juridico/03`, Q2 e Q3) | Decisão jurídica |
 | Diagnostics | Crash Data; Other Diagnostic Data | Só se `VITE_SENTRY_DSN` estiver no build de loja | Não (`userInfo: false`) [incerto: IP] | Não | App Functionality | `lib/observability.ts` | Decisão do dono (seção 5.4) |
@@ -407,9 +405,9 @@ Agenda de contatos, identificador de publicidade, histórico de navegação, his
 
 ### 5.5 Manifesto de privacidade (`ios/App/App/PrivacyInfo.xcprivacy`)
 
-O arquivo existe e está no alvo do Xcode (`project.pbxproj`, linhas 18, 32, 76 e 150). Ele declara 8 tipos, todos vinculados, sem rastreamento e com finalidade `AppFunctionality`: e-mail, telefone, nome, identificador, fotos, outro conteúdo do usuário, outro contato e histórico de compras. A localização precisa foi retirada em 24/11/2026, junto com a chave `NSLocationWhenInUseUsageDescription` do `Info.plist`, porque só servia ao Cuidado (D4); o comentário do arquivo diz como restaurar quando o Cuidado entrar no iOS.
+O projeto Xcode inclui `PrivacyInfo.xcprivacy` como recurso do app. O manifesto declara endereço físico e outros dados financeiros para funcionalidade, além de interação com o produto para a medição interna do funil. Os três tipos são vinculados à conta e ficam sem rastreamento. A rotina de exportação verifica a presença e a sintaxe do manifesto na IPA.
 
-**Faltam para bater com a ficha (seção 5.2):** `NSPrivacyCollectedDataTypePhysicalAddress`, `NSPrivacyCollectedDataTypeOtherFinancialInfo`, `NSPrivacyCollectedDataTypeProductInteraction` (finalidade Analytics) e, se o Sentry entrar, `NSPrivacyCollectedDataTypeCrashData` e `NSPrivacyCollectedDataTypeOtherDiagnosticData`. [incerto: os identificadores seguem o padrão do arquivo atual; a página de dados do manifesto não abriu, então conferir os nomes exatos antes de enviar.]
+Revise a ficha do App Store Connect com a configuração efetiva de diagnósticos. Se o Sentry entrar no pacote, confirme os dados coletados pela configuração e ajuste as categorias correspondentes. Confirme também o tratamento de documentos sensíveis antes da submissão.
 
 **Requisitos gerais:** o manifesto precisa estar no pacote do app; APIs de motivo obrigatório precisam de motivo aprovado, inclusive as de SDK de terceiros. Desde 01/05/2024, a Apple exige motivos aprovados para essas APIs no envio [A7]. O comentário do arquivo diz que nenhuma API de motivo obrigatório é usada pelo Capacitor nem pelo plugin `@capacitor/app`.
 
@@ -837,7 +835,7 @@ Não recomendado na primeira versão. Não abri a página do Tauri sobre Mac App
 
 **Conteúdo e rotas**
 
-- [ ] Rotas de protótipo e de funcionalidade futura fora da build iOS. (seção 3.9)
+- [x] Rotas de protótipo e de funcionalidade futura fora do bundle iOS. (seção 3.9)
 - [ ] Venda, upsell e link de pagamento do Pro fora da build iOS (D1). (seção 3.2)
 - [ ] Cuidado, IA e área de Saúde fora da versão (D4, D5, D6). (seções 3.8 e 14)
 - [ ] Termos, Privacidade e SAC aprovados e publicados (`VITE_LEGAL_STATUS=vigente`). (B1)

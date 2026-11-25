@@ -40,3 +40,19 @@ describe('care routes by build', () => {
     expect(screen.queryByText(/ainda não disponível/)).not.toBeInTheDocument();
   });
 });
+
+describe('initial iOS release routes', () => {
+  it.each([
+    '/verification', '/health', '/doctor/doc-1', '/teleconsultation/test', '/medical-records',
+  ])('takes %s to the home page', async path => {
+    vi.stubEnv('VITE_STORE_BUILD', 'ios');
+    renderAt(path);
+    expect(await screen.findByText(/Contrate serviços/, {}, { timeout: 5000 })).toBeInTheDocument();
+  });
+
+  it('keeps the live public catalog routes', async () => {
+    vi.stubEnv('VITE_STORE_BUILD', 'ios');
+    renderAt('/categorias');
+    expect(await screen.findByRole('heading', { name: 'Todas as categorias' })).toBeInTheDocument();
+  });
+});
