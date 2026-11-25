@@ -281,8 +281,9 @@ tela, sem ser tocado. Dois marcadores sem saída visual (`components/HandoffMark
 (no fallback do `Suspense` interno de `AreaPage`, `OccupationPage` e `OccupationNeighborhoodPage`: enquanto as regras da
 área não chegam, o estático, que já as tem, fica). Quando a rota está pronta e nada está pendente, o estático sai e o
 contêiner aparece no mesmo passo. Sem página estática no `#root` (todas as outras rotas) ou com `VITE_ROUTER=hash` (os
-shells nativos), o React monta direto, como antes. Se a rota não ficar pronta em 15 s (chunk que não carrega, erro), a
-troca acontece mesmo assim.
+shells nativos), o React monta direto, como antes. Se a rota não ficar pronta em 15 s, a
+troca acontece mesmo assim. Desde DD108, se o `ErrorBoundary` captura um erro antes da troca (um chunk que não carrega),
+a troca é cancelada: o estático fica, com foco e rolagem intactos, e um aviso `role="status"` oferece "Recarregar".
 
 - **Foco, rolagem e links.** Se o foco estava num link do estático, vai para o mesmo link (mesmo `href` e texto) da
   página nova (procurado primeiro dentro do `<main>`, porque a barra do app vem antes dele no documento e repete links
