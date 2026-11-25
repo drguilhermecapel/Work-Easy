@@ -395,10 +395,26 @@ jobs:
           path: WorkEasy-ios-simulator.zip
           retention-days: 7
 
-      - name: Instalar e abrir o pacote em simuladores de iPhone e iPad
-        if: github.ref_type != 'tag' && !inputs.macos_universal
-        timeout-minutes: 15
-        run: bash scripts/check-ios-simulator.sh "$GITHUB_WORKSPACE/WorkEasy-ios-simulator.zip"
+  ios-installed:
+    name: Instalação em simulador ${{ matrix.family }}
+    needs: macos-ios
+    if: github.ref_type != 'tag' && !inputs.macos_universal && !inputs.windows_install_smoke
+    runs-on: macos-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        family: [iPhone, iPad]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          name: workeasy-ios-simulator
+          path: ${{ runner.temp }}/workeasy
+      - name: Instalar, reabrir e remover o app
+        run: bash scripts/check-ios-simulator.sh "$RUNNER_TEMP/workeasy/WorkEasy-ios-simulator.zip" "${{ matrix.family }}"
 
   prerelease:
     if: startsWith(github.ref, 'refs/tags/v')
