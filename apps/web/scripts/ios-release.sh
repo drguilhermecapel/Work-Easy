@@ -50,7 +50,7 @@ codesign --verify --deep --strict "$app"
 plutil -lint "$app/PrivacyInfo.xcprivacy"
 codesign -d --entitlements :- "$app" > "$verify_dir/entitlements.plist"
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :application-identifier' "$verify_dir/entitlements.plist")" == "$APPLE_TEAM_ID.br.com.workeasy" ]]
-lipo -verify_arch arm64 "$app/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Info.plist")"
+lipo "$app/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Info.plist")" -verify_arch arm64
 node scripts/release-config.mjs bundle "$app/public"
 npm run check:store-bundle -- --store ios --dist "$app/public"
 node scripts/check-bundle-secrets.mjs --dist "$app/public"

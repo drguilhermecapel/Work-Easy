@@ -332,8 +332,9 @@ jobs:
             hdiutil attach "${images[0]}" -readonly -nobrowse -mountpoint "$mountpoint"
             app="$mountpoint/WorkEasy.app"
             executable="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Contents/Info.plist")"
-            lipo -verify_arch arm64 x86_64 "$app/Contents/MacOS/$executable"
+            lipo "$app/Contents/MacOS/$executable" -verify_arch arm64 x86_64
             lipo -archs "$app/Contents/MacOS/$executable"
+            shasum -a 256 "${images[0]}"
           else
             npx tauri build --bundles app,dmg -- --locked
           fi
