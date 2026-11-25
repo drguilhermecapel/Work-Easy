@@ -26,6 +26,7 @@ on:
       - 'apps/web/vite.config.ts'
       - 'apps/web/scripts/release-config.*'
       - 'apps/web/scripts/check-android-install.sh'
+      - 'apps/web/scripts/check-android-search.mjs'
       - 'apps/web/scripts/check-ios-simulator.sh'
       - 'apps/web/scripts/android-release.sh'
       - 'apps/web/scripts/ios-release.sh'

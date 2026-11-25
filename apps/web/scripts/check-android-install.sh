@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-apk=${1:?Informe o APK a testar}
+apk=${1:?Informe o APK de depuração a testar}
 app=br.com.workeasy
 
 sha256sum "$apk"
@@ -12,35 +12,12 @@ adb shell pm path "$app" | grep -F 'package:'
 
 open_home() {
   adb shell am start -W -n "$app/.MainActivity"
-  local screen
-  screen=$(mktemp)
-  for attempt in {1..15}; do
-    if adb shell uiautomator dump /sdcard/workeasy-screen.xml >/dev/null && adb pull /sdcard/workeasy-screen.xml "$screen" >/dev/null && python3 - "$screen" <<'PYXML'
-import sys
-import xml.etree.ElementTree as ET
-nodes = ET.parse(sys.argv[1]).iter('node')
-sys.exit(0 if any('O que você precisa?' in (node.get('text'), node.get('content-desc')) for node in nodes) else 1)
-PYXML
-    then
-      rm -f "$screen"
-      return 0
-    fi
-    sleep 2
-  done
-  if [[ -s "$screen" ]]; then
-    python3 - "$screen" <<'PYXML'
-import sys
-import xml.etree.ElementTree as ET
-for node in ET.parse(sys.argv[1]).iter('node'):
-    label = node.get('text') or node.get('content-desc')
-    if label:
-        print(node.get('package'), label[:100])
-PYXML
-  fi
-  rm -f "$screen"
-  adb logcat -d -s 'Capacitor/Console:E' 'AndroidRuntime:E' | tail -40
-  echo 'O campo de busca da Home não apareceu no WebView.' >&2
-  return 1
+  local pid port
+  pid=$(adb shell pidof -s "$app" | tr -d '\r')
+  [[ "$pid" =~ ^[0-9]+$ ]]
+  port=$(adb forward tcp:0 "localabstract:webview_devtools_remote_$pid")
+  timeout 90 node scripts/check-android-search.mjs "$port"
+  adb forward --remove "tcp:$port"
 }
 
 open_home
