@@ -25,17 +25,34 @@ await new Promise((resolve, reject) => {
 });
 
 let id = 0;
-async function evaluate(expression) {
+async function command(method, params) {
   const requestId = ++id;
   return new Promise((resolve, reject) => {
     socket.onmessage = event => {
       const result = JSON.parse(event.data);
       if (result.id !== requestId) return;
-      if (result.error || result.result.exceptionDetails) reject(new Error('Erro ao consultar o WebView'));
-      else resolve(result.result.result.value);
+      if (result.error) reject(new Error(result.error.message));
+      else resolve(result.result);
     };
-    socket.send(JSON.stringify({ id: requestId, method: 'Runtime.evaluate', params: { expression, returnByValue: true } }));
+    socket.send(JSON.stringify({ id: requestId, method, params }));
   });
+}
+
+async function evaluate(expression) {
+  const response = await command('Runtime.evaluate', { expression, returnByValue: true });
+  if (response.exceptionDetails) throw new Error(response.exceptionDetails.text);
+  return response.result.value;
+}
+
+async function tap(selector) {
+  const point = await evaluate(`(() => {
+    const element = document.querySelector(${JSON.stringify(selector)});
+    element.scrollIntoView({ block: 'center' });
+    const rect = element.getBoundingClientRect();
+    return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+  })()`);
+  await command('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point] });
+  await command('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 }
 
 async function waitFor(expression, failure) {
@@ -43,20 +60,21 @@ async function waitFor(expression, failure) {
     if (await evaluate(expression)) return;
     await delay(500);
   }
-  throw new Error(failure);
+  const state = await evaluate(`({ hash: location.hash, heading: document.querySelector('main h1')?.textContent,
+    input: document.querySelector('main input')?.value, focused: document.activeElement.tagName })`);
+  throw new Error(failure + ' ' + JSON.stringify(state));
 }
 
 try {
-  await waitFor(`(() => {
-    const input = document.querySelector('input[aria-label="O que você precisa?"]');
-    if (!input || !input.getBoundingClientRect().height) return false;
-    input.focus();
-    return document.activeElement === input;
-  })()`, 'Campo de busca da Home indisponível');
+  const selector = 'input[aria-label="O que você precisa?"]';
+  await waitFor(`document.querySelector('${selector}')?.getBoundingClientRect().height > 0`, 'Campo de busca da Home indisponível');
+  await tap(selector);
+  await waitFor(`document.activeElement.matches('${selector}')`, 'O toque não focou a busca');
   execFileSync('adb', ['shell', 'input', 'text', 'limpeza']);
-  execFileSync('adb', ['shell', 'input', 'keyevent', 'KEYCODE_ENTER']);
-  await waitFor(`location.hash.includes('/search?q=limpeza') &&
-    document.querySelector('h1')?.textContent.includes('limpeza')`, 'A busca não abriu os resultados');
+  await waitFor(`document.querySelector('${selector}').value.toLowerCase() === 'limpeza'`, 'O campo não recebeu o texto do teclado');
+  await tap('form button[type="submit"]');
+  await waitFor(`location.hash.toLowerCase().includes('/search?q=limpeza') &&
+    document.querySelector('main h1')?.textContent.toLowerCase().includes('limpeza')`, 'A busca não abriu os resultados');
   console.log('Busca por teclado confirmada no WebView instalado.');
 } finally {
   socket.close();
