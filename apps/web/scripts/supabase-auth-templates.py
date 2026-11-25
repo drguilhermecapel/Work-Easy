@@ -44,7 +44,7 @@ def request_config(token, method, payload=None):
         raise SystemExit(f"Falha ao consultar a configuração de Auth via {method}.") from None
 
 
-def sync_templates(token, apply):
+def sync_templates(token, apply, verify=False):
     expected = expected_templates()
     remote = request_config(token, "GET")
     changed = {name: value for name, value in expected.items() if remote.get(name) != value}
@@ -53,6 +53,8 @@ def sync_templates(token, apply):
         return
 
     print("Campos divergentes: " + ", ".join(changed))
+    if verify:
+        raise SystemExit("Aplique os modelos de código no workflow do Supabase antes de publicar o site.")
     if not apply:
         print("Ensaio concluído sem alterações.")
         return
@@ -66,11 +68,13 @@ def sync_templates(token, apply):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--apply", action="store_true")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--apply", action="store_true")
+    mode.add_argument("--verify", action="store_true")
     args = parser.parse_args()
     if os.environ.get("SUPABASE_PROJECT_ID") != PRODUCTION_PROJECT:
         raise SystemExit("SUPABASE_PROJECT_ID não corresponde à produção do WorkEasy.")
     token = os.environ.get("SUPABASE_ACCESS_TOKEN")
     if not token:
         raise SystemExit("Configure SUPABASE_ACCESS_TOKEN no ambiente protegido.")
-    sync_templates(token, args.apply)
+    sync_templates(token, args.apply, args.verify)
