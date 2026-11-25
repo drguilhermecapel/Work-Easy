@@ -63,3 +63,9 @@ A função de venda Pro e a linha de cuidado são ocultadas nos perfis móveis d
 Para todos os ensaios, anote data, versão, sistema, arquitetura, dispositivo, SHA-256, ambiente, ação, duração observada e resultado PASSOU, FALHOU, BLOQUEADO ou NÃO APLICÁVEL. Para escrita e pagamentos, confira retomada após queda de rede e a ocorrência de uma única operação. Registre instalação, sessão, permissões, links, arquivos, atualização e remoção no pacote do canal.
 
 Nenhuma despesa adicional foi autorizada ou realizada nesta fase. Certificados, contas de loja e capacidade extra dependem de confirmar o que já está contratado pelo proprietário.
+
+## Modelos de e-mail de produção
+
+O ensaio de 25/11/2026 recebeu no alias controlado a confirmação padrão por link. O app pede um código numérico de seis dígitos. O usuário temporário permaneceu sem sessão e foi removido após o ensaio.
+
+O workflow Supabase tem o modo `auth_templates_only`. Selecione esse modo com `dry_run=true` para listar os campos divergentes ou com `dry_run=false` para aplicar os dois modelos versionados. Use a branch `main` e o ambiente `production`. O token de gerenciamento precisa ter acesso à leitura e atualização de Auth no projeto WorkEasy. O job limita a atualização aos assuntos e corpos de confirmação e login. Após a publicação, renove o ensaio com um alias controlado para validar o código recebido, a sessão e a remoção da conta de teste.
