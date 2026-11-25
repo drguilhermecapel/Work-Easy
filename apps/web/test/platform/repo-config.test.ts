@@ -2,6 +2,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { parse } from 'yaml';
 
 // Repository files that sit above apps/web: Dependabot and the GitHub Actions workflows.
 const REPO = join(process.cwd(), '..', '..');
@@ -42,9 +43,24 @@ describe('workflows: permissões mínimas', () => {
     expect(block?.[1], 'permissions: no topo do arquivo').toBe('  contents: read\n');
   });
 
-  it.each(files)('%s não pede escrita em nenhum escopo', (file) => {
+  it.each(files.filter(file => file !== 'web-release.yml'))('%s não pede escrita em nenhum escopo', (file) => {
     const text = readFileSync(join(WORKFLOWS, file), 'utf8');
     expect(text).not.toMatch(/:\s*write\b/);
     expect(text).not.toMatch(/write-all/);
+  });
+
+  it('limita a escrita às Releases de tags com configuração aprovada', () => {
+    const workflow = parse(readFileSync(join(WORKFLOWS, 'web-release.yml'), 'utf8'));
+    const jobs = workflow.jobs as Record<string, {
+      if?: string;
+      permissions?: Record<string, string>;
+      needs?: string[];
+      environment?: string;
+    }>;
+    expect(Object.entries(jobs).filter(([, job]) => job.permissions).map(([name]) => name)).toEqual(['prerelease']);
+    expect(jobs.prerelease.permissions).toEqual({ contents: 'write' });
+    expect(jobs.prerelease.if).toBe("startsWith(github.ref, 'refs/tags/v')");
+    expect(jobs.prerelease.needs).toContain('production-config');
+    expect(jobs['production-config'].environment).toBe('production');
   });
 });

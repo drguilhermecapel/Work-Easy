@@ -10,6 +10,8 @@ cd "$(dirname "$0")/.."
 [[ "$IOS_EXPORT_OPTIONS_PLIST" == /* && -r "$IOS_EXPORT_OPTIONS_PLIST" ]]
 test "$(/usr/libexec/PlistBuddy -c 'Print :method' "$IOS_EXPORT_OPTIONS_PLIST")" = app-store-connect
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :teamID' "$IOS_EXPORT_OPTIONS_PLIST")" == "$APPLE_TEAM_ID" ]]
+sdk_version="$(xcrun --sdk iphoneos --show-sdk-version)"
+[[ "${sdk_version%%.*}" -ge 26 ]] || { echo "Use Xcode com o SDK iOS 26 ou posterior"; exit 1; }
 version="$(node -p "require('./package.json').version")"
 export WORKEASY_RELEASE_TARGET=ios VITE_STORE_BUILD=ios VITE_ROUTER=hash
 export VITE_APP_VERSION="$(git rev-parse HEAD)"
@@ -45,6 +47,8 @@ set -- "$verify_dir/Payload/"*.app
 [[ "$#" == 1 && -d "$1" ]]
 app="$1"
 codesign --verify --deep --strict "$app"
+codesign -d --entitlements :- "$app" > "$verify_dir/entitlements.plist"
+[[ "$(/usr/libexec/PlistBuddy -c 'Print :application-identifier' "$verify_dir/entitlements.plist")" == "$APPLE_TEAM_ID.br.com.workeasy" ]]
 lipo -verify_arch arm64 "$app/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Info.plist")"
 node scripts/release-config.mjs bundle "$app/public"
 npm run check:store-bundle -- --store ios --dist "$app/public"

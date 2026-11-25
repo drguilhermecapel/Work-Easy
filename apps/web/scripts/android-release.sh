@@ -41,7 +41,8 @@ if (!process.env.FINGERPRINT || !links.some(link => link.target?.package_name ==
   throw new Error('Certificado do APK ausente em assetlinks.json');
 }
 NODE
-jarsigner -verify "$aab" > "$verify_dir/jarsigner.log"
+LC_ALL=C jarsigner -J-Duser.language=en -J-Duser.country=US -verify "$aab" > "$verify_dir/jarsigner.log"
+grep -q '^jar verified\.' "$verify_dir/jarsigner.log"
 keytool -printcert -jarfile "$aab" > /dev/null
 for package in "$apk" "$aab"; do
   folder="$verify_dir/$(basename "$package")"
