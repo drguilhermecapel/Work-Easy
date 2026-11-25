@@ -1,57 +1,55 @@
 #!/usr/bin/env bash
-# Builds the Android App Bundle (.aab) that goes to Google Play, from the web bundle of the store build.
-# Procedure and what each step proves: docs/lojas/google-play.md, section 14.4.
-#
-#   VITE_SUPABASE_URL=https://<ref>.supabase.co VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_... \
-#   VITE_SITE_URL=https://<domain> APP_VERSION_CODE=12 APP_VERSION_NAME=1.2.0 \
-#   ANDROID_HOME=<sdk> bash scripts/android-release.sh
-#
-# The .aab is signed only when android/keystore.properties exists (never versioned; it names the upload
-# key). Without it the Gradle build leaves the bundle unsigned, and the script says so.
-# STRICT_APP_LINKS=1 also fails while the deep-link files still hold a placeholder.
+# Build and verify a signed release APK and Play AAB with the owner's existing key.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-: "${VITE_SUPABASE_URL:?defina a URL do projeto Supabase (https://...)}"
-: "${VITE_SUPABASE_PUBLISHABLE_KEY:?defina a chave publicável (sb_publishable_...)}"
-: "${APP_VERSION_CODE:?defina o versionCode (inteiro, maior que o do último envio)}"
-: "${APP_VERSION_NAME:?defina o versionName (ex.: 1.2.0)}"
+: "${APP_VERSION_CODE:?defina um versionCode acima do último publicado}"
+: "${APP_VERSION_NAME:?defina o versionName da versão}"
 : "${ANDROID_HOME:=${ANDROID_SDK_ROOT:-}}"
-: "${ANDROID_HOME:?defina ANDROID_HOME (Android SDK com a plataforma 36)}"
+: "${ANDROID_HOME:?defina ANDROID_HOME com SDK e build-tools 36.0.0}"
 export ANDROID_HOME
-case "$VITE_SUPABASE_URL" in https://*) ;; *) echo "A URL do Supabase precisa ser https"; exit 1 ;; esac
-case "$VITE_SUPABASE_PUBLISHABLE_KEY" in sb_publishable_*) ;; *) echo "Use a chave publicável (sb_publishable_...)"; exit 1 ;; esac
-case "$APP_VERSION_CODE" in '' | *[!0-9]*) echo "APP_VERSION_CODE precisa ser um inteiro"; exit 1 ;; esac
+APKSIGNER="${ANDROID_HOME}/build-tools/36.0.0/apksigner"
+[[ -x "$APKSIGNER" ]] || { echo "Instale Android build-tools 36.0.0"; exit 1; }
+[[ "$APP_VERSION_CODE" =~ ^[1-9][0-9]{0,9}$ && "$APP_VERSION_CODE" -le 2100000000 ]]
+[[ "$APP_VERSION_NAME" == "$(node -p "require('./package.json').version")" ]]
+test -f android/keystore.properties || { echo "Forneça o keystore.properties da chave existente"; exit 1; }
+export WORKEASY_RELEASE_TARGET=android VITE_STORE_BUILD=android VITE_ROUTER=hash
+export VITE_APP_VERSION="$(git rev-parse HEAD)"
 
-# 1. Web bundle of the store build: no Pro sale, no care line (config/features.ts)
-export VITE_STORE_BUILD=android
+node scripts/release-config.mjs backend
+node scripts/check-app-links.mjs --strict --site-url "$VITE_SITE_URL"
 npm run build:native
 node scripts/check-bundle-secrets.mjs --dist dist
-node scripts/check-store-bundle.mjs --store android --dist dist
-grep -rIlF "$VITE_SUPABASE_URL" dist > /dev/null || { echo "Bundle sem a URL do Supabase: build em modo demonstração"; exit 1; }
+npm run check:store-bundle -- --store android
+npx --no-install cap sync android
+(cd android && ./gradlew :app:assembleRelease :app:bundleRelease --no-daemon \
+  -PappVersionCode="$APP_VERSION_CODE" -PappVersionName="$APP_VERSION_NAME")
 
-# 2. Copy into the Android project, and prove the copy is that bundle
-npx cap sync android
-node scripts/check-store-bundle.mjs --store android --dist android/app/src/main/assets/public
-
-# 3. Deep links: coherence always; the owner's placeholders only with STRICT_APP_LINKS=1
-if [ "${STRICT_APP_LINKS:-0}" = "1" ]; then
-  node scripts/check-app-links.mjs --strict --site-url "${VITE_SITE_URL:-}"
-else
-  node scripts/check-app-links.mjs --site-url "${VITE_SITE_URL:-}"
-fi
-
-# 4. The .aab
-(cd android && ./gradlew :app:bundleRelease --no-daemon -PappVersionCode="$APP_VERSION_CODE" -PappVersionName="$APP_VERSION_NAME")
-AAB=android/app/build/outputs/bundle/release/app-release.aab
-test -f "$AAB"
-ls -l "$AAB"
-sha256sum "$AAB"
-
-# 5. Signature
-if jarsigner -verify "$AAB" 2>&1 | grep -q "jar verified"; then
-  echo "AAB assinado:"
-  keytool -printcert -jarfile "$AAB" | grep -E "Owner|SHA256"
-else
-  echo "AAB SEM assinatura: crie android/keystore.properties (docs/lojas/google-play.md, 14.3) e rode de novo antes de enviar."
-fi
+apk=android/app/build/outputs/apk/release/app-release.apk
+aab=android/app/build/outputs/bundle/release/app-release.aab
+verify_dir="$(mktemp -d)"
+trap 'rm -rf "$verify_dir"' EXIT
+"$APKSIGNER" verify --print-certs "$apk"
+# The APK signer must appear in the app-link file for direct installations.
+fingerprint="$("$APKSIGNER" verify --print-certs "$apk" | awk '/certificate SHA-256 digest:/ { print $NF; exit }')"
+FINGERPRINT="$fingerprint" node --input-type=module <<'NODE'
+import { readFileSync } from 'node:fs';
+const links = JSON.parse(readFileSync('public/.well-known/assetlinks.json', 'utf8'));
+const normalize = value => value.replaceAll(':', '').toLowerCase();
+if (!process.env.FINGERPRINT || !links.some(link => link.target?.package_name === 'br.com.workeasy' &&
+  link.target.sha256_cert_fingerprints.some(value => normalize(value) === normalize(process.env.FINGERPRINT)))) {
+  throw new Error('Certificado do APK ausente em assetlinks.json');
+}
+NODE
+jarsigner -verify "$aab" > "$verify_dir/jarsigner.log"
+keytool -printcert -jarfile "$aab" > /dev/null
+for package in "$apk" "$aab"; do
+  folder="$verify_dir/$(basename "$package")"
+  prefix=assets/public
+  [[ "$package" == *.aab ]] && prefix=base/assets/public
+  unzip -q "$package" "$prefix/*" -d "$folder"
+  node scripts/release-config.mjs bundle "$folder/$prefix"
+  npm run check:store-bundle -- --store android --dist "$folder/$prefix"
+  node scripts/check-bundle-secrets.mjs --dist "$folder/$prefix"
+done
+shasum -a 256 "$apk" "$aab"
