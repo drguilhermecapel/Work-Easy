@@ -193,6 +193,7 @@ jobs:
         timeout-minutes: 15
         run: |
           image='system-images;android-35;google_apis;x86_64'
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
           sdkmanager "$image" 'emulator'
           echo no | avdmanager create avd -n workeasy -k "$image" --force
           sudo setfacl -m "u:$(id -un):rw" /dev/kvm
