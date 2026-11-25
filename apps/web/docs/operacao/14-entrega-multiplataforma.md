@@ -2,6 +2,29 @@
 
 Registro de 25/11/2026. Base auditada `be246506cea810184d4b4e0c5a6526bd1af18a48`. O produto usa React/Vite, Capacitor e Tauri em `apps/web`. Os protótipos Expo, Web Prefeitura e FastAPI permanecem em suas pastas.
 
+## Situação da entrega em 25/11/2026
+
+| Plataforma | Versão/arquitetura | Pacote disponível | Backend validado | Assinatura/canal | Instalação e testes | Link | Pendência |
+|---|---|---|---|---|---|---|---|
+| Android | APK de desenvolvimento | APK debug no Actions | BLOQUEADO no app instalado | Distribuição de produção pendente | BLOQUEADO para APK release e AAB | [Compilação de desenvolvimento](https://github.com/drguilhermecapel/Work-Easy/actions/runs/45521105565) | Verificar a identidade no Play, obter a chave de assinatura autorizada e testar APK e AAB no canal interno. |
+| iOS/iPadOS | Simulador | App de simulador no Actions | BLOQUEADO em aparelho | TestFlight pendente | BLOQUEADO em iPhone e iPad | [Compilação de desenvolvimento](https://github.com/drguilhermecapel/Work-Easy/actions/runs/45521105565) | Confirmar Team ID e provisionamento, exportar IPA assinada e testar em aparelhos pelo TestFlight. |
+| Windows | 0.1.0 · x64 | EXE e MSI no Actions | BLOQUEADO no pacote de produção | Authenticode `NotSigned` | PASSOU instalação limpa, abertura e remoção dos dois formatos no Windows Server 2025 x64. A janela apareceu em 275 ms no MSI e 277 ms no EXE. | [Instaladores de verificação](https://github.com/drguilhermecapel/Work-Easy/actions/runs/45681999670/artifacts/15055366885) | Assinatura, atualização e ensaio autenticado com o pacote final. |
+| macOS | 0.1.0 · arm64 e x86_64 | DMG universal no Actions | BLOQUEADO no pacote de produção | Developer ID e notarização pendentes | PASSOU inspeção das duas arquiteturas no DMG. BLOQUEADO para execução nativa em ambas. | [DMG de verificação](https://github.com/drguilhermecapel/Work-Easy/actions/runs/45670330059/artifacts/15048584888) | Assinar, notarizar e testar em Macs Apple Silicon e Intel. |
+| Linux | 0.1.0 · amd64 | DEB e AppImage no Actions | BLOQUEADO no pacote de produção | Canal durável pendente | PASSOU instalação e remoção do DEB em Ubuntu 22.04.5 x64. AppImage abriu após extração. FUSE e atualização continuam pendentes. | [Compilação de desenvolvimento](https://github.com/drguilhermecapel/Work-Easy/actions/runs/45521105565) | Gerar o candidato de produção e validar os pacotes finais no ambiente suportado. |
+| Web/PWA | Navegador Chromium · viewport de 390 px | Build local | PASSOU catálogo público no Supabase de produção. FALHOU o ensaio de login por código. | Deploy HTTPS pendente | PASSOU diagnóstico de instalabilidade, ativação do service worker e teste local offline/reconexão | [Execução de correção do login](https://github.com/drguilhermecapel/Work-Easy/actions/runs/45670522755) | Aplicar os modelos de e-mail, validar login em conta controlada e confirmar projeto e origem canônica do Pages. |
+
+Os arquivos com hash confirmado abaixo são artefatos temporários de verificação. As duas execuções usam revisões diferentes e ainda não há uma GitHub Release disponível.
+
+| Arquivo | Commit | SHA-256 |
+|---|---|---|
+| MSI Windows x64 | `edffc626ba2dad693e4271c6a19f8d58b7806715` | `bac3f520c9046e8401effdf88245a3caa1bf8851230e0d11f8eded74ffa58c3c` |
+| EXE Windows x64 | `edffc626ba2dad693e4271c6a19f8d58b7806715` | `e28d4cba45995596cd3c78a595813f49a350fdf98263ffe87fc039204635471a` |
+| DMG macOS universal | `dd678714d912fd2d87583b683800a575d9df6fd7` | `41a966e75ef7a6cc972f8fea575f24db7dbf045fa7ff8dc65cc112bcaeb420e1` |
+
+A correção de propostas valida o registro persistido quando a resposta de envio se perde. O ensaio controlado verificou a recuperação da proposta enviada, a rejeição de termos diferentes e o bloqueio de envio offline. O ensaio autenticado em produção continua pendente. [PR #36](https://github.com/drguilhermecapel/Work-Easy/pull/36)
+
+O GitHub mantém a correção dos modelos de e-mail em `waiting` no ambiente `production`. A API da integração retornou HTTP 403 para a aprovação. Na execução pendente, o revisor `drguilhermecapel` pode selecionar `Review deployments`, marcar `production` e selecionar `Approve and deploy`. Após a aplicação, repita o ensaio com um alias controlado, valide a sessão e remova a conta. Em seguida, confirme o destino Cloudflare Pages e execute o workflow web na `main`. [Correção dos modelos de e-mail](https://github.com/drguilhermecapel/Work-Easy/actions/runs/45670522755)
+
 ## Matriz de partida
 
 | Plataforma | Código e compilação | Pacote e assinatura | Backend no pacote | Instalação e distribuição |
