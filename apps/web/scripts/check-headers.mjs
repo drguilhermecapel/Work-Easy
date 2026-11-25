@@ -5,7 +5,7 @@
 // no inline style element or style attribute, and no external script or style.
 // No dependencies: Node 22 only.
 //
-// Usage: node scripts/check-headers.mjs [--file public/_headers] [--dist dist]
+// Usage: node scripts/check-headers.mjs [--file public/_headers] [--dist dist] [--site-url https://site]
 
 import { readFile, readdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
@@ -190,7 +190,7 @@ export const checkRules = rules => {
 const EXECUTABLE_SCRIPT_TYPES = new Set(['', 'module', 'text/javascript', 'application/javascript']);
 
 /** Checks built HTML files against the CSP. Returns failure messages. */
-export const checkBuiltHtml = html => {
+export const checkBuiltHtml = (html, siteOrigin) => {
   const failures = [];
   for (const match of html.matchAll(/<script\b([^>]*)>/gi)) {
     const attrs = match[1];
@@ -201,8 +201,13 @@ export const checkBuiltHtml = html => {
   }
   if (/<style\b/i.test(html)) failures.push('elemento <style> inline (style-src não permite)');
   if (/\sstyle\s*=\s*["']/i.test(html)) failures.push('atributo style inline (style-src não permite)');
-  for (const match of html.matchAll(/<link\b[^>]*\bhref\s*=\s*["'](https?:\/\/[^"']+)["']/gi)) {
-    failures.push(`link externo: ${match[1]}`);
+  for (const [, attrs] of html.matchAll(/<link\b([^>]*)>/gi)) {
+    const href = /\shref\s*=\s*["']((?:https?:)?\/\/[^"']+)["']/i.exec(attrs)?.[1];
+    if (!href) continue;
+    const canonical = /\srel\s*=\s*["']canonical["']/i.test(attrs);
+    const url = URL.parse(href);
+    if (canonical && siteOrigin && url?.origin === siteOrigin && !url.username && !url.password) continue;
+    failures.push(`link externo: ${href}`);
   }
   return failures;
 };
@@ -228,6 +233,8 @@ const main = async () => {
   const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
   const headersFile = resolve(root, argValue(args, '--file') ?? 'public/_headers');
   const distDir = argValue(args, '--dist');
+  const siteUrl = argValue(args, '--site-url');
+  const siteOrigin = siteUrl ? new URL(siteUrl).origin : undefined;
 
   const text = await readFile(headersFile, 'utf8');
   const rules = parseHeadersFile(text);
@@ -240,7 +247,7 @@ const main = async () => {
     const pages = await walkHtml(dist);
     for (const file of pages) {
       const html = await readFile(file, 'utf8');
-      for (const failure of checkBuiltHtml(html)) failures.push(`${file}: ${failure}`);
+      for (const failure of checkBuiltHtml(html, siteOrigin)) failures.push(`${file}: ${failure}`);
     }
     console.log(`HTML verificado: ${pages.length} arquivos`);
   }

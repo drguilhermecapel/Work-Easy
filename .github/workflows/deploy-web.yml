@@ -56,7 +56,7 @@ jobs:
         working-directory: apps/web
     steps:
       # Checkout first: the steps below run in apps/web, which exists only after it.
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -85,7 +85,7 @@ jobs:
           CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
 
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -121,7 +121,7 @@ jobs:
         run: npm run check:size
 
       - name: Conferir cabeçalhos e HTML gerado
-        run: node scripts/check-headers.mjs --dist dist
+        run: node scripts/check-headers.mjs --dist dist --site-url "$VITE_SITE_URL"
 
       - name: Conferir que o bundle público não tem segredos
         run: |
