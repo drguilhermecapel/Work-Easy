@@ -33,17 +33,20 @@ jobs:
     # Every VITE_ value is embedded in the public bundle, so they are variables
     # (not secrets) and none of them may hold a secret.
     env:
+      WORKEASY_RELEASE_TARGET: web
+      VITE_ROUTER: browser
+      VITE_STORE_BUILD: ''
       VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
       VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
       VITE_SITE_URL: ${{ vars.VITE_SITE_URL }}
-      VITE_CONCIERGE_WHATSAPP: ${{ vars.VITE_CONCIERGE_WHATSAPP }}
+      VITE_CONCIERGE_WHATSAPP: ${{ vars.VITE_CONCIERGE_WHATSAPP || '5511997594545' }}
       VITE_COMPANY_NAME: ${{ vars.VITE_COMPANY_NAME }}
       VITE_COMPANY_CNPJ: ${{ vars.VITE_COMPANY_CNPJ }}
       VITE_COMPANY_ADDRESS: ${{ vars.VITE_COMPANY_ADDRESS }}
       VITE_SAC_EMAIL: ${{ vars.VITE_SAC_EMAIL }}
-      VITE_SAC_WHATSAPP: ${{ vars.VITE_SAC_WHATSAPP }}
+      VITE_SAC_WHATSAPP: ${{ vars.VITE_SAC_WHATSAPP || '5511997594545' }}
       VITE_LEGAL_STATUS: ${{ vars.VITE_LEGAL_STATUS }}
-      VITE_LOGIN_METHODS: ${{ vars.VITE_LOGIN_METHODS }}
+      VITE_LOGIN_METHODS: ${{ vars.VITE_LOGIN_METHODS || 'email' }}
       # Error reporting: without the DSN the production build reports nothing (lib/observability.ts).
       # The DSN is public by design; the release is the commit being published.
       VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
@@ -72,18 +75,12 @@ jobs:
 
       - name: Conferir variáveis obrigatórias
         run: |
-          for name in VITE_SUPABASE_URL VITE_SUPABASE_PUBLISHABLE_KEY VITE_SITE_URL CLOUDFLARE_PAGES_PROJECT CLOUDFLARE_ACCOUNT_ID; do
+          for name in CLOUDFLARE_PAGES_PROJECT CLOUDFLARE_ACCOUNT_ID; do
             if [ -z "${!name:-}" ]; then
               echo "::error::Variável ausente no ambiente production: $name"
               exit 1
             fi
           done
-          # Only the publishable key may reach the client (lib/supabaseKey.ts): refuses sb_secret_ and
-          # a legacy service_role JWT before anything is built with it.
-          if ! node scripts/check-bundle-secrets.mjs --dist .no-build-yet --env; then
-            echo "::error::VITE_SUPABASE_PUBLISHABLE_KEY recebeu uma chave de servidor. Use somente a chave publicável."
-            exit 1
-          fi
         env:
           CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
@@ -96,6 +93,9 @@ jobs:
 
       - name: Instalar dependências
         run: npm ci
+
+      - name: Validar a configuração e consultar o backend de produção
+        run: node scripts/release-config.mjs backend
 
       # Wrangler comes from its own lock (tools/wrangler/package-lock.json, exact version and
       # integrity hashes), installed only here: the other jobs never download it.
@@ -111,11 +111,17 @@ jobs:
       - name: Build do site (inclui a pré-renderização)
         run: npm run build
 
+      - name: Conferir a configuração no bundle
+        run: |
+          node scripts/release-config.mjs bundle
+          node scripts/release-config.mjs web-links
+          npm run check:store-bundle -- --store none
+
       - name: Conferir o tamanho da carga inicial
         run: npm run check:size
 
       - name: Conferir cabeçalhos e HTML gerado
-        run: node scripts/check-headers.mjs --dist dist
+        run: node scripts/check-headers.mjs --dist dist --site-url "$VITE_SITE_URL"
 
       - name: Conferir que o bundle público não tem segredos
         run: |
@@ -133,6 +139,14 @@ jobs:
         # The wrangler of tools/wrangler/package-lock.json (never `npx --yes`, which would resolve
         # it from the registry at run time). --branch main makes this a production deployment.
         run: tools/wrangler/node_modules/.bin/wrangler pages deploy dist --project-name "$CLOUDFLARE_PAGES_PROJECT" --branch main --commit-hash "$GITHUB_SHA"
+
+      - name: Conferir o site no domínio canônico
+        run: |
+          for attempt in 1 2 3; do
+            if node scripts/healthcheck.mjs --paths /,/pedido,/privacidade,/termos; then exit 0; fi
+            sleep 10
+          done
+          exit 1
 
       - name: Registrar a publicação
         run: |

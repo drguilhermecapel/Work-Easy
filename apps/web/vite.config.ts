@@ -3,7 +3,8 @@ import { configDefaults, defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
-import type { Plugin } from 'vite';
+import { loadEnv, type Plugin } from 'vite';
+import { validateReleaseConfig } from './scripts/release-config.mjs';
 import { pwaOptions } from './pwa.config.ts';
 import { policiesByArea } from './policiesByArea.ts';
 
@@ -47,6 +48,14 @@ export default defineConfig(({ mode }) => ({
     react(),
     tailwindcss(),
     blockEditorLauncher,
+    {
+      name: 'workeasy-release-config',
+      apply: 'build',
+      configResolved(config) {
+        const target = process.env.WORKEASY_RELEASE_TARGET;
+        if (target !== undefined) validateReleaseConfig(loadEnv(mode, config.envDir), target, mode);
+      },
+    },
     // The rules of the catalog, one module per area (catalog/index.ts)
     policiesByArea(),
     // Manifest, service worker rules and update flow: pwa.config.ts

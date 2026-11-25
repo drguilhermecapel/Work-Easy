@@ -30,7 +30,7 @@ Monorepo B2C/B2G. **O produto real é `apps/web`** (com backend em Supabase). `s
 | `apps/web-prefeitura` | Protótipo do portal municipal (B2G), com dados fictícios |
 | `apps/web` | App React com o catálogo de serviços e profissões liberais de todas as áreas. Roda como site (PWA), Android, iOS, Windows, macOS e Linux, e tem backend próprio em Supabase (`apps/web/supabase`). Veja [`apps/web/README.md`](apps/web/README.md) |
 
-`apps/web` é independente do restante: sem as variáveis do Supabase ele roda com dados de demonstração. Recursos que
+`apps/web` é independente do restante: em desenvolvimento, sem as variáveis do Supabase, ele roda com dados de demonstração. Os builds de distribuição validam a configuração de produção antes de compilar. Recursos que
 dependem de parecer jurídico, como pagamento retido e comissão, ficam desligados por padrão nele (`platform_settings`).
 
 ## Workflows (`.github/workflows/`)
@@ -38,11 +38,10 @@ dependem de parecer jurídico, como pagamento retido e comissão, ficam desligad
 | Workflow | Quando roda | O que faz |
 |---|---|---|
 | `web-ci.yml` | push em `main`/`develop` e pull request que mudam `apps/web/**` (ou o próprio arquivo) | jobs `web` (lint, typecheck, Vitest, build e verificadores), `database` (pgTAP, integração e tipos do banco) `functions` (`deno check`, `deno lint`, `deno test`) e `functions-e2e` (ponta a ponta das Edge Functions no edge-runtime, com serviços externos falsos). Detalhes em [`apps/web/README.md`](apps/web/README.md) |
-| `web-release.yml` | sob demanda, tags `v*` e pull requests que mudam o empacotamento nativo | builds sem assinatura de site, Android, iOS, Windows, macOS e Linux |
+| `web-release.yml` | sob demanda, tags `vX.Y.Z` e pull requests que mudam o empacotamento nativo | builds de verificação sob demanda e em PRs. Tags integradas à main geram prerelease web e desktop com o backend de produção |
 | `ci-security.yml` | push em `main`/`develop` e pull request que mudam `services/api/**` | `pytest` do protótipo `services/api` (Python 3.12) |
 | `deploy-web.yml` | só manual, a partir de `main`, digitando `DEPLOY` e com aprovação do ambiente `production` | build e publicação do site no Cloudflare Pages |
 | `deploy-supabase.yml` | só manual, com aprovação do ambiente `production` | migrações, catálogo e Edge Functions; com `dry_run` (padrão) nada é publicado |
 
-Nenhum dos dois workflows de publicação foi executado até hoje: não há ambiente de produção. O que falta para publicar,
-em ordem, está no topo de [`apps/web/docs/operacao/10-checklist-de-publicacao.md`](apps/web/docs/operacao/10-checklist-de-publicacao.md).
+O ambiente `production` existe e o backend WorkEasy foi implantado em 25/11/2026. O estado de cada canal e as evidências ficam no [registro da entrega multiplataforma](apps/web/docs/operacao/14-entrega-multiplataforma.md).
 

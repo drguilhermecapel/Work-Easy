@@ -146,3 +146,17 @@ describe('verificador de cabeçalhos: recusa uma política que volta a ser ampla
     expect(result.stderr).toContain('_headers');
   });
 });
+
+it('permite a canonical da origem publicada e recusa outros links absolutos', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'headers-canonical-'));
+  made.push(dir);
+  writeFileSync(join(dir, '_headers'), HEADERS);
+  const site = 'https://fixture.workeasy-ci.org';
+  const checkHtml = (html: string) => {
+    writeFileSync(join(dir, 'index.html'), html);
+    return spawnSync(process.execPath, [CHECKER, '--dist', dir, '--site-url', site], { encoding: 'utf8' });
+  };
+  expect(checkHtml(`<link rel="canonical" href="${site}/page">`).status).toBe(0);
+  expect(checkHtml(`<link rel="stylesheet" href="${site}/style.css">`).status).toBe(1);
+  expect(checkHtml('<link rel="canonical" href="https://example.net/page">').status).toBe(1);
+});
