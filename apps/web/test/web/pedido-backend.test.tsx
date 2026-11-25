@@ -55,7 +55,7 @@ const tables = (): FakeSupabase['tables'] => ({
   }),
   requests: (call: TableCall) =>
     call.op === 'insert'
-      ? { data: { ...REQUEST, ...(call.payload as object) }, error: null }
+      ? { data: { ...REQUEST, ...(call.payload as object), id: REQUEST.id }, error: null }
       : { data: isEq(call, 'id', 'req-1') ? REQUEST : [REQUEST], error: null },
   proposals: () => ({ data: [PROPOSAL], error: null }),
   consents: (call: TableCall) =>
@@ -106,6 +106,7 @@ describe('/pedido with a backend (simulated Supabase client)', () => {
 
   beforeEach(() => {
     sessionStorage.clear();
+    localStorage.clear();
     fake.reset();
     fake.tables = tables();
     fake.rpcs = { is_admin: () => ({ data: false, error: null }), accept_proposal: () => ({ data: 'booking-1', error: null }) };
@@ -142,6 +143,7 @@ describe('/pedido with a backend (simulated Supabase client)', () => {
     expect(await screen.findByText('Propostas recebidas (1)')).toBeInTheDocument();
     const insert = fake.tableCalls.find(c => c.table === 'requests' && c.op === 'insert');
     expect(insert?.payload).toEqual({
+      id: expect.stringMatching(/^[a-f0-9-]{36}$/),
       client_id: USER_ID,
       occupation_slug: 'diarista',
       neighborhood_id: 'nb-pinheiros',
@@ -169,6 +171,45 @@ describe('/pedido with a backend (simulated Supabase client)', () => {
       p_period: '[2030-01-15T12:00:00.000Z,2030-01-15T16:00:00.000Z)',
     });
     expect(screen.getByRole('link', { name: 'Ver atendimento' })).toHaveAttribute('href', '/atendimentos/booking-1');
+  });
+
+  it('recovers a request after the insert response is lost and the screen is reopened', async () => {
+    fake.session = { access_token: 't', user: { id: USER_ID, email: 'maria@example.com' } };
+    let saved: typeof REQUEST | undefined;
+    let attempts = 0;
+    fake.tables.requests = call => {
+      if (call.op === 'insert') {
+        attempts += 1;
+        const id = (call.payload as { id: string }).id;
+        if (!saved) {
+          saved = { ...REQUEST, id };
+          return { data: null, error: { name: 'TypeError', message: 'Failed to fetch' } };
+        }
+        expect(id).toBe(saved.id);
+        return { data: null, error: { code: '23505', message: 'duplicate key' } };
+      }
+      if (!saved || !isEq(call, 'id', saved.id)) return { data: null, error: null };
+      if (attempts === 1) return { data: null, error: { name: 'TypeError', message: 'Failed to fetch' } };
+      return { data: saved, error: null };
+    };
+
+    const user = userEvent.setup();
+    const first = renderAt('/pedido?servico=diarista');
+    await fillRequest(user);
+    await user.click(screen.getByRole('button', { name: /Enviar pedido/ }));
+    await screen.findByRole('alert');
+    first.unmount();
+    sessionStorage.clear();
+
+    renderAt('/pedido?servico=diarista');
+    await fillRequest(user);
+    await user.click(screen.getByRole('button', { name: /Enviar pedido/ }));
+    expect(await screen.findByText('Propostas recebidas (1)')).toBeInTheDocument();
+    expect(attempts).toBe(2);
+    expect(fake.tableCalls.some(
+      call => call.table === 'requests' && call.op === 'select' && isEq(call, 'client_id', USER_ID),
+    )).toBe(true);
+    expect(localStorage.getItem(`workeasy:pedido-envio:${USER_ID}`)).toBeNull();
   });
 
   it('refuses the acceptance under a labor lock with the plain sentence, revealing no contact or record', async () => {

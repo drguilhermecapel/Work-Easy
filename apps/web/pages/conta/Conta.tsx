@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { backendEnabled } from '../../lib/supabase';
 import { useAsync } from '../../lib/useAsync';
 import { downloadJson } from '../../lib/download';
-import { clearRequestDraft } from '../../lib/requestDraft';
+import { clearPendingRequestId, clearRequestDraft } from '../../lib/requestDraft';
 import { formatPhoneBR } from '../../lib/phone';
 import { APP_TIME_ZONE, formatDateBR, todayInSaoPaulo } from '../../lib/timezone';
 import { CONSENT_VERSIONS } from '../../config/legal';
@@ -439,6 +439,7 @@ const Conta: React.FC = () => {
   };
 
   const onDeleted = async () => {
+    clearPendingRequestId(authUser.id);
     clearRequestDraft();
     setDeleted(true);
     try {

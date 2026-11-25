@@ -21,6 +21,7 @@
 //  * Cada arquivo cria os próprios usuários (e-mails `it<id>-...@example.com`) e os
 //    remove no fim, junto com pagamentos, atendimentos e arquivos de teste. O
 //    `audit_log` é só de inserção e guarda a trilha das execuções.
+import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { parseTstzRange } from '../../lib/tstzrange';
 import {
@@ -135,10 +136,12 @@ describe('fluxo do produto contra o Supabase real', () => {
   // -------------------------------------------------------------------------
   describe('(a) o cliente cria um pedido', () => {
     it('cria o pedido aberto, com vencimento padrão, e só o dono pode cancelá-lo', async () => {
+      const id = randomUUID();
       const row = must(
         await client.client
           .from('requests')
           .insert({
+            id,
             occupation_slug: policy.occupation_slug,
             neighborhood_id: hood.id,
             description: `Preciso de ajuda em casa (teste de integração ${world.runId})`,
@@ -150,11 +153,27 @@ describe('fluxo do produto contra o Supabase real', () => {
         'pedido',
       );
       requestId = row.id;
+      expect(row.id).toBe(id);
       expect(row.status).toBe('open');
       expect(row.client_id).toBe(client.id);
       const days = (new Date(row.expires_at).getTime() - Date.now()) / 86_400_000;
       expect(days).toBeGreaterThan(6.9);
       expect(days).toBeLessThan(7.1);
+    });
+
+    it('rejeita o reenvio do mesmo ID e permite recuperar somente o pedido do próprio cliente', async () => {
+      const repeated = await client.client.from('requests').insert({
+        id: requestId,
+        client_id: client.id,
+        occupation_slug: policy.occupation_slug,
+        neighborhood_id: hood.id,
+        description: 'Repetição depois de perder a resposta do primeiro envio',
+      });
+      expect(repeated.error?.code).toBe('23505');
+      const own = await client.client.from('requests').select('id, description').eq('id', requestId).eq('client_id', client.id).single();
+      expect(must(own, 'pedido recuperado').description).toContain('Preciso de ajuda em casa');
+      const other = await client2.client.from('requests').select('id').eq('id', requestId);
+      expect(visibleIds(other)).toEqual([]);
     });
 
     it('recusa pedido sem texto suficiente, em nome de outra pessoa ou sem login', async () => {

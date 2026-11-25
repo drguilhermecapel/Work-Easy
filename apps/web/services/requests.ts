@@ -5,6 +5,7 @@ import type { ProposalRow, RequestInsert, RequestRow } from './types';
 
 export interface NewRequest {
   clientId: string;
+  requestId?: string;
   occupationSlug: string;
   neighborhoodId: string;
   description: string;
@@ -24,6 +25,7 @@ export const createRequest = async (input: NewRequest): Promise<RequestRow> => {
   const description = input.description.trim();
   if (description.length < DESCRIPTION_MIN || description.length > DESCRIPTION_MAX) throw new AppError('invalid_input');
   const row: RequestInsert = {
+    ...(input.requestId ? { id: input.requestId } : {}),
     client_id: input.clientId,
     occupation_slug: input.occupationSlug,
     neighborhood_id: input.neighborhoodId,
@@ -31,7 +33,19 @@ export const createRequest = async (input: NewRequest): Promise<RequestRow> => {
     preferred_dates: input.preferredDates?.trim() || null,
     urgent: input.urgent ?? false,
   };
-  return unwrap<RequestRow>(await db().from('requests').insert(row).select(REQUEST_COLUMNS).single());
+  const client = db();
+  const result = await client.from('requests').insert(row).select(REQUEST_COLUMNS).single();
+  if (result.error && input.requestId) {
+    // A previous insert may have committed without a response. A retry may hit
+    // either the primary key or a rule checked before insertion, such as the daily limit.
+    const previous = await client.from('requests')
+      .select(REQUEST_COLUMNS)
+      .eq('id', input.requestId)
+      .eq('client_id', input.clientId)
+      .maybeSingle();
+    if (!previous.error && previous.data) return previous.data;
+  }
+  return unwrap<RequestRow>(result);
 };
 
 /**
