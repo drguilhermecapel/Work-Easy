@@ -229,7 +229,8 @@ web3 = 30
 
 [auth.email]
 # Allow/disallow new user signups via email to your project.
-enable_signup = true
+# CLI 3: liga o provedor (antes "enable_signup"). Novos cadastros seguem pelo [auth] enable_signup.
+enabled = true
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
@@ -281,7 +282,8 @@ content_path = "./supabase/templates/confirmation.html"
 # Allow/disallow new user signups via SMS to your project.
 # Sign-in by code over SMS/WhatsApp. No SMS provider is configured locally: only the test phone
 # below receives a code (fixed, nothing is sent).
-enable_signup = true
+# CLI 3: liga o provedor (antes "enable_signup"). Novos cadastros seguem pelo [auth] enable_signup.
+enabled = true
 # If enabled, users need to confirm their phone number before signing in. Keep it on: with it off,
 # changing the phone of an account to a number nobody owns counts as confirmed (private.notify).
 enable_confirmations = true
