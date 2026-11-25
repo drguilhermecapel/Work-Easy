@@ -10,7 +10,7 @@ import { backendEnabled } from '../../lib/supabase';
 import { AppError } from '../../lib/errors';
 import { toE164BR } from '../../lib/phone';
 import { useAsync } from '../../lib/useAsync';
-import { clearRequestDraft, readRequestDraft, saveRequestDraft } from '../../lib/requestDraft';
+import { clearPendingRequestId, clearRequestDraft, pendingRequestId, readRequestDraft, saveRequestDraft } from '../../lib/requestDraft';
 import { DESCRIPTION_MAX, DESCRIPTION_MIN, createRequest } from '../../services/requests';
 import { listNeighborhoods } from '../../services/neighborhoods';
 import { updateProfile } from '../../services/account';
@@ -93,6 +93,8 @@ const Pedido: React.FC = () => {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const submitting = useRef(false);
+  const attempt = useRef<{ clientId: string; id: string } | null>(null);
 
   const remote = useAsync(() => (online ? listNeighborhoods() : Promise.resolve([])), online ? 'remote' : 'local');
   // The pilot serves a few neighborhoods (platform_settings.pilot_neighborhoods); empty = all of them.
@@ -164,7 +166,13 @@ const Pedido: React.FC = () => {
 
   const submitOnline = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!auth.authUser || !occupation || !neighborhood) return;
+    if (submitting.current || !auth.authUser || !occupation || !neighborhood) return;
+    if (navigator.onLine === false) {
+      setError(new AppError('offline'));
+      return;
+    }
+    const clientId = auth.authUser.id;
+    submitting.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -172,22 +180,31 @@ const Pedido: React.FC = () => {
       if (phone.trim() && !normalizedPhone) throw new AppError('invalid_phone');
       const profile = auth.profile;
       if (profile && (name.trim() !== (profile.full_name ?? '') || (normalizedPhone ?? '') !== (profile.phone ?? ''))) {
-        await updateProfile(auth.authUser.id, { full_name: name, phone: normalizedPhone });
+        await updateProfile(clientId, { full_name: name, phone: normalizedPhone });
         auth.refreshProfile?.();
       }
+      if (attempt.current?.clientId !== clientId) {
+        attempt.current = { clientId, id: pendingRequestId(clientId) };
+      }
+      const requestId = attempt.current.id;
       const request = await createRequest({
-        clientId: auth.authUser.id,
+        clientId,
+        requestId,
         occupationSlug: occupation.slug,
         neighborhoodId: neighborhood.value,
         description: draft.description,
         preferredDates: draft.when,
         urgent: draft.urgent,
       });
+      clearPendingRequestId(clientId, requestId);
+      attempt.current = null;
       clearRequestDraft();
       navigate(`/pedidos/${request.id}`);
     } catch (err) {
       setError(err);
       setBusy(false);
+    } finally {
+      submitting.current = false;
     }
   };
 
