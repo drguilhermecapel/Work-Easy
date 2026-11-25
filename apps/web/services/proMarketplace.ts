@@ -67,20 +67,38 @@ export const sendProposal = (input: NewProposal): Promise<ProposalRow> =>
     }
     const availableFrom = input.availableFromDay?.trim() || null;
     if (availableFrom && !/^\d{4}-\d{2}-\d{2}$/.test(availableFrom)) throw new AppError('invalid_input', { message: 'Confira a data em que você pode ir.' });
-    return unwrap<ProposalRow>(
-      await db()
-        .from('proposals')
-        .insert({
-          request_id: input.requestId,
-          provider_id: input.providerId,
-          price_cents: input.priceCents,
-          message: message || null,
-          valid_until: validUntil,
-          available_from: availableFrom,
-        })
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new AppError('offline');
+
+    const row = {
+      request_id: input.requestId,
+      provider_id: input.providerId,
+      price_cents: input.priceCents,
+      message: message || null,
+      valid_until: validUntil,
+      available_from: availableFrom,
+    };
+    const client = db();
+    const result = await client.from('proposals').insert(row).select(PROPOSAL_COLUMNS).single();
+    if (result.error) {
+      // The database can commit the insert even if the response is lost. The
+      // unique request/provider pair identifies the proposal on a retry, even
+      // when a rule such as the allowance fails before the unique constraint.
+      const previous = await client.from('proposals')
         .select(PROPOSAL_COLUMNS)
-        .single(),
-    );
+        .eq('request_id', row.request_id)
+        .eq('provider_id', row.provider_id)
+        .maybeSingle();
+      const saved = previous.data;
+      if (!previous.error && saved &&
+          saved.status !== 'withdrawn' &&
+          saved.price_cents === row.price_cents &&
+          saved.message === row.message &&
+          saved.available_from === row.available_from &&
+          (saved.valid_until ? Date.parse(saved.valid_until) : null) === (validUntil ? Date.parse(validUntil) : null)) {
+        return saved;
+      }
+    }
+    return unwrap<ProposalRow>(result);
   });
 
 /** A proposal can be withdrawn while it is still "sent". */

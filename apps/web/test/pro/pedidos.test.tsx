@@ -106,6 +106,63 @@ describe('/pro/pedidos', () => {
     expect(screen.getByText('Válida até 10/03/2031')).toBeInTheDocument();
   });
 
+  it('confirms a proposal whose insert committed before the response was lost', async () => {
+    const base = fake.tables.proposals;
+    fake.tables.proposals = call => {
+      if (call.op === 'insert') {
+        const result = base(call);
+        if (result.error) return result;
+        return { data: null, error: { name: 'TypeError', message: 'Failed to fetch' } };
+      }
+      if (call.single === 'maybe' && isEq(call, 'request_id', 'req-1') && isEq(call, 'provider_id', 'prov-1')) {
+        return ok({ ...proposals[0], valid_until: '2031-03-10T23:59:59-03:00' });
+      }
+      return base(call);
+    };
+    const user = userEvent.setup();
+    renderPro('/pro/pedidos');
+    await user.click(await screen.findByRole('button', { name: 'Enviar proposta' }));
+    await user.type(screen.getByLabelText('Seu preço (R$)'), '180');
+    fireEvent.change(screen.getByLabelText(/Proposta válida até/), { target: { value: '2031-03-10' } });
+    await user.click(screen.getByRole('button', { name: 'Enviar proposta' }));
+
+    expect(await screen.findByText('R$ 180,00', { selector: 'span.font-semibold' })).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(proposals).toHaveLength(1);
+  });
+
+  it('does not report a previous proposal with different terms as sent', async () => {
+    const base = fake.tables.proposals;
+    fake.tables.proposals = call => {
+      if (call.op === 'insert') return ruleError('proposal_limit');
+      if (call.single === 'maybe') return ok({
+        price_cents: 15000, message: null, valid_until: null, available_from: null, status: 'sent',
+      });
+      return base(call);
+    };
+    const user = userEvent.setup();
+    renderPro('/pro/pedidos');
+    await user.click(await screen.findByRole('button', { name: 'Enviar proposta' }));
+    await user.type(screen.getByLabelText('Seu preço (R$)'), '180');
+    await user.click(screen.getByRole('button', { name: 'Enviar proposta' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Este pedido já recebeu o número máximo de propostas.');
+    expect(screen.getByLabelText('Seu preço (R$)')).toHaveValue('180');
+  });
+
+  it('keeps the form and avoids a write when the device is offline', async () => {
+    const user = userEvent.setup();
+    renderPro('/pro/pedidos');
+    await user.click(await screen.findByRole('button', { name: 'Enviar proposta' }));
+    await user.type(screen.getByLabelText('Seu preço (R$)'), '180');
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    await user.click(screen.getByRole('button', { name: 'Enviar proposta' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Você está sem conexão com a internet.');
+    expect(screen.getByLabelText('Seu preço (R$)')).toHaveValue('180');
+    expect(fake.tableCalls.some(call => call.table === 'proposals' && call.op === 'insert')).toBe(false);
+  });
+
   it('translates proposal_limit and request_not_open', async () => {
     const base = fake.tables.proposals;
     fake.tables.proposals = (call: TableCall) => (call.op === 'insert' ? ruleError('proposal_limit') : base(call));
