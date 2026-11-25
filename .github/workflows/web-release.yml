@@ -398,7 +398,7 @@ jobs:
   ios-installed:
     name: Instalação em simulador ${{ matrix.family }}
     needs: macos-ios
-    if: github.ref_type != 'tag' && !inputs.macos_universal && !inputs.windows_install_smoke
+    if: ${{ !cancelled() && needs.macos-ios.result == 'success' && github.ref_type != 'tag' && !inputs.macos_universal && !inputs.windows_install_smoke }}
     runs-on: macos-latest
     timeout-minutes: 25
     strategy:
