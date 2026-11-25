@@ -25,6 +25,9 @@ on:
       - 'apps/web/platform/**'
       - 'apps/web/vite.config.ts'
       - 'apps/web/scripts/release-config.*'
+      - 'apps/web/scripts/check-android-install.sh'
+      - 'apps/web/scripts/check-android-search.mjs'
+      - 'apps/web/scripts/check-ios-simulator.sh'
       - 'apps/web/scripts/android-release.sh'
       - 'apps/web/scripts/ios-release.sh'
       - 'apps/web/package.json'
@@ -185,6 +188,23 @@ jobs:
           name: workeasy-android-apk
           path: apps/web/android/app/build/outputs/apk/debug/*.apk
           retention-days: 7
+
+      - name: Instalar o APK e verificar a Home no emulador Android
+        if: github.ref_type != 'tag'
+        timeout-minutes: 15
+        run: |
+          image='system-images;android-35;google_apis;x86_64'
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
+          sdkmanager "$image" 'emulator'
+          echo no | avdmanager create avd -n workeasy -k "$image" --force
+          sudo setfacl -m "u:$(id -un):rw" /dev/kvm
+          "$ANDROID_HOME/emulator/emulator" -avd workeasy -port 5554 -no-window -noaudio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > "$RUNNER_TEMP/workeasy-avd.log" 2>&1 &
+          export ANDROID_SERIAL=emulator-5554
+          trap 'adb emu kill >/dev/null 2>&1 || true' EXIT
+          timeout 300 bash -c 'adb wait-for-device && until [[ "$(adb shell getprop sys.boot_completed | tr -d "\r")" == 1 ]]; do sleep 2; done'
+          adb shell input keyevent KEYCODE_WAKEUP
+          adb shell wm dismiss-keyguard
+          bash scripts/check-android-install.sh android/app/build/outputs/apk/debug/app-debug.apk
 
       - name: Linux desktop dependencies
         run: |
@@ -375,6 +395,27 @@ jobs:
           name: workeasy-ios-simulator
           path: WorkEasy-ios-simulator.zip
           retention-days: 7
+
+  ios-installed:
+    name: Instalação em simulador ${{ matrix.family }}
+    needs: macos-ios
+    if: ${{ !cancelled() && needs.macos-ios.result == 'success' && github.ref_type != 'tag' && !inputs.macos_universal && !inputs.windows_install_smoke }}
+    runs-on: macos-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        family: [iPhone, iPad]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          name: workeasy-ios-simulator
+          path: ${{ runner.temp }}/workeasy
+      - name: Instalar, reabrir e remover o app
+        run: bash scripts/check-ios-simulator.sh "$RUNNER_TEMP/workeasy/WorkEasy-ios-simulator.zip" "${{ matrix.family }}"
 
   prerelease:
     if: startsWith(github.ref, 'refs/tags/v')

@@ -106,3 +106,9 @@ A função Asaas retornou 503 com `webhook_not_configured` a uma sonda sem crede
 ## Ensaio dos instaladores Windows
 
 O modo manual `windows_install_smoke=true` em Web release builds usa um runner descartável Windows x64. O job gera EXE e MSI, registra SHA-256 e Authenticode e executa cada instalador em um diretório próprio. O ensaio exige a abertura de uma janela do executável instalado e a remoção desse executável após rodar o desinstalador. O tempo observado mede até a abertura da janela. Esse ensaio usa o perfil de verificação. Os testes com backend e assinatura, a atualização entre versões e o uso em máquinas dos usuários permanecem como etapas de aceitação dos pacotes finais.
+
+## Ensaios dos pacotes móveis no Actions
+
+O workflow de distribuição instala o APK debug em Android 15 (API 35, x86_64). A verificação procura o campo de busca dentro do WebView instalado, toca no campo, digita pelo Android, toca em Buscar e confere a rota e o título dos resultados. O ensaio repete o fluxo após encerrar o processo e verifica a remoção do pacote. O acesso de depuração do WebView é o disponibilizado pelo Capacitor na compilação debug. Consulte o resultado do job para o APK e o SHA-256 de cada execução.
+
+Em iOS 26.4, o mesmo ZIP foi baixado, instalado, aberto, reaberto e removido em simuladores de iPhone 17 Pro e iPad Pro de 13 polegadas (M5). Ambos os ensaios passaram para o ZIP com SHA-256 `a91d920cd7f43b4ad3999993c08fae28f4fea8eae96109e667ff4c398b93a140`. TestFlight, aparelhos físicos e login em produção continuam pendentes. [Ensaio iPhone](https://github.com/drguilhermecapel/Work-Easy/actions/runs/45698844719/job/139505743143) · [Ensaio iPad](https://github.com/drguilhermecapel/Work-Easy/actions/runs/45698844719/job/139505743164)
