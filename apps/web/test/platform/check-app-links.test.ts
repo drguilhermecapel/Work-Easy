@@ -86,6 +86,18 @@ describe('check-app-links with everything filled in', () => {
     expect(strict.stdout).toContain('sem pendências');
   });
 
+  it.each([
+    ['android', 'aasa', 'ABCDE12345', 'TODO-TEAM-ID'],
+    ['ios', 'assetlinks', FINGERPRINT, 'TODO-CERT'],
+  ] as const)('%s can release while the other signing identity is pending', (platform, file, signed, placeholder) => {
+    const root = filled();
+    edit(root, file, text => text.replace(signed, placeholder));
+    const site = 'https://app.workeasy.com.br';
+    expect(run(root, '--strict', '--site-url', site).status).toBe(1);
+    expect(run(root, '--strict', '--platform', platform, '--site-url', site).status).toBe(0);
+    expect(run(root, '--strict', '--platform', platform, '--site-url', 'https://other.workeasy.com.br').status).toBe(1);
+  });
+
   it('refuses a site URL on another host', () => {
     const { errors } = checkAppLinks(filled(), { siteUrl: 'https://www.workeasy.com.br' });
     expect(errors.join('\n')).toContain('"www.workeasy.com.br"');

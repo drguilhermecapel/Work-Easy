@@ -17,7 +17,7 @@ export WORKEASY_RELEASE_TARGET=android VITE_STORE_BUILD=android VITE_ROUTER=hash
 export VITE_APP_VERSION="$(git rev-parse HEAD)"
 
 node scripts/release-config.mjs backend
-node scripts/check-app-links.mjs --strict --site-url "$VITE_SITE_URL"
+node scripts/check-app-links.mjs --strict --platform android --site-url "$VITE_SITE_URL"
 npm run build:native
 node scripts/check-bundle-secrets.mjs --dist dist
 npm run check:store-bundle -- --store android

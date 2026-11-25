@@ -4,7 +4,7 @@ import Navbar from './components/Navbar';
 import DemoBanner from './components/DemoBanner';
 import SiteFooter from './components/SiteFooter';
 import { features } from './config/features';
-import { backendRoutes, demoRoutes } from './pages/prototype/routes';
+import { backendRoutes, demoRoutes, futureRoutes } from './pages/prototype/routes';
 import { legalRoutes } from './pages/legal/routes';
 import { contaRoutes } from './pages/conta/routes';
 import { clienteRoutes } from './pages/cliente/routes';
@@ -29,10 +29,6 @@ const PageFallback: React.FC = () => (
   <div role="status" className="py-24 text-center text-gray-400 text-sm">Carregando…</div>
 );
 
-// Demo mode shows the prototype screens (fictitious data). With a backend the same URLs redirect to
-// the real equivalent, are replaced by a real page or say they are a future feature (pages/prototype).
-const prototypeRoutes = features.backendEnabled ? backendRoutes : demoRoutes;
-
 /** Layout and routes, independent of the router flavour (browser, hash or memory). */
 const AppShell: React.FC = () => (
   <div className="min-h-screen bg-gray-50 font-sans">
@@ -48,7 +44,11 @@ const AppShell: React.FC = () => (
           <Route path="/categorias/:slug" element={<AreaPage />} />
           <Route path="/servicos/:slug" element={<OccupationPage />} />
           <Route path="/servicos/:slug/:bairro" element={<OccupationNeighborhoodPage />} />
-          {prototypeRoutes}
+          {/* The iOS store bundle contains only the live routes and redirects. The compile-time
+              value lets the bundler drop both the demo and the future-feature screens. */}
+          {import.meta.env.VITE_STORE_BUILD === 'ios'
+            ? backendRoutes
+            : features.backendEnabled ? <>{backendRoutes}{futureRoutes}</> : demoRoutes}
           {legalRoutes}
           {/* MVP areas: each block lazy-loads its pages (pages/<área>/routes.tsx) */}
           {contaRoutes}

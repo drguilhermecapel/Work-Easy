@@ -4,6 +4,11 @@ name: Web release builds
 # production-connected prerelease from a commit already integrated into main.
 on:
   workflow_dispatch:
+    inputs:
+      macos_universal:
+        description: Verificar somente o DMG macOS arm64 e Intel
+        type: boolean
+        default: false
   push:
     tags: ['v*']
   # Only the changes that can break a native build (the macOS and Windows runners are slower), not every UI change
@@ -106,7 +111,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 45
     needs: production-config
-    if: ${{ !cancelled() && (needs.production-config.result == 'success' || needs.production-config.result == 'skipped') }}
+    if: ${{ !cancelled() && !inputs.macos_universal && (needs.production-config.result == 'success' || needs.production-config.result == 'skipped') }}
     env:
       VITE_APP_VERSION: ${{ github.sha }}
       VITE_SUPABASE_URL: ${{ needs.production-config.outputs.VITE_SUPABASE_URL }}
@@ -219,7 +224,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 45
     needs: production-config
-    if: ${{ !cancelled() && (needs.production-config.result == 'success' || needs.production-config.result == 'skipped') }}
+    if: ${{ !cancelled() && !inputs.macos_universal && (needs.production-config.result == 'success' || needs.production-config.result == 'skipped') }}
     env:
       VITE_APP_VERSION: ${{ github.sha }}
       VITE_SUPABASE_URL: ${{ needs.production-config.outputs.VITE_SUPABASE_URL }}
@@ -308,34 +313,46 @@ jobs:
         with:
           workspaces: apps/web/src-tauri
       - name: Instalar alvos para macOS universal
-        if: github.ref_type == 'tag'
+        if: github.ref_type == 'tag' || inputs.macos_universal
         run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
       - name: macOS desktop (dmg)
         shell: bash
         env:
-          TAG_BUILD: ${{ startsWith(github.ref, 'refs/tags/v') }}
+          TAG_BUILD: ${{ github.ref_type == 'tag' }}
+          UNIVERSAL: ${{ github.ref_type == 'tag' || inputs.macos_universal }}
         run: |
-          if [[ "$TAG_BUILD" == true ]]; then
-            export WORKEASY_RELEASE_TARGET=macos
+          if [[ "$TAG_BUILD" == true ]]; then export WORKEASY_RELEASE_TARGET=macos; fi
+          if [[ "$UNIVERSAL" == true ]]; then
             npx tauri build --target universal-apple-darwin --bundles app,dmg -- --locked
-            node scripts/release-config.mjs bundle
-            node scripts/check-bundle-secrets.mjs --dist dist
-            app="src-tauri/target/universal-apple-darwin/release/bundle/macos/WorkEasy.app"
+            shopt -s nullglob
+            images=(src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg)
+            [[ "${#images[@]}" == 1 ]]
+            mountpoint="$(mktemp -d)"
+            trap 'hdiutil detach "$mountpoint" && rmdir "$mountpoint"' EXIT
+            hdiutil attach "${images[0]}" -readonly -nobrowse -mountpoint "$mountpoint"
+            app="$mountpoint/WorkEasy.app"
             executable="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Contents/Info.plist")"
-            lipo -verify_arch arm64 x86_64 "$app/Contents/MacOS/$executable"
+            lipo "$app/Contents/MacOS/$executable" -verify_arch arm64 x86_64
+            lipo -archs "$app/Contents/MacOS/$executable"
+            shasum -a 256 "${images[0]}"
           else
             npx tauri build --bundles app,dmg -- --locked
+          fi
+          if [[ "$TAG_BUILD" == true ]]; then
+            node scripts/release-config.mjs bundle
+            node scripts/check-bundle-secrets.mjs --dist dist
           fi
       - uses: actions/upload-artifact@v7
         with:
           name: workeasy-macos
+          if-no-files-found: error
           path: |
             apps/web/src-tauri/target/release/bundle/dmg/*.dmg
             apps/web/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
           retention-days: 7
 
       - name: iOS (simulator build, unsigned)
-        if: github.ref_type != 'tag'
+        if: github.ref_type != 'tag' && !inputs.macos_universal
         run: |
           npm run build:native
           npx cap sync ios
@@ -345,7 +362,7 @@ jobs:
           cd ios/build/Build/Products/Debug-iphonesimulator
           zip -qr "$GITHUB_WORKSPACE/WorkEasy-ios-simulator.zip" App.app
       - uses: actions/upload-artifact@v7
-        if: github.ref_type != 'tag'
+        if: github.ref_type != 'tag' && !inputs.macos_universal
         with:
           name: workeasy-ios-simulator
           path: WorkEasy-ios-simulator.zip

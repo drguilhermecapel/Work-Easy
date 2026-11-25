@@ -16,7 +16,7 @@
 //   - PENDENTE: a placeholder is still there (example host, TODO fingerprint, TODO Team ID). Listed always;
 //     fails (exit 1) only with --strict, so the CI that runs without it is not broken by the wait.
 //
-// Usage: node scripts/check-app-links.mjs [--strict] [--site-url https://host] [--root <apps/web>]
+// Usage: node scripts/check-app-links.mjs [--strict] [--platform android|ios] [--site-url https://host] [--root <apps/web>]
 //   --site-url (or VITE_SITE_URL) is also compared with the host of the manifest.
 // Exit code: 0 = coherent (and, with --strict, nothing pending), 1 = error (or pending with --strict).
 // The values to fill in, and where to get them: docs/arquitetura/nativo.md, section 8.
@@ -266,12 +266,21 @@ const main = () => {
     return index === -1 ? undefined : args[index + 1];
   };
   const strict = args.includes('--strict');
+  const platform = option('--platform');
+  if (args.includes('--platform') && !['android', 'ios'].includes(platform)) {
+    console.error('check-app-links: --platform aceita android ou ios.');
+    return 1;
+  }
   const root = resolve(option('--root') ?? join(fileURLToPath(import.meta.url), '..', '..'));
   const siteUrl = (option('--site-url') ?? process.env.VITE_SITE_URL ?? '').trim() || undefined;
   const { errors, pending, info } = checkAppLinks(root, { siteUrl });
+  // A missing signing identity on the other platform is independent of this
+  // package. Shared host and identifier checks still apply to both.
+  const otherAssociation = platform === 'android' ? FILES.aasa : platform === 'ios' ? FILES.assetlinks : undefined;
+  const blockingPending = otherAssociation ? pending.filter(line => !line.startsWith(`${otherAssociation}:`)) : pending;
 
   for (const line of errors) console.error(`ERRO      ${line}`);
-  for (const line of pending) console[strict ? 'error' : 'log'](`PENDENTE  ${line}`);
+  for (const line of pending) console[strict && blockingPending.includes(line) ? 'error' : 'log'](`PENDENTE  ${line}`);
   for (const line of info) console.log(`AVISO     ${line}`);
 
   if (errors.length > 0) {
@@ -279,8 +288,8 @@ const main = () => {
     return 1;
   }
   if (pending.length > 0) {
-    if (strict) {
-      console.error(`check-app-links (--strict): ${pending.length} pendência(s) do dono. Os links ainda não abrem o app em produção. Passo a passo: docs/arquitetura/nativo.md, seção 8.`);
+    if (strict && blockingPending.length > 0) {
+      console.error(`check-app-links (--strict): ${blockingPending.length} pendência(s) do dono. Os links ainda não abrem o app em produção. Passo a passo: docs/arquitetura/nativo.md, seção 8.`);
       return 1;
     }
     console.log(`check-app-links: coerente, com ${pending.length} pendência(s) do dono (use --strict para falhar por elas).`);

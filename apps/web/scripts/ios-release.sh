@@ -17,7 +17,7 @@ export WORKEASY_RELEASE_TARGET=ios VITE_STORE_BUILD=ios VITE_ROUTER=hash
 export VITE_APP_VERSION="$(git rev-parse HEAD)"
 
 node scripts/release-config.mjs backend
-node scripts/check-app-links.mjs --strict --site-url "$VITE_SITE_URL"
+node scripts/check-app-links.mjs --strict --platform ios --site-url "$VITE_SITE_URL"
 APPLE_TEAM_ID="$APPLE_TEAM_ID" node --input-type=module <<'NODE'
 import { readFileSync } from 'node:fs';
 const association = JSON.parse(readFileSync('public/.well-known/apple-app-site-association', 'utf8'));
@@ -47,9 +47,10 @@ set -- "$verify_dir/Payload/"*.app
 [[ "$#" == 1 && -d "$1" ]]
 app="$1"
 codesign --verify --deep --strict "$app"
+plutil -lint "$app/PrivacyInfo.xcprivacy"
 codesign -d --entitlements :- "$app" > "$verify_dir/entitlements.plist"
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :application-identifier' "$verify_dir/entitlements.plist")" == "$APPLE_TEAM_ID.br.com.workeasy" ]]
-lipo -verify_arch arm64 "$app/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Info.plist")"
+lipo "$app/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Info.plist")" -verify_arch arm64
 node scripts/release-config.mjs bundle "$app/public"
 npm run check:store-bundle -- --store ios --dist "$app/public"
 node scripts/check-bundle-secrets.mjs --dist "$app/public"
