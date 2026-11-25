@@ -147,6 +147,7 @@ jobs:
             npm run check:store-bundle -- --store none
             node scripts/check-headers.mjs --dist dist --site-url "$VITE_SITE_URL"
             node scripts/check-bundle-secrets.mjs --dist dist
+            npm sbom --omit=dev --sbom-format=cyclonedx > "$GITHUB_WORKSPACE/WorkEasy-web.cdx.json"
             tar -C dist -czf "$GITHUB_WORKSPACE/WorkEasy-web.tar.gz" .
           fi
       - uses: actions/upload-artifact@v7
@@ -155,6 +156,7 @@ jobs:
           path: |
             apps/web/dist/
             WorkEasy-web.tar.gz
+            WorkEasy-web.cdx.json
           retention-days: 7
 
       - name: Android (debug APK)
@@ -198,12 +200,18 @@ jobs:
           else
             npx tauri build --bundles deb,appimage -- --locked
           fi
+      - name: Registrar licenças das dependências Rust
+        if: github.ref_type == 'tag'
+        run: |
+          cargo metadata --locked --format-version 1 --manifest-path src-tauri/Cargo.toml |
+            node scripts/release-rust-licenses.mjs > "$GITHUB_WORKSPACE/WorkEasy-rust-licenses.json"
       - uses: actions/upload-artifact@v7
         with:
           name: workeasy-linux
           path: |
             apps/web/src-tauri/target/release/bundle/deb/*.deb
             apps/web/src-tauri/target/release/bundle/appimage/*.AppImage
+            WorkEasy-rust-licenses.json
           retention-days: 7
 
   windows:
@@ -313,7 +321,8 @@ jobs:
             node scripts/release-config.mjs bundle
             node scripts/check-bundle-secrets.mjs --dist dist
             app="src-tauri/target/universal-apple-darwin/release/bundle/macos/WorkEasy.app"
-            lipo -verify_arch arm64 x86_64 "$app/Contents/MacOS/workeasy"
+            executable="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Contents/Info.plist")"
+            lipo -verify_arch arm64 x86_64 "$app/Contents/MacOS/$executable"
           else
             npx tauri build --bundles app,dmg -- --locked
           fi

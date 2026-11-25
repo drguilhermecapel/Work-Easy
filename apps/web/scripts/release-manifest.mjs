@@ -32,12 +32,20 @@ for (const [platform, architecture, artifact, suffix, signature] of packages) {
   const hash = createHash('sha256');
   for await (const chunk of createReadStream(path)) hash.update(chunk);
   files.push({
-    platform, architecture, version, commit, environment: 'production', supabaseProject: 'hlzdgbxygtaklqaoihlq',
+    platform, architecture, version, commit, profile: platform === 'web' ? 'web' : 'native', environment: 'production', supabaseProject: 'hlzdgbxygtaklqaoihlq',
     name, bytes: (await stat(path)).size, sha256: hash.digest('hex'), channel: 'GitHub prerelease', signature,
   });
 }
 
-await writeFile(join(output, 'release-manifest.json'), JSON.stringify({ tag, commit, run, files }, null, 2) + '\n');
+const inventory = [
+  ['workeasy-web', 'WorkEasy-web.cdx.json'],
+  ['workeasy-linux', 'WorkEasy-rust-licenses.json'],
+];
+for (const [artifact, name] of inventory) {
+  await copyFile(join(root, 'release-input', artifact, name), join(output, name));
+}
+
+await writeFile(join(output, 'release-manifest.json'), JSON.stringify({ tag, commit, run, inventories: inventory.map(([, name]) => name), files }, null, 2) + '\n');
 await writeFile(join(output, 'SHA256SUMS'), files.map(file => `${file.sha256}  ${file.name}\n`).join(''));
 await writeFile(join(output, 'NOTAS.md'), `# WorkEasy ${tag}
 
