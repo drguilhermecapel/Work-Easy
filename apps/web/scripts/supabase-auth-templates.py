@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
-"""Compare or sync the two OTP templates without touching other Auth settings."""
+"""Sync OTP templates and optionally provision the configured WorkEasy Auth sender."""
 
 import argparse
 import json
 import os
+import smtplib
+import ssl
+from email.errors import HeaderParseError
+from email.headerregistry import Address
 from pathlib import Path
 import tomllib
 from urllib.error import HTTPError, URLError
@@ -44,6 +48,16 @@ def request_config(token, method, payload=None):
         with urlopen(request, timeout=20) as response:
             return json.load(response) if method == "GET" else None
     except HTTPError as error:
+        if error.code == 400:
+            # A management response may contain configuration values. Only emit known categories.
+            detail = error.read(8192).decode("utf-8", errors="replace").lower()
+            if "smtp" in detail or "email provider" in detail or "email hook" in detail:
+                reason = "A API indicou uma restrição relacionada ao remetente de e-mail."
+            elif "template" in detail:
+                reason = "A API indicou uma restrição relacionada aos modelos de e-mail."
+            else:
+                reason = "A API rejeitou os campos enviados."
+            raise SystemExit(f"Supabase Management API recusou {method}: HTTP 400. {reason}") from None
         if error.code == 403:
             media_type = error.headers.get_content_type()
             if media_type == "text/html":
@@ -57,9 +71,49 @@ def request_config(token, method, payload=None):
         raise SystemExit(f"Falha ao consultar a configuração de Auth via {method}.") from None
 
 
-def sync_templates(token, apply, verify=False):
+def provision_sender(token, remote):
+    key = os.environ.get("SUPABASE_AUTH_RESEND_KEY", "")
+    sender = os.environ.get("SUPABASE_AUTH_EMAIL_FROM", "")
+    if not (key or sender):
+        return
+    if remote.get("smtp_host") or remote.get("smtp_user") or remote.get("hook_send_email_enabled"):
+        return
+    if not key or not sender:
+        raise SystemExit("A configuração Resend de Auth requer SUPABASE_AUTH_RESEND_KEY e SUPABASE_AUTH_EMAIL_FROM.")
+    try:
+        address = Address(addr_spec=sender)
+        if not address.username or "." not in address.domain or address.domain.lower() == "resend.dev":
+            raise ValueError
+    except (ValueError, HeaderParseError):
+        raise SystemExit("Use um endereço de Auth do domínio de envio verificado.") from None
+    host = "smtp.resend.com"
+    try:
+        with smtplib.SMTP_SSL(host, 465, timeout=20, context=ssl.create_default_context()) as smtp:
+            smtp.login("resend", key)
+            # Check the envelope sender without providing a recipient or sending a message.
+            code, _ = smtp.mail(address.addr_spec)
+            if code != 250:
+                raise SystemExit("O Resend recusou o remetente de Auth.")
+            smtp.rset()
+    except (OSError, smtplib.SMTPException):
+        raise SystemExit("Falha na conexão TLS ou na autenticação SMTP do Resend.") from None
+    request_config(token, "PATCH", {
+        "smtp_host": host, "smtp_port": "465", "smtp_user": "resend", "smtp_pass": key,
+        "smtp_admin_email": address.addr_spec, "smtp_sender_name": "WorkEasy",
+    })
+    actual = request_config(token, "GET")
+    if actual.get("smtp_host") != host or actual.get("smtp_admin_email") != address.addr_spec:
+        raise SystemExit("A releitura do Supabase não confirmou o remetente SMTP de Auth.")
+    print("Remetente SMTP de Auth configurado e conferido.")
+
+
+def sync_templates(token, apply, verify=False, configure_sender=False):
     expected = expected_templates()
     remote = request_config(token, "GET")
+    print("SMTP de Auth configurado:", "sim" if remote.get("smtp_host") else "não")
+    print("Send Email Hook habilitado:", "sim" if remote.get("hook_send_email_enabled") else "não")
+    if apply and configure_sender:
+        provision_sender(token, remote)
     changed = {name: value for name, value in expected.items() if remote.get(name) != value}
     if not changed:
         print("Os modelos de código já correspondem ao repositório.")
@@ -84,10 +138,13 @@ if __name__ == "__main__":
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--apply", action="store_true")
     mode.add_argument("--verify", action="store_true")
+    parser.add_argument("--configure-sender", action="store_true")
     args = parser.parse_args()
+    if args.configure_sender and not args.apply:
+        parser.error("--configure-sender requer --apply")
     if os.environ.get("SUPABASE_PROJECT_ID") != PRODUCTION_PROJECT:
         raise SystemExit("SUPABASE_PROJECT_ID não corresponde à produção do WorkEasy.")
     token = os.environ.get("SUPABASE_ACCESS_TOKEN")
     if not token:
         raise SystemExit("Configure SUPABASE_ACCESS_TOKEN no ambiente protegido.")
-    sync_templates(token, args.apply, args.verify)
+    sync_templates(token, args.apply, args.verify, args.configure_sender)
