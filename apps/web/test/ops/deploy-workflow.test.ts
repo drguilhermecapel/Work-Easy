@@ -83,6 +83,28 @@ describe('workflows: sem chave duplicada', () => {
   });
 });
 
+describe('deploy-web.yml: verificações e escritas em produção', () => {
+  it('diagnostica as três configurações independentemente e só grava após os gates e o build', () => {
+    const { jobs } = parseYaml(read('deploy-web.yml'));
+    const steps = jobs.publish.steps as { name?: string; if?: string; run?: string }[];
+    const preflights = steps.filter(step => step.if?.includes("steps.node.outcome == 'success'"));
+    expect(preflights.map(s => s.name)).toEqual([
+      'Conferir o projeto e o domínio no Cloudflare Pages',
+      'Conferir a origem no backend',
+      'Conferir o remetente e os modelos de login',
+    ]);
+    for (const step of preflights) expect(step.run).not.toMatch(/--apply|--configure-sender|pages deploy/);
+    const build = steps.findIndex(step => step.run === 'npm run build');
+    const writes = steps.filter(step => step.run?.includes('--apply'));
+    expect(writes).toHaveLength(2);
+    for (const step of writes) {
+      expect(step.if).toBe('inputs.sync_auth_templates');
+      expect(steps.indexOf(step)).toBeGreaterThan(build);
+    }
+    expect(steps.findIndex(step => step.run?.includes('wrangler pages deploy'))).toBeGreaterThan(steps.indexOf(writes[1]));
+  });
+});
+
 describe('deploy-supabase.yml: origem de produção', () => {
   it('isola o job de origem dos modelos, banco e funções', () => {
     const { jobs } = parseYaml(read('deploy-supabase.yml'));

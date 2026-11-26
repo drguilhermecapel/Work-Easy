@@ -2,6 +2,8 @@
 
 from contextlib import nullcontext
 from email.message import Message
+import importlib.util
+import os
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -10,6 +12,10 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 import supabase_site_origin as origin
+
+auth_spec = importlib.util.spec_from_file_location("auth_templates", Path(origin.__file__).with_name("supabase-auth-templates.py"))
+auth = importlib.util.module_from_spec(auth_spec)
+auth_spec.loader.exec_module(auth)
 
 
 class SiteOriginTest(unittest.TestCase):
@@ -111,3 +117,32 @@ class SiteOriginTest(unittest.TestCase):
         override[origin.NATIVE[0]] = None
         with self.assertRaisesRegex(SystemExit, "CORS esperado"):
             origin.check_cors()
+
+
+class AuthPreflightTest(unittest.TestCase):
+    @patch.dict(os.environ, {}, clear=True)
+    @patch.object(auth, "request_config")
+    def test_missing_sender_fails_before_writing_or_publishing(self, api):
+        api.return_value = {}
+        with self.assertRaisesRegex(SystemExit, "SUPABASE_AUTH_RESEND_KEY e SUPABASE_AUTH_EMAIL_FROM"):
+            auth.sync_templates("test", False, check_sender=True)
+        api.assert_called_once_with("test", "GET")
+
+    @patch.object(auth.smtplib, "SMTP_SSL")
+    def test_existing_mailer_or_hook_passes_without_provisioning(self, smtp):
+        for remote in ({"hook_send_email_enabled": True}, {"smtp_host": "mail.test", "smtp_admin_email": "test@mail.test"}):
+            self.assertIsNone(auth.sender_settings(remote, require_sender=True, existing_only=True))
+        smtp.assert_not_called()
+
+    @patch.dict(os.environ, {"SUPABASE_AUTH_RESEND_KEY": "test-credential", "SUPABASE_AUTH_EMAIL_FROM": "app@example.test"})
+    @patch.object(auth.smtplib, "SMTP_SSL")
+    @patch.object(auth, "request_config")
+    def test_plan_checks_envelope_without_sending_or_writing(self, api, smtp):
+        api.return_value = {}
+        connection = smtp.return_value.__enter__.return_value
+        connection.mail.return_value = (250, b"OK")
+        auth.sync_templates("test", False, check_sender=True)
+        self.assertEqual([call[0] for call in connection.method_calls], ["login", "mail", "rset"])
+        api.assert_called_once_with("test", "GET")
+        with self.assertRaisesRegex(SystemExit, "SMTP próprio"):
+            auth.sync_templates("test", False, verify=True, check_sender=True)

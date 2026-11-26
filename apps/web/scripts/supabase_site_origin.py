@@ -80,7 +80,7 @@ def require_site_unset(token):
         raise SystemExit("SITE_URL já existe e o CORS público ainda não está correto. Confira o valor no painel.")
 
 
-def sync(edge_token, auth_token, apply):
+def sync(edge_token, auth_token, apply, verify=False):
     remote = request_config(auth_token, "GET")
     changed = auth_changes(remote)
     initial_redirects = redirect_uris(remote["uri_allow_list"] or "")
@@ -89,8 +89,10 @@ def sync(edge_token, auth_token, apply):
         require_site_unset(edge_token)
     print("Auth:", ", ".join(changed) if changed else "origem e retorno já configurados.")
     print("Edge:", "CORS público e nativo conferido." if edge_ready else "SITE_URL ausente; criação necessária.")
+    if verify and (changed or not edge_ready):
+        raise SystemExit("A origem do backend requer sincronização antes de publicar o site.")
     if not apply:
-        print("Ensaio concluído sem escrita.")
+        print("Conferência concluída sem escrita.")
         return
     if not edge_ready:
         # Recheck before writing, including retries after an interrupted dispatch.
@@ -115,11 +117,13 @@ def sync(edge_token, auth_token, apply):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--apply", action="store_true")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--apply", action="store_true")
+    mode.add_argument("--verify", action="store_true")
     args = parser.parse_args()
     if os.environ.get("SUPABASE_PROJECT_ID") != PRODUCTION_PROJECT or os.environ.get("VITE_SITE_URL") != SITE:
         raise SystemExit("Projeto ou origem protegida incompatível com a produção do WorkEasy.")
     edge_token = os.environ.get("SUPABASE_ACCESS_TOKEN")
     if not edge_token:
         raise SystemExit("Configure SUPABASE_ACCESS_TOKEN no ambiente protegido.")
-    sync(edge_token, os.environ.get("SUPABASE_AUTH_CONFIG_TOKEN") or edge_token, args.apply)
+    sync(edge_token, os.environ.get("SUPABASE_AUTH_CONFIG_TOKEN") or edge_token, args.apply, args.verify)

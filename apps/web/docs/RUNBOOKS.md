@@ -1319,7 +1319,9 @@ Divergências encontradas ao reunir as consultas contra o schema de 24/11/2026 (
 
 ## Configurar a origem pública no Supabase
 
-No workflow `deploy-supabase.yml`, selecione `main`, ligue `site_origin_only`, deixe `ref` vazio e mantenha as outras opções de publicação desligadas. Comece com `dry_run=true`. O resumo informa os campos de Auth pendentes e o resultado de CORS. Repita com `dry_run=false` para aplicar o plano ao projeto WorkEasy.
+Para publicar o site, use o workflow Pages em `main`, confirme `DEPLOY` e marque `sync_auth_templates` para sincronizar origem e login após a validação da hospedagem, remetente e build. Com a opção desligada, o workflow exige que o backend já esteja configurado.
+
+Para ensaiar ou aplicar a origem separadamente, no workflow `deploy-supabase.yml`, selecione `main`, ligue `site_origin_only`, deixe `ref` vazio e mantenha as outras opções de publicação desligadas. Comece com `dry_run=true`. O resumo informa os campos de Auth pendentes e o resultado de CORS. Repita com `dry_run=false` para aplicar o plano ao projeto WorkEasy.
 
 O workflow define `SITE_URL=https://workeasy.ia.br` nas Edge Functions quando a variável está ausente e o domínio precisa da permissão. A verificação usa OPTIONS em `account-export` e `account-delete` para o site, os quatro esquemas nativos e uma origem externa de controle. No Auth, a URL de produção substitui apenas o padrão local ou um campo vazio. O retorno exato `https://workeasy.ia.br/conta` é acrescentado à lista remota, preservando entradas anteriores. O token de Edge vem de `production.SUPABASE_ACCESS_TOKEN`. Auth usa `SUPABASE_AUTH_CONFIG_TOKEN` quando disponível.
 
