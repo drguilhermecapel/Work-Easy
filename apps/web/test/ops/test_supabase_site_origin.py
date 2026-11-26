@@ -20,12 +20,37 @@ auth_spec.loader.exec_module(auth)
 
 class SiteOriginTest(unittest.TestCase):
     original = {"site_url": "http://localhost:3000", "uri_allow_list": "capacitor://localhost,https://other.test/a"}
-    configured = {"site_url": origin.SITE, "uri_allow_list": original["uri_allow_list"] + "," + origin.CALLBACK}
+    configured = {"site_url": origin.SITE, "uri_allow_list": original["uri_allow_list"] + "," + (origin.SITE + "/conta")}
 
     def test_preserves_remote_redirects_and_adds_only_account_callback(self):
         self.assertEqual(origin.auth_changes(self.original), self.configured)
         self.assertEqual(origin.auth_changes(self.configured), {})
-        self.assertEqual(origin.auth_changes({**self.configured, "uri_allow_list": None}), {"uri_allow_list": origin.CALLBACK})
+        self.assertEqual(origin.auth_changes({**self.configured, "uri_allow_list": None}), {"uri_allow_list": (origin.SITE + "/conta")})
+
+    def test_protected_override_rejects_non_origins_and_allows_real_pages_domain(self):
+        self.assertEqual(origin.public_origin("https://workeasy-app.pages.dev"), "https://workeasy-app.pages.dev")
+        for invalid in ("https://example.com", "http://app.pages.dev", "https://bad.pages.dev/path",
+                        "https://localhost", "https://127.0.0.1", "https://u:p@pages.dev", "https://pages.dev:443"):
+            with self.subTest(value=invalid), self.assertRaises(SystemExit):
+                origin.public_origin(invalid)
+
+    @patch.object(origin, "management_request")
+    @patch.object(origin, "check_cors", return_value=True)
+    @patch.object(origin, "request_config")
+    def test_protected_override_only_accepts_existing_auth_and_cors(self, auth, cors, edge):
+        target = "https://workeasy-app.pages.dev"
+        auth.return_value = {"site_url": target, "uri_allow_list": f"capacitor://localhost,{target}/conta"}
+        origin.sync("edge", "auth", True, target=target)
+        cors.assert_called_once_with(target)
+        cors.return_value = False
+        with self.assertRaisesRegex(SystemExit, "alternativa"):
+            origin.sync("edge", "auth", True, target=target)
+        cors.return_value = True
+        auth.return_value = self.original
+        with self.assertRaisesRegex(SystemExit, "alternativa"):
+            origin.sync("edge", "auth", True, target=target)
+        self.assertTrue(all(call.args[1] == "GET" for call in auth.call_args_list))
+        edge.assert_not_called()
 
     def test_stops_on_conflicting_auth_site_or_unknown_schema(self):
         for remote in ({**self.original, "site_url": "https://other.test"}, {"site_url": None}):
@@ -77,7 +102,7 @@ class SiteOriginTest(unittest.TestCase):
     @patch.object(origin, "request_config")
     def test_stops_if_concurrent_changes_or_missing_prior_redirect_after_patch(self, auth, cors):
         unrelated_redirect = {**self.original, "uri_allow_list": "tauri://localhost"}
-        lost_redirect = {**self.configured, "uri_allow_list": origin.CALLBACK}
+        lost_redirect = {**self.configured, "uri_allow_list": (origin.SITE + "/conta")}
         auth.side_effect = [self.original, unrelated_redirect]
         with self.assertRaisesRegex(SystemExit, "mudou"):
             origin.sync("edge", "auth", True)
@@ -93,6 +118,7 @@ class SiteOriginTest(unittest.TestCase):
 
         def response(req, timeout):
             self.assertEqual(req.method, "OPTIONS")
+            self.assertTrue(req.full_url.startswith(f"https://{origin.PRODUCTION_PROJECT}.supabase.co/functions/v1/"))
             site = req.get_header("Origin")
             visited.add((req.full_url.rsplit("/", 1)[-1], site))
             headers = Message()
@@ -127,6 +153,9 @@ class AuthPreflightTest(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "SUPABASE_AUTH_RESEND_KEY e SUPABASE_AUTH_EMAIL_FROM"):
             auth.sync_templates("test", False, check_sender=True)
         api.assert_called_once_with("test", "GET")
+        with self.assertRaisesRegex(SystemExit, "SUPABASE_AUTH_RESEND_KEY e SUPABASE_AUTH_EMAIL_FROM"):
+            auth.sync_templates("test", True, configure_sender=True)
+        self.assertTrue(all(call.args[1] == "GET" for call in api.call_args_list))
 
     @patch.object(auth.smtplib, "SMTP_SSL")
     def test_existing_mailer_or_hook_passes_without_provisioning(self, smtp):

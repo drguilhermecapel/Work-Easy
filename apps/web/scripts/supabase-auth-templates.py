@@ -68,7 +68,7 @@ def sender_settings(remote, require_sender=False, existing_only=False):
 
 
 def provision_sender(token, remote):
-    settings = sender_settings(remote)
+    settings = sender_settings(remote, require_sender=True)
     if not settings:
         return
     request_config(token, "PATCH", settings)
