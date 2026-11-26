@@ -137,7 +137,7 @@ jobs:
       - name: Lint e testes
         run: |
           npm run lint
-          npm test
+          bash scripts/test-ci.sh
 
       - name: Build do site (inclui a pré-renderização)
         run: npm run build

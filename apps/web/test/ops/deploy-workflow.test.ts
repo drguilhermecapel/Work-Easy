@@ -2,7 +2,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { delimiter, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { parse as parseYaml } from 'yaml';
 
@@ -80,6 +80,47 @@ describe('workflows: sem chave duplicada', () => {
   it('há workflows para conferir', () => expect(files.length).toBeGreaterThan(0));
   it.each(files)('%s', name => {
     expect(findDuplicateKeys(read(name))).toEqual([]);
+  });
+});
+
+describe('testes da CI de distribuição', () => {
+  it.each([
+    ['deploy-web.yml', 'publish'],
+    ['web-release.yml', 'linux-web-android'],
+  ])('%s usa a suíte isolada', (workflow, job) => {
+    const { jobs } = parseYaml(read(workflow));
+    const steps = jobs[job].steps as { run?: string }[];
+    expect(steps.some(step => step.run?.trim().split('\n').includes('bash scripts/test-ci.sh'))).toBe(true);
+  });
+
+  it('executa o npm test sem herdar a configuração do pacote', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'workeasy-test-ci-'));
+    try {
+      writeFileSync(join(dir, 'npm'), [
+        '#!/bin/sh',
+        'if env | grep -q "^VITE_"; then exit 1; fi',
+        'test -z "${WORKEASY_RELEASE_TARGET+x}" || exit 2',
+        'test "$WORKFLOW_PROBE" = fixture || exit 3',
+        'echo "$*"',
+      ].join('\n'), { mode: 0o755 });
+      const result = spawnSync('bash', ['scripts/test-ci.sh', '--reporter=dot'], {
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          PATH: [dir, process.env.PATH].join(delimiter),
+          VITE_SUPABASE_URL: 'https://unit-test.invalid',
+          VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_unit_test',
+          VITE_LOGIN_METHODS: 'email',
+          VITE_LEGAL_STATUS: 'vigente',
+          WORKEASY_RELEASE_TARGET: 'web',
+          WORKFLOW_PROBE: 'fixture',
+        },
+      });
+      expect(result.status, result.stderr).toBe(0);
+      expect(result.stdout.trim()).toBe('test -- --reporter=dot');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 

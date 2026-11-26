@@ -25,6 +25,7 @@ on:
       - 'apps/web/platform/**'
       - 'apps/web/vite.config.ts'
       - 'apps/web/scripts/release-config.*'
+      - 'apps/web/scripts/test-ci.sh'
       - 'apps/web/scripts/check-android-install.sh'
       - 'apps/web/scripts/check-android-search.mjs'
       - 'apps/web/scripts/check-ios-simulator.sh'
@@ -143,7 +144,8 @@ jobs:
           cache: npm
           cache-dependency-path: apps/web/package-lock.json
       - run: npm ci
-      - run: npm test
+      - name: Executar a suíte com configuração de teste
+        run: bash scripts/test-ci.sh
 
       - name: Website (PWA)
         env:
