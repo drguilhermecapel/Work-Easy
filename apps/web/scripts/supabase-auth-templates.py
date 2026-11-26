@@ -2,7 +2,6 @@
 """Sync OTP templates and optionally provision the configured WorkEasy Auth sender."""
 
 import argparse
-import json
 import os
 import smtplib
 import ssl
@@ -10,10 +9,8 @@ from email.errors import HeaderParseError
 from email.headerregistry import Address
 from pathlib import Path
 import tomllib
-from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+from supabase_management import PRODUCTION_PROJECT, request_config
 
-PRODUCTION_PROJECT = "hlzdgbxygtaklqaoihlq"
 WEB = Path(__file__).resolve().parents[1]
 
 
@@ -32,52 +29,19 @@ def expected_templates():
     return result
 
 
-def request_config(token, method, payload=None):
-    request = Request(
-        f"https://api.supabase.com/v1/projects/{PRODUCTION_PROJECT}/config/auth",
-        data=json.dumps(payload).encode("utf-8") if payload is not None else None,
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            "User-Agent": "WorkEasy-Release/1.0",
-        },
-        method=method,
-    )
-    try:
-        with urlopen(request, timeout=20) as response:
-            return json.load(response) if method == "GET" else None
-    except HTTPError as error:
-        if error.code == 400:
-            # A management response may contain configuration values. Only emit known categories.
-            detail = error.read(8192).decode("utf-8", errors="replace").lower()
-            if "smtp" in detail or "email provider" in detail or "email hook" in detail:
-                reason = "A API indicou uma restrição relacionada ao remetente de e-mail."
-            elif "template" in detail:
-                reason = "A API indicou uma restrição relacionada aos modelos de e-mail."
-            else:
-                reason = "A API rejeitou os campos enviados."
-            raise SystemExit(f"Supabase Management API recusou {method}: HTTP 400. {reason}") from None
-        if error.code == 403:
-            media_type = error.headers.get_content_type()
-            if media_type == "text/html":
-                hint = "Resposta HTML. Confira os controles de rede e a origem da resposta."
-            else:
-                scope = "auth:read" if method == "GET" else "auth:write"
-                hint = f"Confira o acesso ao projeto WorkEasy e a autorização {scope} no Supabase."
-            raise SystemExit(f"Supabase Management API recusou {method}: HTTP 403. {hint}") from None
-        raise SystemExit(f"Supabase Management API recusou {method}: HTTP {error.code}.") from None
-    except (URLError, TimeoutError, ValueError):
-        raise SystemExit(f"Falha ao consultar a configuração de Auth via {method}.") from None
-
-
-def provision_sender(token, remote):
+def sender_settings(remote, require_sender=False, existing_only=False):
+    if remote.get("hook_send_email_enabled"):
+        return None
+    if remote.get("smtp_host") or remote.get("smtp_user"):
+        if require_sender and not all(remote.get(field) for field in ("smtp_host", "smtp_admin_email")):
+            raise SystemExit("O SMTP existente está incompleto. Confira o remetente no painel do Supabase.")
+        return None
+    if require_sender and existing_only:
+        raise SystemExit("O login precisa de SMTP próprio ou de um Send Email Hook ativo.")
     key = os.environ.get("SUPABASE_AUTH_RESEND_KEY", "")
     sender = os.environ.get("SUPABASE_AUTH_EMAIL_FROM", "")
-    if not (key or sender):
-        return
-    if remote.get("smtp_host") or remote.get("smtp_user") or remote.get("hook_send_email_enabled"):
-        return
+    if not (key or sender) and not require_sender:
+        return None
     if not key or not sender:
         raise SystemExit("A configuração Resend de Auth requer SUPABASE_AUTH_RESEND_KEY e SUPABASE_AUTH_EMAIL_FROM.")
     try:
@@ -97,21 +61,31 @@ def provision_sender(token, remote):
             smtp.rset()
     except (OSError, smtplib.SMTPException):
         raise SystemExit("Falha na conexão TLS ou na autenticação SMTP do Resend.") from None
-    request_config(token, "PATCH", {
+    return {
         "smtp_host": host, "smtp_port": "465", "smtp_user": "resend", "smtp_pass": key,
         "smtp_admin_email": address.addr_spec, "smtp_sender_name": "WorkEasy",
-    })
+    }
+
+
+def provision_sender(token, remote):
+    settings = sender_settings(remote, require_sender=True)
+    if not settings:
+        return
+    request_config(token, "PATCH", settings)
     actual = request_config(token, "GET")
-    if actual.get("smtp_host") != host or actual.get("smtp_admin_email") != address.addr_spec:
+    if (actual.get("smtp_host") != settings["smtp_host"]
+            or actual.get("smtp_admin_email") != settings["smtp_admin_email"]):
         raise SystemExit("A releitura do Supabase não confirmou o remetente SMTP de Auth.")
     print("Remetente SMTP de Auth configurado e conferido.")
 
 
-def sync_templates(token, apply, verify=False, configure_sender=False):
+def sync_templates(token, apply, verify=False, configure_sender=False, check_sender=False):
     expected = expected_templates()
     remote = request_config(token, "GET")
     print("SMTP de Auth configurado:", "sim" if remote.get("smtp_host") else "não")
     print("Send Email Hook habilitado:", "sim" if remote.get("hook_send_email_enabled") else "não")
+    if check_sender:
+        sender_settings(remote, require_sender=True, existing_only=verify)
     if apply and configure_sender:
         provision_sender(token, remote)
     changed = {name: value for name, value in expected.items() if remote.get(name) != value}
@@ -139,6 +113,7 @@ if __name__ == "__main__":
     mode.add_argument("--apply", action="store_true")
     mode.add_argument("--verify", action="store_true")
     parser.add_argument("--configure-sender", action="store_true")
+    parser.add_argument("--check-sender", action="store_true")
     args = parser.parse_args()
     if args.configure_sender and not args.apply:
         parser.error("--configure-sender requer --apply")
@@ -147,4 +122,4 @@ if __name__ == "__main__":
     token = os.environ.get("SUPABASE_ACCESS_TOKEN")
     if not token:
         raise SystemExit("Configure SUPABASE_ACCESS_TOKEN no ambiente protegido.")
-    sync_templates(token, args.apply, args.verify, args.configure_sender)
+    sync_templates(token, args.apply, args.verify, args.configure_sender, args.check_sender)
