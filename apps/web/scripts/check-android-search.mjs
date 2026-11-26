@@ -45,14 +45,35 @@ async function evaluate(expression) {
 }
 
 async function tap(selector) {
-  const point = await evaluate(`(() => {
-    const element = document.querySelector(${JSON.stringify(selector)});
-    element.scrollIntoView({ block: 'center' });
-    const rect = element.getBoundingClientRect();
-    return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
-  })()`);
-  await command('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point] });
-  await command('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  const target = `document.querySelector(${JSON.stringify(selector)})`;
+  await evaluate(`${target}.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' })`);
+
+  // Android can still be resizing or panning the WebView while its keyboard opens.
+  // Wait for a stable, visible hit target before dispatching one real touch.
+  let previous;
+  let stable = 0;
+  for (let i = 0; i < 50; i++) {
+    const point = await evaluate(`(() => {
+      const element = ${target};
+      const rect = element.getBoundingClientRect();
+      const viewport = window.visualViewport;
+      const x = rect.left + rect.width / 2;
+      const y = rect.top + rect.height / 2;
+      const hit = document.elementFromPoint(x, y);
+      return { x, y, width: viewport.width, height: viewport.height, top: viewport.offsetTop,
+        left: viewport.offsetLeft, hit: hit?.tagName, onTarget: element.contains(hit) };
+    })()`);
+    const state = JSON.stringify(point);
+    stable = point.onTarget && previous === state ? stable + 1 : 0;
+    if (stable >= 3) {
+      await command('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: point.x, y: point.y }] });
+      await command('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      return;
+    }
+    previous = state;
+    await delay(100);
+  }
+  throw new Error(`Controle indisponível para toque: ${selector} ${previous}`);
 }
 
 async function waitFor(expression, failure) {
