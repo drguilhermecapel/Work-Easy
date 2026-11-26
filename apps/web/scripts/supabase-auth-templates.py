@@ -2,7 +2,6 @@
 """Sync OTP templates and optionally provision the configured WorkEasy Auth sender."""
 
 import argparse
-import json
 import os
 import smtplib
 import ssl
@@ -10,10 +9,8 @@ from email.errors import HeaderParseError
 from email.headerregistry import Address
 from pathlib import Path
 import tomllib
-from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+from supabase_management import PRODUCTION_PROJECT, request_config
 
-PRODUCTION_PROJECT = "hlzdgbxygtaklqaoihlq"
 WEB = Path(__file__).resolve().parents[1]
 
 
@@ -30,45 +27,6 @@ def expected_templates():
         result[f"mailer_subjects_{name}"] = template["subject"]
         result[f"mailer_templates_{name}_content"] = content
     return result
-
-
-def request_config(token, method, payload=None):
-    request = Request(
-        f"https://api.supabase.com/v1/projects/{PRODUCTION_PROJECT}/config/auth",
-        data=json.dumps(payload).encode("utf-8") if payload is not None else None,
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            "User-Agent": "WorkEasy-Release/1.0",
-        },
-        method=method,
-    )
-    try:
-        with urlopen(request, timeout=20) as response:
-            return json.load(response) if method == "GET" else None
-    except HTTPError as error:
-        if error.code == 400:
-            # A management response may contain configuration values. Only emit known categories.
-            detail = error.read(8192).decode("utf-8", errors="replace").lower()
-            if "smtp" in detail or "email provider" in detail or "email hook" in detail:
-                reason = "A API indicou uma restrição relacionada ao remetente de e-mail."
-            elif "template" in detail:
-                reason = "A API indicou uma restrição relacionada aos modelos de e-mail."
-            else:
-                reason = "A API rejeitou os campos enviados."
-            raise SystemExit(f"Supabase Management API recusou {method}: HTTP 400. {reason}") from None
-        if error.code == 403:
-            media_type = error.headers.get_content_type()
-            if media_type == "text/html":
-                hint = "Resposta HTML. Confira os controles de rede e a origem da resposta."
-            else:
-                scope = "auth:read" if method == "GET" else "auth:write"
-                hint = f"Confira o acesso ao projeto WorkEasy e a autorização {scope} no Supabase."
-            raise SystemExit(f"Supabase Management API recusou {method}: HTTP 403. {hint}") from None
-        raise SystemExit(f"Supabase Management API recusou {method}: HTTP {error.code}.") from None
-    except (URLError, TimeoutError, ValueError):
-        raise SystemExit(f"Falha ao consultar a configuração de Auth via {method}.") from None
 
 
 def provision_sender(token, remote):

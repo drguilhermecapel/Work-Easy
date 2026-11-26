@@ -5,7 +5,7 @@ name: Publicar Supabase (migrations e Edge Functions)
 # Runs only on demand: there is no push or pull_request trigger. The default input
 # is a dry run: with dry_run on NOTHING is published (no migration, no catalog, no
 # function), with or without `ref`, and the job summary lists what would be. Secrets of the Edge
-# Functions (ASAAS_BASE_URL, APP_ENV, ...) are NOT set here: that is a manual step
+# Functions (except SITE_URL in the isolated site_origin_only job) are set manually
 # (apps/web/docs/arquitetura/infra.md).
 #
 # Rollback of Edge Functions (there is no versioned artifact): run this workflow
@@ -25,6 +25,10 @@ on:
         default: true
       auth_templates_only:
         description: 'Conferir ou publicar apenas os dois modelos de e-mail de código'
+        type: boolean
+        default: false
+      site_origin_only:
+        description: 'Conferir ou configurar apenas o domínio público e o retorno /conta no Auth e nas Edge Functions'
         type: boolean
         default: false
       deploy_functions:
@@ -48,7 +52,7 @@ concurrency:
 jobs:
   auth-templates:
     name: Modelos de confirmação e login
-    if: inputs.auth_templates_only
+    if: inputs.auth_templates_only && !inputs.site_origin_only
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     environment: production
@@ -77,8 +81,41 @@ jobs:
             python3 apps/web/scripts/supabase-auth-templates.py --apply
           fi
 
+  site-origin:
+    name: Origem pública de produção
+    if: inputs.site_origin_only
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: production
+    steps:
+      - name: Confirmar a branch e o modo
+        env:
+          REQUESTED_REF: ${{ inputs.ref }}
+          DEPLOY_FUNCTIONS: ${{ inputs.deploy_functions }}
+          AUTH_TEMPLATES: ${{ inputs.auth_templates_only }}
+        run: |
+          if [[ "$GITHUB_REF" != refs/heads/main || -n "$REQUESTED_REF" || "$DEPLOY_FUNCTIONS" == true || "$AUTH_TEMPLATES" == true ]]; then
+            echo "::error::Use apenas o modo de origem pública, em main, sem ref."
+            exit 1
+          fi
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Sincronizar a origem pública
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_AUTH_CONFIG_TOKEN: ${{ secrets.SUPABASE_AUTH_CONFIG_TOKEN }}
+          SUPABASE_PROJECT_ID: ${{ vars.SUPABASE_PROJECT_ID }}
+          VITE_SITE_URL: ${{ vars.VITE_SITE_URL || 'https://workeasy.ia.br' }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          args=()
+          if [[ "$DRY_RUN" == false ]]; then args+=(--apply); fi
+          set -o pipefail
+          python3 apps/web/scripts/supabase_site_origin.py "${args[@]}" | tee -a "$GITHUB_STEP_SUMMARY"
+
   supabase:
-    if: ${{ !inputs.auth_templates_only }}
+    if: ${{ !inputs.auth_templates_only && !inputs.site_origin_only }}
     name: Migrations e Edge Functions
     runs-on: ubuntu-24.04
     timeout-minutes: 30

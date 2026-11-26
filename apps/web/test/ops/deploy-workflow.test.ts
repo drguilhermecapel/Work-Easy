@@ -83,6 +83,21 @@ describe('workflows: sem chave duplicada', () => {
   });
 });
 
+describe('deploy-supabase.yml: origem de produção', () => {
+  it('isola o job de origem dos modelos, banco e funções', () => {
+    const { jobs } = parseYaml(read('deploy-supabase.yml'));
+    expect(jobs['site-origin'].if).toBe('inputs.site_origin_only');
+    expect(jobs['site-origin'].environment).toBe('production');
+    expect(jobs['auth-templates'].if).toContain('!inputs.site_origin_only');
+    expect(jobs.supabase.if).toContain('!inputs.site_origin_only');
+    const steps = jobs['site-origin'].steps as { run?: string }[];
+    expect(steps[0].run).toContain('refs/heads/main');
+    expect(steps[0].run).toContain('"$AUTH_TEMPLATES" == true');
+    const step = steps.find(item => item.run?.includes('supabase_site_origin.py'));
+    expect(step?.run).toContain('if [[ "$DRY_RUN" == false ]]; then args+=(--apply)');
+  });
+});
+
 describe('deploy-supabase.yml: reversão de Edge Functions', () => {
   const text = read('deploy-supabase.yml');
   const triggers = text.slice(text.indexOf('\non:'), text.indexOf('\npermissions:'));

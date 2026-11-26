@@ -1315,3 +1315,12 @@ Divergências encontradas ao reunir as consultas contra o schema de 24/11/2026 (
 ## Verificar o site publicado
 
 `apps/web/scripts/healthcheck.mjs` confere se o site responde 200 e envia os cabeçalhos de `public/_headers`. Uso e ligação a um agendador ou monitor externo: `docs/operacao/13-alertas-e-monitor.md`.
+
+
+## Configurar a origem pública no Supabase
+
+No workflow `deploy-supabase.yml`, selecione `main`, ligue `site_origin_only`, deixe `ref` vazio e mantenha as outras opções de publicação desligadas. Comece com `dry_run=true`. O resumo informa os campos de Auth pendentes e o resultado de CORS. Repita com `dry_run=false` para aplicar o plano ao projeto WorkEasy.
+
+O workflow define `SITE_URL=https://workeasy.ia.br` nas Edge Functions quando a variável está ausente e o domínio precisa da permissão. A verificação usa OPTIONS em `account-export` e `account-delete` para o site, os quatro esquemas nativos e uma origem externa de controle. No Auth, a URL de produção substitui apenas o padrão local ou um campo vazio. O retorno exato `https://workeasy.ia.br/conta` é acrescentado à lista remota, preservando entradas anteriores. O token de Edge vem de `production.SUPABASE_ACCESS_TOKEN`. Auth usa `SUPABASE_AUTH_CONFIG_TOKEN` quando disponível.
+
+Se houver conflito, confira no painel **Edge Functions → Secrets** e **Authentication → URL Configuration** qual aplicação usa o valor atual antes de qualquer substituição. A API de configuração não oferece escrita condicional. Evite editar essas duas URLs diretamente no painel enquanto a execução estiver em andamento. Se uma execução for interrompida entre as duas etapas, rode o ensaio novamente. Na recuperação, preserve as URLs anteriores em uso e remova apenas a entrada acrescentada, se a aplicação deixar de usar este domínio. [Variáveis das funções](https://supabase.com/docs/guides/functions/secrets) · [URLs de redirecionamento](https://supabase.com/docs/guides/auth/redirect-urls)

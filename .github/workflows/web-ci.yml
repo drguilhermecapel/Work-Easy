@@ -39,6 +39,8 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+      - name: Testar a configuração de origem do Supabase
+        run: python3 -m unittest discover -s test/ops -p test_supabase_site_origin.py
       - run: npm run build
       # Budgets of the initial load (scripts/check-bundle-size.mjs): a regression fails here, not in production
       - run: npm run check:size
