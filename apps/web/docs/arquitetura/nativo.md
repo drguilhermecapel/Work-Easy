@@ -46,12 +46,10 @@ Decisões dos adaptadores:
   tráfego `http://` é recusado; só a loja de certificados do sistema é confiável. O
   Capacitor serve o app em `https://localhost` (ver `capacitor.config.ts`), então nenhuma
   exceção é necessária.
-- Intent filter de **App Links** (`autoVerify="true"`, `https`, host
-  `app.workeasy.example`). O host é **de exemplo** (domínio reservado, não resolve). Trocar
-  pelo domínio real antes de publicar, em todos os arquivos da seção 8 (o manifesto não
-  restringe caminhos: qualquer link `https` do host abre o app; já o iOS só abre os
-  caminhos do `apple-app-site-association`). O manifesto mesclado do `.aab` de release
-  tem o filtro com `autoVerify=true` e esse host (conferido em 24/11/2026).
+- O filtro de **App Links** verifica links HTTPS de `workeasy.ia.br` com
+  `autoVerify="true"`. O Android aceita qualquer caminho desse host. No iOS os caminhos
+  autorizados constam no `apple-app-site-association`. A associação de cada plataforma
+  depende da identidade de assinatura da seção 8 e de um teste em aparelho.
 - `src/release/AndroidManifest.xml` (só no build `release`) remove `CAMERA`, `uses-feature
   camera`, as duas permissões de localização e `uses-feature gps`. O manifesto mesclado do
   `.aab` de release declara só `INTERNET` e a permissão interna do próprio pacote
@@ -149,19 +147,11 @@ Decisões dos adaptadores:
 
 ### 3.4 Pendências iOS
 
-- **Universal Links**: desde 24/11/2026 existe `ios/App/App/App.entitlements` com
-  `com.apple.developer.associated-domains` = `applinks:app.workeasy.example` (**domínio de
-  exemplo**, marcado como placeholder no próprio arquivo) e o projeto Xcode aponta para ele
-  (`CODE_SIGN_ENTITLEMENTS = App/App.entitlements;` nas configurações Debug e Release do alvo
-  `App`, mais a referência do arquivo no grupo `App`; é a edição mínima do `project.pbxproj`, e
-  o arquivo não entra na fase Resources, como o Xcode faz). **Não foi aberto no Xcode**: o que
-  se verificou foi o plist (`plistlib`), o pareamento das referências do `project.pbxproj` e o
-  script `scripts/check-app-links.mjs`. Faltam, do dono: o domínio real, o Team ID, e ligar a
-  capacidade "Associated Domains" no App ID da conta Apple (o Xcode com assinatura automática
-  faz isso ao abrir o alvo, numa conta paga; conta pessoal gratuita não suporta). O Capacitor 8
-  já repassa o link ao plugin: `SceneDelegate.scene(_:continue:)` chama o
-  `SceneDelegateProxy`, que dispara `appUrlOpen` (tratado em `platform/native.ts`). O template
-  `apple-app-site-association` está em `public/.well-known/`.
+- O entitlement de **Universal Links** define `applinks:workeasy.ia.br`. O alvo
+  `App` referencia `App/App.entitlements` em Debug e Release. Para distribuir,
+  preencha o Team ID no `apple-app-site-association`, habilite Associated Domains no
+  App ID da conta Apple e teste em aparelho. O Capacitor 8 repassa o link pelo
+  `SceneDelegateProxy` ao listener de `appUrlOpen` em `platform/native.ts`.
 - `ITSAppUsesNonExemptEncryption` não foi declarado. O app usa HTTPS, o que normalmente
   dispensa a declaração de criptografia; a decisão cabe ao responsável pela loja.
 - `UIRequiredDeviceCapabilities` ainda lista `armv7`. Não foi alterado: é um resquício,
@@ -251,13 +241,11 @@ Sem `frame-ancestors`: em `<meta>` a diretiva é ignorada pelo navegador.
    `platform/deepLinks.ts` (`routeFromAppUrl`) aceita só links `https` para o host de
    `VITE_SITE_URL` e devolve a rota; o resto é ignorado. Testado em jsdom
    (`test/platform/deep-links.test.ts`), não em aparelho. O build nativo precisa ter
-   `VITE_SITE_URL` definida, senão nenhum link é tratado. Os itens 2 e 3 abaixo continuam
-   pendentes: sem o domínio real, o sistema não entrega o link ao app.
-2. **Domínio real**: trocar o host de exemplo do manifesto Android e os valores de
-   `public/.well-known/*` (`TODO`). Hospedagem exige `Content-Type: application/json` no
-   arquivo `apple-app-site-association` (sem extensão), HTTPS e sem redirecionamento. O
-   `public/_redirects` é de Netlify e o `/* /index.html 200` só não engole o `.well-known`
-   porque o arquivo existe; a hospedagem final ainda não foi escolhida.
+   `VITE_SITE_URL` definida para tratar os links.
+2. **Hospedagem das associações**. Sirva os arquivos de `public/.well-known/` em
+   `https://workeasy.ia.br` com HTTPS. O AASA precisa responder diretamente com
+   HTTP 200 e `Content-Type: application/json`. O build web de distribuição publica
+   uma associação vazia para cada plataforma cuja identidade ainda está pendente.
 3. **Fingerprint do Android**: o `sha256_cert_fingerprints` precisa ser o do certificado de
    **assinatura do Google Play** (App Signing), não o da chave de upload.
 4. **Universal Links e entitlements** (3.4): arquivo e projeto feitos; falta o dono (seção 8).
@@ -299,23 +287,21 @@ O `capacitor.config.ts` **não** leva o host dos links: a origem do WebView é
 `https://localhost` no Android e `capacitor://localhost` no iOS (lista de CORS das Edge
 Functions). O script só confere nele o `appId` e que não haja `server.url`/`server.hostname`.
 
-Preenchimento, depois que houver o domínio de produção (todos no mesmo host, sem `https://`
-e sem caminho onde se pede só o domínio):
+O domínio configurado no manifesto Android e no entitlement iOS é `workeasy.ia.br`.
+Confira as identidades de assinatura antes de distribuir.
 
-| Arquivo | O que trocar | De onde vem |
+| Arquivo | Campo | Origem |
 |---|---|---|
-| `android/app/src/main/AndroidManifest.xml` | `android:host="app.workeasy.example"` | Domínio do site (o mesmo de `VITE_SITE_URL`). |
-| `ios/App/App/App.entitlements` | `applinks:app.workeasy.example` | O mesmo domínio. |
 | `public/.well-known/assetlinks.json` | `sha256_cert_fingerprints` (hoje `TODO`) | Impressão digital SHA-256 do certificado de **assinatura do app**: Play Console > Integridade do app > Assinatura de apps (não é a da chave de upload). Uma chave de upload autoassinada se lê com `keytool -list -v -keystore <arquivo>.jks -alias <alias>` ou, do próprio `.aab`, `keytool -printcert -jarfile app-release.aab`; essas duas servem só para teste interno sem a Assinatura do Play. Formato `AA:BB:...` (32 pares maiúsculos). Se o app também for distribuído por outro canal, a impressão digital dele entra como segundo item da lista. |
 | `public/.well-known/apple-app-site-association` | `TODO-TEAM-ID` | Team ID de 10 caracteres: developer.apple.com > Membership details. |
 
 Depois de publicar o site (os dois arquivos precisam responder em
-`https://<domínio>/.well-known/...`, `200`, sem redirecionamento, o AASA com
+`https://workeasy.ia.br/.well-known/...`, `200`, sem redirecionamento, o AASA com
 `Content-Type: application/json`):
 
-1. `node scripts/check-app-links.mjs --strict --site-url https://<domínio>` deve terminar em 0.
+1. `node scripts/check-app-links.mjs --strict --site-url https://workeasy.ia.br` deve terminar em 0.
 2. Android: `adb shell pm get-app-links br.com.workeasy` mostra o host como `verified`;
-   `adb shell am start -a android.intent.action.VIEW -d "https://<domínio>/p/teste"` abre o app.
+   `adb shell am start -a android.intent.action.VIEW -d "https://workeasy.ia.br/p/teste"` abre o app.
 3. iOS: em aparelho, abrir um link do domínio pelo app Notas ou Mensagens abre o app
    (não vale colar na barra do Safari). Em desenvolvimento, usar `?mode=developer` no
    entitlement.

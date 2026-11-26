@@ -26,6 +26,15 @@ const copyOfRepo = (): string => {
     mkdirSync(dirname(join(root, file)), { recursive: true });
     cpSync(join(ROOT, file), join(root, file));
   }
+  // Keep the signing tests independent of whichever channels have already been configured.
+  const assetlinksPath = join(root, FILES.assetlinks);
+  const statements = JSON.parse(readFileSync(assetlinksPath, 'utf8'));
+  statements[0].target.sha256_cert_fingerprints = ['TODO-CERT'];
+  writeFileSync(assetlinksPath, JSON.stringify(statements));
+  const aasaPath = join(root, FILES.aasa);
+  const aasa = JSON.parse(readFileSync(aasaPath, 'utf8'));
+  aasa.applinks.details[0].appID = 'TODO-TEAM-ID.br.com.workeasy';
+  writeFileSync(aasaPath, JSON.stringify(aasa));
   return root;
 };
 const edit = (root: string, key: keyof typeof FILES, change: (text: string) => string) => {
@@ -41,21 +50,22 @@ const run = (root: string, ...args: string[]) =>
 const FINGERPRINT = Array.from({ length: 32 }, (_, i) => (i * 7 + 10).toString(16).toUpperCase().padStart(2, '0').slice(-2)).join(':');
 
 describe('check-app-links on the files of the repository', () => {
-  it('finds them coherent, and lists the four things only the owner can fill in', () => {
-    const { errors, pending } = checkAppLinks(ROOT);
-    expect(errors).toEqual([]);
-    expect(pending).toHaveLength(4);
-    expect(pending.join('\n')).toMatch(/manifest.*exemplo/is);
-    expect(pending.join('\n')).toMatch(/assetlinks.*SHA-256/s);
-    expect(pending.join('\n')).toMatch(/apple-app-site-association.*Team ID/s);
-    expect(pending.join('\n')).toMatch(/App\.entitlements.*exemplo/s);
+  it('matches the production origin on both platforms', () => {
+    expect(manifestHosts(readFileSync(join(ROOT, FILES.manifest), 'utf8'))).toContain('workeasy.ia.br');
+    expect(entitlementDomains(readFileSync(join(ROOT, FILES.entitlements), 'utf8'))).toContain('applinks:workeasy.ia.br');
+    expect(checkAppLinks(ROOT, { siteUrl: 'https://workeasy.ia.br' }).errors).toEqual([]);
   });
 
-  it('exits 0 without --strict and 1 with it, while the placeholders are there', () => {
-    const lenient = run(ROOT);
+  it('exits 0 without --strict and 1 with it while signing identities are pending', () => {
+    const root = copyOfRepo();
+    const { pending } = checkAppLinks(root);
+    expect(pending).toHaveLength(2);
+    expect(pending.join('\n')).toMatch(/assetlinks.*SHA-256/s);
+    expect(pending.join('\n')).toMatch(/apple-app-site-association.*Team ID/s);
+    const lenient = run(root);
     expect(lenient.status).toBe(0);
     expect(lenient.stdout).toContain('PENDENTE');
-    const strict = run(ROOT, '--strict');
+    const strict = run(root, '--strict');
     expect(strict.status).toBe(1);
     expect(strict.stderr).toContain('PENDENTE');
     expect(strict.stderr).toContain('--strict');
@@ -71,8 +81,6 @@ describe('check-app-links on the files of the repository', () => {
 describe('check-app-links with everything filled in', () => {
   const filled = () => {
     const root = copyOfRepo();
-    edit(root, 'manifest', text => text.replaceAll('app.workeasy.example', 'app.workeasy.com.br'));
-    edit(root, 'entitlements', text => text.replaceAll('app.workeasy.example', 'app.workeasy.com.br'));
     edit(root, 'assetlinks', text => text.replace(/"TODO[^"]*"/, `"${FINGERPRINT}"`));
     edit(root, 'aasa', text => text.replace('TODO-TEAM-ID', 'ABCDE12345'));
     return root;
@@ -80,8 +88,8 @@ describe('check-app-links with everything filled in', () => {
 
   it('passes --strict, and compares the host with the site URL', () => {
     const root = filled();
-    expect(checkAppLinks(root, { siteUrl: 'https://app.workeasy.com.br' })).toEqual({ errors: [], pending: [], info: [] });
-    const strict = run(root, '--strict', '--site-url', 'https://app.workeasy.com.br');
+    expect(checkAppLinks(root, { siteUrl: 'https://workeasy.ia.br' })).toEqual({ errors: [], pending: [], info: [] });
+    const strict = run(root, '--strict', '--site-url', 'https://workeasy.ia.br');
     expect(strict.status).toBe(0);
     expect(strict.stdout).toContain('sem pendências');
   });
@@ -92,10 +100,20 @@ describe('check-app-links with everything filled in', () => {
   ] as const)('%s can release while the other signing identity is pending', (platform, file, signed, placeholder) => {
     const root = filled();
     edit(root, file, text => text.replace(signed, placeholder));
-    const site = 'https://app.workeasy.com.br';
+    const site = 'https://workeasy.ia.br';
     expect(run(root, '--strict', '--site-url', site).status).toBe(1);
     expect(run(root, '--strict', '--platform', platform, '--site-url', site).status).toBe(0);
     expect(run(root, '--strict', '--platform', platform, '--site-url', 'https://other.workeasy.com.br').status).toBe(1);
+  });
+
+  it('rejects a reserved host in strict mode even with both signing identities', () => {
+    const root = filled();
+    edit(root, 'manifest', text => text.replace('android:host="workeasy.ia.br"', 'android:host="app.workeasy.example"'));
+    edit(root, 'entitlements', text => text.replace('applinks:workeasy.ia.br', 'applinks:app.workeasy.example'));
+    const { errors, pending } = checkAppLinks(root);
+    expect(errors).toEqual([]);
+    expect(pending).toHaveLength(2);
+    expect(run(root, '--strict').status).toBe(1);
   });
 
   it('refuses a site URL on another host', () => {
@@ -107,7 +125,7 @@ describe('check-app-links with everything filled in', () => {
 describe('check-app-links finds files that contradict each other', () => {
   it('a different host on iOS', () => {
     const root = copyOfRepo();
-    edit(root, 'entitlements', text => text.replaceAll('app.workeasy.example', 'outro.workeasy.example'));
+    edit(root, 'entitlements', text => text.replace('applinks:workeasy.ia.br', 'applinks:outro.workeasy.example'));
     expect(checkAppLinks(root).errors.join('\n')).toMatch(/outro\.workeasy\.example.*difere do host do manifesto/);
     expect(run(root).status).toBe(1);
   });

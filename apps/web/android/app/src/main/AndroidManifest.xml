@@ -24,13 +24,12 @@
             <!--
                 App Links: https links to this host open the app after the host proves ownership
                 through /.well-known/assetlinks.json (see docs/arquitetura/nativo.md).
-                TODO: replace the reserved example host with the real domain before release.
             -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="app.workeasy.example" />
+                <data android:scheme="https" android:host="workeasy.ia.br" />
             </intent-filter>
         </activity>
 

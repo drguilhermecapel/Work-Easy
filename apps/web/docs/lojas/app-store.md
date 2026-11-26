@@ -35,7 +35,7 @@ Fontes são citadas como **[A1]** a **[A16]** (seção 16). Caminhos de arquivo 
 
 | # | Risco | Diretriz | Situação |
 |---|---|---|---|
-| R1 | Parecer de web empacotado. O app iOS hoje usa câmera (fotos de documento) e o restante é o site; a localização só existe no Cuidado, que sai da build de loja. Sem push. Universal Links: o arquivo de entitlements existe com domínio de exemplo e falta o domínio real, o Team ID e o teste em aparelho (seção 10.4). | 4.2 | **Alto.** Ver 3.3. |
+| R1 | Parecer de web empacotado. O app iOS hoje usa câmera (fotos de documento) e o restante é o site; a localização só existe no Cuidado, que sai da build de loja. Sem push. O entitlement de Universal Links contém o domínio `workeasy.ia.br`. Faltam o Team ID, a associação pública e o teste em aparelho (seção 10.4). | 4.2 | **Alto.** Ver 3.3. |
 | R2 | Exclusão de conta recusada quando há atendimento ativo (HTTP 409). | 5.1.1(v) | Médio. Ver 8. |
 | R3 | Build de Xcode: o Capacitor 8 exige Xcode 26.0 ou mais novo, e o envio exige SDK do iOS 26 desde 28/04/2026. | Requisito de upload | Exige um Mac com Xcode 26. Ver 11. |
 
@@ -569,7 +569,7 @@ CONTATO: [E-MAIL DE SUPORTE] | Política de privacidade: [URL]
 | `UIRequiredDeviceCapabilities` | `armv7` | — | Resquício apontado em `docs/arquitetura/nativo.md`, 3.4. [incerto: efeito na lista de aparelhos] | Não mudar sem testar em TestFlight. |
 | `ITSAppUsesNonExemptEncryption` | **Ausente** | — | A página da chave não abriu. [incerto] | Decidir na App Store Connect. Se o app só usa HTTPS padrão, a chave costuma ser `false`. Confirmar. |
 | `UIBackgroundModes`, `aps-environment` | Ausentes | — | Sem push (F10) | Nenhuma, até haver push [PLANEJADO]. |
-| Entitlements `com.apple.developer.associated-domains` | **Criado em 24/11/2026**: `ios/App/App/App.entitlements`, `applinks:app.workeasy.example` (**placeholder**), registrado no projeto Xcode (`CODE_SIGN_ENTITLEMENTS`). | Universal Links (`SceneDelegate` repassa o link ao Capacitor). | Pendente do dono: domínio real, Team ID, capacidade no App ID, teste em iPhone. Não aberto no Xcode (sem macOS). | Ver 10.4 e `docs/arquitetura/nativo.md`, seção 8. |
+| Entitlements `com.apple.developer.associated-domains` | `ios/App/App/App.entitlements` contém `applinks:workeasy.ia.br` e consta no projeto Xcode. | Universal Links (`SceneDelegate` repassa o link ao Capacitor). | Faltam o Team ID, a capacidade Associated Domains no App ID e o teste em aparelho. | Ver 10.4 e `docs/arquitetura/nativo.md`, seção 8. |
 
 **Texto proposto para `NSCameraUsageDescription` (build com backend):**
 
@@ -597,7 +597,7 @@ Ver seção 5.5. Alinhar a lista com a ficha antes de enviar.
 
 ### 10.4 Entitlements
 
-iOS: `ios/App/App/App.entitlements` existe desde 24/11/2026, só com `com.apple.developer.associated-domains` (`applinks:app.workeasy.example`, **placeholder** marcado no arquivo), e o `project.pbxproj` aponta para ele nas configurações Debug e Release do alvo `App` (edição mínima: uma referência de arquivo, a entrada no grupo e `CODE_SIGN_ENTITLEMENTS`; o arquivo não vai para a fase Resources). A edição foi feita à mão e **não foi aberta no Xcode**: conferi o plist, o pareamento das referências e o script `scripts/check-app-links.mjs`; o primeiro `xcodebuild` no Mac é o teste de verdade (o `npm run ios:build` usa `CODE_SIGNING_ALLOWED=NO`, que ignora os entitlements). Para o dono: trocar o domínio (o mesmo do Android e de `VITE_SITE_URL`), preencher o Team ID em `public/.well-known/apple-app-site-association`, ligar "Associated Domains" no App ID (conta paga; o Xcode faz com assinatura automática) e testar em iPhone; `node scripts/check-app-links.mjs --strict` é o portão. Push e Mac App Store continuam sem entitlements [PLANEJADO]; macOS não tem arquivo de entitlements.
+O alvo iOS referencia `App/App.entitlements` nas configurações Debug e Release. O entitlement de Universal Links usa `applinks:workeasy.ia.br`. Para distribuir, preencha o Team ID em `public/.well-known/apple-app-site-association`, habilite Associated Domains no App ID e confira `node scripts/check-app-links.mjs --strict --platform ios --site-url https://workeasy.ia.br`. Publique o AASA no domínio e abra um link em aparelho com o aplicativo assinado instalado. Push e Mac App Store continuam sem entitlements [PLANEJADO].
 
 ---
 
@@ -851,7 +851,7 @@ Não recomendado na primeira versão. Não abri a página do Tauri sobre Mac App
 
 - [ ] Ficha de privacidade (seção 5.2) igual ao manifesto (seção 5.5). Decisões de Health, Sensitive Info e Diagnostics fechadas.
 - [x] `NSCameraUsageDescription` com o texto da seção 10.1 e chave de localização removida (D4), feito em 24/11/2026; revisar de novo se o Cuidado entrar.
-- [ ] Universal Links: domínio real, Team ID, capacidade no App ID e `node scripts/check-app-links.mjs --strict` em 0. (seção 10.4)
+- [ ] Universal Links em `workeasy.ia.br` com Team ID, capacidade no App ID e `node scripts/check-app-links.mjs --strict --platform ios --site-url https://workeasy.ia.br` em 0 (seção 10.4).
 - [ ] `ITSAppUsesNonExemptEncryption` decidido. (seção 10.1)
 - [ ] Texto de permissão do desktop corrigido. (seção 10.2)
 
