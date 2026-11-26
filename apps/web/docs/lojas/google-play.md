@@ -868,7 +868,7 @@ Sobre o Capacitor: a documentação do projeto diz que o app é enviado à Googl
 
 ### 14.8 App Links (só o dono fecha)
 
-O manifesto verifica o host `app.workeasy.example`, que é de exemplo, e `public/.well-known/assetlinks.json` tem `TODO` no lugar da impressão digital. Nada disso se inventa: depende do domínio de produção e do **primeiro envio** ao Console. Ordem: (1) definir o domínio e trocar o host no manifesto, no entitlement iOS e em `VITE_SITE_URL`; (2) enviar o primeiro `.aab` ao teste interno, com a Assinatura de apps do Google Play ligada; (3) copiar o SHA-256 do **certificado de assinatura do app** (Play Console > Integridade do app > Assinatura de apps, não o da chave de upload) para `assetlinks.json`; (4) publicar o site e rodar `node scripts/check-app-links.mjs --strict --site-url https://<domínio>`; (5) em aparelho, `adb shell pm get-app-links br.com.workeasy` deve mostrar o host como `verified`. Detalhe e tabela do que trocar em cada arquivo: `docs/arquitetura/nativo.md`, seção 8. Sem o passo 3 o app instala e funciona, mas os links `https` abrem no navegador.
+O manifesto Android configura App Links para `workeasy.ia.br`. Falta obter a impressão digital SHA-256 do certificado de assinatura em Play Console > Integridade do app > Assinatura de apps, depois do primeiro envio ao teste interno. Registre-a em `public/.well-known/assetlinks.json`. Para o APK distribuído diretamente, inclua também a impressão do certificado desse canal se for diferente. Execute `node scripts/check-app-links.mjs --strict --platform android --site-url https://workeasy.ia.br`, publique a associação e confirme que `adb shell pm get-app-links br.com.workeasy` informa `verified` em aparelho. A seção 8 de `docs/arquitetura/nativo.md` detalha os campos.
 
 ---
 
