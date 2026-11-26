@@ -85,7 +85,8 @@ describe('workflows: sem chave duplicada', () => {
 
 describe('deploy-web.yml: verificações e escritas em produção', () => {
   it('diagnostica as três configurações independentemente e só grava após os gates e o build', () => {
-    const { jobs } = parseYaml(read('deploy-web.yml'));
+    const { jobs, concurrency } = parseYaml(read('deploy-web.yml'));
+    expect(concurrency).toEqual(parseYaml(read('deploy-supabase.yml')).concurrency);
     const steps = jobs.publish.steps as { name?: string; if?: string; run?: string }[];
     const preflights = steps.filter(step => step.if?.includes("steps.node.outcome == 'success'"));
     expect(preflights.map(s => s.name)).toEqual([

@@ -21,9 +21,9 @@ on:
 permissions:
   contents: read
 
-# One production publish at a time. A publish already running is never cancelled.
+# Both manual workflows can update Supabase Auth and SITE_URL. Serialize their writes.
 concurrency:
-  group: deploy-web-production
+  group: deploy-supabase-production
   cancel-in-progress: false
 
 jobs:
