@@ -17,6 +17,14 @@ const project = {
 const success = (result: object) => Response.json({ success: true, result });
 
 describe('Pages release verification', () => {
+  it('reports only the names of missing Pages settings before making a request', async () => {
+    const request = vi.fn<typeof fetch>();
+    const incomplete = { ...env, CLOUDFLARE_ACCOUNT_ID: '', CLOUDFLARE_PAGES_PROJECT: '' };
+    await expect(verifyPagesProject(incomplete, request))
+      .rejects.toThrow(/^Configure no ambiente production: CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_PAGES_PROJECT\.$/);
+    expect(request).not.toHaveBeenCalled();
+  });
+
   it('accepts a Pages subdomain only for the configured production project and branch', async () => {
     const request = vi.fn<typeof fetch>().mockResolvedValueOnce(success(project))
       .mockResolvedValueOnce(success({ ...project, production_branch: 'preview' }));

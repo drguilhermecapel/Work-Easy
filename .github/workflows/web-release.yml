@@ -59,7 +59,7 @@ jobs:
       VITE_APP_VERSION: ${{ github.sha }}
       VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
       VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
-      VITE_SITE_URL: ${{ vars.VITE_SITE_URL }}
+      VITE_SITE_URL: ${{ vars.VITE_SITE_URL || 'https://workeasy.ia.br' }}
       VITE_CONCIERGE_WHATSAPP: ${{ vars.VITE_CONCIERGE_WHATSAPP || '5511997594545' }}
       VITE_SAC_WHATSAPP: ${{ vars.VITE_SAC_WHATSAPP || '5511997594545' }}
       VITE_SAC_EMAIL: ${{ vars.VITE_SAC_EMAIL }}

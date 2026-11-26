@@ -123,7 +123,7 @@ em Settings, Environments, com:
 | --- | --- | --- |
 | `VITE_SUPABASE_URL` | build do site | URL do projeto. Vazia gera o modo demonstração, e o workflow recusa |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | build do site | Chave publicável (`sb_publishable_...`). Pública por desenho; nunca a chave `sb_secret_` |
-| `VITE_SITE_URL` | build do site | Domínio canônico, por exemplo `https://<domínio>`. Obrigatória |
+| `VITE_SITE_URL` | publicação web e pacotes de produção | A origem padrão é `https://workeasy.ia.br`. Defina a variável no ambiente `production` para usar outra origem autorizada. O deploy web verifica a associação do domínio ao projeto Pages antes do upload. |
 | `VITE_CONCIERGE_WHATSAPP` | build do site | Número da operação, só dígitos com código do país |
 | `VITE_COMPANY_NAME`, `VITE_COMPANY_CNPJ`, `VITE_COMPANY_ADDRESS` | build do site | Dados da empresa, lidos por `config/legal.ts` (rodapé e páginas jurídicas); o workflow os repassa |
 | `VITE_SAC_EMAIL`, `VITE_SAC_WHATSAPP` | build do site | Canais de atendimento, lidos por `config/legal.ts` |

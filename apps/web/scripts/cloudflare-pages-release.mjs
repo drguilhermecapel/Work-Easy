@@ -5,8 +5,9 @@ import { pathToFileURL } from 'node:url';
 const MARKER = '/.well-known/workeasy-release.json';
 
 export async function verifyPagesProject(env, request = fetch) {
+  const missing = ['CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_PAGES_PROJECT', 'CLOUDFLARE_API_TOKEN'].filter(name => !env[name]);
+  if (missing.length) throw new Error(`Configure no ambiente production: ${missing.join(', ')}.`);
   const { CLOUDFLARE_ACCOUNT_ID: account, CLOUDFLARE_PAGES_PROJECT: project, CLOUDFLARE_API_TOKEN: token } = env;
-  if (!account || !project || !token) throw new Error('Configure conta, projeto e token de Cloudflare Pages.');
   const host = new URL(env.VITE_SITE_URL).hostname;
   const endpoint = `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(account)}/pages/projects/${encodeURIComponent(project)}`;
   const get = async (suffix = '') => {
