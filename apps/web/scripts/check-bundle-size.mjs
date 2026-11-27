@@ -50,6 +50,10 @@
 //     budget, 510 kB, came from the demo build and would have failed the first production deploy.
 //     `policiesAll` is reported by --json and has no budget.
 //
+// The elective MapLibre 5.24.1 CSP renderer, its dedicated worker and CSS measure
+// 371 kB gzip together. Their separate 415 kB ceiling includes about 12% headroom.
+// The shell keeps its original budgets. A map asset loaded by index.html counts there.
+//
 // No dependencies. Exit code 0 = within budget, 1 = over budget, 2 = no build to read.
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
@@ -64,6 +68,7 @@ export const BUDGETS_KB = {
   catalog: 135,
   policies: 10,
   css: 16,
+  maps: 415,
   total: 600,
 };
 
@@ -73,8 +78,9 @@ const LABELS = {
   route: 'maior página carregada sob demanda',
   catalog: 'dados do catálogo (areas.json)',
   policies: 'regras de uma área (maior policies-*)',
-  css: 'css',
-  total: 'todo o JavaScript',
+  css: 'CSS do aplicativo',
+  maps: 'mapa opcional (motor, worker e estilos)',
+  total: 'JavaScript do app sem os grupos medidos à parte',
 };
 
 /** `Home-AbC123xY.js` -> `Home`. */
@@ -104,7 +110,13 @@ export const summarize = ({ files, initial }) => {
   const isPolicies = file => file.endsWith('.js') && chunkName(file).startsWith('policies-');
   const policyFiles = [...files.keys()].filter(isPolicies);
   const isData = file => chunkName(file) === 'catalog' || isPolicies(file);
-  const lazy = [...files.keys()].filter(file => file.endsWith('.js') && !initial.has(file) && !isData(file));
+  // The map's explicitly requested CSP engine, worker and stylesheet have a
+  // separate combined budget. Never exempt them when imported on first load.
+  const mapAssets = new Set([...files.keys()].filter(file => !initial.has(file) && (
+    (file.endsWith('.js') && ['maplibre-gl-csp', 'maplibre-gl-csp-worker'].includes(chunkName(file))) ||
+    (file.endsWith('.css') && chunkName(file) === 'maplibre-gl')
+  )));
+  const lazy = [...files.keys()].filter(file => file.endsWith('.js') && !initial.has(file) && !isData(file) && !mapAssets.has(file));
   const largest = lazy.reduce((best, file) => (files.get(file) > (files.get(best) ?? 0) ? file : best), '');
   const js = [...files.keys()].filter(file => file.endsWith('.js'));
   return {
@@ -115,9 +127,10 @@ export const summarize = ({ files, initial }) => {
     // what a page pays for the rules of its area: the largest area, not the sum of the 44
     policies: Math.max(0, ...policyFiles.map(file => files.get(file))),
     policiesAll: sum(policyFiles),
-    css: sum([...files.keys()].filter(file => file.endsWith('.css'))),
+    css: sum([...files.keys()].filter(file => file.endsWith('.css') && !mapAssets.has(file))),
+    maps: sum(mapAssets),
     // every script but the rules, which have their own two figures (the sum of all areas is not a download)
-    total: sum(js.filter(file => !isPolicies(file))),
+    total: sum(js.filter(file => !isPolicies(file) && !mapAssets.has(file))),
     largestRoute: largest,
   };
 };

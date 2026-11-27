@@ -18,6 +18,7 @@ export const WHATSAPP_LANGUAGE = 'pt_BR';
 export const RESEND_URL = 'https://api.resend.com/emails';
 
 export type TemplateName =
+  | 'atualizacao_corrida'
   | 'agendamento_solicitado'
   | 'proposta_recebida'
   | 'atendimento_confirmado'
@@ -40,6 +41,7 @@ interface TemplateSpec {
 // The WhatsApp templates must be approved in WhatsApp Manager with the same
 // name, language pt_BR and the same number of body variables, in this order.
 export const TEMPLATES: Record<TemplateName, TemplateSpec> = {
+  atualizacao_corrida: {params: [],subject: 'Atualização da corrida',body:'Há uma atualização em sua viagem. Abra o WorkEasy para consultar o trecho e as alternativas.'},
   proposta_recebida: {
     params: ['provider_name', 'occupation_name', 'price_cents'],
     subject: 'Você recebeu uma proposta',

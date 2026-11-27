@@ -18,6 +18,9 @@ export interface RideLegInput {
 export interface PricedLeg extends RideLegInput {
   seq: number;
   duration_minutes?: number;
+  approach_minutes?: number;
+  eta_observed_at?: string;
+  ride_class?: string;
   meters?: number;
   fare_cents: number | null;
   fee_cents: number | null;

@@ -1,3 +1,4 @@
+import { RideAmendmentPanel } from '../../components/mobility/RideAmendmentPanel';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import DriverWorkspace from './DriverWorkspace';
@@ -203,6 +204,7 @@ function DriverPanel(actions: ConsoleActions) {
                         </button>
                       </div>
                     )}
+                    <RideAmendmentPanel legId={leg.id} legStatus={leg.status} onChanged={reload} />
                     <RideAftercare legId={leg.id} completed={leg.status === 'completed'} />
                   </Card>
                 </li>
