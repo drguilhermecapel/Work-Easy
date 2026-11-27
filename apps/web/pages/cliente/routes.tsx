@@ -2,6 +2,7 @@
 import { lazy } from 'react';
 import { Route } from 'react-router-dom';
 
+const Convite = lazy(() => import('../mobilidade/Convite'));
 const Corridas = lazy(() => import('../mobilidade/Corridas'));
 const Motorista = lazy(() => import('../mobilidade/Motorista'));
 const Pedido = lazy(() => import('./Pedido'));
@@ -13,6 +14,7 @@ const AtendimentoDetalhe = lazy(() => import('./AtendimentoDetalhe'));
 /** Client area routes, placed inside <Routes> in AppShell.tsx. */
 export const clienteRoutes = (
   <>
+    <Route path="/corridas/convite" element={<Convite />} />
     <Route path="/corridas" element={<Corridas />} />
     <Route path="/corridas/motorista" element={<Motorista />} />
     <Route path="/atendimentos/:id/mobilidade" element={<Corridas />} />

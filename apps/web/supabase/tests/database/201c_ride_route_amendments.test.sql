@@ -17,8 +17,8 @@ select tests.authenticate_as('admin');
 select public.ride_claim_route(pg_temp.uid('original'));
 select public.ride_verify_route(pg_temp.uid('original'),2000,12,'amendment/test1');
 select tests.authenticate_as('provider_a');
-insert into amendment_test select 'q',(public.ride_quote(gen_random_uuid(),pg_temp.uid('booking'),null,
- jsonb_build_array(jsonb_build_object('origin','Saúde','destination','Jabaquara','route_id',pg_temp.uid('original'),'payer','client','extras',jsonb_build_array('luggage'))))->>'id')::uuid;
+insert into amendment_test select 'q',(public.ride_quote_with_access(gen_random_uuid(),pg_temp.uid('booking'),null,
+ jsonb_build_array(jsonb_build_object('origin','Saúde','destination','Jabaquara','route_id',pg_temp.uid('original'),'payer','client','extras',jsonb_build_array('luggage'))),'folding_equipment')->>'id')::uuid;
 select public.ride_consent(pg_temp.uid('q'),true);
 select tests.authenticate_as('client_a');
 insert into amendment_test select 'r',(public.ride_consent(pg_temp.uid('q'),true)->>'ride_id')::uuid;
@@ -28,6 +28,10 @@ select tests.authenticate_as('client_b');
 select public.ride_apply_driver('compact');
 select tests.authenticate_as('admin');
 select public.ride_review_driver(tests.uid('client_b'),true,current_date+1);
+select tests.clear_authentication();
+insert into private.ride_driver_credentials(driver_id,vehicle_identifier,vehicle_category,driver_document_ref,vehicle_document_ref,insurance_ref,driver_until,vehicle_until,insurance_until,inspected_by)
+ values(tests.uid('client_b'),'VEH-201C','compact','DRIVER-201C','VEH-201C','POLICY-201C',current_date+2,current_date+2,current_date+2,tests.uid('admin'));
+insert into private.ride_assist_capabilities values(tests.uid('client_b'),'VEH-201C','folding_equipment','TRAIN-201C','DOC-201C',now()+interval '1 day');
 select tests.authenticate_as('client_b');
 select public.ride_set_online(true);
 select public.ride_accept_offer(pg_temp.uid('leg'),gen_random_uuid());
@@ -62,10 +66,20 @@ select public.ride_decide_amendment(pg_temp.uid('change2'),true);
 select is((select e->>'accepted' from jsonb_array_elements(public.ride_export_my_data()->'my_route_decisions') e where e->>'revision'=pg_temp.uid('change2')::text),'true','download includes only the user’s consent');
 select tests.authenticate_as('client_b');
 select public.ride_decide_amendment(pg_temp.uid('change2'),true);
+select tests.clear_authentication();
+update private.ride_assist_capabilities set until_at=now()+interval '1 minute' where driver_id=tests.uid('client_b');
+select tests.authenticate_as('client_a');
+select throws_ok($$select public.ride_decide_amendment(pg_temp.uid('change2'),true)$$,'P0001','ride_assistance_requote',
+ 'Equipment training must still cover the entire revised trip before the last consent can apply it');
+select tests.clear_authentication();
+select is((select route_case_id from public.ride_legs where id=pg_temp.uid('leg')),pg_temp.uid('original'),'failed accessibility revalidation rolls back the route and price change');
+update private.ride_assist_capabilities set until_at=now()+interval '1 day' where driver_id=tests.uid('client_b');
 select tests.authenticate_as('client_a');
 select is(public.ride_decide_amendment(pg_temp.uid('change2'),true)->>'status','applied','last consent promotes the same logical leg');
 select is(public.ride_decide_amendment(pg_temp.uid('change2'),true)->>'status','applied','retry of final consent causes no duplicate commitment');
 select tests.clear_authentication();
+select is((select assistance from private.ride_access_preferences where leg=pg_temp.uid('leg')),'folding_equipment',
+ 'Required equipment travels with the remaining itinerary after repricing');
 select is((select count(*)::int from public.ride_legs where ride_id=pg_temp.uid('r')),1,'only one assigned trip');
 select is((select count(*)::int from private.ride_quotes where existing_ride_id=pg_temp.uid('r') and status='requested'),1,'exactly one new immutable price snapshot');
 select is((select q.total_cents from private.ride_quotes q where id=pg_temp.uid('q')),1630,'original financial snapshot unchanged');
@@ -75,7 +89,10 @@ select tests.authenticate_as('provider_a');
 select throws_ok($$select public.ride_propose_amendment(pg_temp.uid('leg'),pg_temp.uid('original'),gen_random_uuid())$$,'P0001','route_unavailable','archived accepted route cannot fund a new booking or amendment');
 select tests.authenticate_as('client_b');
 select public.ride_transition(pg_temp.uid('leg'),'arriving',gen_random_uuid());
-select public.ride_transition(pg_temp.uid('leg'),'boarded',gen_random_uuid());
+select tests.authenticate_as('provider_a');
+select set_config('tests.pin201c',public.ride_issue_pin(pg_temp.uid('leg'))->>'pin',true);
+select tests.authenticate_as('client_b');
+select is(public.ride_verify_boarding(pg_temp.uid('leg'),current_setting('tests.pin201c'),gen_random_uuid())->>'ok','true','revised logical leg still requires the assigned boarding PIN');
 select tests.clear_authentication();
 select tests.authenticate_as('provider_a');
 select is(public.ride_amendment_state(pg_temp.uid('leg'))->>'anchor',null,'missing onboard evidence disables route modification');

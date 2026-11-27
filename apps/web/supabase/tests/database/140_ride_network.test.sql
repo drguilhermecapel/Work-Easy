@@ -100,7 +100,10 @@ select tests.authenticate_as('provider_b');
 select throws_ok($$select public.ride_accept_offer((select v from ride_case where k='overlap_leg'),gen_random_uuid())$$,
   'P0001','offer_unavailable','scheduled and immediate assignments share the same driver calendar');
 select is(public.ride_transition((select v from ride_case where k='leg1'),'arriving',gen_random_uuid())->>'status','arriving','driver is on the way');
-select is(public.ride_transition((select v from ride_case where k='leg1'),'boarded',gen_random_uuid())->>'status','boarded','driver confirms boarding');
+select tests.authenticate_as('client_a');
+select set_config('tests.pin140',public.ride_issue_pin((select v from ride_case where k='leg1'))->>'pin',true);
+select tests.authenticate_as('provider_b');
+select is(public.ride_verify_boarding((select v from ride_case where k='leg1'),current_setting('tests.pin140'),gen_random_uuid())->>'status','boarded','driver confirms boarding with the passenger PIN');
 select tests.authenticate_as('client_a');
 select is(public.ride_transition((select v from ride_case where k='leg1'),'cancelled',gen_random_uuid())->>'status','unknown','cancellation after boarding opens reconciliation');
 select throws_ok($$select public.ride_resolve((select v from ride_case where k='leg1'),'cancelled',gen_random_uuid())$$,'P0001','not_allowed','rider cannot resolve an uncertain cost');

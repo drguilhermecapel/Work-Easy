@@ -115,7 +115,16 @@ select lives_ok($$select public.ride_transition((select id from live_case where 
 select throws_ok($$select public.ride_transition((select id from live_case where k='leg'),'boarded',gen_random_uuid())$$,
  'P0001','ride_pickup_arrival_required','driver records actual arrival before boarding in live mode');
 select lives_ok($$select public.ride_mark_at_pickup((select id from live_case where k='leg'))$$,'physical arrival recorded separately');
-select lives_ok($$select public.ride_transition((select id from live_case where k='leg'),'boarded',gen_random_uuid())$$,'boarding confirmed');
+savepoint missing_boarding_proof;
+select public.ride_transition((select id from live_case where k='leg'),'unknown',gen_random_uuid());
+select tests.authenticate_as('admin');
+select throws_ok($$select public.ride_resolve_with_evidence((select id from live_case where k='leg'),gen_random_uuid(),'TEST-203',now(),now())$$,
+  'P0001','ride_pin_required','Live reconciliation cannot assert boarding before a verified PIN');
+rollback to missing_boarding_proof;
+select tests.authenticate_as('client_a');
+select set_config('tests.pin149',public.ride_issue_pin((select id from live_case where k='leg'))->>'pin',true);
+select tests.authenticate_as('client_b');
+select is(public.ride_verify_boarding((select id from live_case where k='leg'),current_setting('tests.pin149'),gen_random_uuid())->>'ok','true','live boarding confirmed with the passenger PIN');
 select tests.clear_authentication();
 update private.ride_area_authorizations set until_at=now() where area='Bairro B';
 select tests.authenticate_as('client_b');

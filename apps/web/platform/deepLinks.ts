@@ -20,7 +20,8 @@ export const routeFromAppUrl = (url: string, siteUrl: string | null): string | n
   if (link.protocol !== 'https:' || link.host !== site.host) return null;
   // The website uses clean URLs; a link copied from the app itself carries the route after "#"
   const fromHash = link.hash.startsWith('#/') ? link.hash.slice(1) : null;
-  const route = fromHash ?? `${link.pathname}${link.search}`;
+  const shareFragment = link.pathname === '/corridas/convite' && /^#convite=[a-f0-9]{64}$/.test(link.hash) ? link.hash : '';
+  const route = fromHash ?? `${link.pathname}${link.search}${shareFragment}`;
   if (!route.startsWith('/') || route.startsWith('//') || route.includes('\\')) return null;
   return route;
 };

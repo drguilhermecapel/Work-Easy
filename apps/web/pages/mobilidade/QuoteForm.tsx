@@ -4,6 +4,7 @@ import { useRef, useState, type FormEvent } from 'react';
 import ErrorAlert from '../../components/ErrorAlert';
 import { formatCents } from '../../lib/money';
 import { saoPauloDateTime } from '../../lib/timezone';
+import { quoteRideWithAccess } from '../../services/rideSafety';
 import { quoteRide, type RideLegInput, type RidePayer } from '../../services/rides';
 
 const field = 'block w-full mt-1 rounded-xl border border-gray-300 bg-white p-2.5 text-gray-900';
@@ -29,6 +30,7 @@ function RouteChoice({ routes, value, onChange, label, required }: {
   </select></label>;
 }
 interface Props {
+  passengerCanRequestAccess?: boolean;
   areas: string[];
   bookingId: string | null;
   replaces?: string;
@@ -44,7 +46,8 @@ function toInstant(value: string): string | null {
   return saoPauloDateTime(day, time)?.toISOString() ?? null;
 }
 
-export default function QuoteForm({ areas, bookingId, replaces, routes = [], nextBookings = [], extras = [], requiresRoute = false, onQuoted }: Props) {
+export default function QuoteForm({ areas, bookingId, passengerCanRequestAccess = !bookingId, replaces, routes = [], nextBookings = [], extras = [], requiresRoute = false, onQuoted }: Props) {
+  const [assistance,setAssistance]=useState('none');
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
   const [scheduled, setScheduled] = useState(Boolean(bookingId));
@@ -112,7 +115,7 @@ export default function QuoteForm({ areas, bookingId, replaces, routes = [], nex
       legs.push(second);
     }
     if (nextBooking && nextBookings.some(b => b.id === nextBooking)) legs[legs.length - 1].next_booking_id = nextBooking;
-    const payload = JSON.stringify([bookingId, first, legs]);
+    const payload = JSON.stringify([bookingId, first, legs, assistance, classes[routeId], classes[nextRouteId]]);
     if (request.current?.payload !== payload) request.current = { payload, key: crypto.randomUUID() };
     sending.current = true;
     setBusy(true);
@@ -121,7 +124,9 @@ export default function QuoteForm({ areas, bookingId, replaces, routes = [], nex
       for (const [route,instant] of [[routeId, first],[nextRouteId,next]] as const) {
         if(route && classes[route]) await chooseRideClass(route,classes[route],instant);
       }
-      const quote = await quoteRide(request.current.key, bookingId, first, legs);
+      const quote = passengerCanRequestAccess && assistance !== 'none'
+        ? await quoteRideWithAccess(request.current.key, bookingId, first, legs, assistance)
+        : await quoteRide(request.current.key, bookingId, first, legs);
       request.current = null;
       onQuoted(quote.id);
     } catch (error) {
@@ -136,6 +141,10 @@ export default function QuoteForm({ areas, bookingId, replaces, routes = [], nex
   const payers = <><option value="client">Cliente</option><option value="provider">Profissional</option></>;
   return (
     <form onSubmit={submit} className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5">
+      {passengerCanRequestAccess && <label className="block">Assistência no transporte <select className={field} value={assistance} onChange={e=>setAssistance(e.target.value)}>
+        <option value="none">Sem assistência especial</option><option value="boarding">Ajuda para embarcar</option><option value="folding_equipment">Equipamento portátil ou dobrável</option>
+        <option value="wheelchair_vehicle">Veículo adaptado para viajar na cadeira</option></select> Sem adicional. Se faltar capacidade, o plantão pode combinar outra janela.</label>}
+
       <h2 className="text-lg font-semibold">{bookingId ? 'Trajeto do profissional' : 'Cotar corrida'}</h2>
       <fieldset disabled={busy} className="space-y-4">
         <label className="block">Saída

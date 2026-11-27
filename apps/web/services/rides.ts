@@ -54,6 +54,7 @@ export interface RideQuote {
 
 export interface Ride {
   id: string;
+  passenger_id?: string;
   in_my_journeys?: boolean;
   kind: string;
   status: string;

@@ -1,3 +1,4 @@
+import { RideSafetyAdmin } from '../../components/mobility/safety/RideSafetyAdmin';
 import { releaseReservation } from '../../services/driverJourney';
 import {DriverCapacityReview} from '../../components/mobility/DriverCapacityReview';
 import { useState } from 'react';
@@ -279,7 +280,7 @@ export default function Operacao() {
   return (
     <>
       <DriverConsole title="Operação de corridas" content={OperationsPanel} />
-      {authUser && <RideSupportQueue key={authUser.id} />}
+      {authUser && <><RideSupportQueue key={authUser.id} /><RideSafetyAdmin/></>}
     </>
   );
 }

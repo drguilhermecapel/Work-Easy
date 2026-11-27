@@ -113,3 +113,8 @@
 main:has(> [role='status']:only-child) + footer {
   visibility: hidden;
 }
+
+/* User-selected ride display, including the quote and receipt surfaces. */
+html.ride-simple :is(button,input,select,summary) { min-height: 3rem; max-width: 100%; font-size: 1.125rem; }
+html.ride-simple :is(p,label,li) { line-height: 1.7; overflow-wrap: anywhere; }
+html.ride-simple :focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }

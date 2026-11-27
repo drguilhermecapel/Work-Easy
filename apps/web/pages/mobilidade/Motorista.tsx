@@ -1,3 +1,7 @@
+import { DriverCue, OfferAssistance } from '../../components/mobility/safety/PickupCue';
+import { RideSafety } from '../../components/mobility/safety/RideSafety';
+import { BoardingPin } from '../../components/mobility/safety/RideCommunication';
+import { RideDisplayMode } from '../../components/mobility/safety/common';
 import { RideAmendmentPanel } from '../../components/mobility/RideAmendmentPanel';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -100,6 +104,7 @@ function DriverPanel(actions: ConsoleActions) {
           <ul className="space-y-2">
             {dashboard.offers.map((offer) => (
               <li key={offer.leg_id}>
+                <OfferAssistance leg={offer.leg_id}/>
                 <Card className="space-y-2">
                   <p className="font-semibold">
                     {offer.origin} → {offer.destination}
@@ -176,14 +181,14 @@ function DriverPanel(actions: ConsoleActions) {
                             Cheguei ao local de embarque
                           </button>
                         )}
-                        <button
+{step.to==='boarded' ? <><BoardingPin leg={leg.id} driver refresh={reload}/><DriverCue leg={leg.id}/></> : (<button
                           type="button"
                           disabled={busy}
                           className={primaryButton}
                           onClick={() => void run(`${leg.id}:${step.to}`, (key) => transitionRide(leg.id, step.to, key))}
                         >
                           {step.label}
-                        </button>
+                        </button>)}
                         {leg.can_cancel && leg.status !== 'boarded' && (
                           <button
                             type="button"
@@ -204,6 +209,7 @@ function DriverPanel(actions: ConsoleActions) {
                         </button>
                       </div>
                     )}
+                    <RideSafety status={leg.status} leg={leg.id} onChange={reload}/>
                     <RideAmendmentPanel legId={leg.id} legStatus={leg.status} onChanged={reload} />
                     <RideAftercare legId={leg.id} completed={leg.status === 'completed'} />
                   </Card>
@@ -222,6 +228,7 @@ export default function Motorista() {
   return (
     <RequireSession>
       <div className="max-w-3xl mx-auto px-4 py-6">
+        <RideDisplayMode/>
         <DriverConsole title="Painel do motorista" content={DriverPanel} />
       </div>
     </RequireSession>

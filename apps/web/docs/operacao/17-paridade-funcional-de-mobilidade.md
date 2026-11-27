@@ -54,6 +54,8 @@ O motorista pode ser também prestador de serviços. Turnos, viagens, atendiment
 
 ### 3. Segurança, acessibilidade e suporte
 
+A implementação da etapa 3 registra a confirmação por PIN, o contato protegido, as ocorrências, as preferências de assistência e a revisão humana. Os aceites em campo e contratos de ativação continuam separados da entrega de código. [Implementação e evidências da etapa 3](../arquitetura/seguranca-e-acessibilidade-de-corridas.md)
+
 No WorkEasy, o [dossiê](../../supabase/tests/database/146_ride_driver_dossiers.test.sql), o [recibo por papel](../../supabase/tests/database/143_ride_receipts.test.sql) e o [plantão por trecho](../../supabase/tests/database/153_ride_human_support.test.sql) já têm testes locais. A comparação abaixo usa as condições publicadas pela Uber até 27/11/2026. Cada linha conta um critério composto e exige todas as provas indicadas.
 
 | ID e jornada | Referência e mercado | Base e incremento WorkEasy | Responsável, dependências e porte | Aceite e prova para ativar |
