@@ -698,7 +698,7 @@ function Wallet({ wallet, refresh }: { wallet: NonNullable<Desk['wallet']>; refr
           </Action>
           {approved != null && (
             <Action
-              label="Confirmar saque para minha conta verificada"
+              label="Confirmar saque para minha conta bancária"
               refresh={() => {
                 setApproved(null);
                 setAmount('');

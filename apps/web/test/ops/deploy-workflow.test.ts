@@ -323,7 +323,7 @@ describe('deploy-supabase.yml: dry_run não publica nada', () => {
 
     beforeEach(() => {
       dir = mkdtempSync(join(tmpdir(), 'deploy-supabase-'));
-      for (const fn of ['_shared', '_runtime', 'asaas-webhook', 'notify-dispatch', 'background-check-purge', 'ride-alerts', 'ride-live-checkout', 'ride-live-webhook', 'ride-sandbox-checkout', 'ride-sandbox-webhook', 'charges-create', 'quote-assist']) {
+      for (const fn of ['_shared', '_runtime', 'asaas-webhook', 'notify-dispatch', 'background-check-purge', 'ride-alerts', 'ride-live-checkout', 'ride-live-webhook', 'ride-order-checkout', 'ride-order-webhook', 'ride-wallet-webhook', 'ride-sandbox-checkout', 'ride-sandbox-webhook', 'charges-create', 'quote-assist']) {
         mkdirSync(join(dir, 'supabase', 'functions', fn), { recursive: true });
       }
       mkdirSync(join(dir, 'bin'));
@@ -361,6 +361,8 @@ describe('deploy-supabase.yml: dry_run não publica nada', () => {
       expect(summary).toContain('- `ride-alerts` (sem JWT)');
       expect(summary).not.toMatch(/ride-sandbox-/);
       expect(summary).toContain('- `ride-live-webhook` (sem JWT)');
+      expect(summary).toContain('- `ride-order-webhook` (sem JWT)');
+      expect(summary).toContain('- `ride-wallet-webhook` (sem JWT)');
       expect(summary).toContain('- `background-check-purge` (sem JWT)');
       expect(summary).toContain('- `charges-create`\n');
       expect(summary).toContain('- `quote-assist`\n');
@@ -377,9 +379,12 @@ describe('deploy-supabase.yml: dry_run não publica nada', () => {
         'functions deploy background-check-purge --remote=abcdefghijklmnopqrst --yes --no-verify-jwt',
         'functions deploy ride-alerts --remote=abcdefghijklmnopqrst --yes --no-verify-jwt',
         'functions deploy ride-live-webhook --remote=abcdefghijklmnopqrst --yes --no-verify-jwt',
+        'functions deploy ride-order-webhook --remote=abcdefghijklmnopqrst --yes --no-verify-jwt',
+        'functions deploy ride-wallet-webhook --remote=abcdefghijklmnopqrst --yes --no-verify-jwt',
         'functions deploy charges-create --remote=abcdefghijklmnopqrst --yes',
         'functions deploy quote-assist --remote=abcdefghijklmnopqrst --yes',
         'functions deploy ride-live-checkout --remote=abcdefghijklmnopqrst --yes',
+        'functions deploy ride-order-checkout --remote=abcdefghijklmnopqrst --yes',
       ]);
       expect(summary).toMatch(/Edge Functions a publicar a partir de/);
       expect(summary).toMatch(/Edge Functions publicadas:/);

@@ -1,20 +1,20 @@
 import { describe, expect, it, vi } from 'vitest';
-import { AsaasClient, ASAAS_SANDBOX_URL } from '../../supabase/functions/_shared/asaas-client';
+import { AsaasClient, ASAAS_SANDBOX_URL } from '../../supabase/functions/_shared/asaas-client.ts';
 import {
   rideCheckout,
   rideWebhook,
   type Intent,
   type Observation,
   type RidePspDeps,
-} from '../../supabase/functions/_shared/ride-psp';
-import { orderPaymentContract } from '../../supabase/functions/_shared/ride-order-psp';
+} from '../../supabase/functions/_shared/ride-psp.ts';
+import { orderPaymentContract } from '../../supabase/functions/_shared/ride-order-psp.ts';
 import {
   orderRefund,
   walletTransfer,
   walletWebhook,
   type Transfer,
   type TransferDeps,
-} from '../../supabase/functions/_shared/ride-order-adjustments';
+} from '../../supabase/functions/_shared/ride-order-adjustments.ts';
 
 const id = 'bd2129f1-ae75-4603-9234-d80ebb62a0bd',
   wallet = 'fe57a2f6-e718-448d-a6b5-27ba593b101c';

@@ -113,7 +113,7 @@ describe('pagamento por componente', () => {
     await user.click(screen.getByRole('button', { name: 'Conferir valor líquido' }));
     expect(await screen.findByText(/líquido R.*10,20/)).toHaveTextContent('Até o próximo dia útil');
     expect(rideOrders.withdraw).not.toHaveBeenCalled();
-    await user.click(screen.getByRole('button', { name: 'Confirmar saque para minha conta verificada' }));
+    await user.click(screen.getByRole('button', { name: 'Confirmar saque para minha conta bancária' }));
     expect(rideOrders.withdraw).toHaveBeenCalledWith(expect.any(String), 1050, 30);
     expect(rideOrders.transfer).toHaveBeenCalledWith('withdraw-test');
   });
