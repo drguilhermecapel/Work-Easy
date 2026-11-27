@@ -1,3 +1,4 @@
+import { RideSafetyAdmin } from '../../components/mobility/safety/RideSafetyAdmin';
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatDateTime, shortId } from '../../components/admin/format';
@@ -269,7 +270,7 @@ export default function Operacao() {
   return (
     <>
       <DriverConsole title="Operação de corridas" content={OperationsPanel} />
-      {authUser && <RideSupportQueue key={authUser.id} />}
+      {authUser && <><RideSupportQueue key={authUser.id} /><RideSafetyAdmin/></>}
     </>
   );
 }

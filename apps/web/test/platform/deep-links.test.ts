@@ -4,6 +4,11 @@ import { routeFromAppUrl } from '../../platform/deepLinks';
 const SITE = 'https://workeasy.example';
 
 describe('routeFromAppUrl', () => {
+  it('preserves a trusted-trip fragment only on its own route', () => {
+    const token='a'.repeat(64);
+    expect(routeFromAppUrl(SITE+'/corridas/convite#convite='+token,SITE)).toBe('/corridas/convite#convite='+token);
+    expect(routeFromAppUrl(SITE+'/pedidos#convite='+token,SITE)).toBe('/pedidos');
+  });
   it('turns a link to the site into the route of the app, with its query', () => {
     expect(routeFromAppUrl('https://workeasy.example/pedidos/8f3c', SITE)).toBe('/pedidos/8f3c');
     expect(routeFromAppUrl('https://workeasy.example/entrar?next=%2Fconta', SITE)).toBe('/entrar?next=%2Fconta');
