@@ -56,7 +56,7 @@ export const workboxOptions = {
   // Only what the build emits: no data, no JSON, no response of any API
   globPatterns: ['**/*.{js,css,html,png,svg}'],
   // Crawlers fetch the link-preview image; the app never shows it
-  globIgnores: ['**/og-image.png'],
+  globIgnores: ['**/og-image.png', '**/maplibre-gl-*.js', '**/maplibre-gl-*.css'],
   navigateFallback: '/index.html',
   navigateFallbackDenylist: [
     // Files (sitemap.xml, robots.txt, the manifest...) are served as they are, not as the app
