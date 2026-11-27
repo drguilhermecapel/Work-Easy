@@ -46,7 +46,7 @@ describe('navModelFor', () => {
 
   it('shows a visitor only what works without an account', () => {
     const model = navModelFor(backend({}));
-    expect(model.items.map(i => i.to)).toEqual(['/categorias', '/pedido']);
+    expect(model.items.map(i => i.to)).toEqual(['/categorias', '/pedido', '/corridas']);
     expect(model.cta?.to).toBe('/pro/cadastro');
   });
 

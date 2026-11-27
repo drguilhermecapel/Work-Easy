@@ -19,7 +19,7 @@ const deps: PaymentsCreateDeps = {
         return must(
           await caller.db
             .from('bookings')
-            .select('id, client_id, provider_id, occupation_slug, status, origin, price_cents, platform_fee_cents')
+            .select('id, client_id, provider_id, occupation_slug, status, origin, price_cents, platform_fee_cents, service_fee_policy_version, service_fee_covered_by_pro, service_fee_offered')
             .eq('id', id)
             .maybeSingle(),
         ) as BookingForPayment | null;

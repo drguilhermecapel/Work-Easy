@@ -49,7 +49,7 @@ describe('/pro/assinatura: plan', () => {
   it('requires explicit acceptance of a version and stops offering Pro on an exclusively migrated account', async () => {
     let accepted = false;
     fake.rpcs.service_commission_options = () => ok([{
-      occupation_slug: 'diarista', version: 'r1', terms_reference: 'https://terms.example.test/r1',
+      occupation_slug: 'diarista', version: 'r1', charging_enabled: true, terms_reference: 'https://terms.example.test/r1',
       accepted_at: accepted ? '2026-11-27T14:00:00Z' : null, applies_from: accepted ? '2026-11-27T14:00:00Z' : null,
     }]);
     fake.rpcs.service_pro_sales_allowed = () => ok(!accepted);

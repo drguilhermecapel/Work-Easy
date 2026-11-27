@@ -270,10 +270,10 @@ jobs:
 
       # The functions to publish, the same list for a rehearsal and for a real run: one line
       # per function, "<name> no-jwt" or "<name> jwt". asaas-webhook (Asaas), notify-dispatch
-      # and background-check-purge (scheduled jobs) receive no user JWT, so they are published
+      # and scheduled jobs receive no user JWT, so they are published
       # with --no-verify-jwt; every other function keeps JWT verification. config.toml also
-      # sets verify_jwt = false for the three; the flag is redundant and kept as a second
-      # guard. _shared and _runtime are libraries, not functions.
+      # sets verify_jwt = false for these jobs; the flag is redundant and kept as a second
+      # guard. The dedicated Asaas sandbox endpoints belong only in a test project.
       - name: Listar as Edge Functions a publicar
         if: ${{ inputs.deploy_functions }}
         env:
@@ -281,7 +281,7 @@ jobs:
         run: |
           list="$RUNNER_TEMP/functions.txt"
           : > "$list"
-          for fn in asaas-webhook notify-dispatch background-check-purge; do
+          for fn in asaas-webhook notify-dispatch background-check-purge ride-alerts ride-dossier-purge; do
             if [ ! -d "supabase/functions/$fn" ]; then
               # An older commit (rollback) may predate a function: nothing to publish.
               echo "::warning::$fn não existe neste commit; nada a publicar."
@@ -292,7 +292,7 @@ jobs:
           for dir in supabase/functions/*/; do
             fn="$(basename "$dir")"
             case "$fn" in
-              _*|asaas-webhook|notify-dispatch|background-check-purge) continue ;;
+              _*|asaas-webhook|notify-dispatch|background-check-purge|ride-alerts|ride-dossier-purge|ride-sandbox-checkout|ride-sandbox-webhook) continue ;;
             esac
             echo "$fn jwt" >> "$list"
           done

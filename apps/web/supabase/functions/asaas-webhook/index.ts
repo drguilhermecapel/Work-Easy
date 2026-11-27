@@ -42,7 +42,7 @@ const deps: WebhookDeps = {
       return must(
         await serviceClient()
           .from('payments')
-          .select('id, status, booking_id, provider_id, escrow')
+          .select('id, status, booking_id, provider_id, escrow, service_split_review_required')
           .eq('asaas_payment_id', asaasPaymentId)
           .maybeSingle(),
       ) as StoredPayment | null;

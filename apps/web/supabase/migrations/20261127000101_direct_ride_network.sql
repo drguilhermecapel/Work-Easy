@@ -30,6 +30,7 @@ create table private.ride_routes (
   origin text not null, destination text not null,
   meters integer not null check (meters between 1 and 100000),
   minutes integer not null check (minutes between 1 and 240),
+  origin_point jsonb,destination_point jsonb,verified_ref text,verified_until timestamptz,
   primary key (environment,origin,destination), check (origin <> destination)
 );
 insert into private.ride_routes(origin,destination,meters,minutes) values
@@ -49,6 +50,16 @@ create table private.ride_tariffs (
 );
 insert into private.ride_tariffs(valid_from,base_cents,km_cents,minute_cents,minimum_cents,commission_bps)
 values ('2020-01-01 00:00Z',450,180,35,1200,1000);
+
+create table private.ride_extra_prices (
+  tariff_id uuid not null references private.ride_tariffs(id),code text not null,label text not null,
+  cents int not null check(cents between 1 and 100000),primary key(tariff_id,code)
+);
+insert into private.ride_extra_prices
+  select t.id,e.code,e.label,e.cents from private.ride_tariffs t cross join
+    (values ('luggage','Bagagem adicional',400),('toll','Pedágio',600)) e(code,label,cents)
+  where t.environment='simulation';
+revoke all on private.ride_extra_prices from public,anon,authenticated;
 
 -- Additive capability: becoming a simulation driver leaves profiles.role intact.
 create table public.ride_drivers (
@@ -72,6 +83,23 @@ create table private.ride_driver_credentials (
   driver_until date not null, vehicle_until date not null, insurance_until date not null,
   inspected_by uuid not null references public.profiles(id), verified_at timestamptz not null default now()
 );
+-- Coordinates live only in the restricted points table. Quote versions retain the
+-- case ID, approved measurement and tariff, not a second copy of a home address.
+create table private.ride_route_cases (
+  id uuid primary key default gen_random_uuid(),environment text not null references private.ride_network(environment),
+  request_key uuid not null,creator_id uuid not null references public.profiles(id),passenger_id uuid not null references public.profiles(id),
+  booking_id uuid references public.bookings(id),client_id uuid references public.profiles(id),
+  origin_area text not null,destination_area text not null,service_endpoint text check(service_endpoint in ('origin','destination')),
+  status text not null check(status in ('draft','awaiting_review','verified')), reviewer_id uuid references public.profiles(id),
+  meters integer check(meters between 1 and 100000),minutes integer check(minutes between 1 and 240),source_ref text,
+  valid_until timestamptz not null,created_at timestamptz not null default now(),unique(creator_id,request_key)
+);
+create table private.ride_route_points (
+  route_id uuid primary key references private.ride_route_cases(id) on delete cascade,
+  origin jsonb,destination jsonb,initial_digest bytea not null,delete_by timestamptz not null,
+  check(origin is not null or destination is not null)
+);
+revoke all on private.ride_route_cases,private.ride_route_points from public,anon,authenticated;
 create table private.ride_quotes (
   environment text not null references private.ride_network(environment),
   id uuid primary key default gen_random_uuid(),
@@ -103,6 +131,7 @@ create table public.rides (
   scheduled_at timestamptz, created_at timestamptz not null default now()
 );
 -- One canonical itinerary per service, across actors/quotes/request UUIDs.
+alter table private.ride_quotes add column existing_ride_id uuid references public.rides(id);
 create unique index rides_booking_uniq on public.rides(booking_id) where booking_id is not null;
 create table public.ride_legs (
   id uuid primary key default gen_random_uuid(),
@@ -115,12 +144,17 @@ create table public.ride_legs (
   driver_cents integer not null check (driver_cents>=0 and driver_cents+fee_cents=fare_cents),
   payer_id uuid not null references public.profiles(id), tariff_id uuid not null references private.ride_tariffs(id),
   driver_id uuid references public.ride_drivers(id),
+  source_quote_id uuid references private.ride_quotes(id),quote_seq int,
+  route_case_id uuid unique references private.ride_route_cases(id),
+  service_endpoint text check(service_endpoint in ('origin','destination')),
+  replaces_id uuid unique references public.ride_legs(id),revision int not null default 1 check(revision>0),
   status text not null default 'requested' check (status in ('requested','accepted','arriving','boarded','completed','cancelled','unknown')),
-  updated_at timestamptz not null default now(), unique(ride_id,seq),
+  updated_at timestamptz not null default now(), unique(ride_id,seq,revision),
   environment text not null references private.ride_network(environment),
-  foreign key(environment,origin,destination) references private.ride_routes(environment,origin,destination),
+
   exclude using gist (driver_id with =,slot with &&) where (status in ('accepted','arriving','boarded','unknown'))
 );
+create unique index ride_logical_position on public.ride_legs(ride_id,seq) where status<>'cancelled';
 create index ride_open_legs_idx on public.ride_legs(pickup_at) where status='requested';
 create table private.ride_events (
   actor_id uuid not null, operation_key uuid not null, leg_id uuid not null references public.ride_legs(id),
@@ -149,7 +183,7 @@ revoke all on function private.ride_env() from public,anon,authenticated;
 create function private.pin_ride_deployment() returns trigger language plpgsql set search_path='' as $$
 begin
   if tg_op='DELETE' or (new.environment<>old.environment and
-     (exists(select from public.ride_drivers) or exists(select from private.ride_quotes))) then
+     (exists(select from public.ride_drivers) or exists(select from private.ride_quotes) or exists(select from private.ride_route_cases))) then
     raise exception 'ride_environment_in_use';
   end if;
   return new;
@@ -250,8 +284,11 @@ language sql stable set search_path='' as $$
     'status',case when q.status='awaiting_consent' and q.expires_at<=now() then 'expired' else q.status end,
     'required_from_me',p_uid=any(q.required_users),
     'accepted_by_me',exists(select from private.ride_consents where quote_id=q.id and actor_id=p_uid and accepted),
-    'legs',(select jsonb_agg((l - 'payer_id') || case when p_uid=q.passenger_id then '{}'::jsonb
-      else jsonb_build_object('origin','Reservado ao passageiro','destination','Reservado ao passageiro') end order by pos)
+    'legs',(select jsonb_agg((l - array['payer_id','driver_cents','fee_cents','meters','duration_minutes'])
+      || case when p_uid=q.passenger_id then jsonb_build_object('meters',l->'meters','duration_minutes',l->'duration_minutes')
+         else jsonb_build_object('origin','Reservado ao passageiro','destination','Reservado ao passageiro') end
+      || case when (l->>'payer_id')::uuid=p_uid then '{}'::jsonb else
+         jsonb_build_object('fare_cents',null,'limit_cents',null,'extras_cents',null) end order by pos)
       from jsonb_array_elements(q.legs) with ordinality e(l,pos)))
 $$;
 revoke all on function private.ride_quote_view(private.ride_quotes,uuid) from public,anon,authenticated;
@@ -261,8 +298,9 @@ language plpgsql security definer set search_path='' as $$
 declare
   v_uid uuid := private.require_ride_feature('quote'); v_env text; b public.bookings;
   q private.ride_quotes; t private.ride_tariffs; r private.ride_routes;
-  v_required uuid[]; v_passenger uuid; v_client uuid; v_payer uuid; v_role text;
-  v_legs jsonb := '[]'; v_input jsonb; v_start timestamptz; v_end timestamptz;
+  v_existing uuid; v_original public.ride_legs; v_original_ride public.rides; v_replacements uuid[]:='{}';
+  v_extras int; v_codes text[]; v_required uuid[]; v_passenger uuid; v_client uuid; v_payer uuid; v_role text;
+  v_case private.ride_route_cases; v_endpoint text; v_legs jsonb := '[]'; v_input jsonb; v_start timestamptz; v_end timestamptz;
   v_fare int; v_fee int; v_total int := 0; v_index int := 0; v_monetize boolean;
 begin
   perform singleton from private.ride_deployment for share;
@@ -279,13 +317,20 @@ begin
   end if;
   if p_scheduled_at is not null and (p_scheduled_at < now() or p_scheduled_at > now()+interval '30 days') then raise exception 'invalid_schedule'; end if;
   if (select count(*) from private.ride_quotes where actor_id=v_uid and created_at>now()-interval '1 hour')>=60 then raise exception 'ride_quote_limit'; end if;
+  if p_legs->0 ? 'replaces' then
+    select r0.* into v_original_ride from public.rides r0 join public.ride_legs l on l.ride_id=r0.id
+      where l.id=(p_legs->0->>'replaces')::uuid and r0.environment=v_env and r0.booking_id is not distinct from p_booking
+      and (r0.passenger_id=v_uid or exists(select from public.bookings bk where bk.id=p_booking and bk.client_id=v_uid));
+    if not found then raise exception 'replacement_unavailable'; end if;
+    v_existing:=v_original_ride.id;
+  end if;
   if p_booking is null then
     v_passenger:=v_uid; v_required:=array[v_uid];
   else
     select * into b from public.bookings where id=p_booking for update;
     if not found or b.origin <> 'platform' or b.client_id is null or v_uid not in (b.client_id,b.provider_id)
        or b.status not in ('accepted','paid','in_progress') then raise exception 'booking_not_eligible'; end if;
-    if exists(select from public.rides where booking_id=p_booking) then raise exception 'ride_already_requested'; end if;
+    if v_existing is null and exists(select from public.rides where booking_id=p_booking) then raise exception 'ride_already_requested'; end if;
     v_passenger:=b.provider_id; v_client:=b.client_id; v_required:=array[v_passenger];
   end if;
   select * into t from private.ride_tariffs where environment=v_env and valid_from<=now() order by valid_from desc limit 1;
@@ -293,11 +338,27 @@ begin
   select monetization_enabled into v_monetize from private.ride_network where environment=v_env;
   for v_input in select value from jsonb_array_elements(p_legs) loop
     v_index:=v_index+1;
-    if jsonb_typeof(v_input)<>'object' or (v_input-array['origin','destination','payer','pickup_at'])<>'{}'::jsonb then
+    if jsonb_typeof(v_input)<>'object' or (v_input-array['origin','destination','payer','pickup_at','replaces','extras','route_id','service_endpoint'])<>'{}'::jsonb then
       raise exception 'invalid_leg';
     end if;
-    select * into r from private.ride_routes where environment=v_env and origin=v_input->>'origin' and destination=v_input->>'destination';
-    if not found or not private.ride_area_allowed(v_env,r.origin,'quote') or not private.ride_area_allowed(v_env,r.destination,'quote') then raise exception 'route_unavailable'; end if;
+    v_endpoint:=case when p_booking is null then null else coalesce(v_input->>'service_endpoint',
+      case when v_index=1 then 'destination' else 'origin' end) end;
+    if v_endpoint is not null and v_endpoint not in ('origin','destination') then raise exception 'invalid_endpoint'; end if;
+    if v_input ? 'route_id' then
+      select c.* into v_case from private.ride_route_cases c join private.ride_route_points pt on pt.route_id=c.id
+        where c.id=(v_input->>'route_id')::uuid and c.environment=v_env and c.booking_id is not distinct from p_booking
+          and c.passenger_id=v_passenger and c.status='verified' and c.valid_until>now() and pt.delete_by>now()
+          and c.origin_area=v_input->>'origin' and c.destination_area=v_input->>'destination'
+          and not exists(select from public.ride_legs l where l.route_case_id=c.id);
+      if not found or exists(select from jsonb_array_elements(v_legs) old where old->>'route_id'=v_input->>'route_id') then raise exception 'route_unavailable'; end if;
+      r.origin:=v_case.origin_area;r.destination:=v_case.destination_area;r.meters:=v_case.meters;r.minutes:=v_case.minutes;
+      v_endpoint:=v_case.service_endpoint;
+    else
+      select * into r from private.ride_routes where environment=v_env and origin=v_input->>'origin' and destination=v_input->>'destination';
+      if v_env='live' then raise exception 'verified_route_required'; end if;
+      if not found then raise exception 'route_unavailable'; end if;
+    end if;
+    if not private.ride_area_allowed(v_env,r.origin,'quote') or not private.ride_area_allowed(v_env,r.destination,'quote') then raise exception 'route_unavailable'; end if;
     v_start:=coalesce((v_input->>'pickup_at')::timestamptz,case when v_index=1 then coalesce(p_scheduled_at,now()) else v_end end);
     if (v_index=1 and ((p_scheduled_at is not null and v_start<>p_scheduled_at) or
        (p_scheduled_at is null and (v_start<now()-interval '2 minutes' or v_start>now()+interval '2 minutes'))))
@@ -309,21 +370,32 @@ begin
     elsif p_booking is not null and v_role='provider' then v_payer:=v_passenger;
     else raise exception 'invalid_payer'; end if;
     if not v_payer=any(v_required) then v_required:=array_append(v_required,v_payer); end if;
+    if v_existing is not null then
+      select * into v_original from public.ride_legs where id=(v_input->>'replaces')::uuid and ride_id=v_existing
+        and status='cancelled' and not exists(select from public.ride_legs nxt where nxt.replaces_id=(v_input->>'replaces')::uuid);
+      if not found or v_original.id=any(v_replacements) or v_original_ride.passenger_id<>v_passenger then raise exception 'replacement_unavailable'; end if;
+      v_replacements:=array_append(v_replacements,v_original.id);
+    elsif v_input ? 'replaces' then raise exception 'replacement_unavailable'; end if;
+    if jsonb_typeof(coalesce(v_input->'extras','[]'))<>'array' or jsonb_array_length(coalesce(v_input->'extras','[]'))>8 then raise exception 'invalid_extras'; end if;
+    select coalesce(array_agg(code),array[]::text[]) into v_codes from jsonb_array_elements_text(coalesce(v_input->'extras','[]')) code;
+    select coalesce(sum(cents),0) into v_extras from private.ride_extra_prices where tariff_id=t.id and code=any(v_codes);
+    if cardinality(v_codes)<>(select count(*) from private.ride_extra_prices where tariff_id=t.id and code=any(v_codes)) then raise exception 'invalid_extras'; end if;
     v_fare:=greatest(t.minimum_cents,t.base_cents+round(r.meters::numeric*t.km_cents/1000)::integer+r.minutes*t.minute_cents);
     v_fee:=case when v_env='simulation' or (v_monetize and private.ride_area_allowed(v_env,r.origin,'monetize')
        and private.ride_area_allowed(v_env,r.destination,'monetize')) then (v_fare::bigint*t.commission_bps/10000)::int else 0 end;
+    v_fare:=v_fare+v_extras;
     v_legs:=v_legs || jsonb_build_object('seq',v_index,'origin',r.origin,'destination',r.destination,'pickup_at',v_start,
-      'duration_minutes',r.minutes,'meters',r.meters,'payer',v_role,'payer_id',v_payer,'fare_cents',v_fare,'limit_cents',v_fare,
-      'extras_cents',0,'fee_cents',v_fee,'driver_cents',v_fare-v_fee);
+      'duration_minutes',r.minutes,'meters',r.meters,'route_id',v_input->>'route_id','service_endpoint',v_endpoint,'payer',v_role,'payer_id',v_payer,'fare_cents',v_fare,'limit_cents',v_fare,
+      'extras',to_jsonb(v_codes),'extras_cents',v_extras,'replaces',v_input->>'replaces','fee_cents',v_fee,'driver_cents',v_fare-v_fee);
     v_total:=v_total+v_fare;
   end loop;
   -- The person ordering the trip also confirms, even when somebody else pays.
   if not v_uid=any(v_required) then v_required:=array_append(v_required,v_uid); end if;
-  update private.ride_quotes set status='superseded' where booking_id=p_booking and status='awaiting_consent';
+  update private.ride_quotes set status='superseded' where (booking_id=p_booking or existing_ride_id=v_existing) and status='awaiting_consent';
   insert into private.ride_quotes(environment,actor_id,request_key,booking_id,passenger_id,client_id,scheduled_at,request_legs,
-    legs,required_users,tariff_id,expires_at,status,total_cents)
+    legs,required_users,tariff_id,expires_at,status,total_cents,existing_ride_id)
   values(v_env,v_uid,p_key,p_booking,v_passenger,v_client,p_scheduled_at,p_legs,v_legs,v_required,t.id,
-    least(now()+interval '5 minutes',coalesce(p_scheduled_at,'infinity'::timestamptz)), 'awaiting_consent',v_total)
+    least(now()+interval '5 minutes',coalesce(p_scheduled_at,'infinity'::timestamptz)), 'awaiting_consent',v_total,v_existing)
   returning * into q;
   return private.ride_quote_view(q,v_uid);
 end $$;
@@ -332,7 +404,7 @@ create function public.ride_consent(p_quote uuid,p_accept boolean) returns jsonb
 language plpgsql security definer set search_path='' as $$
 declare
   v_uid uuid := auth.uid(); q private.ride_quotes; b public.bookings; v_ride uuid; leg jsonb;
-  v_previous boolean; v_start timestamptz; v_end timestamptz;
+  v_previous boolean; v_prior public.ride_legs; v_logical_seq int; v_revision int; v_start timestamptz; v_end timestamptz;
 begin
   -- Minimal read identifies the owning booking; lock order matches ride_quote.
   select * into q from private.ride_quotes where id=p_quote and environment=private.ride_env() and v_uid=any(required_users);
@@ -341,7 +413,7 @@ begin
   select * into strict q from private.ride_quotes where id=p_quote for update;
   select accepted into v_previous from private.ride_consents where quote_id=q.id and actor_id=v_uid;
   if q.status in ('requested','declined') and v_previous is not distinct from p_accept then
-    select id into v_ride from public.rides where quote_id=q.id;
+    select coalesce(q.existing_ride_id,(select id from public.rides where quote_id=q.id)) into v_ride;
     return jsonb_build_object('status',q.status,'ride_id',v_ride);
   end if;
   if q.status<>'awaiting_consent' or q.expires_at<=now() then raise exception 'quote_unavailable'; end if;
@@ -356,6 +428,12 @@ begin
     raise exception 'booking_not_eligible';
   end if;
   for leg in select value from jsonb_array_elements(q.legs) loop
+    if leg->>'route_id' is not null then
+      perform c.id from private.ride_route_cases c join private.ride_route_points p on p.route_id=c.id
+        where c.id=(leg->>'route_id')::uuid and c.status='verified' and c.valid_until>now() and p.delete_by>now()
+        and not exists(select from public.ride_legs l where l.route_case_id=c.id) for update of c,p;
+      if not found then raise exception 'requote_required'; end if;
+    elsif q.environment='live' then raise exception 'verified_route_required'; end if;
     if not private.ride_area_allowed(q.environment,leg->>'origin','dispatch') or not private.ride_area_allowed(q.environment,leg->>'destination','dispatch') then raise exception 'dispatch_unavailable'; end if;
     if q.environment='live' and (leg->>'fee_cents')::int>0 and
        (not (select monetization_enabled from private.ride_network where environment='live') or
@@ -367,15 +445,25 @@ begin
   if exists(select from unnest(q.required_users) u where not exists(select from private.ride_consents c where c.quote_id=q.id and c.actor_id=u and c.accepted)) then
     return jsonb_build_object('status','awaiting_consent','ride_id',null);
   end if;
-  insert into public.rides(quote_id,passenger_id,environment,booking_id,scheduled_at)
-  values(q.id,q.passenger_id,q.environment,q.booking_id,q.scheduled_at) returning id into v_ride;
+  if q.existing_ride_id is null then
+    insert into public.rides(quote_id,passenger_id,environment,booking_id,scheduled_at)
+    values(q.id,q.passenger_id,q.environment,q.booking_id,q.scheduled_at) returning id into v_ride;
+  else
+    select id into strict v_ride from public.rides where id=q.existing_ride_id for update;
+  end if;
   for leg in select value from jsonb_array_elements(q.legs) loop
     v_start:=(leg->>'pickup_at')::timestamptz; v_end:=v_start+make_interval(mins=>(leg->>'duration_minutes')::int);
+    v_logical_seq:=(leg->>'seq')::int; v_revision:=1;
+    if q.existing_ride_id is not null then
+      select * into v_prior from public.ride_legs where ride_id=v_ride and id=(leg->>'replaces')::uuid and status='cancelled' for update;
+      if not found or exists(select from public.ride_legs where replaces_id=v_prior.id) then raise exception 'replacement_unavailable'; end if;
+      v_logical_seq:=v_prior.seq; v_revision:=v_prior.revision+1;
+    end if;
     insert into public.ride_legs(ride_id,seq,origin,destination,pickup_at,duration_minutes,slot,
-      fare_cents,fee_cents,driver_cents,payer_id,tariff_id,environment)
-    values(v_ride,(leg->>'seq')::int,leg->>'origin',leg->>'destination',v_start,(leg->>'duration_minutes')::int,
+      fare_cents,fee_cents,driver_cents,payer_id,tariff_id,environment,source_quote_id,quote_seq,replaces_id,revision,extras_cents,route_case_id,service_endpoint)
+    values(v_ride,v_logical_seq,leg->>'origin',leg->>'destination',v_start,(leg->>'duration_minutes')::int,
       tstzrange(v_start,v_end,'[)'),(leg->>'fare_cents')::int,(leg->>'fee_cents')::int,(leg->>'driver_cents')::int,
-      (leg->>'payer_id')::uuid,q.tariff_id,q.environment);
+      (leg->>'payer_id')::uuid,q.tariff_id,q.environment,q.id,(leg->>'seq')::int,(leg->>'replaces')::uuid,v_revision,(leg->>'extras_cents')::int,(leg->>'route_id')::uuid,leg->>'service_endpoint');
   end loop;
   update private.ride_quotes set status='requested' where id=q.id;
   return jsonb_build_object('status','requested','ride_id',v_ride);

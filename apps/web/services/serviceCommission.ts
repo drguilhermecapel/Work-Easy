@@ -5,6 +5,7 @@ export interface ServiceCommissionOption {
   occupation_slug: string;
   version: string;
   terms_reference: string;
+  charging_enabled: boolean;
   accepted_at: string | null;
   applies_from: string | null;
 }

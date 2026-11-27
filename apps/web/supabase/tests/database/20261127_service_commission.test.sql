@@ -58,5 +58,23 @@ select is((select platform_fee_cents from public.bookings where id=(select id fr
 update public.platform_settings set value='false' where key='service_recurring_commission_enabled';
 select tests.authenticate_as('provider_c');
 select is(public.compute_platform_fee((select id from booking_fixture where label='new')),30000,'Already accepted split remains stable after stopping sales');
+select tests.clear_authentication();
+insert into booking_fixture values ('paused',tests.make_booking('provider_c','client_b','t-reparo',tests.sp_period(tests.at(51,0,'09:00')),'requested',300009));
+update public.platform_settings set value='true' where key='service_recurring_commission_enabled';
+update public.bookings set status='accepted' where id=(select id from booking_fixture where label='paused');
+select is((select platform_fee_cents from public.bookings where id=(select id from booking_fixture where label='paused')),0,'A service offered while charging was paused stays free after reactivation');
+update private.service_commission_releases set ends_at=statement_timestamp() where occupation_slug='t-reparo' and version='r1';
+insert into booking_fixture values ('expired',tests.make_booking('provider_c','client_b','t-reparo',tests.sp_period(tests.at(51,1,'09:00')),'accepted',300009));
+select is((select platform_fee_cents from public.bookings where id=(select id from booking_fixture where label='expired')),0,'An expired version never silently restarts D5');
+select tests.authenticate_as('provider_c');
+select is(public.service_pro_sales_allowed(tests.uid('provider_c')),false,'Closing the release does not restart Pro for migrated accounts');
+select tests.clear_authentication();
+insert into public.payments(booking_id,payer_id,provider_id,asaas_payment_id,amount_cents,platform_fee_cents,service_split_review_required)
+  select b.id,b.client_id,b.provider_id,'pay_test_split_review',b.price_cents,b.platform_fee_cents,true from public.bookings b
+  where b.id=(select id from booking_fixture where label='new');
+select tests.authenticate_as('admin');
+select is((select count(*) from public.admin_payments_attention where action='payment.service_split_review'),1::bigint,'Actual split divergence enters the existing finance queue atomically');
+select tests.authenticate_as('client_b');
+select is((select count(*) from public.admin_payments_attention where action='payment.service_split_review'),0::bigint,'Finance incident stays isolated from other users');
 select * from finish();
 rollback;

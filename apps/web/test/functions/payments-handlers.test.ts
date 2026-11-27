@@ -193,6 +193,60 @@ describe('payments-create', () => {
     }
   });
 
+  const recurring = { ...BOOKING, service_fee_policy_version: 'r1', service_fee_offered: true, price_cents: 300009, platform_fee_cents: 30000 };
+
+  it('sends the exact uncapped provider payout from the accepted recurring contract, including odd centavos', async () => {
+    const { deps, calls, inserted } = paymentsDeps({ booking: recurring, customerId: 'cus_9', routes: {
+      'POST /v3/payments/simulate': { body: { value: 3000.09, creditCard: { netValue: 2900.11 } } },
+      'POST /v3/payments': { body: { ...ASAAS_PAYMENT, billingType: 'CREDIT_CARD', value: 3000.09, netValue: 2900.11 } },
+    } });
+    const res = await read(await paymentsCreate(post('payments-create', { booking_id: BOOKING_ID, method: 'credit_card' }), deps));
+    expect(res.status).toBe(201);
+    expect(calls[0].body).toEqual({ value: 3000.09, billingTypes: ['CREDIT_CARD'] });
+    expect(calls[1].body).toMatchObject({
+      value: 3000.09, split: [{ walletId: 'wal_provider', fixedValue: 2700.09, externalReference: `booking:${BOOKING_ID}` }],
+    });
+    expect((calls[1].body as {split: object[]}).split[0]).not.toHaveProperty('percentualValue');
+    expect(inserted[0]).toMatchObject({ amount_cents: 300009, platform_fee_cents: 30000, service_split_review_required: false });
+  });
+
+  it('keeps a zero rounded commission exact on a 9-cent eligible service', async () => {
+    const { deps, calls, inserted } = paymentsDeps({ booking: { ...recurring, price_cents: 9, platform_fee_cents: 0 },
+      routes: { 'POST /v3/payments/simulate': { body: { value: 0.09, pix: { netValue: 0.08 } } } } });
+    const res = await read(await paymentsCreate(post('payments-create', { booking_id: BOOKING_ID, method: 'pix' }), deps));
+    expect(res.body.error.code).toBe('service_split_unavailable');
+    expect(calls).toHaveLength(1);
+    expect(inserted).toHaveLength(0);
+  });
+
+  it.each([
+    ['pix', { value: 10, pix: { netValue: 8.99 } }],
+    ['boleto', { value: 10, bankSlip: {} }],
+    ['credit_card', { value: 100, creditCard: { netValue: 98 } }],
+  ] as const)('rejects %s before issuing any charge when the simulation cannot cover the promised fixed payout', async (method, simulation) => {
+    const { deps, calls, inserted } = paymentsDeps({ booking: { ...recurring, price_cents: 1000, platform_fee_cents: 100 },
+      routes: { 'POST /v3/payments/simulate': { body: simulation } } });
+    const res = await read(await paymentsCreate(post('payments-create', { booking_id: BOOKING_ID, method }), deps));
+    expect(res.body.error.code).toBe('service_split_unavailable');
+    expect(calls).toHaveLength(1);
+    expect(inserted).toHaveLength(0);
+  });
+
+  it('keeps the PSP reference but hides the invoice and blocks any new payment when the actual net falls below the simulation', async () => {
+    const { deps, inserted, calls } = paymentsDeps({ booking: recurring, customerId: 'cus_9', routes: {
+      'POST /v3/payments/simulate': { body: { value: 3000.09, pix: { netValue: 2900.11 } } },
+      'POST /v3/payments': { body: { ...ASAAS_PAYMENT, value: 3000.09, netValue: 2700.08 } },
+    } });
+    const res = await read(await paymentsCreate(post('payments-create', { booking_id: BOOKING_ID, method: 'pix' }), deps));
+    expect(res.body.error.code).toBe('service_split_review');
+    expect(calls).toHaveLength(2);
+    expect(inserted[0]).toMatchObject({ asaas_payment_id: 'pay_1', invoice_url: null, pix_payload: null, service_split_review_required: true });
+    const retry = paymentsDeps({ booking: recurring, open: { ...inserted[0], id: 'payment-row-1' } });
+    const repeated = await read(await paymentsCreate(post('payments-create', { booking_id: BOOKING_ID, method: 'boleto' }), retry.deps));
+    expect(repeated.body.error.code).toBe('service_split_review');
+    expect(retry.calls).toHaveLength(0);
+  });
+
   it('splits amount minus fee as a percentage of the net value when there is a platform fee', async () => {
     const { deps, calls } = paymentsDeps({ booking: { ...BOOKING, price_cents: 9999, platform_fee_cents: 1199 }, customerId: 'cus_9' });
     const res = await read(await paymentsCreate(post('payments-create', { booking_id: BOOKING_ID, method: 'credit_card' }), deps));
@@ -391,6 +445,7 @@ describe('payments-create', () => {
 
 describe('charges-create', () => {
   function chargesDeps(over: {
+    migratedOccupations?: string[]; fullyMigrated?: boolean;
     plan?: string; quoteStatus?: string; apiKey?: string | null; open?: OpenCharge | null; paid?: boolean;
     provider?: ProviderAccount;
     /** CRM client linked to the quote (null: none) */
@@ -413,7 +468,7 @@ describe('charges-create', () => {
       asaas: client,
       session: async () => ({
         user: PROVIDER,
-        getProvider: async () => ({ ...(over.provider ?? APPROVED), plan: over.plan ?? 'pro' }),
+        getProvider: async () => ({ ...(over.provider ?? APPROVED), plan: over.plan ?? 'pro', migratedOccupations: over.migratedOccupations, fullyMigrated: over.fullyMigrated }),
         getBooking: async () => ({
           id: BOOKING_ID, provider_id: PROVIDER.id, client_id: null, provider_client_id: null,
           occupation_slug: 'diarista', status: 'accepted', origin: 'platform', price_cents: 1000,
@@ -440,6 +495,19 @@ describe('charges-create', () => {
   }
 
   const body = { quote_id: QUOTE_ID, method: 'boleto', provider_client_id: CLIENT_ID };
+  it('allows an own quote with no service commission after the Pro subscription ends on an exclusively migrated account', async () => {
+    const { deps, inserted } = chargesDeps({ plan: 'free', migratedOccupations: ['eletricista'], fullyMigrated: true });
+    const res = await read(await chargesCreate(post('charges-create', body), deps));
+    expect(res.status).toBe(201);
+    expect(inserted[0].platform_fee_cents).toBe(0);
+  });
+
+  it('preserves the legacy gate on an unscoped own quote of a mixed account', async () => {
+    const { deps } = chargesDeps({ plan: 'free', migratedOccupations: ['eletricista'], fullyMigrated: false });
+    const res = await read(await chargesCreate(post('charges-create', body), deps));
+    expect(res.body.error.code).toBe('pro_required');
+  });
+
   /** The Asaas customer of an open charge, created for CLIENT_ID (the reference charges-create gives it). */
   const CUSTOMER_OF_CLIENT = {
     'GET /v3/customers/cus_0': { body: { id: 'cus_0', name: 'Dona Maria', externalReference: `provider_client:${CLIENT_ID}` } },

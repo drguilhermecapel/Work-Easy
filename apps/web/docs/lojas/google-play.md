@@ -1,5 +1,8 @@
 # Google Play: kit de envio do WorkEasy (Android)
 
+**Atualização D14 para a próxima submissão.** O binário da rede de motoristas passa a declarar localização e registro de aparelho para alertas. Antes de publicar, atualizar as respostas de privacidade, captura da divulgação no app, finalidade, retenção e materiais para revisão da loja. As verificações históricas de ausência de localização abaixo são referentes às versões anteriores. [Comportamento por plataforma e ensaios físicos](../arquitetura/nativo.md#rede-de-motoristas-d14-27112026)
+
+
 > Rascunho para revisão de advogado. Não é parecer jurídico.
 
 | | |

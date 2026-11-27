@@ -31,6 +31,46 @@ import { inputClass, primaryButton, secondaryButton } from '../../components/pro
 
 const METHODS: PaymentMethod[] = ['pix', 'boleto', 'credit_card', 'undefined'];
 
+const ServiceCommissionSection: React.FC<{ providerId: string; onAccepted: () => void }> = ({ providerId, onAccepted }) => {
+  const options = useAsync(serviceCommissionOptions, providerId);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const accept = async (option: ServiceCommissionOption) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await acceptServiceCommission(option);
+      options.reload();
+      onAccepted();
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!options.data?.length) return <ErrorAlert error={options.error} />;
+  return (
+    <Card as="section">
+      <SectionTitle id="politica-comissao">Condições dos novos serviços</SectionTitle>
+      {options.data.map(option => (
+        <div key={`${option.occupation_slug}:${option.version}`} className="mt-3 space-y-2">
+          <h3 className="font-medium">{findOccupation(option.occupation_slug)?.name ?? option.occupation_slug}</h3>
+          <p>Comissão de 10% descontada do preço de cada novo atendimento pela plataforma nessa ocupação, inclusive na recorrência, sem teto. O repasse é o preço menos essa comissão, e a WorkEasy assume o custo do meio de pagamento. Essas propostas ficam fora da franquia mensal. Contratos anteriores e clientes que você trouxe seguem as condições originais.</p>
+          {!option.charging_enabled && option.accepted_at && <p>Novas propostas desta versão estão sem comissão.</p>}
+          <a className="text-sm underline" href={option.terms_reference} target="_blank" rel="noopener noreferrer">Ler as condições da versão {option.version}</a>
+          {option.accepted_at && option.applies_from ? <p>Política aceita. Vigência a partir de {formatDateBR(option.applies_from)}.</p> : (
+            <ConfirmButton label="Revisar aceite" question="Você aceita a comissão nos novos atendimentos desta ocupação? O período já pago do Pro será respeitado."
+              confirmLabel="Aceitar a política de 10%" disabled={busy} onConfirm={() => accept(option)} />
+          )}
+        </div>
+      ))}
+      <p className="mt-2 text-sm">Antes de migrar a última ocupação, encerre qualquer renovação ativa pelo canal da sua assinatura. Em uma conta mista, o Pro pode continuar nas ocupações que mantêm esse plano.</p>
+      <ErrorAlert error={error ?? options.error} />
+    </Card>
+  );
+};
+
 // ---- Subscription ---------------------------------------------------------------------
 
 const SubscriptionSection: React.FC<{ version: number }> = ({ version }) => {
@@ -46,23 +86,7 @@ const SubscriptionSection: React.FC<{ version: number }> = ({ version }) => {
   const [created, setCreated] = useState<SubscribeResult | null>(null);
   const [notice, setNotice] = useState('');
 
-  const options = useAsync(serviceCommissionOptions, provider.id);
-  const sales = useAsync(() => serviceProSalesAllowed(provider.id), provider.id);
-  const [policyError, setPolicyError] = useState<unknown>(null);
-  const acceptPolicy = async (option: ServiceCommissionOption) => {
-    setBusy(true);
-    setPolicyError(null);
-    try {
-      await acceptServiceCommission(option);
-      options.reload();
-      sales.reload();
-      refresh();
-    } catch (err) {
-      setPolicyError(err);
-    } finally {
-      setBusy(false);
-    }
-  };
+  const sales = useAsync(() => serviceProSalesAllowed(provider.id), `${provider.id}:${version}`);
 
   const isPro = provider.plan === 'pro';
   const row = subscription.data;
@@ -126,20 +150,7 @@ const SubscriptionSection: React.FC<{ version: number }> = ({ version }) => {
           “Atualizar situação” para conferir.
         </p>
       )}
-      <ErrorAlert error={subscription.error ?? price.error ?? options.error ?? sales.error} />
-      {options.data?.map(option => (
-        <section key={option.occupation_slug} className="mt-3 space-y-2">
-          <h3 className="font-medium">{findOccupation(option.occupation_slug)?.name ?? option.occupation_slug}</h3>
-          <p>Comissão de 10% descontada do preço de cada novo atendimento contratado pela plataforma, inclusive retornos, sem teto. A ocupação passa a aceitar propostas sem franquia mensal. Os contratos anteriores e os clientes que você trouxe seguem as condições originais.</p>
-          <a className="text-sm underline" href={option.terms_reference} target="_blank" rel="noopener noreferrer">Ler as condições da versão {option.version}</a>
-          {option.accepted_at && option.applies_from ? <p>Política aceita. Vigência a partir de {formatDateBR(option.applies_from)}.</p> : (
-            <ConfirmButton label="Revisar aceite" question="Você aceita a comissão nos novos atendimentos desta ocupação? O período já pago do Pro será respeitado."
-              confirmLabel="Aceitar a política de 10%" disabled={busy} onConfirm={() => acceptPolicy(option)} />
-          )}
-        </section>
-      ))}
-      {options.data?.length ? <p className="mt-2 text-sm">Antes de migrar a última ocupação, cancele qualquer renovação ativa abaixo. Em uma conta mista, o Pro pode continuar nas ocupações que mantêm esse plano.</p> : null}
-      <ErrorAlert error={policyError} />
+      <ErrorAlert error={subscription.error ?? price.error ?? sales.error} />
 
       {!subscribed && sales.data === true && (
         <form onSubmit={subscribe} className="space-y-4 mt-3" noValidate aria-label="Assinar o plano Pro">
@@ -393,6 +404,7 @@ const Content: React.FC = () => {
           Atualizar situação
         </button>
       </div>
+      <ServiceCommissionSection providerId={provider.id} onAccepted={() => { setVersion(v => v + 1); refresh(); }} />
       {features.proSalesEnabled ? (
         <SubscriptionSection version={version} />
       ) : (

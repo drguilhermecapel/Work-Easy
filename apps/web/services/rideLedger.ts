@@ -16,9 +16,17 @@ export const rideFinanceLabels = {
 } as const;
 
 export type RideFinanceKind = keyof typeof rideFinanceLabels;
-export type RideSettlement = { recognized: false } | {
+export type RideCostReview = {
+  status: 'unknown' | 'cancelled';
+  environment: 'simulation' | 'live';
+  cost_cents: number | null;
+  evidence: string | null;
+};
+
+export type RideSettlement = { recognized: false; review?: RideCostReview | null } | {
   recognized: true;
   environment: 'simulation' | 'live';
+  source: 'unclaimed' | 'manual' | 'psp_sandbox' | 'psp_live';
   fare_cents: number;
   extras_cents: number;
   fee_cents: number;
@@ -27,6 +35,7 @@ export type RideSettlement = { recognized: false } | {
   receivable_cents: number;
   driver_balance_cents: number;
   commission_cents: number;
+  processing_cost_cents: number;
   disputed_cents: number;
   reversed_cents: number;
   reversed_extras_cents: number;
@@ -41,3 +50,8 @@ export const simulateRideFinanceEvent = async (
 ) => unwrap<RideSettlement>(await db().rpc('admin_simulate_ride_payment_event', {
   p_leg: legId, p_operation: operationId, p_kind: kind, p_amount_cents: amountCents, p_extras_cents: extrasCents,
 }));
+
+export const confirmSimulatedRideCost = async (legId: string, operationId: string, costCents: number, evidence: string) =>
+  unwrap<RideSettlement>(await db().rpc('admin_confirm_simulated_ride_cost', {
+    p_leg: legId, p_operation: operationId, p_cost_cents: costCents, p_reference: evidence,
+  }));

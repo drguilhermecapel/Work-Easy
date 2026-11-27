@@ -9,6 +9,8 @@ returns jsonb language sql as $$
   select public.admin_simulate_ride_payment_event(pg_temp.leg(),md5('ride-finance-'||op::text)::uuid,kind,cents,extras)
 $$;
 
+grant execute on function pg_temp.leg(), pg_temp.post_event(int,text,int,int) to authenticated,service_role;
+
 insert into public.ride_drivers(id,environment,vehicle,status,valid_until,reviewed_by)
   values(tests.uid('provider_c'),'simulation','sedan','approved',current_date+30,tests.uid('admin'));
 with q as (
@@ -58,9 +60,65 @@ select is((public.admin_ride_settlement(pg_temp.leg())->>'cash_cents')::int,-300
 select tests.clear_authentication();
 select is((select sum(cash_delta::bigint+receivable_delta-driver_delta-fee_delta) from private.ride_financial_events where leg_id=pg_temp.leg()),0::numeric,'Every posting balances');
 select is((select count(*) from private.ride_financial_events where leg_id=pg_temp.leg() and kind='capture'),1::bigint,'One capture after transport redelivery');
-update private.ride_deployment set environment='live' where singleton;
+select tests.authenticate_service();
+select throws_ok($$select public.claim_ride_sandbox_account(pg_temp.leg())$$,'P0001','ride_operation_conflict','PSP cannot take over a manual simulation with posted money');
+select tests.clear_authentication();
+create function pg_temp.second_leg() returns uuid language sql immutable as $$select 'f1000000-0000-4000-8000-000000000002'::uuid$$;
+grant execute on function pg_temp.second_leg() to authenticated,service_role;
+insert into public.ride_legs(id,ride_id,seq,origin,destination,pickup_at,duration_minutes,slot,fare_cents,fee_cents,extras_cents,
+                            driver_cents,payer_id,driver_id,tariff_id,status,environment)
+select pg_temp.second_leg(),ride_id,2,destination,origin,pickup_at+interval '3 hours',duration_minutes,
+  tstzrange(pickup_at+interval '3 hours',pickup_at+interval '4 hours','[)'),2509,250,0,2259,payer_id,driver_id,tariff_id,'boarded','simulation'
+ from public.ride_legs where id=pg_temp.leg();
+update public.ride_legs set status='completed' where id=pg_temp.second_leg();
+select tests.authenticate_service();
+select throws_ok($$select public.record_ride_sandbox_financial_event(pg_temp.second_leg(),md5('verified')::uuid,'capture',2509)$$,
+  'P0001','ride_operation_conflict','A verified PSP event requires an earlier source claim');
+select is((public.claim_ride_sandbox_account(pg_temp.second_leg())->>'fare_cents')::int,2509,'Claim locks the exact authorized fare for the PSP intent');
+select is((public.claim_ride_sandbox_account(pg_temp.second_leg())->>'payer_id')::uuid,tests.uid('client_a'),'Claim is idempotent with server-derived payer');
 select tests.authenticate_as('admin');
-select throws_ok($$select public.admin_ride_settlement(pg_temp.leg())$$,'P0001','not_found','Production deployment cannot query simulation by ID');
-select throws_ok($$select pg_temp.post_event(11,'capture',3309)$$,'P0001','not_allowed','Simulation API is disabled in live environment');
+select throws_ok($$select public.admin_simulate_ride_payment_event(pg_temp.second_leg(),md5('manual')::uuid,'capture',2509)$$,
+  'P0001','ride_operation_conflict','No manual money posting after PSP sandbox intent');
+select throws_ok($$select public.claim_ride_sandbox_account(pg_temp.second_leg())$$,'42501',null,'Authenticated admin lacks PSP capability');
+select tests.authenticate_service();
+select lives_ok($$select public.record_ride_sandbox_financial_event(pg_temp.second_leg(),md5('verified')::uuid,'capture',2509)$$,
+  'Verified source records one full capture');
+select lives_ok($$select public.record_ride_sandbox_financial_event(pg_temp.second_leg(),md5('verified')::uuid,'capture',2509)$$,
+  'Webhook and later reconciliation share the same operation ID');
+select tests.clear_authentication();
+select is((select count(*) from private.ride_financial_events where leg_id=pg_temp.second_leg() and kind='capture'),1::bigint,
+  'Provider delivery cannot duplicate a money movement');
+create function pg_temp.interrupted() returns uuid language sql immutable as $$select 'f1000000-0000-4000-8000-000000000003'::uuid$$;
+grant execute on function pg_temp.interrupted() to authenticated;
+insert into public.ride_legs(id,ride_id,seq,origin,destination,pickup_at,duration_minutes,slot,fare_cents,fee_cents,extras_cents,
+                            driver_cents,payer_id,driver_id,tariff_id,status,environment)
+select pg_temp.interrupted(),ride_id,3,origin,destination,pickup_at+interval '6 hours',duration_minutes,
+  tstzrange(pickup_at+interval '6 hours',pickup_at+interval '7 hours','[)'),3000,300,0,2700,payer_id,driver_id,tariff_id,'boarded','simulation'
+ from public.ride_legs where id=pg_temp.leg();
+update public.ride_legs set status='unknown' where id=pg_temp.interrupted();
+select tests.authenticate_as('admin');
+select is(public.admin_ride_settlement(pg_temp.interrupted())#>>'{review,status}','unknown','Cost is pending while trip outcome is unknown');
+select throws_ok($$select public.admin_confirm_simulated_ride_cost(pg_temp.interrupted(),md5('cancel')::uuid,600,'fixture receipt')$$,
+  'P0001','ride_financial_state','Cannot settle cancellation cost before confirmation');
+select tests.clear_authentication();
+update public.ride_legs set status='cancelled' where id=pg_temp.interrupted();
+select tests.authenticate_as('admin');
+select lives_ok($$select public.admin_confirm_simulated_ride_cost(pg_temp.interrupted(),md5('cancel')::uuid,600,'fixture receipt')$$,'Documented cost is retained after confirmed cancellation');
+select lives_ok($$select public.admin_confirm_simulated_ride_cost(pg_temp.interrupted(),md5('cancel')::uuid,600,'fixture receipt')$$,'Recording same cancellation cost is idempotent');
+select is((public.admin_ride_settlement(pg_temp.interrupted())#>>'{review,cost_cents}')::integer,600,'Six-real cancellation cost survives, with no assumed zero');
+select is(public.admin_ride_settlement(pg_temp.interrupted())->>'recognized','false','Accounting the platform expense does not charge the rider');
+select tests.clear_authentication();
+select throws_ok($$update private.ride_deployment set environment='live' where singleton$$,
+  'P0001','ride_environment_in_use','A project with rehearsed money/legs cannot become live');
+update private.ride_network set module_enabled=false where environment='simulation';
+select tests.authenticate_as('admin');
+select throws_ok($$select pg_temp.post_event(11,'capture',3309)$$,'P0001','not_allowed','Manual money events stop when the module closes');
+select tests.authenticate_service();
+select lives_ok($$select public.record_ride_sandbox_financial_event(pg_temp.second_leg(),md5('verified refund')::uuid,'refund',2509)$$,
+  'A verified refund on an already claimed sandbox obligation can reconcile after stopping the module');
+select tests.clear_authentication();
+update public.profiles set deleted_at=now() where id=tests.uid('admin');
+select tests.authenticate_as('admin');
+select throws_ok($$select public.admin_ride_settlement(pg_temp.leg())$$,'P0001','not_allowed','An operator with a deleted profile cannot inspect balances using an old JWT');
 select * from finish();
 rollback;

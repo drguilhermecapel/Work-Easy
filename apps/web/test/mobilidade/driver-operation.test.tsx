@@ -15,23 +15,47 @@ vi.mock('../../components/mobility/DriverSignals', () => ({
   DriverAlerts: () => <span>Ativar alertas do motorista</span>,
 }));
 vi.mock('../../services/rides', () => ({
-  getRideDashboard: vi.fn(), applyDriver: vi.fn(), reviewDriver: vi.fn(), setDriverOnline: vi.fn(),
-  acceptRideOffer: vi.fn(), declineRideOffer: vi.fn(), resolveRide: vi.fn(), transitionRide: vi.fn(),
+  getRideDashboard: vi.fn(),
+  applyDriver: vi.fn(),
+  reviewDriver: vi.fn(),
+  setDriverOnline: vi.fn(),
+  acceptRideOffer: vi.fn(),
+  declineRideOffer: vi.fn(),
+  resolveRide: vi.fn(),
+  transitionRide: vi.fn(),
 }));
 
 function makeDashboard(): RideDashboard {
   return {
-    enabled: true, quote_enabled: true, dispatch_enabled: true, simulation: true, areas: [], driver: null,
-    reviews: [], rides: [], quotes: [], offers: [],
+    enabled: true,
+    quote_enabled: true,
+    dispatch_enabled: true,
+    simulation: true,
+    areas: [],
+    driver: null,
+    reviews: [],
+    rides: [],
+    quotes: [],
+    offers: [],
   };
 }
 
 function leg(status: string): RideLeg {
   return {
-    id: 'leg-1', seq: 1, origin: 'Estação A', destination: 'Estação B',
-    payer: 'passenger', pickup_at: '2030-05-01T09:30:00-03:00',
-    fare_cents: 2000, fee_cents: 200, driver_cents: 1800, extras_cents: 0,
-    limit_cents: 2000, status, driver_id: 'driver-a', can_cancel: true,
+    id: 'leg-1',
+    seq: 1,
+    origin: 'Estação A',
+    destination: 'Estação B',
+    payer: 'passenger',
+    pickup_at: '2030-05-01T09:30:00-03:00',
+    fare_cents: 2000,
+    fee_cents: 200,
+    driver_cents: 1800,
+    extras_cents: 0,
+    limit_cents: 2000,
+    status,
+    driver_id: 'driver-a',
+    can_cancel: true,
   };
 }
 
@@ -42,7 +66,12 @@ beforeEach(() => {
   vi.mocked(rides.getRideDashboard).mockImplementation(async () => dashboard);
 });
 
-const renderDriver = () => render(<MemoryRouter><Motorista /></MemoryRouter>);
+const renderDriver = () =>
+  render(
+    <MemoryRouter>
+      <Motorista />
+    </MemoryRouter>,
+  );
 
 describe('rede de motoristas', () => {
   it('mostra o estado desativado e mantém ações de cadastro ocultas', async () => {
@@ -99,7 +128,9 @@ describe('rede de motoristas', () => {
   });
 
   it('mantém interrupção após embarque em apuração sem cancelar ou concluir o serviço', async () => {
-    dashboard.rides = [{ id: 'ride-1', kind: 'linked', status: 'active', booking_id: 'booking', scheduled_at: null, legs: [leg('boarded')] }];
+    dashboard.rides = [
+      { id: 'ride-1', kind: 'linked', status: 'active', booking_id: 'booking', scheduled_at: null, legs: [leg('boarded')] },
+    ];
     renderDriver();
     await userEvent.click(await screen.findByRole('button', { name: /Informar interrupção/ }));
     expect(rides.transitionRide).toHaveBeenCalledWith('leg-1', 'unknown', expect.any(String));
@@ -110,7 +141,11 @@ describe('rede de motoristas', () => {
   it('exige validade para aprovar e uma decisão explícita para resolver estado desconhecido', async () => {
     dashboard.reviews = [{ driver_id: 'driver-b', status: 'pending', vehicle: 'sedan', valid_until: null }];
     dashboard.rides = [{ id: 'ride-1', kind: 'public', status: 'unknown', booking_id: null, scheduled_at: null, legs: [leg('unknown')] }];
-    render(<MemoryRouter><Operacao /></MemoryRouter>);
+    render(
+      <MemoryRouter>
+        <Operacao />
+      </MemoryRouter>,
+    );
     const approve = await screen.findByRole('button', { name: 'Aprovar cadastro' });
     expect(approve).toBeDisabled();
     await userEvent.type(screen.getByLabelText('Validade da aprovação'), '2099-12-31');

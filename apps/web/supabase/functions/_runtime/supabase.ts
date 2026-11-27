@@ -132,7 +132,7 @@ export async function markPaymentCanceled(id: string): Promise<void> {
   await cancelPendingPayment(serviceClient(), id, now());
 }
 
-export const PAYMENT_COLUMNS = 'id, asaas_payment_id, method, status, amount_cents, invoice_url, pix_qr_code, pix_payload, due_date';
+export const PAYMENT_COLUMNS = 'id, asaas_payment_id, method, status, amount_cents, invoice_url, pix_qr_code, pix_payload, due_date, service_split_review_required';
 
 /** A pending charge already created for the same booking or quote (makes retries idempotent). */
 export async function findOpenPayment(column: 'booking_id' | 'quote_id', id: string): Promise<PaymentRecord | null> {

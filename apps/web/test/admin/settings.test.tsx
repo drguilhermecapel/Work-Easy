@@ -28,8 +28,9 @@ describe('configurações', () => {
 
   it('shows the money features off, each with the fixed legal notice', async () => {
     await open();
-    expect(screen.getAllByRole('note').filter(n => n.textContent === NOTICE)).toHaveLength(2);
-    expect(screen.getAllByText('Desligada')).toHaveLength(2);
+    expect(screen.getAllByRole('note').filter(n => n.textContent === NOTICE)).toHaveLength(3);
+    expect(screen.getAllByText('Desligada')).toHaveLength(3);
+    expect(screen.getByRole('button', { name: 'Ligar comissão recorrente de 10%' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Ligar comissão da plataforma' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Ligar pagamento retido' })).toBeInTheDocument();
     expect(screen.getByText('1200 pontos-base (12,00%)')).toBeInTheDocument();
@@ -38,7 +39,7 @@ describe('configurações', () => {
 
   it('does not promise held payments or commission while the features are off', async () => {
     await open();
-    expect(screen.getByText('Enquanto estiver desligada, nenhuma comissão é calculada nem cobrada.')).toBeInTheDocument();
+    expect(screen.getByText('Desligada, novos aceites ficam sem comissão. Atendimentos já aceitos preservam o valor contratado.')).toBeInTheDocument();
     expect(screen.getByText('Enquanto estiver desligado, nenhum valor é retido: o pagamento segue direto para o profissional.')).toBeInTheDocument();
     expect(screen.getByText(/Comissão e pagamento retido dependem de parecer jurídico e de conta Asaas configurada/)).toBeInTheDocument();
   });
@@ -46,11 +47,11 @@ describe('configurações', () => {
   it('keeps the notice when a feature is on', async () => {
     (await import('./fake')).current.world.tables.platform_settings[0].value = true;
     await open();
-    expect(screen.getAllByRole('note').filter(n => n.textContent === NOTICE)).toHaveLength(2);
+    expect(screen.getAllByRole('note').filter(n => n.textContent === NOTICE)).toHaveLength(3);
     expect(screen.getByText('Ligada')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Desligar comissão da plataforma' })).toBeInTheDocument();
     // The "while off" sentence is gone for the feature that is on, and stays for the other
-    expect(screen.queryByText('Enquanto estiver desligada, nenhuma comissão é calculada nem cobrada.')).not.toBeInTheDocument();
+    expect(screen.queryByText('Desligada, novos aceites ficam sem comissão. Atendimentos já aceitos preservam o valor contratado.')).not.toBeInTheDocument();
     expect(screen.getByText(/Enquanto estiver desligado, nenhum valor é retido/)).toBeInTheDocument();
   });
 
@@ -199,7 +200,7 @@ describe('configurações de receita', () => {
     expect(card(TRIAL)).toHaveTextContent('0 = sem teste');
     expect(card(FREE)).toHaveTextContent('0 = sem limite');
     expect(card(CAP)).toHaveTextContent('0 = sem teto');
-    expect(card(CAP)).toHaveTextContent('Não tem efeito enquanto a comissão estiver desligada.');
+    expect(card(CAP)).toHaveTextContent('Novos contratos com a política recorrente usam 10% sem teto.');
     // The ranges are told before typing
     expect(within(card(TRIAL)).getByLabelText('Dias de teste')).toHaveAccessibleDescription(/Aceita de 0 a 90\./);
     expect(within(card(FREE)).getByLabelText('Propostas por mês')).toHaveAccessibleDescription(/Aceita de 0 a 100\./);

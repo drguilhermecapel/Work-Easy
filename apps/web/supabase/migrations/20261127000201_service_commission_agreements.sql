@@ -1,3 +1,7 @@
+-- The existing audited admin_set_setting RPC handles the general switch; enforce its type at rest.
+alter table public.platform_settings add constraint service_recurring_flag_boolean
+  check (key <> 'service_recurring_commission_enabled' or jsonb_typeof(value)='boolean');
+
 -- The service split is separate from transport. No category, provider or flag is activated by this migration.
 insert into public.platform_settings (key,value) values ('service_recurring_commission_enabled','false')
 on conflict (key) do nothing;
@@ -22,6 +26,33 @@ create table private.service_commission_agreements (
 );
 revoke all on private.service_commission_releases, private.service_commission_agreements from public, anon, authenticated;
 
+-- Provision a specific version after legal/commercial review, separately from enabling either money switch.
+create function public.admin_publish_service_commission(p_occupation text,p_version text,p_terms_url text,p_starts_at timestamptz)
+returns void language plpgsql security definer set search_path='' as $$
+begin
+  perform private.require_admin();
+  if p_starts_at is null or p_starts_at < statement_timestamp()
+     or not exists(select 1 from public.occupation_policies where occupation_slug=p_occupation
+                   and billing='comissao_primeiro_servico' and confidence='conferido') then
+    raise exception 'service_policy_unavailable' using errcode='P0001';
+  end if;
+  insert into private.service_commission_releases(occupation_slug,version,terms_reference,starts_at)
+    values(p_occupation,p_version,p_terms_url,p_starts_at);
+  perform private.audit('service_commission.published','occupation',p_occupation,
+    jsonb_build_object('version',p_version,'terms_url',p_terms_url,'starts_at',p_starts_at));
+end $$;
+create function public.admin_close_service_commission(p_occupation text,p_version text,p_ends_at timestamptz)
+returns void language plpgsql security definer set search_path='' as $$
+begin
+  perform private.require_admin();
+  update private.service_commission_releases set ends_at=p_ends_at where occupation_slug=p_occupation and version=p_version;
+  if not found then raise exception 'service_policy_unavailable' using errcode='P0001'; end if;
+  perform private.audit('service_commission.closed','occupation',p_occupation,
+    jsonb_build_object('version',p_version,'ends_at',p_ends_at));
+end $$;
+revoke all on function public.admin_publish_service_commission(text,text,text,timestamptz),public.admin_close_service_commission(text,text,timestamptz) from public,anon,authenticated;
+grant execute on function public.admin_publish_service_commission(text,text,text,timestamptz),public.admin_close_service_commission(text,text,timestamptz) to authenticated;
+
 -- A published version can only be closed to future offers. Amend terms with a new version.
 create function private.guard_service_commission_release() returns trigger language plpgsql set search_path='' as $$
 begin
@@ -36,18 +67,28 @@ create trigger service_commission_release_version before update or delete on pri
 for each row execute function private.guard_service_commission_release();
 
 -- The server binds a policy to a proposal at issue or a direct booking at request, not to its later payment.
-alter table public.proposals add column service_fee_policy_version text;
+alter table public.payments add column service_split_review_required boolean not null default false;
+comment on column public.payments.service_split_review_required is 'D14: bloquear emissão e reuso até reconciliar divergência no líquido informado pelo PSP.';
+alter table public.proposals add column service_fee_policy_version text,
+  add column service_fee_offered boolean not null default false;
 alter table public.bookings add column service_fee_policy_version text,
+  add column service_fee_offered boolean not null default false,
   add column service_fee_covered_by_pro boolean not null default false;
 create function private.agreed_service_commission(p_provider uuid,p_occupation text,p_at timestamptz)
 returns text language sql stable security definer set search_path='' as $$
+  -- Retain an expired agreement as a fee-free contract marker until the next version is explicitly signed.
   select a.version from private.service_commission_agreements a
-  join private.service_commission_releases r using (occupation_slug,version)
-  join public.occupation_policies op using (occupation_slug)
   where a.provider_id=p_provider and a.occupation_slug=p_occupation and a.accepted_at<=p_at
-    and tstzrange(r.starts_at,r.ends_at,'[)') @> p_at
-    and op.billing='comissao_primeiro_servico' and op.confidence='conferido'
+  order by a.accepted_at desc,a.version desc limit 1
 $$;
+create function private.service_commission_available(p_occupation text,p_version text,p_at timestamptz)
+returns boolean language sql stable security definer set search_path='' as $$
+  select private.setting_bool('commission_enabled',false) and private.setting_bool('service_recurring_commission_enabled',false)
+    and exists(select 1 from private.service_commission_releases r join public.occupation_policies op using (occupation_slug)
+               where r.occupation_slug=p_occupation and r.version=p_version and tstzrange(r.starts_at,r.ends_at,'[)') @> p_at
+                 and op.billing='comissao_primeiro_servico' and op.confidence='conferido')
+$$;
+revoke all on function private.service_commission_available(text,text,timestamptz) from public,anon,authenticated;
 create function private.can_sell_service_pro(p_provider uuid)
 returns boolean language sql stable security definer set search_path='' as $$
   -- Accounts with no rollout keep their existing Pro option. A mixed provider may buy it for legacy occupations only.
@@ -57,10 +98,8 @@ returns boolean language sql stable security definer set search_path='' as $$
        where po.provider_id=p_provider and private.offers_occupation(p_provider,po.occupation_slug)
        and not exists (
          select 1 from private.service_commission_agreements a
-         join private.service_commission_releases r using (occupation_slug,version)
          join public.occupation_policies op using (occupation_slug)
          where a.provider_id=p_provider and a.occupation_slug=po.occupation_slug
-           and tstzrange(r.starts_at,r.ends_at,'[)') @> now()
            and op.billing='comissao_primeiro_servico' and op.confidence='conferido'
        )
      )
@@ -74,19 +113,18 @@ begin
   return private.can_sell_service_pro(p_provider);
 end $$;
 create function public.service_commission_options()
-returns table(occupation_slug text, version text, terms_reference text, accepted_at timestamptz, applies_from timestamptz)
+returns table(occupation_slug text, version text, terms_reference text, accepted_at timestamptz, applies_from timestamptz, charging_enabled boolean)
 language sql stable security definer set search_path='' as $$
-  select r.occupation_slug,r.version,r.terms_reference,a.accepted_at,a.applies_from
+  select r.occupation_slug,r.version,r.terms_reference,a.accepted_at,a.applies_from,
+         private.service_commission_available(r.occupation_slug,r.version,statement_timestamp())
   from private.service_commission_releases r
   join public.occupation_policies op using(occupation_slug)
   left join private.service_commission_agreements a on a.provider_id=auth.uid()
     and a.occupation_slug=r.occupation_slug and a.version=r.version
   where private.offers_occupation(auth.uid(),r.occupation_slug)
-    and tstzrange(r.starts_at,r.ends_at,'[)') @> now()
     and op.billing='comissao_primeiro_servico' and op.confidence='conferido'
-    and (a.provider_id is not null or
-        (private.setting_bool('commission_enabled',false) and private.setting_bool('service_recurring_commission_enabled',false)))
-  order by r.occupation_slug
+    and (a.provider_id is not null or private.service_commission_available(r.occupation_slug,r.version,statement_timestamp()))
+  order by r.occupation_slug,r.starts_at desc
 $$;
 create function public.accept_service_commission(p_occupation text,p_version text)
 returns timestamptz language plpgsql security definer set search_path='' as $$
@@ -102,7 +140,7 @@ begin
     provider_id=v_provider and occupation_slug=p_occupation and version=p_version;
   if found then return v_start; end if;
   if not exists(select 1 from public.service_commission_options() o where
-                o.occupation_slug=p_occupation and o.version=p_version) then
+                o.occupation_slug=p_occupation and o.version=p_version and o.charging_enabled) then
     raise exception 'service_policy_unavailable' using errcode='P0001';
   end if;
   select * into v_subscription from public.subscriptions where provider_id=v_provider for update;
@@ -115,6 +153,22 @@ begin
   end if;
   return v_start;
 end $$;
+
+-- A provider cannot drop its last legacy occupation while an Asaas subscription could renew.
+-- Administrative suspension and account deletion keep their existing paths.
+create function private.guard_mixed_account_renewal() returns trigger language plpgsql security definer set search_path='' as $$
+begin
+  if auth.uid()=old.provider_id and exists(select 1 from private.service_commission_agreements where provider_id=old.provider_id) then
+    perform pg_advisory_xact_lock(hashtextextended('service-billing:'||old.provider_id::text,0));
+    if not private.can_sell_service_pro(old.provider_id) and exists(
+      select 1 from public.subscriptions where provider_id=old.provider_id and asaas_subscription_id is not null and status<>'canceled'
+    ) then raise exception 'cancel_pro_renewal_first' using errcode='P0001'; end if;
+  end if;
+  return null;
+end $$;
+create trigger provider_occupations_95_validate_renewal after delete or update of approved,registry_status,occupation_slug on public.provider_occupations
+  for each row execute function private.guard_mixed_account_renewal();
+revoke all on function private.guard_mixed_account_renewal() from public,anon,authenticated;
 
 -- Serialize a new remote subscription claim against accepting the last migrated occupation.
 -- subscriptions-manage compensates a rejected local claim by removing the newly created remote recurrence.
@@ -136,6 +190,8 @@ create function private.stamp_proposal_service_policy() returns trigger language
 begin
   select private.agreed_service_commission(new.provider_id,r.occupation_slug,statement_timestamp())
     into new.service_fee_policy_version from public.requests r where r.id=new.request_id;
+  select private.service_commission_available(r.occupation_slug,new.service_fee_policy_version,statement_timestamp())
+    into new.service_fee_offered from public.requests r where r.id=new.request_id;
   return new;
 end $$;
 create trigger proposals_05_service_policy before insert on public.proposals
@@ -148,13 +204,15 @@ begin
   if tg_op='INSERT' then
     new.service_fee_policy_version := null;
     new.service_fee_covered_by_pro := false;
+    new.service_fee_offered := false;
     if new.origin='platform' then
       if new.proposal_id is not null then
-        select p.service_fee_policy_version,p.created_at into new.service_fee_policy_version,v_offered_at
+        select p.service_fee_policy_version,p.service_fee_offered,p.created_at into new.service_fee_policy_version,new.service_fee_offered,v_offered_at
         from public.proposals p join public.requests r on r.id=p.request_id
         where p.id=new.proposal_id and p.provider_id=new.provider_id and r.occupation_slug=new.occupation_slug;
       else
         new.service_fee_policy_version := private.agreed_service_commission(new.provider_id,new.occupation_slug,statement_timestamp());
+        new.service_fee_offered := private.service_commission_available(new.occupation_slug,new.service_fee_policy_version,statement_timestamp());
       end if;
     end if;
     if new.service_fee_policy_version is not null then
@@ -169,7 +227,7 @@ begin
     if new.service_fee_policy_version is null then
       new.platform_fee_cents := private.platform_fee(new.id,new.client_id,new.provider_client_id,new.provider_id,
                                                      new.occupation_slug,new.origin,new.price_cents);
-    elsif not new.service_fee_covered_by_pro and private.setting_bool('commission_enabled',false) and private.setting_bool('service_recurring_commission_enabled',false)
+    elsif new.service_fee_offered and not new.service_fee_covered_by_pro and private.setting_bool('commission_enabled',false) and private.setting_bool('service_recurring_commission_enabled',false)
       and exists(select 1 from public.occupation_policies where occupation_slug=new.occupation_slug
                  and billing='comissao_primeiro_servico' and confidence='conferido') then
       new.platform_fee_cents:=new.price_cents/10;
@@ -191,7 +249,7 @@ begin
   end if;
   if b.status<>'requested' then return b.platform_fee_cents; end if;
   if b.service_fee_policy_version is not null then
-    if not b.service_fee_covered_by_pro and private.setting_bool('commission_enabled',false) and private.setting_bool('service_recurring_commission_enabled',false)
+    if b.service_fee_offered and not b.service_fee_covered_by_pro and private.setting_bool('commission_enabled',false) and private.setting_bool('service_recurring_commission_enabled',false)
       and exists(select 1 from public.occupation_policies where occupation_slug=b.occupation_slug
                  and billing='comissao_primeiro_servico' and confidence='conferido') then return b.price_cents/10; end if;
     return 0;
@@ -269,3 +327,39 @@ begin
   return new;
 end;
 $$;
+
+-- Insert the review event atomically with an unusable charge, even if Edge exits after saving it.
+create function private.log_service_split_review() returns trigger language plpgsql security definer set search_path='' as $$
+begin
+  perform private.audit('payment.service_split_review','payments',new.id::text,jsonb_build_object(
+    'asaas_payment_id',new.asaas_payment_id,'contracted_provider_cents',new.amount_cents-new.platform_fee_cents));
+  return null;
+end $$;
+revoke all on function private.log_service_split_review() from public,anon,authenticated;
+create trigger payments_service_split_review after insert on public.payments for each row
+  when(new.service_split_review_required) execute function private.log_service_split_review();
+
+create or replace view public.admin_payments_attention
+with (security_invoker = true)
+as
+select e.id as audit_id,
+       e.action,
+       e.at,
+       e.data,
+       pay.id as payment_id,
+       pay.booking_id,
+       pay.provider_id,
+       pay.method,
+       pay.amount_cents,
+       pay.status
+  from public.audit_log e
+  join public.payments pay on pay.id::text = e.entity_id
+ where e.entity = 'payments'
+   and e.action in ('payment.refund_failed', 'payment.received_after_cancel', 'payment.service_split_review')
+   and not exists (
+     select 1 from public.audit_log h
+      where h.entity = 'payments' and h.entity_id = e.entity_id
+        and h.action in ('payment.refunded_after_cancel', 'payment.reviewed')
+        and h.id > e.id)
+   and (select public.is_admin())
+ order by e.at desc, e.id desc;

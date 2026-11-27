@@ -90,3 +90,5 @@ preenchidas por `_shared/notification-context.ts` a partir de `params.request_id
 
 `PRO_GRACE_DAYS` é reserva: a carência do Pro vem de `platform_settings.pro_grace_days`
 (a mesma chave do job de expiração), e a variável só vale quando a chave não pode ser lida.
+
+As cobranças de transporte no projeto isolado de homologação usam chaves e webhooks dedicados. A implantação, a emissão e a recuperação estão no [runbook do Asaas Sandbox de corridas](../../docs/arquitetura/asaas-sandbox-corridas.md).

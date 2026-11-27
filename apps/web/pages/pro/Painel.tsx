@@ -108,7 +108,7 @@ const Panel: React.FC = () => {
           <Link to="/pro/cadastro" className={linkClass}>Cadastro</Link>
           {approved && <Link to={`/p/${provider.slug}`} className={linkClass}>Ver minha página</Link>}
           <Link to="/pro/assinatura" className={linkClass}>
-            {!features.proSalesEnabled ? 'Plano e recebimento' : provider.plan === 'pro' ? 'Minha assinatura' : 'Conhecer o plano Pro'}
+            {!features.proSalesEnabled || panel.data?.allowance?.kind === 'commission' ? 'Plano e recebimento' : provider.plan === 'pro' ? 'Minha assinatura' : 'Conhecer o plano Pro'}
           </Link>
         </div>
       </Card>

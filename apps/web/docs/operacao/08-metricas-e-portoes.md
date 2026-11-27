@@ -293,3 +293,17 @@ Os 50–100 elegíveis dimensionam o trabalho inicial. Para a etapa confirmatór
 | `contas_teste` | `{}` | array de `user id` das contas de teste |
 
 Consultas: Q01 estrela; Q02 G2; Q03 G3 e liquidez; Q03b demanda fora do escopo; Q04 G1; Q04b lista de ativação (privada); Q05 funil; Q06 parcela paga no app; Q07 Pro (teste e base); Q08 churn; Q09 Cuidado (G4 e plantões); Q10 disputas e alertas; Q11 custo (denominadores); Q12 cobertura e freio. Q13 é só texto: horas, gastos e a lista de contas de teste estão fora do banco.
+
+## Rede direta
+
+Pré-registrar mercado, categoria, corredor de origem e destino, janela, preço, atribuição, hipótese, desfechos e duração antes da oferta. Em serviços comparáveis, sortear oferta de transporte versus alternativas viáveis e medir por intenção de oferta. Em avulsas, registrar solicitações antes da cotação, incluindo desistências e falta de motorista. O painel administrativo registra referência idempotente, grupo comparável e braço original; a operação concilia valores da solicitação inteira, custos de cancelamento e minutos de suporte antes de fechar. O painel conserva desfechos em aberto e exibe contribuição por elegível somente após fechamento do grupo. Analisar recompra aos 30 dias e renda por hora com observações de distância e tempo efetivos. Comparações observacionais exigem declaração de seleção, estratificação e limites de inferência.
+
+| Decisão | Evidência exigida |
+|---|---|
+| Abrir campo | Habilitação jurídica, empresa e motoristas aptos, seguro, PSP, turno titular/suplente e origem/destino autorizados. Medir tempo até aceite e até embarque. Fixar piso líquido por hora **online** do motorista com renda local e custos do veículo antes da primeira oferta. Registrar versão e valor no protocolo. |
+| Limitar gasto | Proposta de até R$ 5.000 brutos em quatro semanas (autorização corrente R$ 0), incluindo equipe e compromissos futuros. O banco reserva o total dos trechos dentro do turno antes do despacho. Finanças inclui gastos externos previamente assumidos ao abrir o orçamento. Nenhum subsídio permanente. Promoção limitada a R$ 10 por solicitação e R$ 300 no total, dentro do teto e somente com aprovação específica. |
+| Encerrar inclusões | Quatro semanas, até 100 elegíveis; 50–100 servem ao planejamento. Suspender em falta de cobertura, incidente crítico de segurança/privacidade/dinheiro ou risco de exceder o caixa. Honrar e conciliar obrigações abertas. |
+| Encerrar operacionalmente | Todas as inclusões têm desfecho e todas as obrigações têm recibo ou resolução documentada. Zero incidente crítico aberto. Por mercado e por braço, reportar aceitação ao preço, conversão, pontualidade, cancelamentos, trajeto sem serviço, margem, renda/hora, tempo sem passageiro, divergência de preço, subsídio, suporte, caixa e concentração. |
+| Demonstrar benefício | Em serviços, pontualidade ≥90%, queda máxima de 5 p.p. sobre controle, renda/h mediana ≥95% do controle e suporte médio ≤15 min por elegível. Em avulsas exigir piso do motorista e margem positiva a preço integral. Expandir sob contribuição incremental sustentável, limite inferior de IC95% positivo, caixa e escala suficientes. Reestimar amostra com variância do piloto, efeito mínimo e repetição de usuários. Com dados inconclusivos, manter o corredor limitado e apontar a evidência faltante. |
+
+[Definições e abas econômicas](09-modelo-financeiro.md) · [Roadmap e denominadores](16-rede-propria-de-motoristas.md)

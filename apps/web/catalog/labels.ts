@@ -12,7 +12,7 @@ export const VERIFICATION_LABELS: Record<VerificationStep, string> = {
 };
 
 export const BILLING_LABELS: Record<Billing, string> = {
-  comissao_primeiro_servico: 'Comissão só no primeiro serviço com cliente novo trazido pelo WorkEasy',
+  comissao_primeiro_servico: 'Comissão conforme o contrato. A regra original incide no primeiro serviço com cliente novo da plataforma.',
   so_assinatura: 'Só a assinatura da ferramenta, sem comissão, por regra do conselho profissional',
   sob_consulta_juridica: 'Modelo de cobrança em análise jurídica',
 };

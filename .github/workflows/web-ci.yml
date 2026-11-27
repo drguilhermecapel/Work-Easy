@@ -87,7 +87,6 @@ jobs:
       # Aplica as migrations e o seed.sql do zero. Sem Edge Functions, Studio, Realtime e
       # os serviços de log: o banco, o Auth, a API e o Storage bastam para os testes.
       - name: Subir a stack local
-        id: local_stack
         run: supabase start -x studio,imgproxy,logflare,vector,supavisor,realtime,edge-runtime
       - name: pgTAP
         run: supabase test db
@@ -99,21 +98,12 @@ jobs:
           export SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
           npm run test:integration
       - name: Tipos do banco em dia (lib/database.types.ts)
-        id: schema_types
-        if: '${{ !cancelled() && steps.local_stack.outcome == ''success'' }}'
         run: |
           supabase gen types typescript > "$RUNNER_TEMP/database.types.ts"
           if ! diff -u lib/database.types.ts "$RUNNER_TEMP/database.types.ts"; then
             echo "::error::lib/database.types.ts está desatualizado. Rode 'npm run db:types' e faça o commit."
             exit 1
           fi
-      - name: Disponibilizar os tipos gerados para corrigir divergências
-        if: failure() && steps.schema_types.outcome == 'failure'
-        uses: actions/upload-artifact@v7
-        with:
-          name: database-types
-          path: ${{ runner.temp }}/database.types.ts
-          retention-days: 1
       - name: Diagnóstico da stack (só se algo falhou)
         if: failure()
         run: |

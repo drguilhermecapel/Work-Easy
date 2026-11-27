@@ -5,6 +5,9 @@ import ErrorAlert from '../../components/ErrorAlert';
 import PageStatus from '../../components/PageStatus';
 import RequireSession from '../../components/RequireSession';
 import { TripProgress } from '../../components/mobility/TripProgress';
+import { RouteCases } from '../../components/mobility/RouteCases';
+import { listRideRouteCases } from '../../services/rideRoutes';
+import { SandboxCheckout } from '../../components/mobility/SandboxCheckout';
 import { RideAftercare } from '../../components/mobility/RideAftercare';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatCents } from '../../lib/money';
@@ -76,7 +79,7 @@ function QuoteCard({ quote, now, servicePrice, canRequest, onChange }: { quote: 
   </article>;
 }
 
-function JourneyLeg({ leg, onChange, canCancel }: { leg: RideLeg; onChange: () => void; canCancel: boolean }) {
+function JourneyLeg({ leg, onChange, canCancel, simulation }: { leg: RideLeg; onChange: () => void; canCancel: boolean; simulation: boolean }) {
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<unknown>(null);
@@ -103,6 +106,7 @@ function JourneyLeg({ leg, onChange, canCancel }: { leg: RideLeg; onChange: () =
     {leg.can_view_driver_identity && <RideDriverIdentity legId={leg.id} />}
     {leg.status === 'unknown' && <p className="rounded-xl bg-amber-50 p-3 text-sm">A operação está conferindo este trecho e os valores devidos. Aguarde a conciliação antes de solicitar outra viagem.</p>}
     <TripProgress legId={leg.id} />
+    {simulation && leg.status === 'completed' && <SandboxCheckout legId={leg.id} />}
     <RideAftercare legId={leg.id} completed={leg.status === 'completed'} />
     {active && canCancel && (confirm ? <div className="space-y-2">
       <p>Solicitar cancelamento deste trecho? A operação apura os custos devidos. O atendimento tem regras próprias.</p>
@@ -119,6 +123,9 @@ function PassengerArea({ id, userId }: { id: string | null; userId: string }) {
     return { dashboard, booking, loaded: Date.now() };
   }, JSON.stringify([id, userId]));
   const [notice, setNotice] = useState('');
+  const caseAccess = !!result.data?.dashboard.quote_enabled && !result.data.dashboard.simulation;
+  const cases = useAsync(() => caseAccess ? listRideRouteCases() : Promise.resolve([]), JSON.stringify([id, userId, caseAccess]));
+  const [replacement, setReplacement] = useState<string | null>(null);
   const reload = result.reload;
   const enabled = result.data?.dashboard.enabled;
   useEffect(() => {
@@ -137,8 +144,11 @@ function PassengerArea({ id, userId }: { id: string | null; userId: string }) {
   const linked = !!id;
   const canQuote = !linked || (booking?.role && booking.origin === 'platform' &&
     ['accepted', 'paid', 'in_progress'].includes(booking.status) && !dashboard.rides.some(ride => ride.booking_id === id));
+  const routesFor = (bookingId: string | null) => (cases.data ?? []).filter(r =>
+    r.booking_id === bookingId && r.can_quote && r.status === 'verified' && r.valid_until && Date.parse(r.valid_until) > loaded
+  );
   const quotes = dashboard.quotes.filter(quote => !linked || quote.booking_id === id);
-  const rides = dashboard.rides.filter(ride => !linked || ride.booking_id === id);
+  const rides = dashboard.rides.filter(ride => ride.in_my_journeys && (!linked || ride.booking_id === id));
   return <section className="mx-auto max-w-3xl space-y-5 px-4 py-8 text-gray-800">
     {id && <Link to={`/atendimentos/${id}`} className="text-primary underline">Voltar ao atendimento</Link>}
     <header className="space-y-2">
@@ -147,7 +157,11 @@ function PassengerArea({ id, userId }: { id: string | null; userId: string }) {
       {dashboard.enabled && dashboard.simulation && <p role="status" className="rounded-xl bg-amber-50 p-3 font-semibold text-amber-900">Ambiente de ensaio. Os pontos, valores e viagens são fictícios. Use apenas contas de teste.</p>}
     </header>
     <ErrorAlert error={result.error} />
-    {dashboard.enabled && dashboard.quote_enabled && canQuote && <QuoteForm areas={dashboard.areas} bookingId={id} onQuoted={() => { setNotice('Cotação registrada. Confira os trechos e os pagadores abaixo.'); result.reload(); }} />}
+    {caseAccess && (canQuote || rides.some(ride => ride.legs.some(leg => leg.can_requote))) && <>
+      <RouteCases bookingId={id} areas={dashboard.areas} isServiceClient={booking?.role === 'client'} onChange={cases.reload} />
+      <ErrorAlert error={cases.error} />
+    </>}
+    {dashboard.enabled && dashboard.quote_enabled && canQuote && <QuoteForm requiresRoute={!dashboard.simulation} areas={dashboard.areas} bookingId={id} routes={routesFor(id)} extras={dashboard.extra_options} onQuoted={() => { setNotice('Cotação registrada. Confira os trechos e os pagadores abaixo.'); result.reload(); }} />}
     {(!dashboard.enabled || !dashboard.quote_enabled) && <p>Novas cotações estão indisponíveis neste ambiente.</p>}
     {dashboard.enabled && !dashboard.dispatch_enabled && <p>Reservas e chamadas de motoristas estão desativadas.</p>}
     {dashboard.enabled && !canQuote && <p>Este atendimento não permite uma nova solicitação de transporte.</p>}
@@ -156,7 +170,13 @@ function PassengerArea({ id, userId }: { id: string | null; userId: string }) {
     {rides.length > 0 && <section className="space-y-3"><h2 className="text-lg font-semibold">Viagens</h2>{rides.map(ride => <article key={ride.id} className="space-y-3 rounded-2xl border border-gray-200 bg-white p-5">
       <h3 className="font-semibold">{ride.booking_id ? 'Viagem vinculada ao atendimento' : 'Corrida avulsa'}</h3>
       {ride.booking_id && <Link className="text-sm text-primary underline" to={`/atendimentos/${ride.booking_id}`}>Ver atendimento</Link>}
-      <ol className="space-y-4">{ride.legs.map(leg => <JourneyLeg key={leg.id} leg={leg} canCancel={leg.can_cancel} onChange={result.reload} />)}</ol>
+      <ol className="space-y-4">{ride.legs.map(leg => <JourneyLeg key={leg.id} leg={leg} canCancel={leg.can_cancel} simulation={dashboard.simulation} onChange={result.reload} />)}</ol>
+      {dashboard.quote_enabled && ride.legs.filter(leg => leg.status === 'cancelled' && leg.can_requote).map(leg => <div key={leg.id}>
+        {replacement === leg.id ? <>
+          <QuoteForm requiresRoute={!dashboard.simulation} areas={dashboard.areas} bookingId={ride.booking_id} routes={routesFor(ride.booking_id)} extras={dashboard.extra_options} replaces={leg.id} onQuoted={() => { setReplacement(null); setNotice('Nova cotação registrada. Confira o preço e autorize o novo trecho.'); reload(); }} />
+          <button className="mt-2 underline" onClick={() => setReplacement(null)}>Fechar nova cotação</button>
+        </> : <button className={secondary} onClick={() => setReplacement(leg.id)}>Recotar trecho cancelado {leg.seq}</button>}
+      </div>)}
     </article>)}</section>}
     <div className="flex flex-wrap items-center gap-4"><button type="button" onClick={result.reload} disabled={result.loading} className={secondary}>Atualizar corridas</button>
     <Link className="text-primary underline" to="/corridas/motorista">Área do motorista</Link></div>

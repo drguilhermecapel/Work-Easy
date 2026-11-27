@@ -969,3 +969,9 @@ Registro histórico do que foi conferido em 23/10/2026. Para o estado vigente, c
 | 40 | Zonas do app iguais a `nm_regiao_05` da Prefeitura | comparação própria (Apêndice A) |
 | 41 | Pré-requisitos do Cuidado | `docs/DECISOES.md`, seção 5 |
 | 42 | Lista "Exigem atenção" em `/admin/pagamentos`; "Disputas abertas" em `/admin` | `components/admin/PaymentsAttention.tsx`; `pages/admin/Painel.tsx` |
+
+## Rede direta
+
+Usar o roteiro de captação para levantar dois funis distintos, serviços e corridas públicas. Durante duas semanas de descoberta, Operações registra exposições, solicitações válidas e oferta de motoristas por origem, destino e janela. Para serviços, registrar também ocupação permitida, alternativa local, duração, equipamento e destino posterior do prestador. Selecionar uma ou duas microáreas contíguas com evidência nos dois sentidos. Quando faltar oferta, repetir a medição mudando um fator de recrutamento ou horário e registrar o efeito.
+
+Proposta de ensaio operacional por quatro semanas, terças e quintas das 9h às 15h, horário de São Paulo. Nomear coordenador titular e suplente com acesso ao painel e canal humano publicado para o turno. Confirmar que cada ida, retorno e continuação cabe em janela coberta. Reserva que demande suporte depois do plantão exige extensão aprovada ou nova janela. Guilherme recebe o relatório semanal e decide exceções de orçamento; o plantonista atende ocorrências sem depender da presença dele. [Fluxos e responsabilidades](16-rede-propria-de-motoristas.md) · [Runbook](../RUNBOOKS.md#rede-direta-de-motoristas)

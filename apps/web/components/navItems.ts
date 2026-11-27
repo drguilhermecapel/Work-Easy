@@ -34,7 +34,7 @@ export const navModelFor = (auth: AuthContextType): NavModel => {
 
   if (!auth.session) {
     return {
-      items: [CATEGORIES, { label: 'Pedir serviço', to: '/pedido' }],
+      items: [CATEGORIES, { label: 'Pedir serviço', to: '/pedido' }, { label: 'Corridas', to: '/corridas' }],
       cta: { label: 'Sou profissional', to: '/pro/cadastro' },
     };
   }

@@ -4,8 +4,8 @@ import { formatCents } from '../../lib/money';
 import { useAsync } from '../../lib/useAsync';
 import { centsToInput, parseReaisToCents } from '../../services/proFormat';
 import {
-  getRideSettlement, rideFinanceLabels, simulateRideFinanceEvent,
-  type RideFinanceKind, type RideSettlement,
+  confirmSimulatedRideCost, getRideSettlement, rideFinanceLabels, simulateRideFinanceEvent,
+  type RideCostReview, type RideFinanceKind, type RideSettlement,
 } from '../../services/rideLedger';
 
 type Recognized = Extract<RideSettlement, { recognized: true }>;
@@ -64,22 +64,58 @@ function SimulateEvent({ legId, account, onSaved }: { legId: string; account: Re
   </form>;
 }
 
+function CancellationCost({ legId, review, onSaved }: { legId: string; review: RideCostReview; onSaved: () => void }) {
+  const [amount, setAmount] = useState('');
+  const [reference, setReference] = useState('');
+  const [notice, setNotice] = useState('');
+  const [busy, setBusy] = useState(false);
+  const operation = useRef<string | null>(null);
+  if (review.cost_cents !== null) return <p>Custo de cancelamento comprovado: {formatCents(review.cost_cents)}. Referência: {review.evidence}</p>;
+  if (review.status === 'unknown') return <p>O custo permanece em apuração até a confirmação do desfecho do trecho.</p>;
+  if (review.environment !== 'simulation') return <p>O custo do cancelamento aguarda conciliação.</p>;
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const cents = parseReaisToCents(amount);
+    if (busy || cents === null || cents > 2147483647 || !reference.trim()) return;
+    operation.current ??= crypto.randomUUID();
+    setBusy(true);
+    try {
+      await confirmSimulatedRideCost(legId, operation.current, cents, reference.trim());
+      onSaved();
+    } catch (error) {
+      setNotice(toAppError(error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return <form onSubmit={submit} className="grid gap-3">
+    <p>Registre a despesa assumida pela plataforma no ensaio, inclusive valor zero quando comprovado.</p>
+    <label>Custo comprovado em reais <input required inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} /></label>
+    <label>Referência interna da evidência <input required maxLength={160} value={reference} onChange={e => setReference(e.target.value)} /></label>
+    <button type="submit" disabled={busy}>Registrar custo de cancelamento</button>
+    {notice && <p role="alert">{notice}</p>}
+  </form>;
+}
+
 export function RideLedgerPanel({ legId }: { legId: string }) {
   const { data, loading, error, reload } = useAsync(() => getRideSettlement(legId), legId);
   const parts = data?.recognized ? [
     ['Preço aceito', data.fare_cents], ['Extras', data.extras_cents], ['A receber', data.receivable_cents],
     ['Caixa líquido', data.cash_cents], ['Comissão após ajustes', data.commission_cents],
     [data.driver_balance_cents < 0 ? 'A recuperar do motorista' : 'Saldo a repassar ao motorista', Math.abs(data.driver_balance_cents)],
-    ['Em disputa', data.disputed_cents], ['Reembolsos e chargebacks', data.reversed_cents],
+    ['Tarifas de processamento', data.processing_cost_cents], ['Em disputa', data.disputed_cents], ['Reembolsos e chargebacks', data.reversed_cents],
   ] as const : [];
   return <section aria-label="Conciliação do trecho" className="grid gap-3">
     <h3>Conciliação do trecho</h3>
     {error && <p role="alert">{error.message} <button type="button" onClick={reload}>Atualizar</button></p>}
     {loading && <p role="status">Consultando lançamentos…</p>}
-    {data && !data.recognized && <p>O trecho ainda não tem valores reconhecidos no livro financeiro.</p>}
+    {data && !data.recognized && (data.review
+      ? <CancellationCost key={legId} legId={legId} review={data.review} onSaved={reload} />
+      : <p>O trecho ainda não tem valores reconhecidos no livro financeiro.</p>)}
     {data?.recognized && <>
       <dl>{parts.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{formatCents(value)}</dd></div>)}</dl>
-      {data.environment === 'simulation' && <SimulateEvent key={legId + (data.unknown?.operation_id ?? '')}
+      {data.source === 'psp_sandbox' && <p>Conciliação vinculada ao PSP de homologação.</p>}
+      {data.environment === 'simulation' && data.source !== 'psp_sandbox' && <SimulateEvent key={legId + (data.unknown?.operation_id ?? '')}
         legId={legId} account={data} onSaved={reload} />}
     </>}
   </section>;

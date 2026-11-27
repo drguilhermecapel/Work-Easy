@@ -10,6 +10,7 @@ export interface ConsoleActions {
   dashboard: RideDashboard;
   userId: string;
   busy: boolean;
+  reload: () => void;
   run: (intent: string, action: (key: string) => Promise<unknown>) => Promise<void>;
 }
 
@@ -63,7 +64,9 @@ function SessionConsole({ title, content: Content, userId }: ConsoleProps & { us
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
-        <button type="button" className={secondaryButton} disabled={busy} onClick={reload}>Atualizar</button>
+        <button type="button" className={secondaryButton} disabled={busy} onClick={reload}>
+          Atualizar
+        </button>
       </div>
       <ErrorAlert error={loadError ?? error} />
       {loading && !data && <PageStatus />}
@@ -72,16 +75,25 @@ function SessionConsole({ title, content: Content, userId }: ConsoleProps & { us
           Ensaio com dados fictícios. Os eventos registrados aqui não acionam veículos, cobranças ou repasses reais.
         </p>
       )}
-      {data && (data.enabled
-        ? <Content dashboard={data} userId={userId} busy={busy} run={run} />
-        : <p role="status" className="text-sm text-gray-700">O módulo de corridas está desativado neste ambiente.</p>)}
+      {data &&
+        (data.enabled ? (
+          <Content dashboard={data} userId={userId} busy={busy} run={run} reload={reload} />
+        ) : (
+          <p role="status" className="text-sm text-gray-700">
+            O módulo de corridas está desativado neste ambiente.
+          </p>
+        ))}
     </div>
   );
 }
 
 export default function DriverConsole(props: ConsoleProps) {
   const { authUser } = useAuth();
-  return authUser
-    ? <SessionConsole key={authUser.id} userId={authUser.id} {...props} />
-    : <p role="status" className="text-sm text-gray-700">Entre com uma conta para acessar o módulo de corridas.</p>;
+  return authUser ? (
+    <SessionConsole key={authUser.id} userId={authUser.id} {...props} />
+  ) : (
+    <p role="status" className="text-sm text-gray-700">
+      Entre com uma conta para acessar o módulo de corridas.
+    </p>
+  );
 }

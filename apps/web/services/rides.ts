@@ -9,6 +9,9 @@ export interface RideLegInput {
   destination: string;
   payer: RidePayer;
   pickup_at?: string;
+  replaces?: string;
+  route_id?: string;
+  extras?: string[];
 }
 
 export interface PricedLeg extends RideLegInput {
@@ -27,6 +30,7 @@ export interface RideLeg extends PricedLeg {
   status: string;
   driver_id: string | null;
   can_cancel: boolean;
+  can_requote?: boolean;
   can_view_driver_identity?: boolean;
 }
 
@@ -43,6 +47,7 @@ export interface RideQuote {
 
 export interface Ride {
   id: string;
+  in_my_journeys?: boolean;
   kind: string;
   status: string;
   scheduled_at: string | null;
@@ -63,6 +68,7 @@ export interface RideDashboard {
   dispatch_enabled: boolean;
   simulation: boolean;
   areas: string[];
+  extra_options?: { code: string; label: string; cents: number }[];
   driver: DriverProfile | null;
   rides: Ride[];
   quotes: RideQuote[];
@@ -106,3 +112,8 @@ export const transitionRide = async (legId: string, to: DriverAction, key: strin
 
 export const resolveRide = async (legId: string, to: 'cancelled' | 'completed', key: string) =>
   unwrap(await db().rpc('ride_resolve', { p_leg: legId, p_to: to, p_key: key }));
+
+export const resolveCompletedRide = async (legId:string, key:string, evidenceRef:string, boardedAt:string, endedAt:string) =>
+  unwrap(await db().rpc('ride_resolve_with_evidence',{
+    p_leg:legId, p_key:key, p_evidence_ref:evidenceRef, p_boarded_at:boardedAt, p_ended_at:endedAt,
+  }));

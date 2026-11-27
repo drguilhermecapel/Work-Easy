@@ -36,6 +36,7 @@ export interface StoredPayment {
   /** Null once the provider row is gone (payments.provider_id is `on delete set null`). */
   provider_id: string | null;
   escrow: boolean;
+  service_split_review_required?: boolean;
 }
 
 export interface StoredSubscription {
@@ -314,7 +315,9 @@ async function applyPaymentEffect(
     });
   }
 
-  if (!local.booking_id || !effect.bookingTo) return;
+  // Record verified money movements even if a held link was paid outside WorkEasy.
+  // Operations reconciles the fixed service payout before the booking can advance.
+  if (local.service_split_review_required || !local.booking_id || !effect.bookingTo) return;
   // The booking follows the payment as stored (also on a retry after a partial failure)
   const effective = next ?? local.status;
   if (effect.bookingTo === 'paid' && !isPaidStatus(effective)) return;

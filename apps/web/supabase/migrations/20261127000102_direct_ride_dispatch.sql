@@ -11,7 +11,11 @@ language sql stable security definer set search_path='' as $$
        and private.ride_area_allowed('live',l.origin,'monetize') and private.ride_area_allowed('live',l.destination,'monetize')))
     and exists(select from public.ride_drivers d where d.id=p_driver and d.online
          and private.ride_driver_valid(d.id,(greatest(now(),upper(l.slot)) at time zone 'America/Sao_Paulo')::date))
-    and exists(select from public.rides r where r.id=l.ride_id and r.passenger_id<>p_driver)
+    and exists(select from public.rides r where r.id=l.ride_id and r.passenger_id<>p_driver
+      and (r.booking_id is null or exists(select from public.bookings b where b.id=r.booking_id and b.provider_id=r.passenger_id
+        and (b.status in ('accepted','paid','in_progress')
+          or (l.seq>1 and b.status in ('completed','released','disputed','canceled')
+            and exists(select from public.ride_legs prev where prev.ride_id=r.id and prev.seq<l.seq and prev.status in ('boarded','completed')))))))
     and not exists(select from private.ride_declines where driver_id=p_driver and leg_id=l.id)
     and not exists(select from public.ride_legs other where other.driver_id=p_driver and other.id<>l.id
       and (other.status='unknown' or (other.status in ('accepted','arriving','boarded')
@@ -56,6 +60,11 @@ begin
   -- Cross-domain operations lock a provider before its driver record and the leg.
   if p_action in ('accept_offer','decline_offer') then
     perform private.require_ride_feature('dispatch');
+  end if;
+  if p_action in ('accept_offer','decline_offer') then
+    -- Serialize against cancellation or replacement of the associated service.
+    perform b.id from public.bookings b join public.rides ride on ride.booking_id=b.id
+      join public.ride_legs candidate on candidate.ride_id=ride.id where candidate.id=p_leg for share of b;
   end if;
   if p_action in ('accept_offer','decline_offer','arriving','boarded') then
     perform 1 from public.providers where id=v_uid for no key update;
@@ -126,7 +135,7 @@ end $$;
 create function public.ride_dashboard() returns jsonb language plpgsql stable security definer set search_path='' as $$
 declare
   v_uid uuid:=auth.uid(); v_env text:=private.ride_env(); f private.ride_network;
-  v_admin boolean:=public.is_admin(); v_driver jsonb; v_reviews jsonb; v_rides jsonb; v_quotes jsonb; v_offers jsonb; v_areas jsonb;
+  v_admin boolean:=public.is_admin(); v_driver jsonb; v_reviews jsonb; v_rides jsonb; v_quotes jsonb; v_offers jsonb; v_areas jsonb; v_extras jsonb;
 begin
   if v_uid is null or not exists(select from public.profiles where id=v_uid and deleted_at is null) then raise exception 'not_allowed'; end if;
   select * into strict f from private.ride_network where environment=v_env;
@@ -137,9 +146,13 @@ begin
       into v_reviews from (select * from public.ride_drivers where environment=v_env order by updated_at desc limit 100) d;
   end if;
   if f.module_enabled then
+    select jsonb_agg(jsonb_build_object('code',code,'label',label,'cents',cents) order by code) into v_extras
+      from private.ride_extra_prices where tariff_id=(select id from private.ride_tariffs where environment=v_env
+        and valid_from<=now() order by valid_from desc limit 1);
     select jsonb_agg(area order by area) into v_areas from
       (select origin as area from private.ride_routes where environment=v_env
-       union select destination from private.ride_routes where environment=v_env) a where private.ride_area_allowed(v_env,area,'quote');
+       union select destination from private.ride_routes where environment=v_env
+       union select area from private.ride_area_authorizations where v_env='live') a where private.ride_area_allowed(v_env,area,'quote');
   end if;
   select jsonb_agg(private.ride_quote_view(q::private.ride_quotes,v_uid) order by created_at desc) into v_quotes from
     (select q1.* from private.ride_quotes q1 where q1.environment=v_env and v_uid=any(q1.required_users)
@@ -149,7 +162,8 @@ begin
     from (select l1.* from public.ride_legs l1 where l1.status='requested' and private.ride_offer_eligible(v_uid,l1) order by l1.pickup_at limit 50) l;
   select jsonb_agg(jsonb_build_object('id',r.id,'booking_id',r.booking_id,'passenger_id',r.passenger_id,
     'scheduled_at',r.scheduled_at,'kind',case when r.scheduled_at is null then 'instant' else 'scheduled' end,
-    'environment',r.environment,'status',summary.status,'legs',summary.legs) order by r.created_at desc) into v_rides
+    'environment',r.environment,'in_my_journeys',(r.passenger_id=v_uid or exists(select from public.bookings b where b.id=r.booking_id and b.client_id=v_uid)
+     or exists(select from public.ride_legs pay where pay.ride_id=r.id and pay.payer_id=v_uid)),'status',summary.status,'legs',summary.legs) order by r.created_at desc) into v_rides
   from (select r1.* from public.rides r1 where r1.environment=v_env and
     (v_admin or v_uid=r1.passenger_id or exists(select from public.bookings b where b.id=r1.booking_id and b.client_id=v_uid)
      or exists(select from public.ride_legs l where l.ride_id=r1.id and (l.payer_id=v_uid or l.driver_id=v_uid)))
@@ -158,7 +172,7 @@ begin
     select case when count(*) filter(where l.status='unknown')>0 then 'unknown'
       when bool_and(l.status='cancelled') then 'cancelled' when bool_and(l.status in ('completed','cancelled')) then 'completed'
       else (array_agg(l.status order by l.seq) filter(where l.status not in ('completed','cancelled')))[1] end status,
-      jsonb_agg(jsonb_build_object('id',l.id,'seq',l.seq,'status',l.status,'driver_id',l.driver_id,
+      jsonb_agg(jsonb_build_object('id',l.id,'seq',l.seq,'revision',l.revision,'status',l.status,'driver_id',l.driver_id,
       'origin',case when rights.see_route then l.origin else 'Reservado ao passageiro' end,
       'destination',case when rights.see_route then l.destination else 'Reservado ao passageiro' end,
       'pickup_at',l.pickup_at,'duration_minutes',l.duration_minutes,
@@ -166,9 +180,11 @@ begin
       'extras_cents',case when rights.see_price then l.extras_cents end,
       'fee_cents',case when v_admin or l.driver_id=v_uid then l.fee_cents end,'driver_cents',case when v_admin or l.driver_id=v_uid then l.driver_cents end,
       'payer',case when r.booking_id is null then 'passenger' when l.payer_id=r.passenger_id then 'provider' else 'client' end,
+      'can_requote',f.module_enabled and f.quote_enabled and l.status='cancelled' and (v_uid=r.passenger_id or rights.is_client)
+       and not exists(select from public.ride_legs next_leg where next_leg.replaces_id=l.id),
       'can_view_driver_identity',r.environment='live' and v_uid=r.passenger_id and l.driver_id is not null and l.status in ('accepted','arriving','boarded'),
       'can_cancel',l.status in ('requested','accepted','arriving','boarded') and
-          (v_admin or l.driver_id=v_uid or l.payer_id=v_uid or r.passenger_id=v_uid or rights.is_client)) order by l.seq) legs
+          (v_admin or l.driver_id=v_uid or l.payer_id=v_uid or r.passenger_id=v_uid or rights.is_client)) order by l.seq,l.revision) legs
     from public.ride_legs l cross join lateral (select
       (v_admin or l.driver_id=v_uid or r.passenger_id=v_uid) as see_route,
       (v_admin or l.driver_id=v_uid or l.payer_id=v_uid) as see_price,
@@ -176,7 +192,7 @@ begin
     where l.ride_id=r.id and (v_admin or r.passenger_id=v_uid or rights.is_client or l.driver_id=v_uid or l.payer_id=v_uid)
   ) summary;
   return jsonb_build_object('enabled',f.module_enabled,'simulation',v_env='simulation','quote_enabled',f.module_enabled and f.quote_enabled,
-    'dispatch_enabled',f.module_enabled and f.dispatch_enabled and f.quote_enabled,'areas',coalesce(v_areas,'[]'),'driver',v_driver,
+    'dispatch_enabled',f.module_enabled and f.dispatch_enabled and f.quote_enabled,'areas',coalesce(v_areas,'[]'),'extra_options',coalesce(v_extras,'[]'),'driver',v_driver,
     'rides',coalesce(v_rides,'[]'),'offers',coalesce(v_offers,'[]'),'quotes',coalesce(v_quotes,'[]'),'reviews',coalesce(v_reviews,'[]'));
 end $$;
 

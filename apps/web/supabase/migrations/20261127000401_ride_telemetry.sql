@@ -144,9 +144,7 @@ language sql security definer set search_path='' as $$
  private.ride_signal_settings s, private.ride_network n
  where s.push_enabled and n.environment='live' and n.module_enabled and n.dispatch_enabled
  and r.environment='live' and m.environment='live' and m.online and m.status='approved' and m.valid_until>=private.sp_date(l.pickup_at)
- and m.id<>r.passenger_id and m.id<>l.payer_id and d.expires_at>now() and l.status='requested'
- and upper(l.slot)>now() and not exists(select from private.ride_declines x where x.leg_id=l.id and x.driver_id=m.id)
- and not exists(select from public.ride_legs x where x.driver_id=m.id and x.slot && l.slot and x.status in ('accepted','arriving','boarded','unknown'))
+ and private.ride_offer_eligible(m.id,l) and d.expires_at>now() and l.status='requested'
  and not exists(select from private.ride_push_attempts a where a.device_id=d.id and a.leg_id=l.id
  and (a.delivered or a.leased_until>now() or a.attempts>=3)) order by l.pickup_at,d.id limit 12
  ), acquired as (

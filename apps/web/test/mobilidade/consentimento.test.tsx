@@ -5,6 +5,8 @@ import Corridas from '../../pages/mobilidade/Corridas';
 import { getBooking } from '../../services/bookings';
 import { consentToRide, getRideDashboard, type RideDashboard } from '../../services/rides';
 
+vi.mock('../../components/mobility/RouteCases', () => ({ RouteCases: () => null }));
+vi.mock('../../services/rideRoutes', () => ({ listRideRouteCases: async () => [] }));
 vi.mock('../../lib/supabase', () => ({ backendEnabled: true, supabase: null }));
 vi.mock('../../contexts/AuthContext', () => ({ useAuth: () => ({ mode: 'backend', authUser: { id: 'cliente' }, loading: false, isAuthenticated: true }) }));
 vi.mock('../../services/rides', () => ({ getRideDashboard: vi.fn(), consentToRide: vi.fn(), quoteRide: vi.fn() }));

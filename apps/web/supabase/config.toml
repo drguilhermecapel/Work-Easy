@@ -461,3 +461,11 @@ enabled = true
 # Invoked by pg_cron with the secret checked by ride-alerts.
 [functions.ride-alerts]
 verify_jwt = false
+
+# Background deletion uses the cron secret; ride-driver-file keeps standard JWT verification.
+[functions.ride-dossier-purge]
+verify_jwt = false
+
+# Test project only. The Asaas sandbox uses its own webhook token.
+[functions.ride-sandbox-webhook]
+verify_jwt = false

@@ -68,7 +68,7 @@ export const PROVIDER_KIND_TEXT = {
 
 export const BILLING_TEXT = {
   comissao_primeiro_servico: name =>
-    `Para ${name}, o modelo de cobrança previsto é uma comissão só no primeiro serviço com um cliente novo trazido pelo WorkEasy; a comissão depende de parecer jurídico para ser ligada.`,
+    `Para ${name}, a regra original prevê comissão no primeiro serviço com cliente novo da plataforma. A comissão em cada atendimento depende da liberação comercial para a ocupação e do aceite de um novo contrato pelo prestador.`,
   so_assinatura: name =>
     `Não há comissão sobre ${name}, por regra do conselho profissional: o profissional paga apenas a assinatura da ferramenta, se quiser usá-la.`,
   sob_consulta_juridica: name => `O modelo de cobrança para ${name} ainda está em análise jurídica.`,

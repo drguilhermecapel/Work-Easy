@@ -1,5 +1,7 @@
 # O15 — Mobilidade opcional dos prestadores
 
+**Histórico da estratégia de operador contratado.** A decisão posterior de cadastrar os motoristas diretamente, os fluxos avulsos e o backlog vigente estão no [roadmap da rede própria](16-rede-propria-de-motoristas.md).
+
 **Proposta para decisão · 27/11/2026.** Recomenda-se testar transporte agendado de um operador estabelecido para viabilizar serviços que teriam dificuldade de acontecer. O cliente escolhe o resultado, o profissional e a janela. Quando houver alternativa viável, pode recusar o transporte e manter o atendimento. A decisão de investir depende da contribuição adicional por solicitação e da renda líquida por hora de quem presta o serviço.
 
 No cenário-base ilustrativo de repasse a custo, a oferta reduz a contribuição em **R$ 2,06 por solicitação elegível** com D5 desligada. Mesmo a simulação com D5 ligada fica em **−R$ 1,10**. O piloto investigará se melhores trajetos, maior conversão ou remuneração permitida revertem a perda a preço sustentável. A escala de atendimento também precisa ser paga. [Cálculo e premissas em O09](09-modelo-financeiro.md)

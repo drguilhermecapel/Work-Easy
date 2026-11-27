@@ -39,17 +39,19 @@ const load = async (provider: Pick<ProviderRow, 'id' | 'plan'>) => {
     proposals,
     limit: settings.proposalLimit,
     today: todayInSaoPaulo(),
-    commissionOptions,
+    recurringOccupations: new Set(commissionOptions.filter(option => option.charging_enabled && option.applies_from &&
+      Date.parse(option.applies_from) <= Date.now()).map(option => option.occupation_slug)),
     allowance: !canBuyPro ? { kind: 'commission' as const } : proposalAllowance({ plan: provider.plan, limit: freeLimit, proposals }),
   };
 };
 
 type Data = Awaited<ReturnType<typeof load>>;
 
-const ProposalForm: React.FC<{ providerId: string; request: OpenRequest; today: string; onSent: () => void; onCancel: () => void }> = ({
+const ProposalForm: React.FC<{ providerId: string; request: OpenRequest; today: string; recurring: boolean; onSent: () => void; onCancel: () => void }> = ({
   providerId,
   request,
   today,
+  recurring,
   onSent,
   onCancel,
 }) => {
@@ -59,6 +61,7 @@ const ProposalForm: React.FC<{ providerId: string; request: OpenRequest; today: 
   const [availableFrom, setAvailableFrom] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const enteredPrice = parseReaisToCents(price);
   const prefix = `prop-${request.id}`;
 
   const submit = async (event: React.FormEvent) => {
@@ -89,6 +92,9 @@ const ProposalForm: React.FC<{ providerId: string; request: OpenRequest; today: 
           <input id={`${prefix}-disponivel`} type="date" min={today} className={inputClass} value={availableFrom} onChange={e => setAvailableFrom(e.target.value)} />
         </Field>
       </div>
+      {recurring && enteredPrice !== null && (
+        <p className="text-sm">Comissão contratada de {formatCents(Math.floor(enteredPrice / 10))}. Você recebe {formatCents(enteredPrice - Math.floor(enteredPrice / 10))} de repasse. A WorkEasy assume a tarifa do meio de pagamento.</p>
+      )}
       <Field id={`${prefix}-mensagem`} label="Mensagem para o cliente (opcional)" hint="Diga o que está incluso e quando você pode ir. Não coloque telefone ou e-mail.">
         <textarea id={`${prefix}-mensagem`} className={inputClass} rows={3} maxLength={1000} value={message} onChange={e => setMessage(e.target.value)} />
       </Field>
@@ -122,8 +128,7 @@ const RequestCard: React.FC<{ providerId: string; request: OpenRequest; data: Da
       <p className="text-xs text-gray-500 mt-2">
         {request.proposal_count} de {data.limit} propostas já enviadas · pedido aberto até {formatDateBR(request.expires_at)}
       </p>
-      {!request.my_proposal_id && data.commissionOptions.some(option => option.occupation_slug === request.occupation_slug &&
-        option.applies_from && Date.parse(option.applies_from) <= Date.now()) && (
+      {!request.my_proposal_id && data.recurringOccupations.has(request.occupation_slug) && (
         <p className="mt-2 text-sm text-gray-700">Sua política prevê 10% sobre o preço de cada atendimento desta ocupação pela plataforma. A franquia de propostas do plano grátis não se aplica.</p>
       )}
       {request.my_proposal_id ? (
@@ -136,6 +141,7 @@ const RequestCard: React.FC<{ providerId: string; request: OpenRequest; data: Da
           providerId={providerId}
           request={request}
           today={data.today}
+          recurring={data.recurringOccupations.has(request.occupation_slug)}
           onCancel={() => setOpen(false)}
           onSent={() => {
             setOpen(false);

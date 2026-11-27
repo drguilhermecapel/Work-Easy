@@ -109,5 +109,31 @@ select throws_ok($$select public.ride_quote(gen_random_uuid(),(select v from rid
   '[{"origin":"Saúde","destination":"Jabaquara","payer":"provider"}]')$$,'P0001','ride_already_requested','two logical itineraries cannot dispatch for the same booking');
 select tests.clear_authentication();
 select is((select status::text from public.bookings where id=(select v from ride_case where k='booking')),'accepted','transport events leave service state untouched');
+-- A confirmed cancellation can be replaced in the same logical position. Its
+-- earlier quote, charge and authorization remain identifiable.
+select tests.authenticate_as('client_a');
+select throws_ok($$select public.ride_quote(gen_random_uuid(),null,null,
+   jsonb_build_array(jsonb_build_object('origin','Saúde','destination','Jabaquara','payer','passenger','replaces',(select v from ride_case where k='leg1'))))$$,
+   'P0001','replacement_unavailable','cannot rebook an already completed leg as a cancelled one');
+select is(public.ride_transition((select v from ride_case where k='leg2'),'cancelled',gen_random_uuid())->>'status','cancelled','unassigned return cancelled before recotação');
+select throws_ok($$select public.ride_quote(gen_random_uuid(),null,null,
+ '[{"origin":"Saúde","destination":"Jabaquara","payer":"passenger","extras":["unknown"]}]')$$,'P0001','invalid_extras','unsupported expense rejected on server');
+insert into ride_case select 'replacement',(public.ride_quote(gen_random_uuid(),null,now()+interval '1 hour',
+ jsonb_build_array(jsonb_build_object('origin','Jabaquara','destination','Vila Mariana','payer','passenger','replaces',(select v from ride_case where k='leg2'),
+   'extras',jsonb_build_array('luggage'))))->>'id')::uuid;
+select is((public.ride_consent((select v from ride_case where k='replacement'),true)->>'ride_id')::uuid,
+          (select v from ride_case where k='ride'),'replacement promotes into the same itinerary');
+select throws_ok($$select public.ride_quote(gen_random_uuid(),null,null,
+   jsonb_build_array(jsonb_build_object('origin','Saúde','destination','Jabaquara','payer','passenger','replaces',(select v from ride_case where k='leg2'))))$$,
+   'P0001','replacement_unavailable','a second UUID cannot bypass a prior replacement');
+select tests.clear_authentication();
+select is((select seq from public.ride_legs where replaces_id=(select v from ride_case where k='leg2')),2,'secondary attempt keeps original return position');
+select is((select extras_cents from public.ride_legs where replaces_id=(select v from ride_case where k='leg2')),400,'server-priced baggage only after new consent');
+select is((select fee_cents from public.ride_legs where replaces_id=(select v from ride_case where k='leg2')),294,'10% excludes pass-through baggage');
+select is((select status from public.ride_legs where id=(select v from ride_case where k='leg2')),'cancelled','original leg retained for reconciliation');
+update public.ride_drivers set valid_until=current_date-1 where id=tests.uid('provider_b');
+select tests.authenticate_as('provider_b');
+select throws_ok($$select public.ride_set_online(true)$$,'P0001','driver_ineligible','expired review blocks online status');
+select is((select jsonb_array_length(public.ride_dashboard()->'offers')),0,'expired driver cannot receive offers');
 select * from finish();
 rollback;

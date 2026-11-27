@@ -18,6 +18,7 @@ import { csvFileName, downloadCsv, paymentsCsv } from '../../services/proExport'
 import ErrorAlert from '../../components/ErrorAlert';
 import PageStatus from '../../components/PageStatus';
 import { NfseLink, NfseNote } from '../../components/pro/Nfse';
+import { serviceCommissionOptions, serviceProSalesAllowed } from '../../services/serviceCommission';
 import PixBox from '../../components/pro/PixBox';
 import ProPage from '../../components/pro/ProPage';
 import { useProvider } from '../../components/pro/proContext';
@@ -38,21 +39,26 @@ const exportPayments = (payments: PaymentRow[]) =>
     paymentsCsv(payments, { method: PAYMENT_METHOD_LABELS, status: PAYMENT_STATUS_LABELS }),
   );
 
-const load = async (providerId: string) => {
-  const [payments, account, bookings, quotes, clients] = await Promise.all([
+const load = async (providerId: string, isPro: boolean) => {
+  const [payments, account, bookings, quotes, clients, options, proSales] = await Promise.all([
     listMyPayments(providerId),
     getMyPaymentAccount(providerId),
     listMyBookings(providerId),
     listQuotes(providerId),
     listClients(providerId),
+    isPro ? Promise.resolve([]) : serviceCommissionOptions(),
+    isPro ? Promise.resolve(true) : serviceProSalesAllowed(providerId),
   ]);
+  const fullAccess = isPro || !proSales;
+  const migrated = new Set(options.filter(option => option.accepted_at !== null).map(option => option.occupation_slug));
   const paid = payments.filter(item => PAID.includes(item.status));
   const isPaid = (kind: 'booking_id' | 'quote_id', id: string) => paid.some(item => item[kind] === id);
   return {
     payments,
+    canCharge: fullAccess || migrated.size > 0,
     accountActive: account?.status === 'active',
-    bookings: bookings.filter(item => item.origin === 'own' && CHARGEABLE.includes(item.status) && !isPaid('booking_id', item.id)),
-    quotes: quotes.filter(item => item.status === 'accepted' && !isPaid('quote_id', item.id)),
+    bookings: bookings.filter(item => item.origin === 'own' && (fullAccess || migrated.has(item.occupation_slug)) && CHARGEABLE.includes(item.status) && !isPaid('booking_id', item.id)),
+    quotes: quotes.filter(item => fullAccess && item.status === 'accepted' && !isPaid('quote_id', item.id)),
     clients,
     today: todayInSaoPaulo(),
   };
@@ -372,7 +378,7 @@ const Charges: React.FC = () => {
   const approved = provider.status === 'approved';
   const isPro = provider.plan === 'pro';
   // A provider that is not approved never reads payments: the database refuses and the screen only explains
-  const data = useAsync(() => (approved ? load(provider.id) : Promise.resolve(null)), `${provider.id}:${approved}`);
+  const data = useAsync(() => (approved ? load(provider.id, isPro) : Promise.resolve(null)), `${provider.id}:${approved}:${isPro}`);
 
   const queryTarget = params.get('atendimento') ? `booking:${params.get('atendimento')}` : params.get('orcamento') ? `quote:${params.get('orcamento')}` : '';
 
@@ -396,7 +402,7 @@ const Charges: React.FC = () => {
         <>
           <section aria-labelledby="cob-nova" className="space-y-3">
             <SectionTitle id="cob-nova">Nova cobrança</SectionTitle>
-            {!isPro ? (
+            {!data.data.canCharge ? (
               <Card>
                 <p className="text-sm text-gray-700">
                   Cobrar clientes seus por Pix, boleto ou cartão faz parte do plano Pro. Seu plano atual é o grátis.
