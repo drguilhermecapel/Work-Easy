@@ -30,7 +30,7 @@ function Contact({ contact }: { contact: RideSupportContact }) {
       <h4 className="font-semibold">{team || 'Equipe de atendimento'}</h4>
       {from && until && (
         <p>
-          {onDuty ? 'Plantão em andamento' : 'Plantão previsto'} de {formatDateTime(from)} a {formatDateTime(until)} (São Paulo).
+          {onDuty ? 'Plantão em andamento' : 'Janela de atendimento'} de {formatDateTime(from)} a {formatDateTime(until)} (São Paulo).
         </p>
       )}
       {!onDuty && <p>Sem plantão ativo agora. Você pode registrar o pedido e acompanhar o protocolo aqui.</p>}

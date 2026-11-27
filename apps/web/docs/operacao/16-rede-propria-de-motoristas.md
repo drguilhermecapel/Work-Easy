@@ -9,6 +9,7 @@ Decisão de 27/11/2026. O WorkEasy cadastra motoristas e intermedeia corridas em
 | Regra de 10%, transição do Pro, categorias e vigência | [D14 e portões financeiros de serviços](../DECISOES.md) |
 | Preço próprio, referência Uber/99, sensibilidade, renda e caixa | [O09](09-modelo-financeiro.md) e [planilha](09-modelo-financeiro.xlsx) |
 | Capacidades, autorizações, estados, dados e integrações | [Arquitetura](../ARQUITETURA.md#rede-direta-de-motoristas) |
+| Homologação e processamento financeiro das corridas | [Ambiente de testes Asaas](../arquitetura/asaas-sandbox-corridas.md) e [Pix, split e reconciliação em produção](../arquitetura/asaas-producao-corridas.md) |
 | Escala e adesão por corredor | [Operação concierge](01-plano-de-45-dias-concierge.md#rede-direta) |
 | Experimento e limites | [Portões da rede direta](08-metricas-e-portoes.md#rede-direta) |
 | Exceções, controles e recuperação | [Runbook](../RUNBOOKS.md#rede-direta-de-motoristas) |
@@ -49,6 +50,9 @@ A escala do concierge conserva G1–G4, um ponto cada, ou três quando a exclus�
 
 A branch e o PR registram a implementação e as verificações de software. A decisão de encaminhar minutas, o deferimento de credenciamento, a aprovação individual, a homologação de PSP, a publicação, a primeira corrida real, o encerramento do piloto e a demonstração de benefício devem receber datas e fontes próprias. O orçamento autorizado nesta revisão é R$ 0. [PR da rede direta](https://github.com/drguilhermecapel/Work-Easy/pull/47)
 
+### Ensaio com três participantes
+
+Em 27/11/2026, três sessões autenticadas no Chromium 156 usaram a aplicação e o Supabase locais. O motorista enviou o cadastro, um revisor independente aprovou e o motorista declarou disponibilidade. No cenário Saúde → Jabaquara, o passageiro aceitou a cotação de R$ 18,72. O motorista aceitou o trecho, registrou aproximação, embarque e conclusão. A conclusão ficou visível ao passageiro e o saldo recebido continuou em R$ 0. O lançamento simulado do revisor levou o caixa a R$ 18,72 e a comissão a R$ 1,87. O exercício usou dados fictícios e terminou com os controles de operação fechados. PSP, GPS físico e transporte em via pública têm evidências próprias a coletar.
 
 ### Capacidade e expansão com dados reais
 

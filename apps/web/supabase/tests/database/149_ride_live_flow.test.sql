@@ -43,6 +43,9 @@ select tests.authenticate_as('admin');
 select lives_ok($$select public.ride_claim_route((select id from live_case where k='case'))$$,'reviewer claims precise route');
 select lives_ok($$select public.ride_verify_route((select id from live_case where k='case'),3000,15,'SYNTHETIC/local-map')$$,'operator freezes synthetic measured route');
 select tests.authenticate_as('client_a');
+select throws_ok($$select public.ride_quote(gen_random_uuid(),null,now()+interval '1 day',
+ jsonb_build_array(jsonb_build_object('origin','Bairro A','destination','Bairro B','payer','passenger','route_id',(select id from live_case where k='case'))))$$,
+ 'P0001','ride_scope_expired','both area permits must cover the end of a future scheduled journey');
 insert into live_case select 'quote',(public.ride_quote(gen_random_uuid(),null,null,
  jsonb_build_array(jsonb_build_object('origin','Bairro A','destination','Bairro B','payer','passenger','route_id',(select id from live_case where k='case'))))->>'id')::uuid;
 select is((public.ride_dashboard()->'quotes'->0->>'total_cents')::int,1700,'price frozen at 500 + 3 × 200 + 15 × 40');
@@ -63,6 +66,12 @@ select tests.authenticate_as('client_a');
 select throws_ok($$select public.ride_consent((select id from live_case where k='quote'),true)$$,'P0001','ride_pilot_budget','one cent over budget blocks dispatch atomically');
 select tests.clear_authentication();
 update private.ride_pilot set budget_cents=1700;
+savepoint permit_changed;
+update private.ride_area_authorizations set until_at=now()+interval '10 minutes' where area='Bairro B';
+select tests.authenticate_as('client_a');
+select throws_ok($$select public.ride_consent((select id from live_case where k='quote'),true)$$,'P0001','ride_scope_expired',
+ 'a shortened permit between quotation and confirmation stops the commitment');
+rollback to permit_changed;
 select tests.authenticate_as('client_a');
 insert into live_case select 'ride',(public.ride_consent((select id from live_case where k='quote'),true)->>'ride_id')::uuid;
 select tests.clear_authentication();
@@ -80,18 +89,79 @@ select throws_ok($$select public.ride_accept_offer((select id from live_case whe
 select tests.clear_authentication();
 update private.ride_receipt_policy set export_enabled=true where environment='live';
 update private.ride_signal_settings set location_enabled=true;
+savepoint approach_horizon;
+update private.ride_area_authorizations set until_at=now()+interval '18 minutes' where area='Bairro B';
+select tests.authenticate_as('client_b');
+select is(jsonb_array_length(public.ride_dashboard()->'offers'),0,'area permit covers the original trip but expires during its delayed arrival');
+select throws_ok($$select public.ride_accept_offer((select id from live_case where k='leg'),gen_random_uuid())$$,'P0001','offer_unavailable',
+ 'assignment cannot bypass the driver-specific end time');
+rollback to approach_horizon;
 select tests.authenticate_as('client_b');
 select is(public.ride_accept_offer((select id from live_case where k='leg'),gen_random_uuid())->>'status','accepted','driver accepts using public RPC after all live-mode gates');
 select is(public.ride_can_transmit((select id from live_case where k='leg')),false,'accepting alone never starts location tracking');
 select throws_ok($$select public.ride_send_position((select id from live_case where k='leg'),now(),-23.61,-46.65,5)$$,'P0001','transmission_ended','a device cannot upload GPS before approach starts');
 select is(public.ride_leg_points((select id from live_case where k='leg'))->'origin'->>'label','Ensaio ponto A','assigned driver receives exact authorized point');
+select tests.clear_authentication();
+savepoint predeparture;
+update private.ride_area_authorizations set until_at=now() where area='Bairro B';
+select tests.authenticate_as('client_b');
+select throws_ok($$select public.ride_transition((select id from live_case where k='leg'),'arriving',gen_random_uuid())$$,
+ 'P0001','ride_scope_expired','a suspended permit stops departure');
+select lives_ok($$select public.ride_transition((select id from live_case where k='leg'),'cancelled',gen_random_uuid())$$,
+ 'an already assigned driver can still cancel and arrange assistance');
+rollback to predeparture;
+select tests.authenticate_as('client_b');
 select lives_ok($$select public.ride_transition((select id from live_case where k='leg'),'arriving',gen_random_uuid())$$,'driver en route');
 select throws_ok($$select public.ride_transition((select id from live_case where k='leg'),'boarded',gen_random_uuid())$$,
  'P0001','ride_pickup_arrival_required','driver records actual arrival before boarding in live mode');
 select lives_ok($$select public.ride_mark_at_pickup((select id from live_case where k='leg'))$$,'physical arrival recorded separately');
 select lives_ok($$select public.ride_transition((select id from live_case where k='leg'),'boarded',gen_random_uuid())$$,'boarding confirmed');
-select lives_ok($$select public.ride_transition((select id from live_case where k='leg'),'completed',gen_random_uuid())$$,'trip complete independently of settlement');
+select tests.clear_authentication();
+update private.ride_area_authorizations set until_at=now() where area='Bairro B';
+select tests.authenticate_as('client_b');
+select lives_ok($$select public.ride_transition((select id from live_case where k='leg'),'completed',gen_random_uuid())$$,
+ 'permit expiry after boarding allows safe completion independently of settlement');
 select tests.authenticate_as('client_a');
 select is(public.ride_aftercare((select id from live_case where k='leg'))#>>'{document,money,paid_cents}','0','live-mode trip completion does not manufacture payment');
+-- A linked client/provider remains bound to the same service window after
+-- assignment. Changes can be recovered through cancellation and fresh consent.
+select tests.clear_authentication();
+update private.ride_area_authorizations set until_at=now()+interval '1 day';
+update private.ride_pilot set budget_cents=5000;
+insert into live_case select 'booking',tests.make_booking('provider_a','client_a','t-reparo',
+ tstzrange(now()+interval '1 hour',now()+interval '2 hours'),'accepted');
+select tests.authenticate_as('provider_a');
+insert into live_case select 'linked_case',(public.ride_prepare_route(gen_random_uuid(),(select id from live_case where k='booking'),'Bairro A','Bairro B',
+ '{"label":"Ponto fictício C","lat":-23.60,"lng":-46.64}','{"label":"Ponto fictício D","lat":-23.61,"lng":-46.65}','destination')->>'id')::uuid;
+select tests.authenticate_as('admin');
+select public.ride_claim_route((select id from live_case where k='linked_case'));
+select public.ride_verify_route((select id from live_case where k='linked_case'),3000,15,'SYNTHETIC/linked');
+select tests.authenticate_as('provider_a');
+insert into live_case select 'linked_quote',(public.ride_quote(gen_random_uuid(),(select id from live_case where k='booking'),null,
+ jsonb_build_array(jsonb_build_object('origin','Bairro A','destination','Bairro B','payer','client','route_id',(select id from live_case where k='linked_case'))))->>'id')::uuid;
+select public.ride_consent((select id from live_case where k='linked_quote'),true);
+select tests.authenticate_as('client_a');
+select public.ride_consent((select id from live_case where k='linked_quote'),true);
+select tests.clear_authentication();
+insert into live_case select 'linked_leg',l.id from public.ride_legs l where source_quote_id=(select id from live_case where k='linked_quote');
+select tests.authenticate_as('client_b');
+select public.ride_accept_offer((select id from live_case where k='linked_leg'),gen_random_uuid());
+select tests.clear_authentication();
+savepoint booking_rescheduled;
+update public.bookings set period=tstzrange(now()+interval '2 hours',now()+interval '3 hours') where id=(select id from live_case where k='booking');
+select tests.authenticate_as('client_b');
+select throws_ok($$select public.ride_transition((select id from live_case where k='linked_leg'),'arriving',gen_random_uuid())$$,
+ 'P0001','ride_service_changed','rescheduling the service prevents departure on its old authorization');
+rollback to booking_rescheduled;
+select tests.authenticate_as('client_b');
+select public.ride_transition((select id from live_case where k='linked_leg'),'arriving',gen_random_uuid());
+select public.ride_mark_at_pickup((select id from live_case where k='linked_leg'));
+select tests.authenticate_as('client_a');
+select public.transition_booking((select id from live_case where k='booking'),'canceled','Reagendamento de ensaio');
+select tests.authenticate_as('client_b');
+select throws_ok($$select public.ride_transition((select id from live_case where k='linked_leg'),'boarded',gen_random_uuid())$$,
+ 'P0001','ride_service_changed','outbound cannot board after the related service has been cancelled');
+select lives_ok($$select public.ride_transition((select id from live_case where k='linked_leg'),'cancelled',gen_random_uuid())$$,
+ 'driver may cancel a ride whose original service was withdrawn');
 select * from finish();
 rollback;
