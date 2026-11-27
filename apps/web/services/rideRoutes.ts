@@ -5,6 +5,22 @@ export interface RidePoint {
   lat: number;
   lng: number;
 }
+export type Draft = {label:string;lat:string;lng:string};
+export function toRidePoint(draft: Draft): RidePoint {
+  const lat = Number(draft.lat),
+    lng = Number(draft.lng);
+  if (
+    !draft.label.trim() ||
+    !draft.lat.trim() ||
+    !draft.lng.trim() ||
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lng) ||
+    Math.abs(lat) > 90 ||
+    Math.abs(lng) > 180
+  )
+    throw new Error('Confira o endereço e as coordenadas.');
+  return { label: draft.label.trim(), lat, lng };
+}
 export interface RideRouteCase {
   id: string;
   booking_id: string | null;
