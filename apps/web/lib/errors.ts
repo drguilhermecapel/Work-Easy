@@ -213,7 +213,7 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   ride_identity_verification_required: 'Confirme seu e-mail ou telefone ou procure o plantão para verificar sua identidade.',
   ride_recording_notice_required: 'Os dois participantes precisam confirmar o aviso de gravação.',
   ride_media_disabled: 'O anexo está indisponível para esta ocorrência.',
-  ride_assistance_requote: 'Esta mudança exige nova solicitação antes de atribuir um motorista.',
+  ride_assistance_requote: 'A assistência precisa de um motorista e veículo habilitados até o fim do trecho. Consulte o plantão ou solicite nova cotação.',
   ride_already_rated: 'Sua avaliação definitiva deste trecho já foi registrada.',
   ride_pair_unavailable: 'Esta combinação não está disponível para o trecho.',
   ride_urgent_support_overdue: 'O plantão prioriza uma ocorrência urgente. Novos despachos estão pausados.',

@@ -66,6 +66,8 @@ select tests.authenticate_as('client_a');
 insert into j select 'ride',(public.ride_consent((select id from j where k='quote'),true)->>'ride_id')::uuid;
 select tests.clear_authentication();
 insert into j select 'leg',id from public.ride_legs where ride_id=(select id from j where k='ride');
+select is((private.ride_current_safety_path((select id from j where k='leg'))).points->0,'[1.1,1.2]'::jsonb,
+ 'Wellness reads the accepted measured geometry in latitude/longitude order with its operational retention');
 update private.ride_vehicle_capacity set tools=false where driver_id=tests.uid('client_b');
 select tests.authenticate_as('client_b');
 select throws_ok($$select public.ride_accept_offer((select id from j where k='leg'),gen_random_uuid())$$,'P0001','offer_unavailable',

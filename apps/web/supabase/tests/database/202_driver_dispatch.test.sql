@@ -64,6 +64,30 @@ select tests.clear_authentication();
 select ok(not exists(select from public.ride_driver_inbox where driver_id=tests.uid('client_a')),'realtime carries no passenger inbox entry');
 select is((select count(*) from private.ride_offer_history where state='assigned'),1::bigint,'exactly one assignment recorded');
 
+-- A block from an assigned trip also applies to a second offer that was
+-- delivered while the same pair could still match.
+update private.ride_dispatch_rules set wave_size=3 where environment='simulation';
+select tests.authenticate_as((select handle from drivers_test where driver_id=(select id from dispatch_test where k='remaining')));
+select public.ride_set_online(true);
+select tests.authenticate_as('client_a');
+select pg_temp.request_trip('later','Saúde','Jabaquara',now()+interval '5 hours');
+select tests.clear_authentication();
+insert into dispatch_test select 'later_leg',id from public.ride_legs where ride_id=(select id from dispatch_test where k='later');
+select tests.authenticate_as((select handle from drivers_test where driver_id=(select id from dispatch_test where k='remaining')));
+select set_config('tests.expiry202',(select item->>'expires_at' from jsonb_array_elements(public.ride_dashboard()->'offers') item
+ where item->>'leg_id'=(select id::text from dispatch_test where k='later_leg')),true);
+select ok(length(current_setting('tests.expiry202'))>0,'Driver receives the separate future trip before a block');
+select tests.authenticate_as('client_a');
+select public.ride_block_pair((select id from dispatch_test where k='leg'),true);
+select tests.authenticate_as((select handle from drivers_test where driver_id=(select id from dispatch_test where k='remaining')));
+select ok(not exists(select from jsonb_array_elements(public.ride_dashboard()->'offers') item where item->>'leg_id'=(select id::text from dispatch_test where k='later_leg')),
+ 'An already delivered future assignment disappears immediately for the blocked pair');
+select throws_ok($$select public.driver_decide_offer((select id from dispatch_test where k='later_leg'),gen_random_uuid(),current_setting('tests.expiry202')::timestamptz,true)$$,
+ 'P0001','offer_unavailable','Cached offer token cannot assign a newly blocked pair');
+select tests.clear_authentication();
+select private.dispatch_ride_leg((select id from dispatch_test where k='later_leg'));
+select ok(exists(select from private.ride_driver_offers where leg_id=(select id from dispatch_test where k='later_leg')
+ and driver_id<>(select id from dispatch_test where k='remaining') and state='offered'),'Next dispatch retains a compatible alternative');
 rollback to waves;
 savepoint airport;
 select tests.authenticate_as('client_b');
