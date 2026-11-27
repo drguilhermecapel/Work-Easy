@@ -2,6 +2,8 @@
 
 **Proposta para decisão · 27/11/2026.** Recomenda-se testar transporte agendado de um operador estabelecido para viabilizar serviços que teriam dificuldade de acontecer. O cliente escolhe o resultado, o profissional e a janela. Quando houver alternativa viável, pode recusar o transporte e manter o atendimento. A decisão de investir depende da contribuição adicional por solicitação e da renda líquida por hora de quem presta o serviço.
 
+No cenário-base ilustrativo de repasse a custo, a oferta reduz a contribuição em **R$ 2,06 por solicitação elegível** com D5 desligada. Mesmo a simulação com D5 ligada fica em **−R$ 1,10**. O piloto investigará se melhores trajetos, maior conversão ou remuneração permitida revertem a perda a preço sustentável. A escala de atendimento também precisa ser paga. [Cálculo e premissas em O09](09-modelo-financeiro.md)
+
 ## Onde encontrar cada regra
 
 | Pergunta | Fonte principal |
@@ -92,4 +94,4 @@ Os identificadores abaixo são estáveis. A definição de pronto exige respons�
 | Mobilidade M0–M3 | Proposta de pesos por etapa encerrada: M0 15, M1 30, M2 35 e M3 20. Total 100. Registrar também os cartões entregues e os gates pendentes. | **0/100** em etapas encerradas na linha de base. O PR entrega documentação e planilha. M0 ainda exige diligência e dados de campo. |
 | Estudo condicional M4 | 1 estudo decidido / 1 quando formalmente aberto. Até lá, marcar “fora do denominador”. | Condicional, sem decisão de contratar capacidade ou adquirir veículos. |
 
-**Marcos do novo escopo.** Esta revisão entrega a documentação para apreciação. Abertura de PR e merge em `main` são evidências distintas. Implementação, testes do simulador, homologação com parceiro, implantação, contratação do operador, liberação comercial, primeira viagem real e demonstração de benefício econômico exigem, cada um, seu próprio registro datado. Na linha de base, esses marcos de mobilidade estão pendentes. As minutas deste pacote estão preparadas para revisão, sem envio a parceiros.
+**Marcos do novo escopo.** Em 27/11/2026 foi aberta a revisão documental na branch `docs/mobilidade-de-prestadores`. O histórico do PR registra a entrega e, quando ocorrer, a integração em `main`. [PR #45](https://github.com/drguilhermecapel/Work-Easy/pull/45) Implementação, testes do simulador, homologação com parceiro, implantação, contratação do operador, liberação comercial, primeira viagem real e demonstração de benefício econômico exigem, cada um, seu próprio registro datado. Na linha de base, esses marcos de mobilidade estão pendentes. As minutas deste pacote estão preparadas para revisão, sem envio a parceiros.
