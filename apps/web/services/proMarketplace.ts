@@ -3,6 +3,7 @@ import { saoPauloDateTime } from '../lib/timezone';
 import type { Tables } from '../lib/database.types';
 import { db, unwrap, unwrapMaybe } from './client';
 import { getFreeProposalsPerMonth } from './proBilling';
+import { serviceProSalesAllowed } from './serviceCommission';
 import { guard } from './proErrors';
 import { monthStartSaoPaulo } from './proFormat';
 import type { ProposalRow, ProviderRow } from './types';
@@ -23,7 +24,7 @@ export interface OpenRequest {
   my_proposal_status: Tables<'proposals'>['status'] | null;
 }
 
-const PROPOSAL_COLUMNS = 'id, request_id, provider_id, price_cents, message, valid_until, available_from, status, created_at';
+const PROPOSAL_COLUMNS = 'id, request_id, provider_id, price_cents, message, valid_until, available_from, status, created_at, service_fee_policy_version';
 
 /** Open requests for the occupations and neighborhoods of an approved provider; empty for any other status. */
 export const listOpenRequests = (): Promise<OpenRequest[]> =>
@@ -110,7 +111,7 @@ export const withdrawProposal = (proposalId: string): Promise<void> =>
 // ---- Free allowance -------------------------------------------------------------
 
 /** The free plan has a monthly allowance; the Pro plan has none. */
-export type ProposalAllowance = { kind: 'unlimited' } | { kind: 'limited'; limit: number; used: number };
+export type ProposalAllowance = { kind: 'unlimited' } | { kind: 'commission' } | { kind: 'limited'; limit: number; used: number };
 
 /**
  * What the plan allows for proposals this month. The free plan sends up to `limit` per calendar month in
@@ -121,19 +122,20 @@ export type ProposalAllowance = { kind: 'unlimited' } | { kind: 'limited'; limit
 export const proposalAllowance = (input: {
   plan: ProviderRow['plan'];
   limit: number | null;
-  proposals: Array<Pick<ProposalRow, 'created_at'>>;
+  proposals: Array<Pick<ProposalRow, 'created_at' | 'service_fee_policy_version'>>;
   now?: Date;
 }): ProposalAllowance | null => {
   if (input.plan === 'pro') return { kind: 'unlimited' };
   if (input.limit === null) return null;
   const since = monthStartSaoPaulo(input.now).getTime();
-  const used = input.proposals.filter(item => new Date(item.created_at).getTime() >= since).length;
+  const used = input.proposals.filter(item => !item.service_fee_policy_version && new Date(item.created_at).getTime() >= since).length;
   return { kind: 'limited', limit: input.limit, used };
 };
 
 /** Reads what proposalAllowance needs (a Pro provider needs no read). Rejects when a read fails. */
 export const getProposalAllowance = async (provider: Pick<ProviderRow, 'id' | 'plan'>): Promise<ProposalAllowance | null> => {
   if (provider.plan === 'pro') return { kind: 'unlimited' };
-  const [limit, proposals] = await Promise.all([getFreeProposalsPerMonth(), listMyProposals(provider.id)]);
+  const [limit, proposals, canBuyPro] = await Promise.all([getFreeProposalsPerMonth(), listMyProposals(provider.id), serviceProSalesAllowed(provider.id)]);
+  if (!canBuyPro) return { kind: 'commission' };
   return proposalAllowance({ plan: provider.plan, limit, proposals });
 };

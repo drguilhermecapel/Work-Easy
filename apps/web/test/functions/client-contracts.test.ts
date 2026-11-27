@@ -255,6 +255,7 @@ async function subscriptionsDeps(
     documentSecret: PLATFORM_SECRET,
     session: async () => ({ user: PROVIDER, getProvider: async () => APPROVED }),
     admin: {
+      proSalesAllowed: async () => true,
       getSubscription: async () => over.current ?? null,
       saveSubscription: async () => undefined,
       claimSubscription: async () => true,

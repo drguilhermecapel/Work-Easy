@@ -69,6 +69,7 @@ export type RequestInsert = Pick<
 
 /** proposals */
 export interface ProposalRow {
+  service_fee_policy_version?: string | null;
   id: string;
   request_id: string;
   provider_id: string;

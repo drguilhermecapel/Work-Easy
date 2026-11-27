@@ -225,6 +225,12 @@ Só o banco de dados muda o estado de um atendimento. Cada mudança entra no his
 
 12.2 Atendimentos já aceitos seguem a versão desta política em que nasceram. [PROPOSTA]
 
+## Corridas da rede direta — adendo de D14 para revisão
+
+O passageiro de corrida imediata ou agendada pode acionar o canal humano ou a opção de cancelamento informada na proposta. A equipe explica o estado que conseguiu confirmar, eventual tolerância, responsável e custo devido, inclusive se o motorista já chegou, embarcou o passageiro ou terminou o trecho. Guarda referência ao aceite, tentativa, recibo e resultado financeiro. Um cancelamento com resultado desconhecido continua em apuração. Antes de aceitar substituto ou refazer cobrança, a equipe confirma o desfecho ou a inexistência da tentativa anterior.
+
+Apurar separadamente o valor da viagem, o repasse do motorista, a comissão e eventual encargo de cancelamento. Cobrança por ausência ou cancelamento depende de regra válida divulgada no aceite. No estorno parcial, recalcular os 10% sobre a base elegível final e ajustar somente a diferença em cada livro. Corrida sem atendimento vinculado segue seu próprio fluxo. Um problema com o serviço do cliente não libera automaticamente repasse da viagem ou do serviço. Os direitos do consumidor e o canal de contestação permanecem disponíveis. [Condições da rede direta](13-rede-direta-de-motoristas.md)
+
 ## Cancelamento de transporte ligado ao serviço — minuta de 27/11/2026
 
 **Proposta para revisão jurídica e comercial.** O pagador recebe na cotação as regras do operador e os limites de cada trecho. A equipe registra quem solicitou a mudança, horário, estado confirmado do trecho e alternativa oferecida. Serviço e transporte recebem decisões próprias. O pedido pode ser feito pelo canal e no horário exibidos na confirmação.

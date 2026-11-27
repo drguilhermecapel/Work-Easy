@@ -1082,6 +1082,7 @@ describe('subscriptions-manage', () => {
       documentSecret: options.secret === undefined ? PLATFORM_SECRET : (options.secret ?? undefined),
       session: async () => ({ user: PROVIDER, getProvider: async () => provider }),
       admin: {
+        proSalesAllowed: async () => true,
         getSubscription: async () => current,
         saveSubscription: async row => void saved.push(row),
         claimSubscription: async row => {
@@ -1142,6 +1143,16 @@ describe('subscriptions-manage', () => {
     const res = await read(await subscriptions(post('subscriptions-manage', { action: 'cancel' }), deps));
     expect(res.status).toBe(200);
     expect(calls.map(call => call.method)).toEqual(['DELETE']);
+  });
+
+  it('declines new recurring Pro billing on commission-only accounts before calling Asaas', async () => {
+    const { deps, calls, saved } = subsDeps(null);
+    deps.admin.proSalesAllowed = async () => false;
+    const res = await read(await subscriptions(post('subscriptions-manage', { action: 'subscribe', method: 'pix' }), deps));
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('service_commission_only');
+    expect(calls).toEqual([]);
+    expect(saved).toEqual([]);
   });
 
   it('subscribes monthly and waits for the first payment before switching Pro on', async () => {

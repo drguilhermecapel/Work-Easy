@@ -6,7 +6,13 @@
 	<string>$(CAPACITOR_DEBUG)</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>pt-BR</string>
-	<key>NSCameraUsageDescription</key>
+	<key>NSLocationWhenInUseUsageDescription</key>
+    <string>Ao aceitar um trecho como motorista, você pode compartilhar a posição com a WorkEasy.</string>
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>Durante o trecho habilitado, a localização continua com a tela bloqueada. Você pode interrompê-la no aplicativo.</string>
+    <key>UIBackgroundModes</key>
+    <array><string>location</string></array>
+    <key>NSCameraUsageDescription</key>
 	<string>O WorkEasy usa a câmera para fotografar os documentos exigidos no seu cadastro de profissional. As fotos são enviadas para análise da equipe.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Você escolhe uma foto da galeria para anexar um documento ao seu cadastro. O WorkEasy não lê as outras fotos.</string>

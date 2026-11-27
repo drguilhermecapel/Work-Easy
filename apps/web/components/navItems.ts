@@ -26,7 +26,7 @@ export const navModelFor = (auth: AuthContextType): NavModel => {
   if (auth.mode === 'demo') {
     return auth.user.type === UserType.CLIENT
       ? {
-          items: [CATEGORIES, { label: 'Buscar', to: '/search' }, { label: 'Meus Pedidos', to: '/dashboard' }],
+          items: [CATEGORIES, { label: 'Buscar', to: '/search' }, { label: 'Meus Pedidos', to: '/dashboard' }, { label: 'Ensaio de corrida', to: '/corridas' }],
           cta: { label: 'Sou Profissional', to: '/register-provider' },
         }
       : { items: [{ label: 'Meu Painel', to: '/dashboard' }], cta: null };
@@ -56,6 +56,7 @@ export const navModelFor = (auth: AuthContextType): NavModel => {
         ...(auth.careAccess ? [{ label: 'Cuidado', to: '/cuidado' }] : []),
       ];
 
+  items.push({ label: 'Corridas', to: '/corridas' });
   if (auth.isAdmin) items.push({ label: 'Administração', to: '/admin' });
 
   return { items, cta: auth.provider ? null : { label: 'Sou profissional', to: '/pro/cadastro' } };

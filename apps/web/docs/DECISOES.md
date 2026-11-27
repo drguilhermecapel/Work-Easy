@@ -12,7 +12,7 @@ Marcas: **[fonte]** vem de fonte citada no plano estratégico privado; **[estima
 | D2 | Pro a R$ 49,00/mês, configurável (`pro_price_cents`) | mantido |
 | D3 | Teste grátis de 30 dias do Pro, uma vez por conta (`pro_trial_days`) | **implementado** |
 | D4 | Plano grátis com 5 propostas novas por mês; Pro sem limite (`free_proposals_per_month`) | **implementado** |
-| D5 | Comissão de 12% só no primeiro serviço com cliente novo da plataforma, com teto de R$ 150,00 (`commission_cap_cents`) | **teto implementado**; comissão segue desligada |
+| D5 | Comissão de 12% só no primeiro serviço com cliente novo da plataforma, com teto de R$ 150,00 (`commission_cap_cents`) | **implementado no regime legado**. D14 define a mudança prospectiva nas ocupações autorizadas. Ativação financeira separada |
 | D6 | Profissões reguladas: só assinatura, sem comissão e sem ranking por nota onde o conselho veda | mantido (política por ocupação) |
 | D7 | Exclusão de conta anonimiza e **não** apaga o registro financeiro em cascata (pagamentos e atendimentos ficam anonimizados) | mantido, decisão fechada |
 | D8 | Avaliações: sem piso de valor; risco aceito no lançamento, com moderação e gatilho de revisão | decisão fechada |
@@ -20,7 +20,8 @@ Marcas: **[fonte]** vem de fonte citada no plano estratégico privado; **[estima
 | D10 | Sem plano anual por enquanto | adiado com gatilho |
 | D11 | Venda de lead, anúncio pago e taxa geral ao cliente rejeitados em 22/10/2026. Adendo de 27/11 sobre transporte opcional em D13 | proposta de exceção limitada ao transporte |
 | D12 | Linha "Cuidado": só abrir ao público quando os pré-requisitos da seção 5 estiverem cumpridos | portão; o menu cumpre desde 24/11/2026 (DD59) |
-| D13 | Mobilidade opcional dos prestadores | proposta de 27/11/2026 para revisão no PR |
+| D13 | Mobilidade opcional dos prestadores | histórico da alternativa com operador externo, preservada em D14 |
+| D14 | Rede direta de motoristas para o público e para prestadores, com corridas imediatas e agendadas. Comissão de 10% por trecho e por serviço intermediado em ocupação autorizada, inclusive recorrências e sem teto | direção de produto escolhida em 27/11/2026. Adesão, implantação e habilitação comercial requerem provas próprias |
 
 ## 2. O que foi implementado nesta rodada
 
@@ -62,6 +63,8 @@ Tudo configurável em `platform_settings`, sem novo deploy. Contrato em `docs/AR
 
 ### D13. Mobilidade opcional dos prestadores
 
+**Leitura histórica.** Esta foi a estratégia inicial de contratar um operador existente. A estratégia da rede direta e seu preço constam de D14. Os termos de cada parceiro continuam aplicáveis às corridas que ele operar.
+
 **Proposta de produto, 27/11/2026.** Para um atendimento agendado, comparar prestador próximo, deslocamento próprio e transporte contratado de operador existente. Cliente e profissional podem seguir com uma alternativa viável ao transporte oferecido. Mostrar serviço, preço e pagador de cada trecho, adicionais autorizados e total antes do aceite. A aceitação do atendimento, a opção do profissional pelo transporte e a autorização do pagador são registros distintos. Recusa da viagem preserva a possibilidade de concluir o atendimento. [Roadmap de mobilidade](operacao/15-mobilidade-de-prestadores.md)
 
 **Receita do serviço.** D5 continua sendo a referência para as ocupações elegíveis. O valor efetivamente cobrado depende da habilitação financeira da seção 4. Na aceitação do atendimento, o banco aplica sobre o preço do **serviço** a política da ocupação, a origem e o histórico do par prestador–cliente. Com a comissão desligada, origem própria, política diferente de `comissao_primeiro_servico` ou atendimento anterior da plataforma concluído/liberado com pagamento recebido/confirmado/liberado pelo app para o mesmo par, a comissão é zero. No primeiro elegível, são 12%, truncados em centavos, até R$ 150. D6 continua a exigir assinatura nas ocupações restritas e análise das marcadas `sob_consulta_juridica`. Uma cobrança vinculada ao trajeto não pode remunerar indicação, captação ou intermediação vedada dos honorários. [Políticas do catálogo](../catalog/policies.json) · [Arquitetura de reservas e pagamentos](ARQUITETURA.md)
@@ -86,6 +89,25 @@ Exemplo hipotético, com portões abertos e serviço elegível de R$ 200. Para d
 No Uber para Empresas, os termos brasileiros, §4.5, restringem alterações das cobranças e taxas adicionais pelo uso do serviço. No Central, os custos são devidos pela empresa titular da conta. O contrato padrão não fundamenta margem. Qualquer repasse exige confirmação de que o arranjo específico o admite. Mudar o nome da cobrança não concede essa permissão. Para o piloto, comparar propostas de operador existente com ida e volta ou continuação precificadas. Somente considerar capacidade dedicada, rede ou veículos próprios diante da densidade, custo total e enquadramento demonstrados no roadmap. [Termos gerais Uber, §4.5](https://www.uber.com/br/pt-br/legal/uber-for-business-dashboard-terms/) · [Adendo Uber Central, §2.2](https://www.uber.com/br/pt-br/legal/uber-for-business-product-addendum---central/) · [Minutas de consulta](operacao/15-consulta-a-operadores.md)
 
 **Estado da decisão.** A proposta documental abre o planejamento. Implementar o módulo, contratar um operador, ativar reservas reais e habilitar monetização exigem evidências próprias. A aceitação deste documento, por si só, autoriza R$ 0 em gastos e nenhuma viagem.
+
+### D14. Rede direta de motoristas e comissão recorrente de 10%
+
+**Direção escolhida em 27/11/2026.** O WorkEasy terá um módulo paralelo de transporte em que o motorista se cadastra diretamente. Poderão solicitar viagens imediatas ou agendadas tanto passageiros do público geral quanto prestadores a caminho de um atendimento. Uma corrida avulsa dispensa atendimento de serviço vinculado. Para o prestador, o deslocamento apoiado pelo aplicativo continua opcional. A corrida, seus trechos, o atendimento e os lançamentos financeiros mantêm identidades e estados próprios. Um operador externo permanece alternativa de contingência ou comparação sob as condições de seu próprio contrato.
+
+| Componente do pedido | Regra comercial escolhida | Quem recebe e como conferir |
+|---|---|---|
+| Trecho efetivamente realizado por motorista da rede direta | Comissão de 10% da tarifa elegível do trecho aceito, em toda corrida, inclusive ida, retorno ou continuação. Sem teto. | Dedução do valor devido ao motorista, discriminada no extrato, com saldo líquido de 90% da base antes de seus custos próprios. |
+| Serviço intermediado em ocupação expressamente autorizada para cobrança recorrente | Somente comissão. Aplicar 10% em cada serviço, inclusive os seguintes entre o mesmo cliente e prestador, sem teto e sem mensalidade do serviço nesse regime. | Dedução do repasse do **prestador do serviço**. A agenda de clientes próprios sem contratação intermediada fica fora da cobrança. |
+| Ocupação com restrição ou situação jurídica pendente | D6 continua por ocupação. Respeitar assinatura onde cabível, bloqueio de comissão e limites de ranking. Uma autorização antiga para comissão no primeiro serviço não prova autorização para cobrança recorrente. | Exigir lista de ocupações habilitadas, fundamento, versão e vigência para o novo regime. Transporte não pode remunerar captação ou contornar restrição sobre honorários. |
+| Trecho de operador externo | Aplicar o instrumento próprio de D13, inclusive regras de ressarcimento e do §4.5 da Uber. | O percentual da rede WorkEasy pertence exclusivamente aos trechos operados sob o arranjo direto. |
+
+**Base e estorno.** A proposta mostra, antes de aceitar, preço, pagador e descontos por componente. A base da comissão é apenas o preço remuneratório daquele serviço ou trecho, separado de gorjeta, pedágio/estacionamento a reembolsar e valores documentados por conta de terceiros. Calcular em centavos inteiros, truncando a parte fracionária de 10% uma vez por componente. Um ajuste ou devolução recalcula a comissão sobre a base elegível remanescente e estorna a diferença da comissão originalmente registrada. Eventual encargo por cancelamento ou ausência exige regra prévia, amparo jurídico e contratual e comprovante próprio. Uma falha de despacho, uma simulação ou uma mera cotação não gera receita de corrida. [Minutas de preço e prestação](juridico/13-rede-direta-de-motoristas.md)
+
+**Exemplo sem subsídio ou adicionais.** Serviço intermediado autorizado de R$ 200 e dois trechos diretos de R$ 30 cada geram R$ 20 de comissão do serviço e R$ 3 por trecho. O prestador fica com R$ 180, os motoristas recebem ao todo R$ 54 e a WorkEasy apura R$ 26 antes de processamento, suporte, tributos e demais custos. A recorrência do serviço de R$ 200 apura os mesmos R$ 20. Em serviço de R$ 2.000, o valor de R$ 200 evidencia a retirada do teto histórico. Validar margem por componente, adesão e renda/hora de motorista e prestador ao preço integral antes de ampliar. [Modelo financeiro](operacao/09-modelo-financeiro.md)
+
+**Migração comercial.** D14 substitui prospectivamente D5 para o serviço intermediado que passar ao novo regime. D1–D4 continuam a descrever a oferta anterior ou as assinaturas que permanecerem permitidas por D6. Antes da troca, identificar planos mistos ou já pagos, comunicar a mudança, obter novo aceite e acertar saldo/período com o pagador. Impedir cobrança cumulativa de assinatura e comissão pelos serviços do novo regime; preservar condições aceitas, descontos e estornos históricos. A proposta é distinta dos regimes de 6% e híbrido antes comparados em D13. D11 continua a rejeitar taxa geral ao cliente. A tarifa de uma viagem avulsa ou vinculada é apresentada como preço do próprio transporte.
+
+**Marcos de produção.** Registro de interesse, simulação, habilitação de condutor e veículo, acesso ao despacho real, cobrança e repasse têm controles próprios. A operação direta em São Paulo depende de enquadramento, credenciamento aplicável, seguros, emissão dos comprovantes, proteção de dados, atendimento em incidentes e fluxo PSP aprovado. O art. 6º, V do Decreto 56.981/2016 prevê taxa de intermediação pactuada para OTTC, observadas as demais condições do decreto e regras de preço. Os 10% devem ser pactuados com o motorista. A seção 4 continua a reger a habilitação financeira. Nenhuma viagem, contratação, cobrança ou despesa fica autorizada pela publicação desta decisão. [Termos e estado regulatório da rede](juridico/13-rede-direta-de-motoristas.md) · [Diligências sem envio](juridico/14-minutas-rede-direta.md)
 
 ## 4. Portões para ligar o que está desligado
 

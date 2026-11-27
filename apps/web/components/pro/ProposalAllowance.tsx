@@ -10,6 +10,9 @@ import { linkClass } from './styles';
  */
 const ProposalAllowanceNote: React.FC<{ allowance: ProposalAllowance | null; className?: string }> = ({ allowance, className = '' }) => {
   if (!allowance) return null;
+  if (allowance.kind === 'commission') {
+    return <p className={`text-sm text-gray-700 ${className}`}>As propostas em ocupações com comissão por atendimento ficam fora da franquia do plano grátis.</p>;
+  }
   if (allowance.kind === 'unlimited') {
     return <p className={`text-sm text-gray-700 ${className}`}>Propostas ilimitadas no plano Pro.</p>;
   }

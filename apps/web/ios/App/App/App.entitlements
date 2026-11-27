@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <key>aps-environment</key>
+    <string>$(RIDE_APNS_ENVIRONMENT)</string>
 	<!--
 		Universal Links: the app opens the https links of this domain, after the domain proves
 		ownership through /.well-known/apple-app-site-association (docs/lojas/app-store.md, section 3.2).

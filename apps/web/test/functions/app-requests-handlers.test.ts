@@ -136,6 +136,7 @@ describe('subscriptions-manage takes the bodies the app sends', () => {
     documentSecret: PLATFORM_SECRET,
     session: async () => ({ user: PROVIDER, getProvider: async () => ({ ...APPROVED, plan: current ? 'pro' : 'free' }) }),
     admin: {
+      proSalesAllowed: async () => true,
       getSubscription: async () => current,
       saveSubscription: async () => undefined,
       claimSubscription: async () => true,

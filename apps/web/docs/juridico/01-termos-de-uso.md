@@ -332,6 +332,12 @@ Resumo. As regras completas estão na Política de Avaliações e Moderação (d
 
 [PLANEJADO: repetir estes dados em local de destaque, no rodapé do site e do app, e na ficha das lojas de aplicativos (Decreto 7.962/2013, art. 2º, I e II; documento 10).]
 
+## Corridas avulsas e corridas associadas ao atendimento — minuta de D14
+
+Como passageiro, você poderá pedir uma viagem para agora ou agendá-la. A proposta identificará transporte da rede direta ou de operador externo, pagador, preço, janela, trajeto, adicionais, limite e regras de cancelamento. Você recebe o aceite do motorista e pode consultar sua identificação, o veículo, o andamento e o recibo da viagem. Quando o transporte viabilizar um serviço, o resumo separará os preços de transporte e atendimento, os pagadores e as regras de cada um. Um prestador pode optar por deslocamento próprio quando o atendimento continuar viável.
+
+Na rede direta, o preço já inclui a remuneração pactuada da WorkEasy de 10% da base do motorista por trecho. No serviço intermediado por ocupação autorizada, a dedução dos 10% é feita no repasse do profissional, inclusive na recorrência. O usuário recebe o preço total antes de contratar, sem taxa geral adicional de plataforma. Se uma alteração ampliar sua despesa autorizada, você receberá nova proposta para decidir. As minutas antigas de parceiro abaixo aplicam-se apenas ao respectivo canal. [Regime D14](../DECISOES.md) · [Condições do transporte direto](13-rede-direta-de-motoristas.md)
+
 ## Mobilidade opcional e preço discriminado — minuta de 27/11/2026
 
 **Texto proposto para a cláusula 6, sujeito ao contrato do parceiro e à aprovação jurídica.** Ao escolher um serviço, você recebe o preço do atendimento, o endereço e a janela. Se houver opção de transporte do profissional, você poderá recusá-la quando o atendimento for viável com profissional próximo ou com deslocamento organizado por ele. A equipe informará a alternativa, inclusive eventual mudança de horário ou profissional, para sua escolha.

@@ -46,6 +46,7 @@ export interface SubscriptionsDeps extends BaseDeps {
     getProvider(): Promise<(ProviderApproval & { id: string; plan: string }) | null>;
   } | null>;
   admin: {
+    proSalesAllowed(providerId: string): Promise<boolean>;
     getSubscription(providerId: string): Promise<SubscriptionRow | null>;
     saveSubscription(row: SubscriptionRow): Promise<void>;
     /**
@@ -128,6 +129,9 @@ export function handler(req: Request, deps: SubscriptionsDeps): Promise<Response
       requireApprovedProvider(provider);
       if (current && current.status !== 'canceled' && current.asaas_subscription_id) {
         throw errors.conflict('already_subscribed', 'Já existe uma assinatura Pro para esta conta.');
+      }
+      if (!(await deps.admin.proSalesAllowed(provider.id))) {
+        throw errors.conflict('service_commission_only', 'Seus novos contratos de serviço usam comissão. A assinatura Pro está encerrada para essas ocupações.');
       }
       const method = input.method ?? 'undefined';
       const price = await deps.admin.getProPriceCents();

@@ -7,6 +7,7 @@ import { AppError } from '../../lib/errors';
 import { formatCents } from '../../lib/money';
 import { formatDateBR, todayInSaoPaulo } from '../../lib/timezone';
 import { useAsync } from '../../lib/useAsync';
+import { serviceCommissionOptions, serviceProSalesAllowed } from '../../services/serviceCommission';
 import { getFreeProposalsPerMonth } from '../../services/proBilling';
 import { listMyProposals, listOpenRequests, proposalAllowance, sendProposal, withdrawProposal, type OpenRequest } from '../../services/proMarketplace';
 import { parseReaisToCents } from '../../services/proFormat';
@@ -24,19 +25,22 @@ import { Badge, Card, ConfirmButton, EmptyState, Field, SectionTitle } from '../
 import { inputClass, linkClass, primaryButton, secondaryButton } from '../../components/pro/styles';
 
 const load = async (provider: Pick<ProviderRow, 'id' | 'plan'>) => {
-  const [requests, proposals, settings, freeLimit] = await Promise.all([
+  const [requests, proposals, settings, freeLimit, commissionOptions, canBuyPro] = await Promise.all([
     listOpenRequests(),
     listMyProposals(provider.id),
     loadPublicSettings(),
     // Only the free plan has a monthly limit; when it cannot be read the allowance line is just left out
     provider.plan === 'pro' ? Promise.resolve(null) : getFreeProposalsPerMonth().catch(() => null),
+    serviceCommissionOptions(),
+    serviceProSalesAllowed(provider.id),
   ]);
   return {
     requests,
     proposals,
     limit: settings.proposalLimit,
     today: todayInSaoPaulo(),
-    allowance: proposalAllowance({ plan: provider.plan, limit: freeLimit, proposals }),
+    commissionOptions,
+    allowance: !canBuyPro ? { kind: 'commission' as const } : proposalAllowance({ plan: provider.plan, limit: freeLimit, proposals }),
   };
 };
 
@@ -118,6 +122,10 @@ const RequestCard: React.FC<{ providerId: string; request: OpenRequest; data: Da
       <p className="text-xs text-gray-500 mt-2">
         {request.proposal_count} de {data.limit} propostas já enviadas · pedido aberto até {formatDateBR(request.expires_at)}
       </p>
+      {!request.my_proposal_id && data.commissionOptions.some(option => option.occupation_slug === request.occupation_slug &&
+        option.applies_from && Date.parse(option.applies_from) <= Date.now()) && (
+        <p className="mt-2 text-sm text-gray-700">Sua política prevê 10% sobre o preço de cada atendimento desta ocupação pela plataforma. A franquia de propostas do plano grátis não se aplica.</p>
+      )}
       {request.my_proposal_id ? (
         <p className="text-sm text-gray-700 mt-3">
           Você já enviou uma proposta{mine ? ` de ${formatCents(mine.price_cents)}` : ''}

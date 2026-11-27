@@ -4,6 +4,9 @@ import type { VerificationStep } from '../catalog/types';
 // lib/errors.ts has the sentence of every code the Pro area meets. These are the
 // ones that read differently for a provider than for the client who pays.
 const PRO_MESSAGES: Record<string, string> = {
+  cancel_pro_renewal_first: 'Cancele a renovação do Pro antes de aceitar a última ocupação. Os benefícios seguem até o fim do período contratado.',
+  service_policy_unavailable: 'A versão desta política mudou ou está indisponível. Atualize a página para conferir as condições.',
+  service_commission_only: 'Suas ocupações usam comissão. A assinatura Pro não está disponível para esses serviços.',
   provider_payment_account_missing: 'Ative o recebimento em Assinatura antes de cobrar clientes.',
 };
 

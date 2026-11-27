@@ -19,6 +19,8 @@ import {
   type OnboardResult,
   type SubscribeResult,
 } from '../../services/proBilling';
+import { findOccupation } from '../../catalog';
+import { acceptServiceCommission, serviceCommissionOptions, serviceProSalesAllowed, type ServiceCommissionOption } from '../../services/serviceCommission';
 import { onlyDigits, parseReaisToCents } from '../../services/proFormat';
 import ErrorAlert from '../../components/ErrorAlert';
 import ProPage from '../../components/pro/ProPage';
@@ -43,6 +45,24 @@ const SubscriptionSection: React.FC<{ version: number }> = ({ version }) => {
   const [error, setError] = useState<unknown>(null);
   const [created, setCreated] = useState<SubscribeResult | null>(null);
   const [notice, setNotice] = useState('');
+
+  const options = useAsync(serviceCommissionOptions, provider.id);
+  const sales = useAsync(() => serviceProSalesAllowed(provider.id), provider.id);
+  const [policyError, setPolicyError] = useState<unknown>(null);
+  const acceptPolicy = async (option: ServiceCommissionOption) => {
+    setBusy(true);
+    setPolicyError(null);
+    try {
+      await acceptServiceCommission(option);
+      options.reload();
+      sales.reload();
+      refresh();
+    } catch (err) {
+      setPolicyError(err);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const isPro = provider.plan === 'pro';
   const row = subscription.data;
@@ -106,9 +126,22 @@ const SubscriptionSection: React.FC<{ version: number }> = ({ version }) => {
           “Atualizar situação” para conferir.
         </p>
       )}
-      <ErrorAlert error={subscription.error ?? price.error} />
+      <ErrorAlert error={subscription.error ?? price.error ?? options.error ?? sales.error} />
+      {options.data?.map(option => (
+        <section key={option.occupation_slug} className="mt-3 space-y-2">
+          <h3 className="font-medium">{findOccupation(option.occupation_slug)?.name ?? option.occupation_slug}</h3>
+          <p>Comissão de 10% descontada do preço de cada novo atendimento contratado pela plataforma, inclusive retornos, sem teto. A ocupação passa a aceitar propostas sem franquia mensal. Os contratos anteriores e os clientes que você trouxe seguem as condições originais.</p>
+          <a className="text-sm underline" href={option.terms_reference} target="_blank" rel="noopener noreferrer">Ler as condições da versão {option.version}</a>
+          {option.accepted_at && option.applies_from ? <p>Política aceita. Vigência a partir de {formatDateBR(option.applies_from)}.</p> : (
+            <ConfirmButton label="Revisar aceite" question="Você aceita a comissão nos novos atendimentos desta ocupação? O período já pago do Pro será respeitado."
+              confirmLabel="Aceitar a política de 10%" disabled={busy} onConfirm={() => acceptPolicy(option)} />
+          )}
+        </section>
+      ))}
+      {options.data?.length ? <p className="mt-2 text-sm">Antes de migrar a última ocupação, cancele qualquer renovação ativa abaixo. Em uma conta mista, o Pro pode continuar nas ocupações que mantêm esse plano.</p> : null}
+      <ErrorAlert error={policyError} />
 
-      {!subscribed && (
+      {!subscribed && sales.data === true && (
         <form onSubmit={subscribe} className="space-y-4 mt-3" noValidate aria-label="Assinar o plano Pro">
           <p className="text-sm text-gray-700">
             Plano Pro:{' '}

@@ -11,6 +11,10 @@ Convenções:
 - "O que o app faz hoje" traz o caminho do código (a partir de `apps/web/`) quando foi conferido nesta data. Quando a informação vem só de um rascunho, a célula diz "(rascunho)".
 - Itens marcados com † são sugestões de prazo ou valor sem norma por trás (ver `02`, seção E).
 
+## Rede direta de motoristas — revisão prioritária de D14
+
+O produto passará a aceitar viagens independentes para o público e viagens opcionais de prestadores, imediatas ou agendadas. A WorkEasy selecionou comissão de 10% em cada trecho direto e em cada serviço intermediado de ocupação autorizada, inclusive recorrência, sem teto. A equipe jurídica deve confirmar o regime e a autorização de cada ocupação, o credenciamento da pessoa jurídica, o seguro, os documentos de motorista/veículo, os recibos e a habilitação financeira. A versão dos termos e dos preços acompanha cada novo aceite. Corridas compradas de um parceiro continuam sujeitas às condições do arranjo D13 abaixo. [Termos do motorista, bases normativas e marcos](13-rede-direta-de-motoristas.md) · [Minutas para CMUV, PSP e seguradora](14-minutas-rede-direta.md)
+
 ## Mobilidade opcional dos prestadores — diligências de 27/11/2026
 
 D13 e [O15](../operacao/15-mobilidade-de-prestadores.md) propõem contratar transporte agendado para o prestador. Os textos abaixo são minutas. O marco de publicação dos termos, o de contratação do operador, a primeira reserva real e o de ativação de receita exigem evidências distintas.

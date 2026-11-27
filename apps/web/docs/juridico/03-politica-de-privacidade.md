@@ -302,6 +302,14 @@ Use este resumo para preencher a declaração de privacidade da Google Play e da
 
 ---
 
+## Cadastro direto de motoristas e viagens do público — minuta de D14
+
+Na rede direta, há duas finalidades novas. Para habilitar o motorista e o veículo, a WorkEasy verifica documentos e situação regulatória. Para realizar uma viagem, trata os pontos necessários, identificação de passageiro, motorista e veículo, eventos e dados de pagamento. A oferta informará os responsáveis, o usuário do transporte, o acesso durante a viagem e o canal de direitos. O monitoramento de trajeto se limita ao contexto autorizado e ao cumprimento das finalidades informadas.
+
+Na condição proposta de OTTC, o passageiro terá acesso à identificação do motorista e do veículo e ao seu recibo eletrônico com os dados de trajeto legalmente exigidos. A Prefeitura poderá receber os dados de fiscalização nos termos aplicáveis. O cliente de um serviço que acompanha a chegada do prestador verá a previsão e a situação pertinente ao atendimento. Uma tela compartilhada ou um recibo financeiro do pagador não deve permitir acesso à rota residencial de outro passageiro.
+
+O prazo operacional de 24 horas citado abaixo refere-se às cópias temporárias dos pontos quando encerrada a finalidade. A tabela a aprovar antes da operação identificará guarda e destinatários próprios para documentos de habilitação, recibo de transporte, remessa ao Município, valores financeiros e ocorrências. O canal do titular deverá explicar cada hipótese, prazo ou fundamento de guarda e como pedir correção, acesso e exclusão. [OP-30 e OP-31](07-registro-das-operacoes-de-tratamento.md) · [Requisitos de OTTC e termos propostos](13-rede-direta-de-motoristas.md)
+
 ## Dados da mobilidade opcional — minuta de 27/11/2026
 
 **Proposta para revisão, aplicável quando a modalidade for ativada.** Para verificar a cobertura, usamos a região de partida e do atendimento. Para cotar ou reservar um trecho escolhido, solicitamos o ponto de embarque indicado e o destino. O profissional pode indicar um ponto de encontro. Enviamos ao parceiro identificado na proposta apenas os dados necessários ao trecho, como contato do passageiro, local, janela e necessidade de espaço para equipamento. Notas do serviço, informações clínicas, honorários e histórico do cliente ficam fora desse envio.
