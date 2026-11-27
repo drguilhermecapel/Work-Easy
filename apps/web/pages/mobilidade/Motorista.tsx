@@ -1,3 +1,4 @@
+import { RideOrderPayments } from '../../components/mobility/RideOrderPayments';
 import { useState } from 'react';
 import { RideAftercare } from '../../components/mobility/RideAftercare';
 import { DriverLegPoints } from '../../components/mobility/RouteCases';
@@ -182,6 +183,7 @@ function DriverPanel({ dashboard, userId, busy, run, reload }: ConsoleActions) {
                         </button>
                       </div>
                     )}
+                    <RideOrderPayments legId={leg.id} completed={leg.status==='completed'} />
                     <RideAftercare legId={leg.id} completed={leg.status === 'completed'} />
                   </Card>
                 </li>
@@ -199,6 +201,7 @@ export default function Motorista() {
     <RequireSession>
       <div className="max-w-3xl mx-auto px-4 py-6">
         <DriverConsole title="Painel do motorista" content={DriverPanel} />
+        <RideOrderPayments mode="driver" />
       </div>
     </RequireSession>
   );

@@ -7,6 +7,7 @@ import RequireSession from '../../components/RequireSession';
 import { TripProgress } from '../../components/mobility/TripProgress';
 import { RouteCases } from '../../components/mobility/RouteCases';
 import { listRideRouteCases } from '../../services/rideRoutes';
+import { QuotePaymentRules, RideOrderPayments } from '../../components/mobility/RideOrderPayments';
 import { RideCheckout } from '../../components/mobility/RideCheckout';
 import { RideAftercare } from '../../components/mobility/RideAftercare';
 import { useAuth } from '../../contexts/AuthContext';
@@ -58,6 +59,7 @@ function QuoteCard({ quote, now, servicePrice, canRequest, onChange }: { quote: 
   }
   return <article className="space-y-3 rounded-2xl border border-gray-200 bg-white p-5">
     <h3 className="font-semibold">Proposta de transporte · {fare(quote.total_cents)}</h3>
+    <QuotePaymentRules quote={quote.id} />
     <p className="text-sm text-gray-600">Válida até {when(quote.expires_at)} (São Paulo). {expired && quote.status === 'awaiting_consent' ? 'Expirada. Solicite outra cotação.' : statusNames[quote.status] ?? quote.status}</p>
     {servicePrice !== undefined && <p className="text-sm">Serviço {fare(servicePrice)} · Mobilidade {fare(quote.total_cents)} · Total dos componentes {fare(servicePrice + quote.total_cents)}</p>}
     <ol className="space-y-3">{quote.legs.map(leg => <li key={leg.seq} className="border-l-2 border-primary/30 pl-3">
@@ -107,6 +109,7 @@ function JourneyLeg({ leg, onChange, canCancel, simulation }: { leg: RideLeg; on
     {leg.can_view_driver_identity && <RideDriverIdentity legId={leg.id} />}
     {leg.status === 'unknown' && <p className="rounded-xl bg-amber-50 p-3 text-sm">A operação está conferindo este trecho e os valores devidos. Aguarde a conciliação antes de solicitar outra viagem.</p>}
     <TripProgress legId={leg.id} />
+    <RideOrderPayments legId={leg.id} completed={leg.status === 'completed'} />
     {leg.status === 'completed' && <RideCheckout legId={leg.id} simulation={simulation} />}
     <RideAftercare legId={leg.id} completed={leg.status === 'completed'} />
     {active && canCancel && (confirm ? <div className="space-y-2">
@@ -169,6 +172,7 @@ function PassengerArea({ id, userId }: { id: string | null; userId: string }) {
       {dashboard.enabled && dashboard.simulation && <p role="status" className="rounded-xl bg-amber-50 p-3 font-semibold text-amber-900">Ambiente de ensaio. Os pontos, valores e viagens são fictícios. Use apenas contas de teste.</p>}
     </header>
     <ErrorAlert error={result.error} />
+    <RideOrderPayments mode="inbox" />
     {caseAccess && (canQuote || rides.some(ride => ride.legs.some(leg => leg.can_requote))) && <>
       <RouteCases bookingId={id} areas={dashboard.areas} isServiceClient={booking?.role === 'client'} onChange={cases.reload} />
       <ErrorAlert error={cases.error} />

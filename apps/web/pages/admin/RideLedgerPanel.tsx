@@ -130,7 +130,8 @@ export function RideLedgerPanel({ legId }: { legId: string }) {
     {data?.recognized && <>
       <dl>{parts.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{formatCents(value)}</dd></div>)}</dl>
       {data.source === 'psp_sandbox' && <p>Conciliação vinculada ao PSP de homologação.</p>}
-      {data.environment === 'simulation' && data.source !== 'psp_sandbox' && <SimulateEvent key={legId + (data.unknown?.operation_id ?? '')}
+      {data.source === 'orders' && <p>Conciliação por ordem de pagamento e pagador do trecho.</p>}
+      {data.environment === 'simulation' && (data.source === 'unclaimed' || data.source === 'manual') && <SimulateEvent key={legId + (data.unknown?.operation_id ?? '')}
         legId={legId} account={data} onSaved={reload} />}
     </>}
   </section>;

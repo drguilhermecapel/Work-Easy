@@ -6,13 +6,14 @@ import { isUuid, secretMatches } from './secrets.ts';
 
 export const sandboxContract: RidePaymentContract = { prefix: 'we-ride-sandbox:', invoiceHost: 'sandbox.asaas.com', description: 'WorkEasy · trecho de teste' };
 export type RemoteRidePayment = AsaasPayment & {
-  customer: string; currency?: string;
+  customer: string; currency?: string; creditCard?: { creditCardBrand?: string };
   split?: { id?: string; walletId?: string; fixedValue?: number; totalValue?: number; status?: string }[];
   refunds?: { status: string; value: number; refundedSplits?: { id: string; value: number; done: boolean }[] }[] | null;
 };
 type Payment = RemoteRidePayment;
 export interface RidePaymentContract {
   prefix: string;
+  method?(intent: Intent): 'CREDIT_CARD' | 'PIX';
   description: string;
   invoiceHost: string;
   prepareSplit?(api: AsaasClient, intent: Intent): Promise<CreatePaymentInput['split']>;
@@ -20,7 +21,7 @@ export interface RidePaymentContract {
 }
 export interface Intent {
   leg_id: string; customer: string; amount_cents: number; payment_id: string | null; create: boolean;
-  wallet?: string; driver_cents?: number; extras_cents?: number;
+  method?: 'CREDIT_CARD' | 'PIX'; brands?: string[]; wallet?: string; driver_cents?: number; extras_cents?: number;
 }
 export interface Observation {
   payment: string; customer: string; amount: number; status: string; refunded: number; invoice: string | null;
@@ -51,7 +52,7 @@ export function asCents(value: unknown): number {
 async function apply(contract: RidePaymentContract, deps: RidePspDeps, intent: Intent, payment: Payment) {
   if (typeof payment.id !== 'string' || !/^pay_[a-zA-Z0-9_-]{1,100}$/.test(payment.id)) throw inconsistent();
   if ((intent.payment_id && payment.id !== intent.payment_id) ||
-    payment.customer !== intent.customer || (payment.currency != null && payment.currency !== 'BRL') || payment.billingType !== 'PIX' || asCents(payment.value) !== intent.amount_cents ||
+    payment.customer !== intent.customer || (payment.currency != null && payment.currency !== 'BRL') || payment.billingType !== (contract.method?.(intent) ?? 'PIX') || asCents(payment.value) !== intent.amount_cents ||
     payment.externalReference !== contract.prefix + intent.leg_id) {
     if (!contract.reconcile) throw inconsistent();
     return await deps.observe(intent.leg_id, { payment: payment.id, customer: payment.customer, amount: asCents(payment.value),
@@ -78,7 +79,7 @@ async function apply(contract: RidePaymentContract, deps: RidePspDeps, intent: I
   return await deps.observe(intent.leg_id, observed);
 }
 
-async function recordCanonical(contract: RidePaymentContract, deps: RidePspDeps, intent: Intent, payment: Payment) {
+export async function recordCanonical(contract: RidePaymentContract, deps: RidePspDeps, intent: Intent, payment: Payment) {
   try {
     return await apply(contract, deps, intent, payment);
   } catch (error) {
@@ -120,7 +121,7 @@ export function rideCheckout(req: Request, deps: RidePspDeps, contract: RidePaym
         const split = await contract.prepareSplit?.(api, intent);
         if (!await deps.claimSend(intent.leg_id)) throw uncertain();
         try {
-          remote = await api.createPayment({ customer: intent.customer, billingType: 'PIX', value: centsToReais(intent.amount_cents),
+          remote = await api.createPayment({ customer: intent.customer, billingType: contract.method?.(intent) ?? 'PIX', value: centsToReais(intent.amount_cents),
             dueDate: saoPauloDate(deps.now()), externalReference: reference, description: contract.description, ...(split ? { split } : {}) }) as Payment;
         } catch { throw uncertain(); }
       }

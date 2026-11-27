@@ -1,3 +1,4 @@
+import { RideOrderPayments } from '../../components/mobility/RideOrderPayments';
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatDateTime, shortId } from '../../components/admin/format';
@@ -248,7 +249,7 @@ function OperationsPanel({ dashboard, userId, busy, run, reload }: ConsoleAction
                           >
                             {ledgerLeg === leg.id ? 'Fechar conciliação' : 'Conciliar trecho'}
                           </button>
-                          {ledgerLeg === leg.id && <RideLedgerPanel key={leg.id} legId={leg.id} />}
+                          {ledgerLeg === leg.id && <><RideLedgerPanel key={leg.id} legId={leg.id} /><RideOrderPayments legId={leg.id} mode="admin" /></>}
                         </>
                       )}
                       {!dashboard.simulation && <RidePspReviews legId={leg.id} />}

@@ -29,7 +29,7 @@ export type RideCostReview = {
 export type RideSettlement = { recognized: false; review?: RideCostReview | null } | {
   recognized: true;
   environment: 'simulation' | 'live';
-  source: 'unclaimed' | 'manual' | 'psp_sandbox' | 'psp_live';
+  source: 'unclaimed' | 'manual' | 'psp_sandbox' | 'psp_live' | 'orders';
   fare_cents: number;
   extras_cents: number;
   fee_cents: number;
