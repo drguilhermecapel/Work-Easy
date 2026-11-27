@@ -13,7 +13,7 @@ interface Deps {
 
 /** Uses the operator's configured OSRM process. Coordinates come exclusively
  * from the authorized private case. Its graph estimates do not contain traffic. */
-export async function routeMeasure(req: Request, deps: Deps): Promise<Response> {
+export function routeMeasure(req: Request, deps: Deps): Promise<Response> {
   return route(req, { methods: ['POST'], ...deps.cors }, async () => {
     const user = await deps.authenticate(req);
     if (!user) throw errors.unauthorized();

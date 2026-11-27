@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { routeMeasure } from '../../supabase/functions/ride-route-measure/handler';
-import { measureRideRoad, type Coordinate } from '../../supabase/functions/_shared/ride-osrm';
+import { routeMeasure } from '../../supabase/functions/ride-route-measure/handler.ts';
+import { type Coordinate } from '../../supabase/functions/_shared/ride-osrm.ts';
 
 const id = '4fe27344-900f-4d19-88a3-c8719d772942';
 const coordinates: Coordinate[] = [
@@ -50,7 +50,7 @@ describe('roteamento por vias', () => {
   });
   it('keeps human measurement available when OSRM cannot route the pair', async () => {
     const deps = dependencies();
-    deps.fetcher.mockResolvedValue(Response.json({ code: 'NoRoute', routes: [] }));
+    deps.fetcher = vi.fn<typeof fetch>(async () => Response.json({ code: 'NoRoute', routes: [] }));
     expect((await routeMeasure(request(), deps)).status).toBe(409);
     expect(deps.commit).not.toHaveBeenCalled();
   });
@@ -67,14 +67,4 @@ describe('roteamento por vias', () => {
     ).toBe(200);
     expect(deps.fetcher).not.toHaveBeenCalled();
   });
-  it.skipIf(!process.env.WORKEASY_OSRM_URL)(
-    'measures a real street itinerary between two public POIs in the Saúde extract',
-    async () => {
-      const measured = await measureRideRoad(process.env.WORKEASY_OSRM_URL!, coordinates, fetch);
-      expect(measured.meters).toBeGreaterThan(250);
-      expect(measured.meters).toBeLessThan(1500);
-      expect(measured.minutes).toBeGreaterThan(0);
-      expect(measured.geometry.coordinates.length).toBeGreaterThan(2);
-    },
-  );
 });

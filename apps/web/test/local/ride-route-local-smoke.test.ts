@@ -4,6 +4,9 @@ import { createInterface } from 'node:readline';
 import { expect, it } from 'vitest';
 import { routeMeasure } from '../../supabase/functions/ride-route-measure/handler';
 
+import { measureRideRoad, type Coordinate } from '../../supabase/functions/_shared/ride-osrm';
+
+const coordinates: Coordinate[] = [[-46.6367045, -23.6206567],[-46.6355272,-23.6179524]];
 const port = process.env.WORKEASY_ROUTING_DB_PORT;
 const router = process.env.WORKEASY_OSRM_URL;
 
@@ -131,3 +134,14 @@ it.skipIf(!port || !router)(
   },
   30000,
 );
+
+it.skipIf(!process.env.WORKEASY_OSRM_URL)(
+    'measures a real street itinerary between two public POIs in the Saúde extract',
+    async () => {
+      const measured = await measureRideRoad(process.env.WORKEASY_OSRM_URL!, coordinates, fetch);
+      expect(measured.meters).toBeGreaterThan(250);
+      expect(measured.meters).toBeLessThan(1500);
+      expect(measured.minutes).toBeGreaterThan(0);
+      expect(measured.geometry.coordinates.length).toBeGreaterThan(2);
+    },
+  );
