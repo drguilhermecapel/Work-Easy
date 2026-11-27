@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 import supabase_site_origin as origin
@@ -175,3 +175,37 @@ class AuthPreflightTest(unittest.TestCase):
         api.assert_called_once_with("test", "GET")
         with self.assertRaisesRegex(SystemExit, "SMTP próprio"):
             auth.sync_templates("test", False, verify=True, check_sender=True)
+
+    @patch.object(auth, "request_config")
+    def test_web_preflight_detects_otp_length_mismatch_without_writing(self, api):
+        api.return_value = {**auth.expected_mailer_config(), "mailer_otp_length": 8}
+
+        with self.assertRaisesRegex(SystemExit, "Sincronize a configuração"):
+            auth.sync_templates("test", False, verify=True, sync_otp_length=True)
+
+        api.assert_called_once_with("test", "GET")
+
+    @patch.object(auth, "request_config")
+    def test_web_sync_updates_only_the_otp_length_and_verifies_it(self, api):
+        templates = auth.expected_mailer_config()
+        remote = {**templates, "mailer_otp_length": 8, "rate_limit_verify": 30}
+        expected = {**remote, "mailer_otp_length": 6}
+        api.side_effect = [remote, None, expected, expected]
+
+        auth.sync_templates("test", True, sync_otp_length=True)
+        auth.sync_templates("test", True, sync_otp_length=True)
+
+        self.assertEqual(api.call_args_list, [
+            call("test", "GET"),
+            call("test", "PATCH", {"mailer_otp_length": 6}),
+            call("test", "GET"),
+            call("test", "GET"),
+        ])
+
+    @patch.object(auth, "request_config")
+    def test_templates_only_keeps_the_existing_otp_length(self, api):
+        api.return_value = {**auth.expected_mailer_config(), "mailer_otp_length": 8}
+
+        auth.sync_templates("test", True)
+
+        api.assert_called_once_with("test", "GET")

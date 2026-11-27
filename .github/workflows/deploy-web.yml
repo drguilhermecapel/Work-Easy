@@ -14,7 +14,7 @@ on:
         required: true
         type: string
       sync_auth_templates:
-        description: 'Sincronizar a origem, o retorno de Auth, o remetente e os modelos de código antes de publicar'
+        description: 'Sincronizar a origem, o retorno de Auth, o remetente, os modelos e o tamanho do código antes de publicar'
         type: boolean
         default: false
 
@@ -107,7 +107,7 @@ jobs:
             python3 scripts/supabase_site_origin.py --verify
           fi
 
-      - name: Conferir o remetente e os modelos de login
+      - name: Conferir o remetente e a configuração do código de login
         if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_AUTH_CONFIG_TOKEN || secrets.SUPABASE_ACCESS_TOKEN }}
@@ -117,9 +117,9 @@ jobs:
           SYNC_AUTH_TEMPLATES: ${{ inputs.sync_auth_templates }}
         run: |
           if [[ "$SYNC_AUTH_TEMPLATES" == true ]]; then
-            python3 scripts/supabase-auth-templates.py --check-sender
+            python3 scripts/supabase-auth-templates.py --check-sender --sync-otp-length
           else
-            python3 scripts/supabase-auth-templates.py --check-sender --verify
+            python3 scripts/supabase-auth-templates.py --check-sender --verify --sync-otp-length
           fi
 
       - name: Instalar dependências
@@ -170,14 +170,14 @@ jobs:
           SUPABASE_PROJECT_ID: ${{ vars.SUPABASE_PROJECT_ID }}
         run: python3 scripts/supabase_site_origin.py --apply
 
-      - name: Aplicar o remetente e os modelos de login
+      - name: Aplicar o remetente e a configuração do código de login
         if: inputs.sync_auth_templates
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_AUTH_CONFIG_TOKEN || secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_AUTH_RESEND_KEY: ${{ secrets.SUPABASE_AUTH_RESEND_KEY }}
           SUPABASE_AUTH_EMAIL_FROM: ${{ vars.SUPABASE_AUTH_EMAIL_FROM }}
           SUPABASE_PROJECT_ID: ${{ vars.SUPABASE_PROJECT_ID }}
-        run: python3 scripts/supabase-auth-templates.py --apply --configure-sender
+        run: python3 scripts/supabase-auth-templates.py --apply --configure-sender --sync-otp-length
 
       - name: Publicar no Cloudflare Pages
         env:
