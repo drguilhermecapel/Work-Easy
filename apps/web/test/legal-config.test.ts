@@ -93,9 +93,9 @@ describe('CONSENT_VERSIONS', () => {
     vi.stubEnv('VITE_LEGAL_STATUS', '');
     expect(CONSENT_VERSIONS.terms).toBe(legalDocById('termos').version);
     expect(CONSENT_VERSIONS.privacy).toBe(legalDocById('privacidade').version);
-    // what was recorded before the registry existed stays valid
-    expect(CONSENT_VERSIONS.terms).toBe('2026-10-rascunho');
-    expect(CONSENT_VERSIONS.privacy).toBe('2026-10-rascunho');
+    // the factual pilot notices are a new edition; previous placeholder acceptances are not current
+    expect(CONSENT_VERSIONS.terms).toBe('2026-11-rascunho');
+    expect(CONSENT_VERSIONS.privacy).toBe('2026-11-rascunho');
   });
 
   it('asks for the consent again when the draft becomes the text in force', () => {

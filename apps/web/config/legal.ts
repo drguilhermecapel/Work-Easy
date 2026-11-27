@@ -46,15 +46,15 @@ const termos = legalDoc(
   'Termos de Uso',
   'Termos de Uso',
   '/termos',
-  '2026-10',
-  'O que a plataforma faz e não faz, as regras para clientes e profissionais, cancelamento e reembolso.',
+  '2026-11',
+  'Como usar o piloto, acompanhar atendimentos e procurar ajuda.',
 );
 const privacidade = legalDoc(
   'privacidade',
   'Política de Privacidade',
   'Privacidade',
   '/privacidade',
-  '2026-10',
+  '2026-11',
   'Quais dados são tratados, para quê, por quanto tempo e como exercer os seus direitos.',
 );
 const sac = legalDoc(
@@ -62,7 +62,7 @@ const sac = legalDoc(
   'Atendimento ao Consumidor (SAC)',
   'SAC',
   '/sac',
-  '2026-10',
+  '2026-11',
   'Como falar com a empresa para tirar dúvidas, reclamar ou cancelar.',
 );
 
