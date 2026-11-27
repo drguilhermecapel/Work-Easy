@@ -154,7 +154,7 @@ function Desk() {
             void a.run('recover', async () => {
               const r = await safety.recover(leg, protocol, proof);
               setPin(r.pin.split('').join(' ') + ' · até ' + when(r.expires_at));
-              return 'Entregue o código somente ao passageiro verificado.';
+              return 'Entregue o código apenas à pessoa cuja identidade você confirmou neste protocolo.';
             })
           }
         >

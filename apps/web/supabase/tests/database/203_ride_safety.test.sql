@@ -151,6 +151,12 @@ select public.ride_transition(current_setting('tests.replacement_leg203')::uuid,
 select tests.authenticate_as('client_a');
 select set_config('tests.old203',public.ride_issue_pin(current_setting('tests.replacement_leg203')::uuid)->>'pin',true);
 select set_config('tests.old_invite203',public.ride_share_invite(current_setting('tests.replacement_leg203')::uuid,'client_b@test.local',5)->>'token',true);
+select set_config('tests.history_lost203',public.ride_safety_case(current_setting('tests.replacement_leg203')::uuid,'lost_item',gen_random_uuid())::text,true);
+select set_config('tests.history_accident203',public.ride_safety_case(current_setting('tests.replacement_leg203')::uuid,'accident',gen_random_uuid())::text,true);
+select tests.authenticate_as('admin');
+select public.admin_ride_support_action(current_setting('tests.history_lost203')::uuid,'claim',null);
+select public.ride_case_update(current_setting('tests.history_lost203')::uuid,'request_item_check',null,gen_random_uuid());
+select public.admin_ride_support_action(current_setting('tests.history_accident203')::uuid,'claim',null);
 select tests.clear_authentication();
 update public.ride_legs set status='requested',driver_id=null where id=current_setting('tests.replacement_leg203')::uuid;
 select ok(not exists(select from private.ride_pins where leg=current_setting('tests.replacement_leg203')::uuid),'Assignment change invalidates the earlier PIN');
@@ -164,5 +170,27 @@ select lives_ok($$select public.ride_consent(current_setting('tests.assistquote2
 select tests.clear_authentication();
 select ok(exists(select from private.ride_access_preferences p join public.ride_legs l on l.id=p.leg join public.rides r on r.id=l.ride_id where r.quote_id=current_setting('tests.assistquote203')::uuid and p.assistance='boarding'),
  'Every new leg receives the frozen assistance requirement atomically');
+-- New driver may serve the same leg, but cannot inherit an old safety case.
+select tests.authenticate_as('provider_d');
+select public.ride_apply_driver('compact');
+select tests.authenticate_as('admin');
+select public.ride_review_driver(tests.uid('provider_d'),true,current_date+1);
+select tests.authenticate_as('provider_d');
+select public.ride_set_online(true);
+select public.ride_accept_offer(current_setting('tests.replacement_leg203')::uuid,gen_random_uuid());
+select is(public.ride_safety_status(current_setting('tests.replacement_leg203')::uuid)->'lost_checks','[]'::jsonb,'Replacement driver cannot see the earlier property case');
+select throws_ok($$select public.ride_case_update(current_setting('tests.history_lost203')::uuid,'item_found',null,gen_random_uuid())$$,
+ 'P0001','not_allowed','Replacement cannot act on an earlier property request even with the protocol');
+select tests.authenticate_as('admin');
+select set_config('tests.history_review203',public.admin_ride_restrict(current_setting('tests.history_accident203')::uuid,'driver','conduct','CASE-203D',2)::text,true);
+select tests.authenticate_as('provider_d');
+select throws_ok($$select public.ride_appeal(current_setting('tests.history_review203')::uuid,'decision_review')$$,'P0001','not_allowed',
+ 'Restriction on earlier incident never applies to the replacement');
+select tests.authenticate_as('provider_c');
+select ok(public.ride_appeal(current_setting('tests.history_review203')::uuid,'new_evidence'),'Original assigned driver may appeal');
+select tests.authenticate_as('safety_reviewer');
+select ok(public.admin_ride_decide_appeal(current_setting('tests.history_review203')::uuid,false,'DENIAL-203'),'Independent reviewer can maintain decision for the original driver');
+select tests.clear_authentication();
+select is((select appeal_state from private.ride_restrictions where id=current_setting('tests.history_review203')::uuid),'maintained','Denied appeal retains the stated outcome');
 select * from finish();
 rollback;
