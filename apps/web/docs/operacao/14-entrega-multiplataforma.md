@@ -1,8 +1,22 @@
 # Entrega multiplataforma do WorkEasy
 
-Registro de 25/11/2026. Base auditada `be246506cea810184d4b4e0c5a6526bd1af18a48`. O produto usa React/Vite, Capacitor e Tauri em `apps/web`. Os protótipos Expo, Web Prefeitura e FastAPI permanecem em suas pastas.
+O produto usa React/Vite, Capacitor e Tauri em `apps/web`. Os protótipos Expo, Web Prefeitura e FastAPI permanecem em suas pastas.
+
+## Auditoria de 27/11/2026
+
+| Entrega | Evidência disponível e pendência |
+|---|---|
+| Código e testes | A `main` auditada é `a38d7ce4c415ea735eb4948d987b999d506d28c1`. Os quatro jobs de CI passaram, incluindo integração com a stack local e ensaios de Edge Functions com serviços substitutos. [Commit](https://github.com/drguilhermecapel/Work-Easy/commit/a38d7ce4c415ea735eb4948d987b999d506d28c1) · [CI](https://github.com/drguilhermecapel/Work-Easy/actions/runs/45883671195) |
+| Backend de produção | O deploy de 25/11 aplicou migrações e catálogo e implantou 15 funções na revisão `be246506cea810184d4b4e0c5a6526bd1af18a48`. A conferência registrou 109 IDs de migração. Em 26/11 o job de origem executou com `DRY_RUN=false` e confirmou URLs de Auth e CORS de `account-export` e `account-delete` para a origem pública configurada. [Deploy](https://github.com/drguilhermecapel/Work-Easy/actions/runs/45657389421) · [Origem e CORS](https://github.com/drguilhermecapel/Work-Easy/actions/runs/45818178465/job/139903223232) |
+| Pré-release web e desktop | A tag `v0.1.1` aponta para a revisão auditada. Os seis arquivos de distribuição tiveram tamanho e SHA-256 conferidos. A PWA instalada a partir do pacote passou por ensaio offline/reconexão e recebeu HTTP 200 em `neighborhoods` e `platform_settings` de produção. O DEB passou por atualização de 0.1.0 a 0.1.1, reabertura e remoção. O AppImage abriu após extração. FUSE, uso autenticado e assinatura dos instaladores Windows/macOS continuam pendentes. [Ensaios dos arquivos publicados](https://github.com/drguilhermecapel/Work-Easy/releases/tag/v0.1.1) |
+| Dispositivos móveis | Os ensaios do APK debug em emulador Android e do ZIP de simulador em iPhone e iPad passaram. Distribuição assinada, aparelhos físicos e canais das lojas ainda precisam de validação. [PR com os ensaios](https://github.com/drguilhermecapel/Work-Easy/pull/38) |
+| Site e operação | O deploy Pages de 26/11 parou nas verificações da configuração Cloudflare e do remetente de Auth. Infraestrutura precisa configurar o destino Pages e o remetente, publicar a revisão e validar o código recebido numa conta controlada. O registro consultado não comprova o fluxo autenticado em produção nem atendimento com usuário real. [Última tentativa de publicação](https://github.com/drguilhermecapel/Work-Easy/actions/runs/45742108646/job/140070017800) |
+
+O roteiro de transporte registra separadamente a decisão de produto, a implementação, a habilitação comercial e o piloto com viagens reais. [Roadmap de mobilidade](15-mobilidade-de-prestadores.md)
 
 ## Situação da entrega em 25/11/2026
+
+Registro histórico da base `be246506cea810184d4b4e0c5a6526bd1af18a48`. As verificações posteriores estão na auditoria acima.
 
 | Plataforma | Versão/arquitetura | Pacote disponível | Backend validado | Assinatura/canal | Instalação e testes | Link | Pendência |
 |---|---|---|---|---|---|---|---|
@@ -13,7 +27,7 @@ Registro de 25/11/2026. Base auditada `be246506cea810184d4b4e0c5a6526bd1af18a48`
 | Linux | 0.1.0 · amd64 | DEB e AppImage no Actions | BLOQUEADO no pacote de produção | Canal durável pendente | PASSOU instalação e remoção do DEB em Ubuntu 22.04.5 x64. AppImage abriu após extração. FUSE e atualização continuam pendentes. | [Pacotes de verificação](https://github.com/drguilhermecapel/Work-Easy/actions/runs/45521105565/artifacts/14981470922) | Gerar o candidato de produção e validar os pacotes finais no ambiente suportado. |
 | Web/PWA | Navegador Chromium · viewport de 390 px | Build local | PASSOU catálogo público no Supabase de produção. FALHOU o ensaio de login por código. | Deploy HTTPS pendente | PASSOU diagnóstico de instalabilidade, ativação do service worker e teste local offline/reconexão | [Execução de correção do login](https://github.com/drguilhermecapel/Work-Easy/actions/runs/45670522755) | Aplicar os modelos de e-mail, validar login em conta controlada e confirmar projeto e origem canônica do Pages. |
 
-Os arquivos com hash confirmado abaixo são artefatos temporários de verificação. As execuções usam revisões diferentes e ainda não há uma GitHub Release disponível.
+Os arquivos com hash confirmado abaixo eram os artefatos temporários de verificação disponíveis em 25/11, anteriores à pré-release `v0.1.1`. As execuções usam revisões diferentes.
 
 | Arquivo | Commit | SHA-256 |
 |---|---|---|
@@ -31,7 +45,7 @@ Em 25/11, a segunda tentativa leu a configuração de Auth com o token corrigido
 
 Quando o projeto precisa de um remetente, a opção `sync_auth_templates` do deploy web permite usar a chave de envio Resend reservada para Auth. No ambiente protegido `production`, `SUPABASE_AUTH_RESEND_KEY` é um secret e `SUPABASE_AUTH_EMAIL_FROM` é uma variável com o endereço puro do domínio de envio verificado. O job usa TLS, autentica no SMTP e testa o remetente de envelope sem enviar mensagem. Se o projeto já tiver SMTP configurado ou um Send Email Hook ativo, o job preserva essa configuração. A credencial de notificações permanece dedicada ao fluxo de avisos. Após configurar SMTP, o job relê o remetente, aplica os modelos, confere os campos e prossegue com as verificações do Pages. O teste de entrega do código em caixa controlada continua necessário. O modo `auth_templates_only` do workflow Supabase só sincroniza os modelos. Ambos os workflows aceitam `SUPABASE_ACCESS_TOKEN` ou o secret específico `SUPABASE_AUTH_CONFIG_TOKEN`.
 
-## Matriz de partida
+## Matriz histórica de partida
 
 | Plataforma | Código e compilação | Pacote e assinatura | Backend no pacote | Instalação e distribuição |
 |---|---|---|---|---|
@@ -46,15 +60,15 @@ A compilação histórica e os artefatos acima pertencem à execução [45521105
 
 Windows ARM64 e Linux ARM64 ficam fora da entrega atual. A validação nativa e o suporte operacional exigiriam runners ou dispositivos próprios e demanda confirmada. O pacote macOS universal exige execução nos dois tipos de Mac, mesmo depois de aprovada a inspeção arm64/x86_64 com `lipo`.
 
-## Backend
+## Backend verificado em 25/11/2026
 
 - PASSOU. O Supabase `hlzdgbxygtaklqaoihlq` está ativo em São Paulo. Os 109 IDs de migração e os 15 slugs ativos, incluindo a configuração de verificação JWT de cada função, correspondem ao repositório. Nenhum ambiente remoto de desenvolvimento foi encontrado na conta conectada. A stack local é o destino dos testes de integração.
 - PASSOU. A execução [45656602447](https://github.com/drguilhermecapel/Work-Easy/actions/runs/45656602447) executou o dry-run e pulou aplicação. A execução [45657389421](https://github.com/drguilhermecapel/Work-Easy/actions/runs/45657389421) aplicou migrações e catálogo e implantou as 15 funções do commit auditado.
 - PASSOU no recorte anônimo. A chave publicável foi aceita pela Data API em `platform_settings`. O endpoint público de Auth anunciou e-mail como provedor habilitado e confirmação de e-mail ativa. A consulta administrativa encontrou RLS habilitada nas tabelas do schema público e um bucket privado. A política efetiva de acesso entre usuários em produção requer testes autenticados. Comissão, custódia e abertura da linha de cuidado estão desabilitadas nas configurações remotas.
 - PASSOU no preflight da função `account-export`. As origens configuradas `https://localhost`, `capacitor://localhost`, `tauri://localhost` e `http://tauri.localhost` retornaram HTTP 204 com a origem liberada. A origem `https://tauri.localhost` não foi liberada e o projeto Tauri usa o esquema HTTP padrão do WebView no Windows.
-- BLOQUEADO em produção. Ainda é preciso confirmar a URL canônica e as URLs de Auth, o hook e a entrega de OTP em contas de teste, refresh e exclusão, upload e isolamento entre cliente, prestador e administrador. Asaas, WhatsApp, e-mail, IA e Sentry requerem identificação do ambiente e testes controlados. Nenhuma cobrança ou mensagem externa foi disparada.
+- Em 25/11 estavam pendentes a origem pública, as URLs de Auth e os ensaios autenticados. A sincronização da origem em 26/11 consta na auditoria acima. A entrega de OTP em caixa controlada, a renovação de sessão, a exclusão, o upload e o isolamento entre papéis continuam exigindo ensaio. As integrações Asaas, WhatsApp, e-mail, IA e Sentry exigem configuração e validação específicas.
 
-## Ensaios executados
+## Ensaios registrados em 25/11/2026
 
 | Verificação | Resultado | Evidência |
 |---|---|---|

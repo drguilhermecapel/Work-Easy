@@ -302,6 +302,16 @@ Use este resumo para preencher a declaração de privacidade da Google Play e da
 
 ---
 
+## Dados da mobilidade opcional — minuta de 27/11/2026
+
+**Proposta para revisão, aplicável quando a modalidade for ativada.** Para verificar a cobertura, usamos a região de partida e do atendimento. Para cotar ou reservar um trecho escolhido, solicitamos o ponto de embarque indicado e o destino. O profissional pode indicar um ponto de encontro. Enviamos ao parceiro identificado na proposta apenas os dados necessários ao trecho, como contato do passageiro, local, janela e necessidade de espaço para equipamento. Notas do serviço, informações clínicas, honorários e histórico do cliente ficam fora desse envio.
+
+O cliente recebe a confirmação e a previsão de chegada ao endereço do serviço. A origem do profissional fica restrita ao passageiro, ao parceiro responsável e à equipe designada que precisa atuar no trecho. Financeiro acessa as autorizações, os valores e os recibos necessários, com endereços precisos ocultos nas vias de consulta. A proposta dispensa rastreamento contínuo do aparelho. Você pode digitar um ponto sem conceder permissão de localização ao dispositivo.
+
+Na WorkEasy, propomos apagar pontos e coordenadas precisos da mobilidade em até 24 horas após o encerramento do último trecho. Em cotação encerrada sem reserva, o prazo começa na recusa ou na expiração. Se uma disputa concreta exigir preservação, o encarregado registrará o dado estritamente necessário, a finalidade, o fundamento, os responsáveis e a data final individual de guarda, com descarte ao vencimento. Extratos e comprovantes terão guarda própria conforme sua finalidade fiscal, contratual ou de defesa, sem perpetuar uma cópia do trajeto. O aviso efetivo identificará operador, canal para direitos, tratamento pelo parceiro e prazos aplicáveis.
+
+O jurídico validará a hipótese de execução do contrato ou providência a pedido do titular para cotar, reservar e informar chegada, e o fundamento próprio de cada retenção. O aceite de gasto e a permissão do aparelho são escolhas separadas. O registro de finalidade, papéis, transferências e salvaguardas está na [OP-29](07-registro-das-operacoes-de-tratamento.md). [LGPD, arts. 6º, 7º, 9º, 15–16, 18, 33, 37 e 46](https://planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709compilado.htm)
+
 ## Pontos para o advogado
 
 **Q1. Papel de cada parte.** O texto diz que a empresa é controladora (1.2). Confirme o papel para: (a) cadastro, pedidos e atendimentos; (b) lista de clientes e orçamentos que o profissional digita; (c) dados da pessoa cuidada e relatórios, digitados pela família e pelo cuidador; (d) dados do cliente enviados ao Asaas em nome dele; (e) clientes e orçamentos digitados pelo prestador, que são dados de terceiros (grupo L). O papel define o registro de operações (art. 37), quem responde a pedido do titular e quem informa o compartilhamento (art. 9º, V).

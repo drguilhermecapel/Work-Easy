@@ -18,8 +18,9 @@ Marcas: **[fonte]** vem de fonte citada no plano estratégico privado; **[estima
 | D8 | Avaliações: sem piso de valor; risco aceito no lançamento, com moderação e gatilho de revisão | decisão fechada |
 | D9 | Sem limite de orçamentos no grátis por enquanto | adiado com gatilho |
 | D10 | Sem plano anual por enquanto | adiado com gatilho |
-| D11 | Sem venda de lead, sem anúncio pago, sem taxa ao cliente | rejeitado |
+| D11 | Venda de lead, anúncio pago e taxa geral ao cliente rejeitados em 22/10/2026. Adendo de 27/11 sobre transporte opcional em D13 | proposta de exceção limitada ao transporte |
 | D12 | Linha "Cuidado": só abrir ao público quando os pré-requisitos da seção 5 estiverem cumpridos | portão; o menu cumpre desde 24/11/2026 (DD59) |
+| D13 | Mobilidade opcional dos prestadores | proposta de 27/11/2026 para revisão no PR |
 
 ## 2. O que foi implementado nesta rodada
 
@@ -56,6 +57,35 @@ Tudo configurável em `platform_settings`, sem novo deploy. Contrato em `docs/AR
 **D10. Plano anual.** Adiado. O webhook calcula o período sempre como um mês (`periodEndFrom`); anual exige ciclo registrado na assinatura e ajuste desse cálculo, que é código de dinheiro. Faz sentido com 50 ou mais pagantes e churn acima de 5% ao mês [incerto]; preço sugerido: 10 vezes o mensal (R$ 490).
 
 **D11. Rejeitados.** Venda de lead (GetNinjas gasta 43–51% da receita em marketing e vale menos que o caixa [fonte]); anúncio pago (custo de aquisição sem teto, com demanda ainda não medida); taxa ao cliente (reduz conversão num marketplace novo).
+
+**Adendo proposto em 27/11/2026.** A D13 admite apresentar ao cliente o transporte opcional do prestador, vinculado ao atendimento e com preço discriminado, quando o contrato do parceiro e o enquadramento permitirem a modalidade. A deliberação de 22/10/2026 acima fica registrada. O adendo não autoriza taxa geral de plataforma.
+
+### D13. Mobilidade opcional dos prestadores
+
+**Proposta de produto, 27/11/2026.** Para um atendimento agendado, comparar prestador próximo, deslocamento próprio e transporte contratado de operador existente. Cliente e profissional podem seguir com uma alternativa viável ao transporte oferecido. Mostrar serviço, preço e pagador de cada trecho, adicionais autorizados e total antes do aceite. A aceitação do atendimento, a opção do profissional pelo transporte e a autorização do pagador são registros distintos. Recusa da viagem preserva a possibilidade de concluir o atendimento. [Roadmap de mobilidade](operacao/15-mobilidade-de-prestadores.md)
+
+**Receita do serviço.** D5 continua sendo a referência para as ocupações elegíveis. O valor efetivamente cobrado depende da habilitação financeira da seção 4. Na aceitação do atendimento, o banco aplica sobre o preço do **serviço** a política da ocupação, a origem e o histórico do par prestador–cliente. Com a comissão desligada, origem própria, política diferente de `comissao_primeiro_servico` ou atendimento anterior da plataforma concluído/liberado com pagamento recebido/confirmado/liberado pelo app para o mesmo par, a comissão é zero. No primeiro elegível, são 12%, truncados em centavos, até R$ 150. D6 continua a exigir assinatura nas ocupações restritas e análise das marcadas `sob_consulta_juridica`. Uma cobrança vinculada ao trajeto não pode remunerar indicação, captação ou intermediação vedada dos honorários. [Políticas do catálogo](../catalog/policies.json) · [Arquitetura de reservas e pagamentos](ARQUITETURA.md)
+
+| Forma em comparação | Benefício e categorias a verificar | Efeito para quem presta o serviço | Validação proposta |
+|---|---|---|---|
+| D5 vigente, primeiro elegível a 12%, até R$ 150 | Remunerar aquisição de um cliente novo nas ocupações que permitem comissão | Concentra o desconto no primeiro atendimento. Recorrência com histórico elegível tem comissão zero | Referência de cálculo por par. Medir conclusão e recompra separadamente no primeiro e nos seguintes |
+| Comissão recorrente proposta, 6% do serviço, até R$ 75 por atendimento elegível da plataforma | Reduzir a dedução inicial e testar receita na repetição, somente em ocupações autorizadas para esse novo regime | Diminui o repasse de cada retorno frente a D5. Pode incentivar que o par deixe a plataforma | Simular sobre o mesmo histórico e obter manifestação do prestador sobre preço e permanência |
+| Assinatura Pro atual de R$ 49/mês | Receita previsível, inclusive em ocupações de assinatura se admitida pela política, com teste e condições D2/D3 | Como modalidade isolada, cria custo mensal fixo e preserva o repasse marginal em cada serviço | Medir conversão, cancelamento, custo de servir o assinante e resultado por coorte mensal |
+| Híbrido proposto de R$ 29/mês + 4% no primeiro elegível, teto de R$ 50 | Testar adesão com mensalidade menor e receita de aquisição. Componente variável só em ocupações autorizadas | Custo fixo menor que o Pro e desconto no primeiro atendimento. Avaliar o peso para quem tem pouco volume | Simular por faixa de volume e perguntar qual oferta o prestador escolheria ao preço mostrado |
+
+Exemplo hipotético, com portões abertos e serviço elegível de R$ 200. Para dois atendimentos pagos do mesmo par no mesmo mês, o custo do regime comparado ao prestador é R$ 24 em D5 (R$ 24 + R$ 0), R$ 24 no recorrente (R$ 12 + R$ 12), R$ 49 na assinatura isolada e R$ 37 no híbrido (R$ 29 + R$ 8 + R$ 0). Um terceiro atendimento eleva apenas o recorrente, a R$ 36. O exemplo de D5 isola a comissão para um prestador sem Pro. Na coorte real, usar as mensalidades efetivas uma vez por assinante/mês e calcular separadamente o repasse e a renda por hora. Testar preços de serviço em análise separada do experimento de oferecer transporte. Mudança de regime exige nova decisão, revisão da política da ocupação, preço exposto e aceite antes de cobrar. [Modelo financeiro](operacao/09-modelo-financeiro.md)
+
+**Receita do transporte.** Para cada parceiro, documentar quem contrata, recebe, paga, emite comprovante e responde por ajustes. Cada arranjo começa bloqueado até existir instrumento aplicável, revisão jurídica/fiscal e autorização interna por região e categoria.
+
+| Arranjo pelo instrumento do parceiro | Regra para autorização |
+|---|---|
+| Repasse de custo | Permitir somente se o arranjo aceitar reembolso/repasse ao pagador identificado. Discriminar custo efetivo, limite aceito, ajustes e responsável. A parcela repassada tem margem de transporte zero antes dos custos variáveis. |
+| Subsídio promocional | Registrar a WorkEasy como pagadora da parcela coberta. Proposta de até R$ 10 por solicitação e R$ 300 ao todo nas quatro semanas, dentro do teto incremental de caixa de R$ 5.000. O limite utilizável é o menor saldo aplicável e o orçamento autorizado neste PR é R$ 0. Os critérios, inclusive encerramento, estão no [documento 08](operacao/08-metricas-e-portoes.md). |
+| Margem, taxa ou participação comercial | Exigir cláusula expressa para a modalidade, pagador, preço/base e vigência. Se o parceiro pagar por indicação e cobrar diretamente a viagem, registrar na WorkEasy apenas a remuneração devida, uma única vez. |
+
+No Uber para Empresas, os termos brasileiros, §4.5, restringem alterações das cobranças e taxas adicionais pelo uso do serviço. No Central, os custos são devidos pela empresa titular da conta. O contrato padrão não fundamenta margem. Qualquer repasse exige confirmação de que o arranjo específico o admite. Mudar o nome da cobrança não concede essa permissão. Para o piloto, comparar propostas de operador existente com ida e volta ou continuação precificadas. Somente considerar capacidade dedicada, rede ou veículos próprios diante da densidade, custo total e enquadramento demonstrados no roadmap. [Termos gerais Uber, §4.5](https://www.uber.com/br/pt-br/legal/uber-for-business-dashboard-terms/) · [Adendo Uber Central, §2.2](https://www.uber.com/br/pt-br/legal/uber-for-business-product-addendum---central/) · [Minutas de consulta](operacao/15-consulta-a-operadores.md)
+
+**Estado da decisão.** A proposta documental abre o planejamento. Implementar o módulo, contratar um operador, ativar reservas reais e habilitar monetização exigem evidências próprias. A aceitação deste documento, por si só, autoriza R$ 0 em gastos e nenhuma viagem.
 
 ## 4. Portões para ligar o que está desligado
 

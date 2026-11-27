@@ -1,10 +1,10 @@
 # Plano de 45 dias: concierge e beta da ferramenta
 
-Documento O01 · versão de 23/10/2026, revisada em 08/11/2026 · uso interno do dono do WorkEasy, que opera sozinho.
+Documento O01 · plano de 45 dias de 23/10, revisado em 08/11/2026. Proposta de [operação assistida de mobilidade](#operação-assistida-de-mobilidade) de 27/11/2026.
 
 > **Rascunho para revisão de advogado. Não é parecer jurídico.** Este é um plano operacional. Onde ele encosta em lei, conselho profissional, contrato ou tributo, o trecho vem marcado `[CONDICIONAL: depende de parecer]` e não substitui advogado nem contador.
 >
-> **Estado do produto:** o MVP está em `main` (PR #2), **não está implantado**, não tem usuários reais e nada foi testado contra o Asaas, o WhatsApp ou o Resend de verdade (README e `docs/DECISOES.md`). Comissão e pagamento retido estão desligados. Por isso o plano começa numa Semana 0 de preparação (seção 2): sem ela, os 45 dias não têm onde rodar.
+> **Linha de base de 27/11/2026.** O Supabase foi implantado em 25/11. A prerelease v0.1.1 comprovou acesso da PWA instalada a partir do pacote ao catálogo público de produção. A publicação HTTPS e o login por código aguardam comprovação. As datas D1–D45 e as metas abaixo são referências de planejamento. Os registros consultados não demonstram demanda, atendimentos pagos ou viagens reais desse piloto. [Entrega O14](14-entrega-multiplataforma.md) · [Prerelease v0.1.1](https://github.com/drguilhermecapel/Work-Easy/releases/tag/v0.1.1) · [Roadmap O15](15-mobilidade-de-prestadores.md)
 >
 > **Nenhum número deste documento é resultado nem previsão.** As metas vêm do plano. Ritmos, faixas de decisão, horas e custos são propostas e estimativas, com a premissa escrita ao lado, para você trocar pelo número real assim que ele existir.
 
@@ -27,7 +27,7 @@ Documento O01 · versão de 23/10/2026, revisada em 08/11/2026 · uso interno do
 
 ## Resumo
 
-**O que este plano faz.** Transforma a Fase 1 em rotina: 45 dias corridos, um fundador em tempo integral (teto de 60 h por semana) e gasto mínimo, em cinco distritos contíguos da Zona Sul: Moema, Vila Mariana, Saúde, Campo Belo e Jabaquara. Você é o motor de casamento entre pedidos e prestadores: recebe pedidos pelo formulário do app e pelo WhatsApp Business, escolhe quem chamar, acompanha a proposta e entrega o link de pagamento (Pix ou fatura do Asaas).
+**Premissa do plano original de concierge.** A Fase 1 projetou 45 dias corridos, um fundador em tempo integral (teto de 60 h por semana) e gasto mínimo, em cinco distritos contíguos da Zona Sul: Moema, Vila Mariana, Saúde, Campo Belo e Jabaquara. Você é o motor de casamento entre pedidos e prestadores: recebe pedidos pelo formulário do app e pelo WhatsApp Business, escolhe quem chamar, acompanha a proposta e entrega o link de pagamento (Pix ou fatura do Asaas).
 
 **O que precisa ser verdade no dia 45 (portões do plano)**
 
@@ -62,7 +62,33 @@ Meta de recrutamento (não é portão): **50 prestadores aprovados**, com este d
 | 6 | Eletricista e demais ocupações `a_confirmar` | fora do mínimo do plano até a Frente A conferir a política; exceção só por escrito | seção 4 |
 | 7 | Teto de 60 h | conta todo trabalho, inclusive clínica; definir quem cobre o consultório | seção 8 |
 
-**Os três riscos que mais podem derrubar o plano:** o produto nunca rodou em produção (risco R5); o dinheiro do Cuidado e o split da plataforma dependem de parecer (R1 a R3); e o seu tempo (R10). Registro completo na seção 15.
+**Os três riscos que mais podem derrubar o plano:** o fluxo autenticado e financeiro completo ainda aguarda ensaio controlado em produção (risco R5); o dinheiro do Cuidado e o split da plataforma dependem de parecer (R1 a R3); e o seu tempo (R10). Registro completo na seção 15.
+
+---
+
+## Operação assistida de mobilidade
+
+**Proposta de M1.** O cliente escolhe o atendimento e a janela. A coordenação compara um prestador próximo, o deslocamento por meios próprios e o transporte agendado de um operador existente. Cliente e prestador podem recusar a corrida quando outra opção viabiliza o serviço. Implementação, contratação do operador, abertura de reservas reais e ativação de receita têm evidências próprias. A coordenação só abre vagas após os portões aplicáveis. [Roadmap e dependências O15](15-mobilidade-de-prestadores.md) · [Decisões](../DECISOES.md)
+
+### Escolha da área e da categoria em M0
+
+1. A operação reúne pedidos reais únicos em janela datada, com ocupação, distrito de atendimento, faixa horária, ticket, duração e disponibilidade de prestadores aprovados. Coleta a zona de partida efetiva do profissional naquele turno, que pode ser o atendimento anterior ou um ponto de encontro. Nas análises usa a microárea agregada e guarda os endereços operacionais em acesso restrito.
+2. Para cada par origem–destino e turno, registra quantidade observada, quantos serviços foram concluídos, motivos de perda, alternativa sem transporte, equipamentos e capacidade do veículo. Cota ida, retorno ou continuação combinada com o prestador. Compara tempo total e custo, inclusive para quem inicia fora do núcleo de clientes. A distribuição dos distritos no §3 orienta onde coletar dados.
+3. Escolhe uma categoria e uma microárea, com uma segunda contígua se houver cobertura confirmada. Exige política conferida para o serviço, equipamento transportável, operador apto nas duas pontas e alternativa de contingência. Entre combinações viáveis, prioriza o maior número observado de solicitações nas janelas cobertas e usa a contribuição incremental conservadora como desempate. Sem amostra local ou cotação de retorno, mantém a combinação em M0 e coleta a evidência faltante. Diarista, montador de móveis e manutenção leve (especificar a ocupação) são candidatos. Metas de recrutamento, vulnerabilidade do bairro e páginas de catálogo não medem demanda. [Políticas por ocupação](../../catalog/policies.json) · [Aquisição e cobertura O03](03-aquisicao-de-clientes-e-bairros.md)
+
+### Escala, canais e atendimento
+
+Para preservar a atividade clínica de Guilherme, a janela proposta é **terça e quinta, das 9h às 15h, America/Sao_Paulo, por quatro semanas**. A coordenação recebe solicitações pelo canal do concierge e presta ajuda por WhatsApp operacional ou telefone dedicado informado na proposta. Antes de abrir cada turno, publica internamente quem é titular e suplente, testa os canais com o operador e confirma a cobertura até o último retorno, inclusive se o serviço atrasar. O suplente assume ausências e a passagem de turno registra reservas, interlocutor e próximo contato. Guilherme revisa a semana em horário acordado fora da clínica. Se o turno ou o último retorno perder cobertura humana, a operação suspende imediatamente novas reservas, aciona a contingência do operador e acompanha os compromissos já assumidos até a entrega ao responsável confirmado. Custear a escala, os minutos de coordenação e a supervisão conforme o [modelo O09](09-modelo-financeiro.md).
+
+| Participante | Antes de reservar | Durante e depois |
+|---|---|---|
+| Cliente | Indica serviço, endereço e janela. Recebe preço do serviço, mobilidade por trecho, adicionais possíveis, pagador, limites, validade, total e regras de alteração/cancelamento. Confirma a versão da proposta ou escolhe alternativa viável. | Recebe confirmação e previsão de chegada ao endereço do serviço, com horário da última atualização. O canal humano atende atraso, reagendamento e cancelamento. O endereço de origem do prestador fica restrito à execução da viagem. |
+| Prestador | Informa disponibilidade, origem pertinente, necessidade de transporte e equipamentos. Vê serviço, remuneração líquida estimada, duração de serviço, deslocamento e espera, pagador de cada trecho e destino final. Registra separadamente o aceite do serviço e do transporte. | Confirma embarque e chegada ao cliente. Registra início e fim do atendimento no fluxo do serviço. Solicita o retorno ou a continuação combinada e informa mudança de horário. Registra custos próprios e tempo para aferir renda/hora. |
+| Coordenação de mobilidade | Registra elegibilidade e atribuição antes da oferta. Obtém cotação/agendamento pelo canal autorizado, confere a versão autorizada pelo pagador e confirma reserva com a referência externa. Reserva tempo entre atendimentos e preserva o orçamento dos retornos. | Acompanha cada trecho e exceção, informa previsão por fonte identificada e aciona alternativa de prestador próximo, trajeto próprio ou nova janela com acordo dos envolvidos. Fecha o turno conferindo eventos, recibos, lançamentos, divergências e responsável pela resolução. |
+
+**Mudanças e encerramento.** Troca de profissional, horário, endereço, trecho, equipamento ou teto implica rever cotação, logística e autorização antes de comprometer nova despesa. Se a confirmação ou o cancelamento ficar incerto, a coordenação consulta o operador, preserva a tentativa e aguarda reconciliação antes de reservar novamente. Registra responsável, custo efetivamente devido e ajuste de cada cancelamento, inclusive corrida concluída com serviço cancelado. O fim da corrida não altera o estado do serviço ou do repasse. Procedimentos de exceção e proteção de dados ficam no [runbook](../RUNBOOKS.md) e na [arquitetura](../ARQUITETURA.md).
+
+A revisão semanal usa os indicadores e limites pré-definidos de mobilidade do [O08](08-metricas-e-portoes.md#9-experimento-de-mobilidade). O calendário D1–D45, G1–G4 e o orçamento histórico do concierge conservam seus próprios denominadores.
 
 ---
 
@@ -70,8 +96,8 @@ Meta de recrutamento (não é portão): **50 prestadores aprovados**, com este d
 
 ### 1.1 Premissas
 
-1. **Fundador único, dedicação integral.** O teto de 60 h por semana conta qualquer trabalho remunerado, inclusive clínica `[proposta de leitura da regra]`. Se você mantiver plantões, corte escopo (seção 13), não sono.
-2. **Concierge.** Você faz à mão o que o produto ainda não faz: avisar prestadores de pedido novo, escolher 3 a 5 deles, conferir a proposta, mandar o link de pagamento e acompanhar. Sem anúncio pago (DECISOES D11).
+1. **Premissa histórica do concierge.** O plano de 45 dias pressupõe dedicação integral do fundador. O teto de 60 h por semana conta qualquer trabalho remunerado, inclusive clínica `[proposta de leitura da regra]`. Se você mantiver plantões, corte escopo (seção 13), não sono.
+2. **Concierge.** O gatilho de pedido novo gera avisos a prestadores aptos (DD65). O coordenador seleciona e acompanha 3 a 5 profissionais, verifica a proposta e o link de pagamento. Complementa o aviso automático por canal humano autorizado se a entrega falhar ou ainda carecer de validação. A aquisição segue D11.
 3. **Dinheiro desligado.** `commission_enabled` e `escrow_enabled` ficam `false` nos 45 dias. Nenhuma frase ao público promete comissão zero para sempre.
 4. **Nenhuma promessa de prazo ao público.** A meta de 2 h é interna. O teste `test/claims-guard.test.ts` recusa "em até N horas" e frases parecidas no código; aplique a mesma disciplina a cartaz, mensagem e post.
 5. **Preço é do prestador.** O WorkEasy não tabela preço; você não sugere valor a ninguém.
@@ -84,7 +110,7 @@ Meta de recrutamento (não é portão): **50 prestadores aprovados**, com este d
 | Páginas de SEO por bairro | saem `noindex` até existir dado local; `data/seo-local.json` está `[]` (README) |
 | Telemedicina, prontuário, verificação de identidade, vídeo | não existem (README) |
 | Assistente de pedidos por IA (`request-assist`) | sem chave a função responde 503; o concierge humano é o assistente |
-| Comissão, pagamento retido, plano anual, venda de lead, taxa ao cliente | DECISOES D1, D5, D10, D11 e seção 4 |
+| Comissão, pagamento retido, plano anual, venda de lead e taxa geral ao cliente | D1, D5, D10, D11 e §4 de DECISOES. A exceção proposta em D13 abrange a mobilidade opcional, discriminada e permitida por contrato, com portões próprios. |
 | Médicos e dentistas | a matriz por conselho (Frente A) ainda está em elaboração; conflito de interesse com a sua profissão `[CONDICIONAL: depende de parecer]` |
 
 ### 1.3 Regras de conduta do piloto
@@ -93,7 +119,7 @@ Meta de recrutamento (não é portão): **50 prestadores aprovados**, com este d
 2. **Nada do consultório.** Nenhum cadastro, agenda, prontuário ou lista de contatos do consultório entra em recrutamento, convite de família ou divulgação. O WorkEasy é outra empresa (DECISOES, seção 8, item 3). Se um paciente perguntar, responda; antes de indicar ativamente, consulte o advogado `[CONDICIONAL: depende de parecer]`.
 3. **Nada de orientação de saúde** em nenhuma conversa. Em emergência, SAMU 192 ou serviço de urgência. A linha Cuidado é não clínica.
 4. Sem depoimento, nota, número ou parceria que você não possa provar. Sem "garantido", sem "seguro" e sem selo de verificação: diga "conferido" ou "informado, não verificado".
-5. **Dinheiro de cliente só passa pelo Asaas.** Nunca pela sua conta pessoal nem pela do consultório; nunca repasse dinheiro do seu bolso.
+5. **No concierge, as cobranças de serviço seguem as trilhas previstas no Asaas.** Para transporte, D13 e o contrato definem quem cobra e recebe cada trecho. Use os canais das partes contratadas. A conta pessoal e a clínica ficam fora da operação.
 6. **Documento só pelo app** (espaço privado). Não receba foto de RG, CPF ou certidão por WhatsApp; apague o que chegar.
 7. Dado de saúde de família ou assistido: nem no app (o cliente já recusa) nem na planilha.
 8. Um prestador de profissão com conselho recebe a ferramenta, não promessa de clientes nem de posição (O02, seções 1.3 e 12.5).
@@ -111,7 +137,7 @@ Duas semanas de preparação, de **26/10 a 06/11/2026** se tudo correr sem atras
 | P3 | Supabase de produção no ar: migrações, seed do catálogo, buckets, funções, Vault, primeiro admin | tudo | teste rápido (cadastro, pedido, proposta) verde | I03 e I04 |
 | P4 | Código de login chegando por e-mail (modelos com `{{ .Token }}`) | qualquer cadastro | 5 códigos recebidos em 3 provedores de e-mail diferentes | README ("Login por código"); I02 |
 | P5 | Conta Asaas de produção aprovada, webhook configurado, Pix de R$ 1,00 conferido | qualquer cobrança | cobrança de R$ 1,00 paga e vista no painel do Asaas e em `/admin/pagamentos` | I01; DECISOES, seção 4, item 2 |
-| P6 | Site publicado com `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SITE_URL` e `VITE_CONCIERGE_WHATSAPP` | tudo | `/pedido` abre no celular com 4G | README; hospedagem sem documento no plano (seção 16) |
+| P6 | Site publicado com `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SITE_URL` e `VITE_CONCIERGE_WHATSAPP` | tudo | `/pedido` abre no celular com 4G | README; estado de implantação no O14 (§16) |
 | P7 | Termos de Uso e Política de Privacidade publicados em `/legal` e revisados | coleta de documentos e pedidos | `/legal` deixa de dizer "Documentos em elaboração" | L01, L02, L03 e L11; O02, seção 14.2, item 2 |
 | P8 | WhatsApp Business (aplicativo) no número dedicado do concierge: perfil, saudação, ausência, respostas rápidas, etiquetas. Se um dia ligar a API, ela usa **outro** número (I02) | demanda | teste com 2 contatos seus | O05; I02; [F10] |
 | P9 | Planilhas criadas (seção 11) e lista de contas de teste | medição e integridade dos portões | modelos copiados e acesso só seu | seção 11 |
@@ -119,9 +145,9 @@ Duas semanas de preparação, de **26/10 a 06/11/2026** se tudo correr sem atras
 | P11 | Cuidado: seguro de responsabilidade civil cotado e parecer trabalhista sobre o fluxo e a trava de 2 dias | só o Cuidado | documentos arquivados | DECISOES, seção 5; O06 |
 | P12 | Políticas das ocupações de lançamento conferidas | recrutamento dessas ocupações | lista de slugs `conferido` (seção 4) | Frente A |
 | P13 | Canais de atendimento e plano de incidente publicados | tudo | e-mail e WhatsApp respondendo; plano lido | L08, L10; O07 |
-| P14 | Três correções pequenas no app, ou decisão de conviver | recrutamento e demanda | ver abaixo | seção 9 |
+| P14 | Conferir no canal final o cadastro, o link do concierge e a visibilidade de Cuidado | recrutamento e demanda | ensaio autenticado documentado para os três fluxos já entregues no código | §16.1 e O14 |
 
-**P14, as três correções pequenas** `[PLANEJADO]`; a (a) só precisa de confirmação com backend: (a) no modo demonstração, "Trabalhe Conosco" no rodapé, "Ofereço este serviço" nas páginas de serviço, o link em Minha conta e "Sou Profissional" do menu levam a `/register-provider`, página de demonstração que não guarda nada (conferi em `components/SiteFooter.tsx`, `pages/OccupationPage.tsx`, `pages/OccupationNeighborhoodPage.tsx`, `pages/conta/Conta.tsx` e `components/navItems.ts`; mesmo achado do O02, seção 14.2). Com backend, `/register-provider` já redireciona para `/pro/cadastro` mantendo a ocupação (`pages/prototype/redirects.tsx`): confirme no D1 e só corrija se o redirecionamento falhar; (b) em `/pedido`, o botão de WhatsApp fica dentro do bloco `!online` (`pages/cliente/Pedido.tsx`), então com backend ligado ele não aparece; `VITE_CONCIERGE_WHATSAPP` continua aparecendo nas páginas de captação (`components/captacao/Cta.tsx`, `ConciergeLink`); (c) o item "Cuidado" aparece no menu de todo cliente logado (`components/navItems.ts`), e DECISOES, seção 5, manda não divulgar o menu antes dos pré-requisitos. Se não houver quem corrija, conviva: mande sempre o link direto `[SITE]/pro/cadastro` e passe o WhatsApp por cartaz e QR.
+**P14, verificação atualizada em 27/11/2026.** Com backend, `/register-provider` já redireciona ao cadastro real; usar `/pro/cadastro` na comunicação. O link do concierge passou a aparecer no fim de `/pedido` com backend configurado e o menu Cuidado passou a obedecer ao portão de acesso em 24/11. Conferir os fluxos no ensaio da Semana 0. O registro das lacunas originais e suas correções está no §16.1. [Decisões](../DECISOES.md)
 
 **Regra do relógio.** O D1 é a primeira segunda-feira em que P1, P3, P4, P6, P7, P8, P9, P10 e P13 estão verdes. **Estado em 08/11/2026:** a janela da Semana 0 (26/10 a 06/11) já fechou, e nada no repositório registra quais itens estão verdes. Antes de 09/11, o dono confirma item a item; se algum bloqueante não estiver verde, o D1 vai para a próxima segunda com tudo verde e as datas da seção 7 são refeitas. P5 (Asaas) pode atrasar: sem ele você recruta, mas não fala de Pro nem de cobrança (O02, seção 2), e o relógio do G2 fica pausado até P5 ficar verde. Em qualquer bloqueio externo depois do D1 (aprovação do Asaas, resposta do advogado), o relógio **pausa** só para o portão afetado, por no máximo 14 dias; passado isso, replaneje por escrito. Calendário de referência deste documento: **D1 = segunda 09/11/2026, D45 = quarta 23/12/2026**; se o D1 mudar, mude as datas e marque os feriados da janela (lista na seção 7).
 
@@ -214,7 +240,7 @@ As metas são do plano; as definições abaixo são minhas, para que "contar" te
 
 | Portão | Meta do plano | Definição operacional | Fonte | Não conta | Janela |
 |---|---|---|---|---|---|
-| **G1** | 30 ou mais prestadores usando a agenda toda semana | Prestador aprovado com ao menos 1 **evento de agenda** na semana ISO (segunda a domingo, horário de São Paulo): status de atendimento mudado por ele (`booking_events.actor_id`), horário (`availability.created_at`) ou folga (`time_off.created_at`) cadastrados. `bookings` não guarda quem criou o atendimento (O08, nota 1), então a criação sozinha não conta. Passa com 30 ou mais prestadores distintos **em cada uma** das duas últimas semanas completas antes do D45 (semanas 5 e 6) | banco (`kpis.sql`, O08) | contas de teste; cuidador por plantão (plantão não é agenda); eventos feitos por você no aparelho do prestador durante uma sessão de ajuda | semanas 5 e 6 |
+| **G1** | 30 ou mais prestadores usando a agenda toda semana | Prestador aprovado com ao menos 1 **evento de agenda** na semana ISO (segunda a domingo, horário de São Paulo): status de atendimento mudado por ele (`booking_events.actor_id`), horário (`availability.created_at`) ou folga (`time_off.created_at`) cadastrados. `bookings` não guarda quem criou o atendimento (O08, §2.3, item 1), então a criação sozinha não conta. Passa com 30 ou mais prestadores distintos **em cada uma** das duas últimas semanas completas antes do D45 (semanas 5 e 6) | banco (`kpis.sql`, O08) | contas de teste e eventos de atendimento cujo cliente ou prestador seja de teste; cuidador por plantão (plantão não é agenda); eventos feitos por você no aparelho do prestador durante uma sessão de ajuda | semanas 5 e 6 |
 | **G2** | 20 ou mais serviços pagos pela plataforma | Serviço = atendimento ou orçamento aceito com ao menos um pagamento `received` ou `confirmed` em `payments`, de cliente real, no valor real do serviço. Conta uma vez por atendimento ou orçamento; reembolso ou estorno retira. Relate à parte: por trilha (A ou B), por prestador, por categoria e valor total | banco (`payments`, `bookings`, `quotes`) | testes de R$ 1,00; contas de teste; você, familiares, funcionários e o próprio prestador como pagador (mesmo CPF); plantões do Cuidado (não há pagamento no app); divisão de um serviço em vários pagamentos | D1 a D45 |
 | **G3** | 70% ou mais dos pedidos com proposta qualificada dentro de 2 h | **Pedido válido:** categoria e distrito dentro do piloto, com o quê, onde e quando, de pessoa real, sem duplicidade e sem ser ensaio. **Proposta qualificada:** de prestador aprovado naquela ocupação e distrito, com preço em reais e quando pode ir, **entregue ao cliente**. **Relógio:** do recebimento do pedido (ou da abertura da janela de atendimento, se chegou fora dela) até a entrega da primeira proposta qualificada. Passa com 70% ou mais dos pedidos válidos da janela, **com no mínimo 30 pedidos válidos**; abaixo disso o resultado é "sem prova", não "verde" | Trilha A: `requests.created_at` e `proposals.created_at` (o banco já exige prestador aprovado, ocupação, bairro e preço maior que zero); Trilha B: planilha `pedidos` | pedidos de ensaio; pedido que o cliente cancelou ou deixou sem resposta a uma pergunta sua por 2 h (registre o motivo); fora do escopo (conte à parte como demanda) | D22 a D45 |
 | **G4** | 3 ou mais famílias na linha Cuidado | Família = casa (`households`) com ao menos 1 plantão concluído (`shifts.status = 'completed'`, com check-in e check-out) e relatório do dia enviado (`daily_reports`), sem incidente grave aberto. Passa com 3 casas distintas. Se a família ou o cuidador não conseguir usar o app, registre na planilha `cuidado` com a marca "fora do app": conta para o portão, mas é falha de produto a anotar | banco e planilha `cuidado` | casa de teste ou de familiar seu | D1 a D45 |
@@ -514,7 +540,7 @@ Regra: **registre no mesmo dia.** As fontes são três: o banco (`/admin` agora,
 | Serviços concluídos e pagos no app | G2 (seção 5.1) | banco | semanal |
 | Prestadores ativos na semana | G1 (seção 5.1) | banco | semanal |
 | Liquidez por categoria e distrito | G3 (seção 5.1) | banco e planilha `pedidos` | log diário; leitura semanal |
-| Parcela paga no app (indício de vazamento) | serviços pagos no app ÷ serviços concluídos | planilha e banco | semanal |
+| Parcela paga no app (indício de vazamento) | atendimentos de origem `platform` concluídos e pagos no app ÷ todos os atendimentos de origem `platform` concluídos no período (exclusões do O08 §2.3) | planilha e banco | semanal |
 | Funil de prestadores | seção 5.2 | planilha `prestadores` e banco | semanal |
 | Cuidado | G4, plantões concluídos, cancelamentos e cobertura | banco e planilha `cuidado` | semanal |
 | Incidentes e violações de regra (meta: zero violação) | contagem com gravidade; violação = promessa proibida, documento fora do app, dinheiro fora do Asaas | planilha e `audit_log` | semanal |
@@ -677,7 +703,7 @@ Reais por item, em faixa. Tudo `[estimativa]`, exceto onde há `[fonte]`. Cobre 
 |---|---|---|---:|---|
 | A1 | Supabase Pro | US$ 25 por mês × 3 faturas × 5,04. O plano inclui US$ 10 de crédito de computação (cobre uma instância Micro). O Free pausa o projeto após 1 semana sem uso e limita a 2 projetos ativos [F6] | 378 a 450 | fonte e cálculo; a faixa alta inclui câmbio e tributos do cartão |
 | A2 | Domínio .com.br | 1 ano | 40 a 100 | estimativa; não abri o preço (o Registro.br exige JavaScript) |
-| A3 | Hospedagem do site (PWA) | provedor ainda não escolhido | 0 a 300 | incerto (seção 16) |
+| A3 | Hospedagem do site (PWA) | Cloudflare Pages como destino; obter custo real da conta | 0 a 300 | estimativa histórica (O14) |
 | A4 | E-mail (Resend) | Free: US$ 0, 3.000 e-mails por mês e 100 por dia. Pro: US$ 20 por mês (R$ 101) [F11]. O login por código também usa e-mail | 0 a 302 | fonte |
 | A5 | Número dedicado do WhatsApp Business | chip R$ 15 a 40 e recarga R$ 30 a 60 por mês × 3. O app é gratuito [incerto: a página F10 não diz isso]. Aparelho não incluído | 105 a 220 | estimativa |
 | A6 | WhatsApp Cloud API (só se ligar os avisos automáticos) | até 1.500 mensagens de utilidade × R$ 0,035 [incerto: a tabela em reais (F9) não abriu; a página F8 mostra 0,68 centavo de dólar por mensagem de utilidade no Brasil, o que bate com R$ 0,035 ao câmbio de 5,04; a tarifa de marketing R$ 0,3217 não foi confirmada] | 0 a 53 | fonte e premissa de volume; base: desligado |
@@ -717,11 +743,11 @@ P = probabilidade e I = impacto, em B (baixa), M (média) ou A (alta), por juíz
 
 | # | Risco | P | I | Sinal precoce | Resposta | Quem |
 |---|---|:-:|:-:|---|---|---|
-| R1 | Split pela conta da plataforma (Trilha A) com dinheiro real antes do parecer | M | A | Primeira cobrança pela Trilha A sem resposta de Q1 | Trilha B primeiro; Trilha A só com clientes conhecidos e valores baixos até o parecer; decisão registrada | Dono e advogado `[CONDICIONAL: depende de parecer]` |
+| R1 | Split pela conta da plataforma (Trilha A) com dinheiro real antes do parecer | M | A | Primeira cobrança pela Trilha A sem resposta de Q1 | Trilha compatível com o contrato e os portões aprovados; registrar o parecer e o ensaio antes da primeira cobrança real pela plataforma | Dono e advogado `[CONDICIONAL: depende de parecer]` |
 | R2 | Cuidado: vínculo trabalhista e responsabilidade civil (LC 150/2015 e idosos, citados em DECISOES, seção 5; lei não reaberta: planalto bloqueado em 08/11/2026 [incerto]) | M | A | Cuidador com mais de 2 dias por semana na mesma casa; família tratando o cuidador como empregado; qualquer incidente | Sem plantão pago antes de P11; trava de 2 dias no banco; termos revisados; seguro; alternativa de contratação direta pela família no O06 | Dono e advogado trabalhista `[CONDICIONAL: depende de parecer]` |
 | R3 | Dinheiro do Cuidado fora do app, sem modelagem fiscal | M | A | Primeira cobrança de plantão | Definir com contador e advogado antes; nunca usar conta pessoal; registrar cada valor em `dinheiro` e `cuidado` | Dono e contador `[CONDICIONAL: depende de parecer]` |
 | R4 | Regras de divulgação e captação dos conselhos | M | M | Prestador pede "garantia de clientes" ou ranking; reclamação de conselho | Vender a ferramenta, não clientes; sem ranking onde `rating_ranking = false`; sem depoimento; seguir a matriz da Frente A | Dono e Frente A `[CONDICIONAL: depende de parecer]` |
-| R5 | O produto nunca rodou em produção (Asaas, WhatsApp, Resend, login) | A | A | Falha no ensaio da Semana 0; código de login não chega; webhook com erro | Semana 0 com o plano de testes do I01 e os runbooks do I04; pausa do relógio; plano B manual (cobrar no painel do Asaas, avisar à mão) | Dono |
+| R5 | O fluxo completo de login, atendimento, aviso externo e pagamento ainda aguarda evidência ponta a ponta em produção | A | A | Falha no ensaio da Semana 0; código de login não chega; webhook com erro | Semana 0 com o plano de testes do I01 e os runbooks do I04; pausa do relógio; plano B manual (cobrar no painel do Asaas, avisar à mão) | Dono |
 | R6 | Login por código trava quem não usa e-mail no celular | M | A | Mais de 20% dos cadastros iniciados param no login `[proposta]` | Onboarding assistido, lado a lado; criar ou recuperar o e-mail no celular; SMS só depois do I02 | Dono |
 | R7 | Oferta sem demanda: aprovados que nunca recebem pedido saem | A | M | Menos de 30% dos aprovados com resposta qualificada no CP5 | Freio de oferta (seção 4); dar a cada aprovado uma tarefa de agenda; priorizar demanda | Dono |
 | R8 | Demanda sem oferta: pedido sem proposta em 2 h | M | A | Abaixo de 35% no CP3 | Reserva de 3 a 5 prestadores por categoria; acionar 5 em vez de 3; encurtar a janela; recusar o que está fora do escopo | Dono |
@@ -749,7 +775,7 @@ Os itens 1, 2, 3, 4, 6 e 9 foram corrigidos no código em 24/11/2026 (`docs/DECI
 Complementam as do O02 (seção 14.2) e do O05 (seção 11.4).
 
 1. **Sem WhatsApp dentro de `/pedido` com backend ligado.** O botão fica no bloco `!online` (`pages/cliente/Pedido.tsx`); com backend, `/pedido` exige login por código. `VITE_CONCIERGE_WHATSAPP` (`config/features.ts`) segue aparecendo nas páginas de captação (`components/captacao/Cta.tsx`). **Corrigido em 24/11/2026:** o link aparece também no passo final de `/pedido` com backend.
-2. **Nenhum aviso de pedido novo ao prestador.** Só existem 6 modelos de notificação; o prestador só vê o pedido ao abrir `/pro/pedidos`. A meta de 2 h depende, hoje, do seu aviso manual. **Corrigido em 24/11/2026 (DD65):** modelo `pedido_novo` e gatilho; são 10 modelos. Enquanto o envio real não estiver configurado e testado, o aviso manual continua necessário.
+2. **Lacuna observada em outubro:** o prestador consultava `/pro/pedidos` e a operação precisava avisá-lo manualmente. **Corrigido em 24/11/2026 (DD65):** modelo `pedido_novo` e gatilho; são 10 modelos. Enquanto o envio real não estiver configurado e testado, o aviso manual continua necessário.
 3. **`/pedido` oferece os 96 distritos,** sem filtro do piloto nem lista de espera. **Corrigido em 24/11/2026 (DD60):** filtro por `pilot_neighborhoods` e lista de espera.
 4. **Cuidado: o admin não cria plantão por uma família.** A inserção em `shifts` é só do dono da casa (`shifts_insert_own`). **Corrigido em 24/11/2026 (DD61).**
 5. **Cuidado: a margem do plano não existe no app.** `createShift` grava o mesmo valor em `rate_cents` e `caregiver_payout_cents`, e nenhum pagamento se liga a plantão.
@@ -761,7 +787,7 @@ Complementam as do O02 (seção 14.2) e do O05 (seção 11.4).
 11. **A regra dos 30% (DECISOES, seção 7) conta propostas no app** e subestima o concierge, em que a resposta sai por WhatsApp.
 12. **"Ativar recebimento" pede nove campos sempre e um a mais para CPF** (nome, e-mail, CPF ou CNPJ, celular, renda mensal, CEP, endereço, número, bairro; a data de nascimento é obrigatória quando é CPF, `supabase/functions/asaas-onboard/handler.ts`): atrito no cadastro assistido.
 13. **O pagador precisa informar CPF ou CNPJ** nas duas rotas de cobrança (`payments-create` no primeiro pagamento; `charges-create` sempre): na Trilha B é o prestador quem digita esse dado do cliente.
-14. **Hospedagem do site (PWA) não tem documento no plano.**
+14. **Hospedagem do site (PWA).** A entrega e os bloqueios de publicação estão no [O14](14-entrega-multiplataforma.md). O procedimento de publicação e recuperação está no [runbook](../RUNBOOKS.md).
 15. **Dependências de política:** `cuidador-de-idosos` e toda a área `eletricista` (0 de 42) estão `a_confirmar`.
 
 ### 16.2 Pontos para o advogado e para o contador
@@ -897,7 +923,7 @@ Saída conferida em 23/10/2026 e reproduzida em 08/11/2026 (mesmos números; Ita
 
 ## Apêndice B. Conferências no código
 
-O que afirmei sobre o produto e onde conferi, em 23/10/2026. Caminhos a partir de `apps/web/`.
+Registro histórico do que foi conferido em 23/10/2026. Para o estado vigente, consulte a linha de base no início deste documento, §16 e o [O15](15-mobilidade-de-prestadores.md). Caminhos a partir de `apps/web/`.
 
 | # | O que o plano afirma | Onde conferi |
 |---|---|---|

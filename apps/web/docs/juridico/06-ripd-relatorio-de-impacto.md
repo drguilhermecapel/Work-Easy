@@ -677,6 +677,19 @@ Depende de G01, G02 e G17.
 | DPA | Contrato de tratamento de dados entre quem decide (controlador) e quem trata por conta dele (operador). |
 | ROPA | Registro das operações de tratamento (`07-registro-das-operacoes-de-tratamento.md`). |
 
+## Adendo de risco da mobilidade opcional — avaliação proposta em 27/11/2026
+
+A [OP-29](07-registro-das-operacoes-de-tratamento.md) trata de transporte de prestador para um atendimento. O risco principal é revelar o domicílio ou a rotina por ponto, mapa, recibo ou mensagem. A repetição de trechos em uma microárea também permite reidentificação em relatórios. Uma cotação pode envolver um endereço de terceiro antes da contratação.
+
+| Exposição | Salvaguarda e evidência prévia à operação |
+|---|---|
+| Origem revelada ao cliente ou a outro prestador | Usar ponto escolhido pelo passageiro, ETA e estado limitado ao atendimento. Testar dois clientes e dois profissionais trocando IDs e conferir respostas, mensagens, notificações e recibos para o pagador. |
+| Dados do serviço enviados ao parceiro ou expostos em logs | Permitir somente os campos de passageiro/trecho necessários à capacidade contratada. Validar exemplos rejeitados de texto clínico, de serviço e de valor de honorários. Auditar por IDs, evento, ator e hora. |
+| Retenção indefinida ou nova exposição após restauração | Aplicar os prazos da OP-29 a cotações expiradas, viagens extintas e a cópias operacionais. Ensaiar expurgo, retenção individual com data final, descarte ao vencer, reexpurgo após restaurar backup e acesso/exportação por titular. |
+| Antecipar rotinas pessoais a partir de métricas e escala | Restringir dados de rota por função. Planejar oferta por microárea e janela; suprimir recortes divulgados que permitam identificar prestador, cliente ou residência. Disponibilizar canal humano de incidente. |
+
+Encarregado e jurídico devem identificar em contrato o papel efetivo de cada parte, o fluxo para direitos e incidentes, destinatários, subcontratados, país e eventual mecanismo de transferência. Registrar risco residual e decisão do responsável com evidência do ensaio. A consulta de localização pontual existente em outros fluxos do app não comprova nenhuma dessas proteções para mobilidade. [LGPD](https://planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709compilado.htm)
+
 ## Pontos para o advogado
 
 ### Perguntas abertas (copie e envie)
