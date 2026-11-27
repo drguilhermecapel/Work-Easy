@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { db } from '../../services/client';
 import {
+  toRidePoint as point,
+  type Draft,
   completeRoute,
   listRideRouteCases,
   measureRoute,
@@ -9,81 +11,17 @@ import {
   type RideRouteCase,
 } from '../../services/rideRoutes';
 
-type Draft = { label: string; lat: string; lng: string };
+import { RidePointInput as PointInput } from './RidePointInput';
+import { LocalRideMap } from './LocalRideMap';
+import {
+  getRouteDetail,
+  measureAutomaticRoute,
+  setRouteWaypoints,
+  type RouteDetail,
+} from '../../services/rideLocalMap';
 const blank: Draft = { label: '', lat: '', lng: '' };
 const field = 'w-full rounded-lg border border-slate-300 p-2';
 const button = 'rounded-lg border border-slate-300 px-3 py-2 font-semibold';
-function point(draft: Draft): RidePoint {
-  const lat = Number(draft.lat),
-    lng = Number(draft.lng);
-  if (
-    !draft.label.trim() ||
-    !draft.lat.trim() ||
-    !draft.lng.trim() ||
-    !Number.isFinite(lat) ||
-    !Number.isFinite(lng) ||
-    Math.abs(lat) > 90 ||
-    Math.abs(lng) > 180
-  )
-    throw new Error('Confira o endereço e as coordenadas.');
-  return { label: draft.label.trim(), lat, lng };
-}
-function PointInput({ name, value, set }: { name: string; value: Draft; set: (d: Draft) => void }) {
-  const [message, setMessage] = useState('');
-  return (
-    <fieldset className="space-y-2 rounded border p-3">
-      <legend>{name}</legend>
-      <label className="block">
-        Endereço ou ponto de encontro
-        <input
-          className={field}
-          required
-          maxLength={200}
-          value={value.label}
-          onChange={(e) => set({ ...value, label: e.target.value })}
-        />
-      </label>
-      <div className="grid grid-cols-2 gap-2">
-        {(['lat', 'lng'] as const).map((k) => (
-          <label key={k}>
-            {k === 'lat' ? 'Latitude' : 'Longitude'}
-            <input
-              className={field}
-              type="number"
-              step="any"
-              min={k === 'lat' ? -90 : -180}
-              max={k === 'lat' ? 90 : 180}
-              required
-              value={value[k]}
-              onChange={(e) => set({ ...value, [k]: e.target.value })}
-            />
-          </label>
-        ))}
-      </div>
-      <button
-        type="button"
-        className={button}
-        onClick={() => {
-          if (!navigator.geolocation) {
-            setMessage('Digite as coordenadas do ponto.');
-            return;
-          }
-          navigator.geolocation.getCurrentPosition(
-            (p) => {
-              set({ ...value, lat: String(p.coords.latitude), lng: String(p.coords.longitude) });
-              setMessage('Posição preenchida. Confira antes de enviar.');
-            },
-            () => setMessage('Posição indisponível. Digite as coordenadas.'),
-            { maximumAge: 0, timeout: 10000 },
-          );
-        }}
-      >
-        Usar minha posição neste ponto
-      </button>
-      {message && <p role="status">{message}</p>}
-    </fieldset>
-  );
-}
 function DisplayPoint({ name, value }: { name: string; value: RidePoint | null }) {
   return value ? (
     <p>
@@ -138,6 +76,8 @@ export function RouteCases({ bookingId, areas, admin = false, isServiceClient = 
   const [serviceEnd, setServiceEnd] = useState<'origin' | 'destination'>('destination');
   const [origin, setOrigin] = useState(blank),
     [dest, setDest] = useState(blank);
+  const [stops, setStops] = useState<Draft[]>([]);
+  const [instruction, setInstruction] = useState('');
   const op = useRef<{ payload: string; key: string } | null>(null);
   useEffect(() => {
     let active = true;
@@ -173,9 +113,18 @@ export function RouteCases({ bookingId, areas, admin = false, isServiceClient = 
             try {
               const from = showOrigin ? point(origin) : null,
                 to = showDest ? point(dest) : null;
-              const payload = JSON.stringify([bookingId, originArea, destArea, from, to, serviceEnd]);
+              const payload = JSON.stringify([
+                bookingId,
+                originArea,
+                destArea,
+                from,
+                to,
+                serviceEnd,
+                stops,
+                instruction,
+              ]);
               if (op.current?.payload !== payload) op.current = { payload, key: crypto.randomUUID() };
-              await prepareRoute(
+              const created = await prepareRoute(
                 op.current.key,
                 bookingId,
                 originArea,
@@ -184,9 +133,23 @@ export function RouteCases({ bookingId, areas, admin = false, isServiceClient = 
                 to,
                 bookingId ? serviceEnd : null,
               );
+              if (created?.id && !isServiceClient && (stops.length || instruction.trim()))
+                await setRouteWaypoints(created.id, stops.map(point), instruction);
+              if (created?.id && from && to) {
+                try {
+                  await measureAutomaticRoute(created.id);
+                  setMessage('Percurso medido. Confira o trajeto e faça sua cotação.');
+                } catch {
+                  setMessage(
+                    'Pontos registrados. A operação pode medir este percurso enquanto o roteador está indisponível.',
+                  );
+                }
+              } else setMessage('Pontos registrados. A outra parte pode completar o trajeto.');
               setOrigin(blank);
               setDest(blank);
-              setMessage('Pontos registrados. A operação verificará o trajeto antes da cotação.');
+              setStops([]);
+              setInstruction('');
+              op.current = null;
               changed();
             } catch (err) {
               setMessage(err instanceof Error ? err.message : 'Não foi possível registrar os pontos.');
@@ -226,8 +189,53 @@ export function RouteCases({ bookingId, areas, admin = false, isServiceClient = 
               </select>
             </label>
           )}
-          {showOrigin && <PointInput name="Embarque" value={origin} set={setOrigin} />}
-          {showDest && <PointInput name="Destino" value={dest} set={setDest} />}
+          {showOrigin && <PointInput name="Embarque" area={originArea} value={origin} set={setOrigin} />}
+          {showDest && <PointInput name="Destino" area={destArea} value={dest} set={setDest} />}
+          {!isServiceClient && (
+            <>
+              {stops.map((stop, i) => (
+                <div key={i}>
+                  <PointInput
+                    name={'Parada ' + (i + 1)}
+                    value={stop}
+                    set={(next) => setStops(stops.map((s, j) => (j === i ? next : s)))}
+                  />
+                  <button
+                    className={button}
+                    type="button"
+                    onClick={() => setStops(stops.filter((_, j) => i !== j))}
+                  >
+                    Remover parada {i + 1}
+                  </button>
+                  {i > 0 && (
+                    <button
+                      type="button"
+                      className={button}
+                      onClick={() =>
+                        setStops(stops.map((s, j) => (j === i - 1 ? stops[i] : j === i ? stops[i - 1] : s)))
+                      }
+                    >
+                      Antecipar parada {i + 1}
+                    </button>
+                  )}
+                </div>
+              ))}
+              {stops.length < 5 && (
+                <button type="button" className={button} onClick={() => setStops([...stops, blank])}>
+                  Adicionar parada nesta corrida
+                </button>
+              )}
+              <label className="block">
+                Instrução de embarque (opcional)
+                <input
+                  className={field}
+                  maxLength={180}
+                  value={instruction}
+                  onChange={(e) => setInstruction(e.target.value)}
+                />
+              </label>
+            </>
+          )}
           <button className={button} disabled={busy}>
             Enviar pontos para medição
           </button>
@@ -260,6 +268,23 @@ function RouteReview({
   changed: () => void;
 }) {
   const [missing, setMissing] = useState(blank);
+  const [detail, setDetail] = useState<RouteDetail | null>(null);
+  useEffect(() => {
+    let active = true;
+    if ((r.status === 'verified' && !isServiceClient && !admin) || (admin && r.can_verify)) {
+      void getRouteDetail(r.id).then(
+        (d) => {
+          if (active) setDetail(d);
+        },
+        () => {
+          if (active) setDetail(null);
+        },
+      );
+    }
+    return () => {
+      active = false;
+    };
+  }, [r.id, r.status, r.can_verify, isServiceClient, admin]);
   const [meters, setMeters] = useState(''),
     [minutes, setMinutes] = useState(''),
     [reference, setReference] = useState('');
@@ -297,9 +322,18 @@ function RouteReview({
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            void task(() =>
-              completeRoute(r.id, fillOrigin ? point(missing) : null, fillOrigin ? null : point(missing)),
-            );
+            void task(async () => {
+              await completeRoute(
+                r.id,
+                fillOrigin ? point(missing) : null,
+                fillOrigin ? null : point(missing),
+              );
+              try {
+                await measureAutomaticRoute(r.id);
+              } catch {
+                /* The assigned reviewer can complete this case. */
+              }
+            });
           }}
         >
           <PointInput
@@ -371,7 +405,35 @@ function RouteReview({
           </button>
         </form>
       )}
-      {r.status === 'verified' && (
+      {r.status === 'awaiting_review' && !admin && (
+        <button
+          type="button"
+          className={button}
+          disabled={busy}
+          onClick={() => void task(() => measureAutomaticRoute(r.id))}
+        >
+          Calcular rota por vias
+        </button>
+      )}
+      {detail && ((!admin && !isServiceClient && r.status === 'verified') || (admin && r.can_verify)) && (
+        <>
+          {detail.stops.map((p, i) => (
+            <DisplayPoint key={i} name={'Parada ' + (i + 1)} value={p} />
+          ))}
+          {detail.instruction && <p>Instrução de embarque: {detail.instruction}</p>}
+          {detail.geometry && (
+            <LocalRideMap
+              points={[r.origin, ...detail.stops, r.destination].filter((p): p is RidePoint => p !== null)}
+              route={detail.geometry.coordinates}
+              label="Percurso previsto"
+            />
+          )}
+          {detail.source === 'osrm/car/static' && (
+            <p>Tempo estimado pelo percurso viário, sem dados de trânsito ao vivo.</p>
+          )}
+        </>
+      )}
+      {r.status === 'verified' && r.minutes !== null && r.meters !== null && (
         <p>
           {r.meters} m · {r.minutes} min
         </p>

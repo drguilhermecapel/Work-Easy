@@ -140,13 +140,20 @@ update private.ride_incident_media_holds set until_at=now()-interval '1 minute';
 select private.purge_ride_safety();
 select is((select count(*) from private.ride_incident_media),0::bigint,'Expired hold permits evidence purge');
 -- Change of assigned driver invalidates a PIN, old chat and all invites.
-update public.ride_legs set driver_id=tests.uid('provider_c'),status='arriving' where id=pg_temp.key('leg2');
 select tests.authenticate_as('client_a');
-select set_config('tests.old203',public.ride_issue_pin(pg_temp.key('leg2'))->>'pin',true);
-select set_config('tests.old_invite203',public.ride_share_invite(pg_temp.key('leg2'),'client_b@test.local',5)->>'token',true);
+select set_config('tests.replacement_ride203',public.ride_consent((public.ride_quote(gen_random_uuid(),null,null,
+ '[{"origin":"Saúde","destination":"Jabaquara","payer":"passenger"}]')->>'id')::uuid,true)->>'ride_id',true);
 select tests.clear_authentication();
-update public.ride_legs set status='requested',driver_id=null where id=pg_temp.key('leg2');
-select ok(not exists(select from private.ride_pins where leg=pg_temp.key('leg2')),'Assignment change invalidates the earlier PIN');
+select set_config('tests.replacement_leg203',id::text,true) from public.ride_legs where ride_id=current_setting('tests.replacement_ride203')::uuid;
+select tests.authenticate_as('provider_c');
+select public.ride_accept_offer(current_setting('tests.replacement_leg203')::uuid,gen_random_uuid());
+select public.ride_transition(current_setting('tests.replacement_leg203')::uuid,'arriving',gen_random_uuid());
+select tests.authenticate_as('client_a');
+select set_config('tests.old203',public.ride_issue_pin(current_setting('tests.replacement_leg203')::uuid)->>'pin',true);
+select set_config('tests.old_invite203',public.ride_share_invite(current_setting('tests.replacement_leg203')::uuid,'client_b@test.local',5)->>'token',true);
+select tests.clear_authentication();
+update public.ride_legs set status='requested',driver_id=null where id=current_setting('tests.replacement_leg203')::uuid;
+select ok(not exists(select from private.ride_pins where leg=current_setting('tests.replacement_leg203')::uuid),'Assignment change invalidates the earlier PIN');
 select tests.authenticate_as('client_b');
 select is(public.ride_shared_progress(current_setting('tests.old_invite203')),null::jsonb,'Reassignment also withdraws an existing trusted invite');
 select tests.clear_authentication();

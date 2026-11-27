@@ -48,6 +48,19 @@ describe('check-bundle-size', () => {
     expect(result.stderr).toContain('orçamento(s) estourado(s)');
   });
 
+  it('budgets only the optional map distribution separately, including its worker', () => {
+    const dist = makeDist(Buffer.from('0'));
+    const name = 'maplibre-gl-csp-AbC123xY.js';
+    writeFileSync(join(dist, 'assets', name), randomBytes(220_000));
+    expect(runGate(dist).status).toBe(0);
+    writeFileSync(join(dist, 'assets', 'maplibre-gl-csp-worker-AbC123xY.js'), randomBytes(220_000));
+    expect(runGate(dist).stdout).toMatch(/ACIMA mapa opcional/);
+    writeFileSync(join(dist, 'index.html'), '<script src="/assets/' + name + '"></script>');
+    expect(runGate(dist).stdout).toMatch(/ACIMA carga inicial/);
+    writeFileSync(join(dist, 'assets', 'OutraPagina-AbC123xY.js'), randomBytes(19_000));
+    expect(runGate(dist).stdout).toMatch(/ACIMA maior página/);
+  });
+
   it('exits with 2 when there is no build to read', () => {
     const missing = join(tmpdir(), `check-size-missing-${process.pid}-${Date.now()}`);
     const result = runGate(missing);
