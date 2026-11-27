@@ -6,6 +6,7 @@ Decisão de 27/11/2026. O WorkEasy cadastra motoristas e intermedeia corridas em
 
 | Decisão | Fonte principal |
 |---|---|
+| Ampliação para paridade mundial, aplicativo único e primeira praça | [O17 · Matriz por jornada, mercado e evidência](17-paridade-funcional-de-mobilidade.md) |
 | Regra de 10%, transição do Pro, categorias e vigência | [D14 e portões financeiros de serviços](../DECISOES.md) |
 | Preço próprio, referência Uber/99, sensibilidade, renda e caixa | [O09](09-modelo-financeiro.md) e [planilha](09-modelo-financeiro.xlsx) |
 | Capacidades, autorizações, estados, dados e integrações | [Arquitetura](../ARQUITETURA.md#rede-direta-de-motoristas) |

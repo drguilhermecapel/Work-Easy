@@ -22,6 +22,7 @@ Marcas: **[fonte]** vem de fonte citada no plano estratégico privado; **[estima
 | D12 | Linha "Cuidado": só abrir ao público quando os pré-requisitos da seção 5 estiverem cumpridos | portão; o menu cumpre desde 24/11/2026 (DD59) |
 | D13 | Mobilidade opcional dos prestadores | histórico da alternativa com operador externo, preservada em D14 |
 | D14 | Rede direta de motoristas para o público e para prestadores, com corridas imediatas e agendadas. Comissão de 10% por trecho e por serviço intermediado em ocupação autorizada, inclusive recorrências e sem teto | direção de produto escolhida em 27/11/2026. Adesão, implantação e habilitação comercial requerem provas próprias |
+| D15 | Mobilidade mundial de referência em um único aplicativo WorkEasy, com modo motorista dedicado. São Paulo é a primeira praça. | direção de produto aprovada em 27/11/2026. O17 registra as entregas e a evidência por praça |
 
 ## 2. O que foi implementado nesta rodada
 
@@ -108,6 +109,12 @@ No Uber para Empresas, os termos brasileiros, §4.5, restringem alterações das
 **Migração comercial.** D14 substitui prospectivamente D5 para o serviço intermediado que passar ao novo regime. D1–D4 continuam a descrever a oferta anterior ou as assinaturas que permanecerem permitidas por D6. Antes da troca, identificar planos mistos ou já pagos, comunicar a mudança, obter novo aceite e acertar saldo/período com o pagador. Impedir cobrança cumulativa de assinatura e comissão pelos serviços do novo regime; preservar condições aceitas, descontos e estornos históricos. A proposta é distinta dos regimes de 6% e híbrido antes comparados em D13. D11 continua a rejeitar taxa geral ao cliente. A tarifa de uma viagem avulsa ou vinculada é apresentada como preço do próprio transporte.
 
 **Marcos de produção.** Registro de interesse, simulação, habilitação de condutor e veículo, acesso ao despacho real, cobrança e repasse têm controles próprios. A operação direta em São Paulo depende de enquadramento, credenciamento aplicável, seguros, emissão dos comprovantes, proteção de dados, atendimento em incidentes e fluxo PSP aprovado. O art. 6º, V do Decreto 56.981/2016 prevê taxa de intermediação pactuada para OTTC, observadas as demais condições do decreto e regras de preço. Os 10% devem ser pactuados com o motorista. A seção 4 continua a reger a habilitação financeira. Nenhuma viagem, contratação, cobrança ou despesa fica autorizada pela publicação desta decisão. [Termos e estado regulatório da rede](juridico/13-rede-direta-de-motoristas.md) · [Diligências sem envio](juridico/14-minutas-rede-direta.md)
+
+### D15. Paridade funcional de mobilidade no aplicativo WorkEasy
+
+Em 27/11/2026 o dono escolheu a mobilidade mundial da Uber como referência e um único aplicativo WorkEasy. Passageiro, prestador e motorista usam a conta existente, permissões por papel e a identidade visual do produto. Empresas e operação terão acesso aos fluxos que lhes competem. Priorizar São Paulo e registrar as demais modalidades por cidade, disponibilidade, fonte e data.
+
+O17 detalha as novas jornadas e os critérios para disponibilizá-las. A D14 rege a comissão, a migração dos serviços e a liberdade de recusar o transporte vinculado. Cada praça exige evidência para operação e cobrança. A aprovação desta direção registra R$ 0 de gasto autorizado. [Inventário e próximos marcos](operacao/17-paridade-funcional-de-mobilidade.md)
 
 ## 4. Portões para ligar o que está desligado
 
