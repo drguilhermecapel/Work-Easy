@@ -113,9 +113,10 @@ function LegAftercare({ legId, completed }: { legId: string; completed: boolean 
     {data?.document && <><div ref={body}><ReceiptBody receipt={data.document} /></div>
       <button type="button" className={action} onClick={print}>Imprimir este documento</button></>}
     {data && !data.document && <p>Nenhum documento disponível para este perfil.</p>}
-    {data?.can_rate && <div><RatingInput value={stars} onChange={setStars} name={id + '-stars'} disabled={busy} />
+    {data?.can_rate && data.stars != null && <p>Sua avaliação definitiva: {data.stars}/5.</p>}
+    {data?.can_rate && data.stars == null && <div><RatingInput value={stars} onChange={setStars} name={id + '-stars'} disabled={busy} />
       <button type="button" className={action} disabled={busy || stars === 0} onClick={() => void run(async () => {
-        await rateRide(legId, stars); setNotice('Avaliação registrada.');
+        await rateRide(legId, stars); setData({ ...data, stars }); setNotice('Avaliação registrada.');
       })}>Salvar avaliação do trecho</button></div>}
     {notice && <p role="status">{notice}</p>}<ErrorAlert error={error} />
   </div>;

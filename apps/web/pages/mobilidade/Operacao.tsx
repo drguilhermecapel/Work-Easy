@@ -1,4 +1,7 @@
 import { RideOrderPayments } from '../../components/mobility/RideOrderPayments';
+import { RideSafetyAdmin } from '../../components/mobility/safety/RideSafetyAdmin';
+import { releaseReservation } from '../../services/driverJourney';
+import {DriverCapacityReview} from '../../components/mobility/DriverCapacityReview';
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatDateTime, shortId } from '../../components/admin/format';
@@ -165,7 +168,7 @@ function OperationsPanel({ dashboard, userId, busy, run, reload }: ConsoleAction
   const [ledgerLeg, setLedgerLeg] = useState<string | null>(null);
   return (
     <>
-      {!dashboard.simulation && <RouteCases bookingId={null} areas={dashboard.areas} admin />}
+      {dashboard.quote_enabled && <RouteCases bookingId={null} areas={dashboard.areas} admin />}
       <section aria-label="Revisão de motoristas" className="space-y-2">
         <h2 className="text-lg font-semibold">Revisão de motoristas</h2>
         {dashboard.reviews.length === 0 && <EmptyState>Nenhuma ficha de motorista disponível para revisão.</EmptyState>}
@@ -198,6 +201,7 @@ function OperationsPanel({ dashboard, userId, busy, run, reload }: ConsoleAction
                   {reviewing === driver.driver_id && <DriverDossier driverId={driver.driver_id} onChanged={reload} />}
                 </Card>
               )}
+              {driver.status==='approved' && driver.driver_id!==userId && <DriverCapacityReview driverId={driver.driver_id}/>}
             </li>
           ))}
         </ul>
@@ -227,6 +231,13 @@ function OperationsPanel({ dashboard, userId, busy, run, reload }: ConsoleAction
                         Pagador: {leg.payer === 'provider' ? 'prestador' : leg.payer === 'client' ? 'cliente do serviço' : 'passageiro'} ·
                         Adicionais autorizados {amount(leg.extras_cents)} · Limite {amount(leg.limit_cents)}
                       </p>
+                      {dashboard.dispatch_waves && ride.scheduled_at && leg.can_review_no_show && (
+                        <details><summary>Revisar ausência do motorista</summary>
+                        <p>Consulte a ocorrência e confirme o contato com o motorista antes de devolver esta reserva ao despacho.</p>
+                        <button type="button" className={secondaryButton} disabled={busy}
+                          onClick={()=>void run('no-show:'+leg.id,key=>releaseReservation(leg.id,key,true))}>
+                          Confirmar ausência após o horário e buscar substituto
+                        </button></details>)}
                       {leg.status === 'unknown' && (
                         <ResolveLeg
                           busy={busy}
@@ -270,7 +281,7 @@ export default function Operacao() {
   return (
     <>
       <DriverConsole title="Operação de corridas" content={OperationsPanel} />
-      {authUser && <RideSupportQueue key={authUser.id} />}
+      {authUser && <><RideSupportQueue key={authUser.id} /><RideSafetyAdmin/></>}
     </>
   );
 }

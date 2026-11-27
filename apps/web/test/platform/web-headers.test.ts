@@ -76,7 +76,7 @@ describe('public/_headers: política de conteúdo do site', () => {
 
   it('libera só os hosts que o app contacta', () => {
     const d = policy();
-    expect(d.get('connect-src')).toEqual(["'self'", 'https://*.supabase.co', ...SENTRY]);
+    expect(d.get('connect-src')).toEqual(["'self'", 'https://*.supabase.co', 'wss://*.supabase.co', ...SENTRY]);
     expect(d.get('img-src')).toEqual(["'self'", 'data:', 'blob:']);
     expect(d.get('font-src')).toEqual(["'self'"]);
     expect(d.get('manifest-src')).toEqual(["'self'"]);
@@ -84,12 +84,12 @@ describe('public/_headers: política de conteúdo do site', () => {
     expect(d.get('frame-src')).toEqual(["'none'"]);
   });
 
-  it('não tem nenhum host de websocket', () => {
-    expect(HEADERS).not.toMatch(/wss?:/);
+  it('só abre WebSocket criptografado para o projeto Supabase', () => {
+    expect(policy().get('connect-src')?.filter(v => /^wss?:/.test(v))).toEqual(['wss://*.supabase.co']);
   });
 
-  it('o app não abre canal Realtime, então o site não precisa de websocket', () => {
-    expect(appSourceFiles().filter(file => /\.channel\(/.test(read(file)))).toEqual([]);
+  it('somente o despacho autenticado abre canal Realtime', () => {
+    expect(appSourceFiles().filter(file => /\.channel\(/.test(read(file)))).toEqual(['services/driverJourney.ts']);
   });
 
   it('style-src aceita só self e o hash de cada folha de impressão', () => {
@@ -135,7 +135,7 @@ describe('verificador de cabeçalhos: recusa uma política que volta a ser ampla
   });
 
   it.each([
-    ['wss:// em connect-src, sem Realtime', "connect-src 'self' https://*.supabase.co", "connect-src 'self' https://*.supabase.co wss://*.supabase.co"],
+    ['servidor WebSocket externo', "wss://*.supabase.co", "wss://terceiro.example"],
     ['unsafe-inline em style-src', "style-src 'self' 'sha256", "style-src 'self' 'unsafe-inline' 'sha256"],
     ['host do Supabase em img-src, sem imagem do Storage', "img-src 'self' data: blob:;", "img-src 'self' data: blob: https://*.supabase.co;"],
     ['frame-ancestors removido', "frame-ancestors 'none'; ", ''],

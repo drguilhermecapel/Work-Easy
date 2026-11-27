@@ -1,7 +1,10 @@
+import {RideClassChoices} from '../../components/mobility/RideClassChoices';
+import {chooseRideClass} from '../../services/rideLocalMap';
 import { useRef, useState, type FormEvent } from 'react';
 import ErrorAlert from '../../components/ErrorAlert';
 import { formatCents } from '../../lib/money';
 import { saoPauloDateTime } from '../../lib/timezone';
+import { quoteRideWithAccess } from '../../services/rideSafety';
 import { quoteRide, type RideLegInput, type RidePayer } from '../../services/rides';
 
 const field = 'block w-full mt-1 rounded-xl border border-gray-300 bg-white p-2.5 text-gray-900';
@@ -20,13 +23,14 @@ function ExtraChoices({ options, selected, onChange, label }: {
 function RouteChoice({ routes, value, onChange, label, required }: {
   routes: RouteOption[]; value: string; onChange: (v: string) => void; label: string; required: boolean;
 }) {
-  if (!routes.length) return required ? <p>Cadastre os pontos e aguarde a medição da operação para cotar este trecho.</p> : null;
+  if (!routes.length) return required ? <p>Confirme os pontos e calcule o percurso para cotar este trecho. A operação também pode medir o trajeto.</p> : null;
   return <label className="block">{label}<select className={field} value={value} required={required} onChange={e => onChange(e.target.value)}>
-    <option value="">{required ? 'Selecione uma medição da operação' : 'Usar pontos de encontro do catálogo'}</option>
+    <option value="">{required ? 'Selecione um trajeto medido' : 'Usar pontos de encontro do catálogo'}</option>
     {routes.map(r => <option key={r.id} value={r.id}>{r.origin_area} → {r.destination_area} · {r.id.slice(-8)}</option>)}
   </select></label>;
 }
 interface Props {
+  passengerCanRequestAccess?: boolean;
   areas: string[];
   bookingId: string | null;
   replaces?: string;
@@ -42,7 +46,8 @@ function toInstant(value: string): string | null {
   return saoPauloDateTime(day, time)?.toISOString() ?? null;
 }
 
-export default function QuoteForm({ areas, bookingId, replaces, routes = [], nextBookings = [], extras = [], requiresRoute = false, onQuoted }: Props) {
+export default function QuoteForm({ areas, bookingId, passengerCanRequestAccess = !bookingId, replaces, routes = [], nextBookings = [], extras = [], requiresRoute = false, onQuoted }: Props) {
+  const [assistance,setAssistance]=useState('none');
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
   const [scheduled, setScheduled] = useState(Boolean(bookingId));
@@ -55,6 +60,7 @@ export default function QuoteForm({ areas, bookingId, replaces, routes = [], nex
   const [routeId, setRouteId] = useState('');
   const [nextRouteId, setNextRouteId] = useState('');
   const [nextBooking, setNextBooking] = useState('');
+  const [classes,setClasses]=useState<Record<string,string>>({});
   const [firstExtras, setFirstExtras] = useState<string[]>([]);
   const [nextExtras, setNextExtras] = useState<string[]>([]);
   const measured = routes.find(r => r.id === routeId);
@@ -109,13 +115,18 @@ export default function QuoteForm({ areas, bookingId, replaces, routes = [], nex
       legs.push(second);
     }
     if (nextBooking && nextBookings.some(b => b.id === nextBooking)) legs[legs.length - 1].next_booking_id = nextBooking;
-    const payload = JSON.stringify([bookingId, first, legs]);
+    const payload = JSON.stringify([bookingId, first, legs, assistance, classes[routeId], classes[nextRouteId]]);
     if (request.current?.payload !== payload) request.current = { payload, key: crypto.randomUUID() };
     sending.current = true;
     setBusy(true);
     setValidation('');
     try {
-      const quote = await quoteRide(request.current.key, bookingId, first, legs);
+      for (const [route,instant] of [[routeId, first],[nextRouteId,next]] as const) {
+        if(route && classes[route]) await chooseRideClass(route,classes[route],instant);
+      }
+      const quote = passengerCanRequestAccess && assistance !== 'none'
+        ? await quoteRideWithAccess(request.current.key, bookingId, first, legs, assistance)
+        : await quoteRide(request.current.key, bookingId, first, legs);
       request.current = null;
       onQuoted(quote.id);
     } catch (error) {
@@ -130,6 +141,10 @@ export default function QuoteForm({ areas, bookingId, replaces, routes = [], nex
   const payers = <><option value="client">Cliente</option><option value="provider">Profissional</option></>;
   return (
     <form onSubmit={submit} className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5">
+      {passengerCanRequestAccess && <label className="block">Assistência no transporte <select className={field} value={assistance} onChange={e=>setAssistance(e.target.value)}>
+        <option value="none">Sem assistência especial</option><option value="boarding">Ajuda para embarcar</option><option value="folding_equipment">Equipamento portátil ou dobrável</option>
+        <option value="wheelchair_vehicle">Veículo adaptado para viajar na cadeira</option></select> Sem adicional. Se faltar capacidade, o plantão pode combinar outra janela.</label>}
+
       <h2 className="text-lg font-semibold">{bookingId ? 'Trajeto do profissional' : 'Cotar corrida'}</h2>
       <fieldset disabled={busy} className="space-y-4">
         <label className="block">Saída
@@ -137,6 +152,7 @@ export default function QuoteForm({ areas, bookingId, replaces, routes = [], nex
             <option value="now">Agora</option><option value="scheduled">Agendar</option>
           </select>
         </label>
+        <p className="text-sm">Após o aceite, o pedido aguarda um motorista. Sem confirmação até dez minutos após a saída prevista, você poderá escolher outra janela.</p>
         {scheduled && <label className="block">Data e hora da ida (São Paulo)
           <input required className={field} type="datetime-local" value={departure} onChange={e => setDeparture(e.target.value)} />
         </label>}
@@ -145,12 +161,16 @@ export default function QuoteForm({ areas, bookingId, replaces, routes = [], nex
           <label>Ponto de origem<select className={field} required value={origin} onChange={e => setOrigin(e.target.value)}><option value="">Selecione</option>{options}</select></label>
           <label>Ponto de destino<select className={field} required value={destination} onChange={e => setDestination(e.target.value)}><option value="">Selecione</option>{options}</select></label>
         </div>}
+        {routeId && <RideClassChoices routeId={routeId} departure={scheduled && departure?toInstant(departure):null}
+          selected={classes[routeId]??''} onSelect={v=>setClasses({...classes,[routeId]:v})}/>}
         <ExtraChoices options={extras} selected={firstExtras} onChange={setFirstExtras} label="Adicionais da ida" />
         {bookingId && <label className="block">Quem paga a ida?<select className={field} value={firstPayer} onChange={e => setFirstPayer(e.target.value as RidePayer)}>{payers}</select></label>}
         {!replaces && <label className="flex items-center gap-2"><input type="checkbox" checked={anotherLeg} onChange={e => { setAnotherLeg(e.target.checked); if (e.target.checked) setNextPlace(measured?.origin_area ?? origin); }} /> Incluir retorno ou continuação</label>}
         {anotherLeg && <div className="space-y-4">
           <RouteChoice required={requiresRoute} routes={routes.filter(r => r.origin_area === (measured?.destination_area ?? destination))} value={nextRouteId} onChange={setNextRouteId} label="Medição para o próximo trecho" />
           {!requiresRoute && !measuredNext && <label className="block">Destino do próximo trecho<select className={field} required value={nextPlace} onChange={e => setNextPlace(e.target.value)}><option value="">Selecione</option>{options}</select></label>}
+          {nextRouteId && <RideClassChoices routeId={nextRouteId} departure={nextTime?toInstant(nextTime):null}
+            selected={classes[nextRouteId]??''} onSelect={v=>setClasses({...classes,[nextRouteId]:v})}/>}
           <ExtraChoices options={extras} selected={nextExtras} onChange={setNextExtras} label="Adicionais do próximo trecho" />
           <label className="block">Data e hora do próximo trecho (São Paulo)<input className={field} required type="datetime-local" value={nextTime} onChange={e => setNextTime(e.target.value)} /></label>
           {bookingId && <label className="block">Quem paga o próximo trecho?<select className={field} value={nextPayer} onChange={e => setNextPayer(e.target.value as RidePayer)}>{payers}</select></label>}

@@ -16,7 +16,7 @@ const MAX_LINE_LENGTH = 2000;
 const ONE_YEAR = 31536000;
 // Hosts the app contacts. Supabase: the project URL comes from VITE_SUPABASE_URL at build time,
 // so the pattern covers any project. Sentry: ingestion only, and only when VITE_SENTRY_DSN is set
-// (EU, US and the older US host). No Realtime: the app opens no channel, so no wss:// host.
+// (EU, US and the older US host). Realtime only carries the driver's own inbox revision.
 const SUPABASE_HTTPS = 'https://*.supabase.co';
 const SENTRY_INGEST = ['https://*.ingest.sentry.io', 'https://*.ingest.de.sentry.io', 'https://*.ingest.us.sentry.io'];
 // Hashes of the two print stylesheets (<style> elements rendered by QuoteDocument and Orcamento).
@@ -141,8 +141,8 @@ export const checkRules = rules => {
       if (!sameValues(d.get('base-uri'), ["'self'"])) failures.push(`${path}: base-uri deve ser 'self'`);
       if (!sameValues(d.get('form-action'), ["'self'"])) failures.push(`${path}: form-action deve ser 'self'`);
       if (!sameValues(d.get('frame-ancestors'), ["'none'"])) failures.push(`${path}: frame-ancestors deve ser 'none'`);
-      if (!sameValues(d.get('connect-src'), ["'self'", SUPABASE_HTTPS, ...SENTRY_INGEST])) {
-        failures.push(`${path}: connect-src deve ser exatamente 'self', ${SUPABASE_HTTPS} e os hosts de ingestão do Sentry`);
+      if (!sameValues(d.get('connect-src'), ["'self'", SUPABASE_HTTPS, 'wss://*.supabase.co', ...SENTRY_INGEST])) {
+        failures.push(`${path}: connect-src deve ser exatamente 'self', ${SUPABASE_HTTPS}, o WebSocket TLS do Supabase e os hosts de ingestão do Sentry`);
       }
       if (!sameValues(d.get('img-src'), ["'self'", 'data:', 'blob:'])) {
         failures.push(`${path}: img-src deve ser exatamente 'self', data: e blob:`);

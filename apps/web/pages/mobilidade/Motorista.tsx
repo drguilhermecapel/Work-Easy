@@ -1,5 +1,15 @@
 import { RideOrderPayments } from '../../components/mobility/RideOrderPayments';
+import { DriverCue, OfferAssistance } from '../../components/mobility/safety/PickupCue';
+import { RideSafety } from '../../components/mobility/safety/RideSafety';
+import { BoardingPin } from '../../components/mobility/safety/RideCommunication';
+import { RideDisplayMode } from '../../components/mobility/safety/common';
+import { RideAmendmentPanel } from '../../components/mobility/RideAmendmentPanel';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import DriverWorkspace from './DriverWorkspace';
+import DriverEconomics from './DriverEconomics';
+import DriverNavigation from './DriverNavigation';
+import { decideOffer, releaseReservation } from '../../services/driverJourney';
 import { RideAftercare } from '../../components/mobility/RideAftercare';
 import { DriverLegPoints } from '../../components/mobility/RouteCases';
 import DriverSignals, { DriverAlerts } from '../../components/mobility/DriverSignals';
@@ -22,13 +32,18 @@ const NEXT_STEP = {
   boarded: { to: 'completed', label: 'Confirmar fim do trecho' },
 } as const;
 
-function DriverPanel({ dashboard, userId, busy, run, reload }: ConsoleActions) {
+function DriverPanel(actions: ConsoleActions) {
+  const { dashboard, userId, busy, run, reload } = actions;
   const [vehicle, setVehicle] = useState<Vehicle>('compact');
   const driver = dashboard.driver;
   const valid = driver?.status === 'approved' && driver.valid_until != null && driver.valid_until >= todayInSaoPaulo();
   const assigned = dashboard.rides.flatMap((ride) => ride.legs.filter((leg) => leg.driver_id === userId));
   return (
     <>
+      <nav aria-label="Alternar modo" className="flex gap-4 text-sm">
+        <strong>Modo motorista</strong><Link className="underline" to="/corridas">Passageiro</Link>
+        <Link className="underline" to="/pro">Prestador</Link>
+      </nav>
       <Card className="space-y-3">
         <h2 className="font-semibold text-gray-900">Cadastro de motorista</h2>
         {driver && (
@@ -75,6 +90,7 @@ function DriverPanel({ dashboard, userId, busy, run, reload }: ConsoleActions) {
           <p className="text-sm text-amber-800">Cadastro vencido. Peça a revisão da validade à operação.</p>
         )}
       </Card>
+      {driver && dashboard.dispatch_waves && <DriverWorkspace {...actions}/>}
       {valid && driver && <DriverShifts dashboard={dashboard} run={run} busy={busy} />}
       {driver && !dashboard.dispatch_enabled && (
         <p role="status" className="text-sm text-gray-700">
@@ -89,6 +105,7 @@ function DriverPanel({ dashboard, userId, busy, run, reload }: ConsoleActions) {
           <ul className="space-y-2">
             {dashboard.offers.map((offer) => (
               <li key={offer.leg_id}>
+                <OfferAssistance leg={offer.leg_id}/>
                 <Card className="space-y-2">
                   <p className="font-semibold">
                     {offer.origin} → {offer.destination}
@@ -97,12 +114,17 @@ function DriverPanel({ dashboard, userId, busy, run, reload }: ConsoleActions) {
                     {formatDateTime(offer.pickup_at) || 'Saída imediata'} · Sua parte {formatCents(offer.driver_cents)}
                     {offer.approach_minutes != null && ` · Aproximação estimada pela área: ${offer.approach_minutes} min`}
                   </p>
+                  {offer.expires_at && <p className="text-sm">
+                    {offer.scheduled && 'Reserva · '}Oferta até {formatDateTime(offer.expires_at)} · Aproximação {((offer.approach_meters ?? 0)/1000).toLocaleString('pt-BR')} km.
+                    {' '}Com passageiro {((offer.trip_meters ?? 0)/1000).toLocaleString('pt-BR')} km, {offer.trip_minutes} min.
+                    {' '}{offer.cost_cents == null ? 'Custo próprio por km não informado.' : 'Custo próprio estimado '+formatCents(offer.cost_cents)+'.'}
+                  </p>}
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
                       className={primaryButton}
                       disabled={busy}
-                      onClick={() => void run(`accept:${offer.leg_id}`, (key) => acceptRideOffer(offer.leg_id, key))}
+                      onClick={() => void run(`accept:${offer.leg_id}`, (key) => offer.expires_at ? decideOffer(offer.leg_id,key,offer.expires_at,true) : acceptRideOffer(offer.leg_id, key))}
                     >
                       Aceitar trecho
                     </button>
@@ -110,7 +132,7 @@ function DriverPanel({ dashboard, userId, busy, run, reload }: ConsoleActions) {
                       type="button"
                       className={secondaryButton}
                       disabled={busy}
-                      onClick={() => void run(`decline:${offer.leg_id}`, (key) => declineRideOffer(offer.leg_id, key))}
+                      onClick={() => void run(`decline:${offer.leg_id}`, (key) => offer.expires_at ? decideOffer(offer.leg_id,key,offer.expires_at,false) : declineRideOffer(offer.leg_id, key))}
                     >
                       Recusar oferta
                     </button>
@@ -137,6 +159,11 @@ function DriverPanel({ dashboard, userId, busy, run, reload }: ConsoleActions) {
                       {formatDateTime(leg.pickup_at) || 'Saída imediata'} · {mobilityLabel(leg.status)}
                       {leg.driver_cents !== null && ` · Sua parte ${formatCents(leg.driver_cents)}`}
                     </p>
+                    {step && dashboard.dispatch_waves && <DriverNavigation key={leg.id+leg.status} leg={leg.id} phase={leg.status}/>}
+                    {leg.status==='accepted' && dashboard.dispatch_waves && dashboard.rides.some(r=>r.scheduled_at && r.legs.some(l=>l.id===leg.id)) && (
+                      <button type="button" className={secondaryButton} disabled={busy} onClick={()=>void run('release:'+leg.id,key=>releaseReservation(leg.id,key))}>
+                        Devolver reserva para substituição
+                      </button>)}
                     {step && !dashboard.simulation && (
                       <>
                         <DriverLegPoints legId={leg.id} />
@@ -155,14 +182,14 @@ function DriverPanel({ dashboard, userId, busy, run, reload }: ConsoleActions) {
                             Cheguei ao local de embarque
                           </button>
                         )}
-                        <button
+{step.to==='boarded' ? <><BoardingPin leg={leg.id} driver refresh={reload}/><DriverCue leg={leg.id}/></> : (<button
                           type="button"
                           disabled={busy}
                           className={primaryButton}
                           onClick={() => void run(`${leg.id}:${step.to}`, (key) => transitionRide(leg.id, step.to, key))}
                         >
                           {step.label}
-                        </button>
+                        </button>)}
                         {leg.can_cancel && leg.status !== 'boarded' && (
                           <button
                             type="button"
@@ -184,6 +211,8 @@ function DriverPanel({ dashboard, userId, busy, run, reload }: ConsoleActions) {
                       </div>
                     )}
                     <RideOrderPayments legId={leg.id} completed={leg.status==='completed'} />
+                    <RideSafety status={leg.status} leg={leg.id} onChange={reload}/>
+                    <RideAmendmentPanel legId={leg.id} legStatus={leg.status} onChanged={reload} />
                     <RideAftercare legId={leg.id} completed={leg.status === 'completed'} />
                   </Card>
                 </li>
@@ -192,6 +221,7 @@ function DriverPanel({ dashboard, userId, busy, run, reload }: ConsoleActions) {
           </ul>
         </section>
       )}
+      {driver && dashboard.dispatch_waves && <DriverEconomics/>}
     </>
   );
 }
@@ -200,6 +230,7 @@ export default function Motorista() {
   return (
     <RequireSession>
       <div className="max-w-3xl mx-auto px-4 py-6">
+        <RideDisplayMode/>
         <DriverConsole title="Painel do motorista" content={DriverPanel} />
         <RideOrderPayments mode="driver" />
       </div>
