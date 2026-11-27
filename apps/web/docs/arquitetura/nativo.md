@@ -186,8 +186,7 @@ Política de release (`app.security.csp`):
   - `https://*.ingest.sentry.io` e `https://*.ingest.us.sentry.io` (EUA), e
     `https://*.ingest.de.sentry.io` (UE): ingestão de erros do Sentry. Só são usados com
     `VITE_SENTRY_DSN` no build; sem DSN, nada é enviado.
-  - Não há `wss://`: o app não abre canal Realtime do Supabase. Se um canal for criado,
-    acrescente `wss://*.supabase.co` aqui e na política de desenvolvimento.
+  - `wss://*.supabase.co` permite ao painel do motorista receber a revisão da própria caixa de ofertas. O painel consulta os dados do trecho com autorização no servidor e atualiza periodicamente quando o canal perde a conexão.
 - `img-src 'self' data: blob:`: sem Supabase. Os links para documentos assinados (`DocumentCard`)
   abrem em `<a target="_blank">`, não em imagem.
 - `media-src ... mediastream:`: mantido porque a prévia de câmera da verificação pode usar
