@@ -1,21 +1,65 @@
 """Regression tests for the protected site_origin_only workflow. No external requests."""
 
-from contextlib import nullcontext
+from contextlib import nullcontext, redirect_stdout
 from email.message import Message
 import importlib.util
+import io
 import os
+import runpy
 import sys
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 import supabase_site_origin as origin
+import supabase_management as management
 
 auth_spec = importlib.util.spec_from_file_location("auth_templates", Path(origin.__file__).with_name("supabase-auth-templates.py"))
 auth = importlib.util.module_from_spec(auth_spec)
 auth_spec.loader.exec_module(auth)
+
+
+class AuthTokenSelectionTest(unittest.TestCase):
+    tokens = {"SUPABASE_ACCESS_TOKEN": "general-test-credential", "SUPABASE_AUTH_CONFIG_TOKEN": "specific-test-credential"}
+
+    def test_default_keeps_specific_first_and_existing_general_fallback(self):
+        for source in ("", "config"):
+            with self.subTest(source=source):
+                self.assertEqual(management.select_auth_token({**self.tokens, "SUPABASE_AUTH_TOKEN_SOURCE": source}),
+                                 self.tokens["SUPABASE_AUTH_CONFIG_TOKEN"])
+        self.assertEqual(management.select_auth_token({"SUPABASE_ACCESS_TOKEN": "existing-selected-token"}), "existing-selected-token")
+
+    def test_access_selection_uses_only_general_and_never_prints_values(self):
+        output = io.StringIO()
+        with redirect_stdout(output):
+            actual = management.select_auth_token({**self.tokens, "SUPABASE_AUTH_TOKEN_SOURCE": "access"})
+        self.assertEqual(actual, self.tokens["SUPABASE_ACCESS_TOKEN"])
+        self.assertEqual(output.getvalue(), "Credencial selecionada para Auth: SUPABASE_ACCESS_TOKEN.\n")
+        for token in self.tokens.values():
+            self.assertNotIn(token, output.getvalue())
+
+    def test_missing_selected_access_or_invalid_source_fails_before_requests(self):
+        with self.assertRaisesRegex(SystemExit, "Configure SUPABASE_ACCESS_TOKEN"):
+            management.select_auth_token({"SUPABASE_AUTH_TOKEN_SOURCE": "access", "SUPABASE_AUTH_CONFIG_TOKEN": "present"})
+        for source in ("invalid", "ACCESS"):
+            with self.subTest(source=source), self.assertRaisesRegex(SystemExit, "deve ser config ou access"):
+                management.select_auth_token({**self.tokens, "SUPABASE_AUTH_TOKEN_SOURCE": source})
+
+    def test_both_entrypoints_keep_the_selected_token_and_stop_on_auth_failure(self):
+        for source, key in (("access", "SUPABASE_ACCESS_TOKEN"), ("config", "SUPABASE_AUTH_CONFIG_TOKEN")):
+            env = {**self.tokens, "SUPABASE_AUTH_TOKEN_SOURCE": source,
+                   "SUPABASE_PROJECT_ID": management.PRODUCTION_PROJECT, "VITE_SITE_URL": origin.SITE}
+            for name in ("supabase_site_origin.py", "supabase-auth-templates.py"):
+                for mode in ([], ["--apply"], ["--verify"]):
+                    path = Path(origin.__file__).with_name(name)
+                    with self.subTest(source=source, script=name, mode=mode), patch.dict(os.environ, env, clear=True), \
+                            patch.object(sys, "argv", [str(path), *mode]), \
+                            patch.object(management, "request_config", side_effect=SystemExit("HTTP 401")) as request, \
+                            self.assertRaisesRegex(SystemExit, "HTTP 401"):
+                        runpy.run_path(str(path), run_name="__main__")
+                    request.assert_called_once_with(self.tokens[key], "GET")
 
 
 class SiteOriginTest(unittest.TestCase):
@@ -175,3 +219,38 @@ class AuthPreflightTest(unittest.TestCase):
         api.assert_called_once_with("test", "GET")
         with self.assertRaisesRegex(SystemExit, "SMTP próprio"):
             auth.sync_templates("test", False, verify=True, check_sender=True)
+
+    @patch.object(auth, "request_config")
+    def test_web_preflight_detects_otp_length_mismatch_without_writing(self, api):
+        api.return_value = {**auth.expected_mailer_config(), "mailer_otp_length": 8}
+
+        with self.assertRaisesRegex(SystemExit, "Sincronize a configuração"):
+            auth.sync_templates("test", False, verify=True, sync_otp_length=True)
+
+        api.assert_called_once_with("test", "GET")
+
+    @patch.object(auth, "request_config")
+    def test_web_sync_updates_only_the_otp_length_and_verifies_it(self, api):
+        templates = auth.expected_mailer_config()
+        remote = {**templates, "mailer_otp_length": 8, "rate_limit_verify": 30}
+        expected = {**remote, "mailer_otp_length": 6}
+        api.side_effect = [remote, None, expected, expected]
+
+        auth.sync_templates("test", True, sync_otp_length=True)
+        auth.sync_templates("test", True, sync_otp_length=True)
+
+        self.assertEqual(api.call_args_list, [
+            call("test", "GET"),
+            call("test", "PATCH", {"mailer_otp_length": 6}),
+            call("test", "GET"),
+            call("test", "GET"),
+        ])
+
+    @patch.object(auth, "request_config")
+    def test_templates_only_keeps_the_existing_otp_length(self, api):
+        api.return_value = {**auth.expected_mailer_config(), "mailer_otp_length": 8}
+
+        auth.sync_templates("test", True)
+
+        api.assert_called_once_with("test", "GET")
+

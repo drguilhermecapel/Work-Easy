@@ -7,6 +7,21 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 PRODUCTION_PROJECT = "hlzdgbxygtaklqaoihlq"
 
 
+def select_auth_token(environ):
+    """Choose once before any request; authentication errors never select another token."""
+    source = environ.get("SUPABASE_AUTH_TOKEN_SOURCE") or "config"
+    if source not in ("config", "access"):
+        raise SystemExit("SUPABASE_AUTH_TOKEN_SOURCE deve ser config ou access.")
+    name = "SUPABASE_ACCESS_TOKEN"
+    if source == "config" and environ.get("SUPABASE_AUTH_CONFIG_TOKEN"):
+        name = "SUPABASE_AUTH_CONFIG_TOKEN"
+    token = environ.get(name)
+    if not token:
+        raise SystemExit(f"Configure {name} no ambiente protegido.")
+    print(f"Credencial selecionada para Auth: {name}.")
+    return token
+
+
 class NoRedirect(HTTPRedirectHandler):
     """Keep production credentials and origin checks on their original endpoints."""
 
@@ -60,3 +75,4 @@ def management_request(token, method, path, payload=None):
 
 def request_config(token, method, payload=None):
     return management_request(token, method, "config/auth", payload)
+

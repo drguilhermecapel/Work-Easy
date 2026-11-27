@@ -7,7 +7,7 @@ import time
 from urllib.error import HTTPError, URLError
 from urllib.request import Request
 
-from supabase_management import OPENER, PRODUCTION_PROJECT, management_request, request_config
+from supabase_management import OPENER, PRODUCTION_PROJECT, management_request, request_config, select_auth_token
 
 SITE = "https://workeasy.ia.br"
 NATIVE = ("capacitor://localhost", "https://localhost", "http://tauri.localhost", "tauri://localhost")
@@ -141,4 +141,5 @@ if __name__ == "__main__":
     edge_token = os.environ.get("SUPABASE_ACCESS_TOKEN")
     if not edge_token:
         raise SystemExit("Configure SUPABASE_ACCESS_TOKEN no ambiente protegido.")
-    sync(edge_token, os.environ.get("SUPABASE_AUTH_CONFIG_TOKEN") or edge_token, args.apply, args.verify, target)
+    sync(edge_token, select_auth_token(os.environ), args.apply, args.verify, target)
+

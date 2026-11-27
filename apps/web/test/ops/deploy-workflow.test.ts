@@ -125,6 +125,19 @@ describe('testes da CI de distribuição', () => {
 });
 
 describe('deploy-web.yml: verificações e escritas em produção', () => {
+  it('seleciona a credencial de Auth explicitamente e mantém secrets somente nos passos de Auth', () => {
+    const { jobs } = parseYaml(read('deploy-web.yml'));
+    expect(jobs.publish.env.SUPABASE_AUTH_TOKEN_SOURCE).toBe("${{ vars.SUPABASE_AUTH_TOKEN_SOURCE || 'config' }}");
+    expect(JSON.stringify(jobs.publish.env)).not.toContain('secrets.');
+    const steps = jobs.publish.steps as { run?: string; env?: Record<string, string> }[];
+    const authSteps = steps.filter(step => /supabase_site_origin\.py|supabase-auth-templates\.py/.test(step.run ?? ''));
+    expect(authSteps).toHaveLength(4);
+    for (const step of authSteps) {
+      expect(step.env?.SUPABASE_ACCESS_TOKEN).toBe('${{ secrets.SUPABASE_ACCESS_TOKEN }}');
+      expect(step.env?.SUPABASE_AUTH_CONFIG_TOKEN).toBe('${{ secrets.SUPABASE_AUTH_CONFIG_TOKEN }}');
+    }
+  });
+
   it('diagnostica as três configurações independentemente e só grava após os gates e o build', () => {
     const { jobs, concurrency } = parseYaml(read('deploy-web.yml'));
     expect(concurrency).toEqual(parseYaml(read('deploy-supabase.yml')).concurrency);
@@ -410,3 +423,4 @@ describe('deploy-supabase.yml: comandos da CLI 3', () => {
     expect(text).toMatch(/supabase db query --remote --yes -f supabase\/catalog\.sql/);
   });
 });
+
