@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   driverNavigation,
   type DriverRouteContext,
-} from '../../supabase/functions/ride-driver-navigation/handler';
-import { errors } from '../../supabase/functions/_shared/http';
+} from '../../supabase/functions/ride-driver-navigation/handler.ts';
+import { errors } from '../../supabase/functions/_shared/http.ts';
 const leg = 'c621ad68-c0b5-4012-8b58-6fd2484c964c';
 const target = { lat: -23.62, lng: -46.63 };
 const defaultCtx: DriverRouteContext = { phase: 'arriving', index: 0, target, simulation: false };
@@ -11,9 +11,9 @@ const request = (args: object) =>
   new Request('https://workeasy.test/navigation', { method: 'POST', body: JSON.stringify(args) });
 const make = (ctx = defaultCtx) => ({
   cors: {},
-  context: vi.fn().mockResolvedValue(ctx),
+  context: vi.fn(async (): Promise<DriverRouteContext> => ctx),
   osrmBase: 'http://osrm-internal:5000',
-  fetcher: vi.fn().mockResolvedValue(
+  fetcher: vi.fn<typeof fetch>(async () =>
     Response.json({
       code: 'Ok',
       routes: [{
@@ -44,7 +44,7 @@ describe('roteamento de motorista', () => {
   });
   it('um trecho de outro motorista não consulta o roteador', async () => {
     const deps = make();
-    deps.context.mockRejectedValue(errors.notAllowed());
+    deps.context = vi.fn(async () => { throw errors.notAllowed(); });
     expect((await driverNavigation(request({ leg, phase: 'arriving', index: 0 }), deps)).status).toBe(403);
     expect(deps.fetcher).not.toHaveBeenCalled();
   });
@@ -55,7 +55,8 @@ describe('roteamento de motorista', () => {
     ).toBe(400);
     expect(sim.fetcher).not.toHaveBeenCalled();
     const deps = make();
-    deps.context.mockResolvedValueOnce(defaultCtx).mockResolvedValueOnce({ ...defaultCtx, phase: 'boarded' });
+    let count = 0;
+    deps.context = vi.fn(async (): Promise<DriverRouteContext> => count++ ? { ...defaultCtx, phase: 'boarded' } : defaultCtx);
     expect(
       (await driverNavigation(request({ leg, phase: 'arriving', index: 0, lat: -23.62, lng: -46.632 }), deps))
         .status,
