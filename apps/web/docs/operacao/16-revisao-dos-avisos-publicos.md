@@ -24,7 +24,7 @@ A página de exclusão deixa de prometer exclusão incondicional, anonimização
 | Consentimento para IA e fornecedores condicionais | `components/AiConsent.tsx`, `supabase/functions/_shared/notifications.ts`, `_shared/ai-model.ts` |
 | Relato de erros condicionado ao DSN, sem replay | `lib/observability.ts` |
 
-A auditoria somente leitura de produção em 27/11/2026 confirmou agendamentos ativos e execuções bem-sucedidas das rotinas de expurgo naquele dia. Isso não comprova eliminação de todas as classes de dado, backups ou registros dos fornecedores. Nenhum identificador de conta ou dado de usuário é reproduzido aqui.
+A auditoria somente leitura de produção em 27/11/2026 confirmou 8 agendamentos ativos e nenhuma falha nas últimas 24 horas. As três rotinas de expurgo observadas concluíram com sucesso às 03:00, 03:17 e 03:23 UTC naquele dia. Isso não comprova eliminação de todas as classes de dado, backups ou registros dos fornecedores. Nenhum identificador de conta ou dado de usuário é reproduzido aqui.
 
 ## Fontes oficiais para a descrição dos direitos
 
@@ -50,6 +50,6 @@ Os testes existentes de versão e rotas foram atualizados para a nova edição. 
 
 A publicação da revisão `a8223ee5de9df52d303cbccf52890cea80594e8d` foi concluída com sucesso no GitHub Actions e permanece a revisão de produção durante esta preparação. Esta proposta é isolada em PR e não altera a aplicação publicada.
 
-O ambiente de navegador e executor ficou indisponível neste turno. Os conectores permitem consultar o repositório e preparar a correção, mas não confirmam a sessão informada pelo usuário nos painéis, não permitem atualizar os secrets por este conector e não substituem o teste de recebimento e uso do código de acesso. A validação completa da entrega de e-mail, autenticação, persistência e saída continua pendente de evidência. Nenhum código de acesso ou endereço de usuário foi registrado.
+O ambiente de navegador e executor ficou indisponível neste turno. Os conectores permitem consultar o repositório e preparar a correção, mas não confirmam a sessão informada pelo usuário nos painéis, não permitem atualizar os secrets por este conector e não substituem o teste de recebimento e uso do código de acesso. A validação completa da entrega de e-mail, autenticação, persistência e saída continua pendente de evidência. A consulta de logs identificou uma solicitação `POST /otp` com resposta 200 às 18:07:20, horário de Brasília, e nenhuma chamada `/verify` ou `/token` até 18:48:37. Também foram observadas 19 requisições com resposta 200, sem reprodução de dados pessoais neste documento. Esses resultados não comprovam recebimento do código nem sessão autenticada. Nenhum código de acesso ou endereço de usuário foi registrado.
 
 O relatório anterior no Drive não foi atualizado neste turno porque sua atualização exige um arquivo acessível ao ambiente de execução. Este adendo registra os fatos disponíveis e não representa publicação de uma nova versão nem encerramento de todas as pendências.

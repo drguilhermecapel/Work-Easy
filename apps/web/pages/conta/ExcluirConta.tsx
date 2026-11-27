@@ -28,7 +28,7 @@ const ExcluirConta: React.FC = () => {
       <section aria-labelledby="excluir-como" className="mt-8">
         <h2 id="excluir-como" className="font-bold text-gray-800 mb-2">Como excluir</h2>
         <ol className="list-decimal pl-5 space-y-1 text-sm text-gray-700">
-          <li>Entre na sua conta com o código enviado ao seu e-mail ou celular.</li>
+          <li>Entre na sua conta com o código enviado pelo canal disponível na tela de entrada.</li>
           <li>Abra a página “Minha conta”.</li>
           <li>Na seção “Excluir minha conta”, digite a palavra de confirmação e toque em “Excluir minha conta”.</li>
         </ol>

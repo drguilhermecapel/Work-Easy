@@ -8,7 +8,7 @@ Este texto descreve o tratamento de dados no piloto WorkEasy e permanece em revi
 
 ## Quais dados são usados e para quê
 
-- **Conta e acesso:** e-mail ou telefone informado para entrar, nome, cidade, sessão e registros de acesso. Esses dados permitem autenticar, manter a sessão e identificar a conta.
+- **Conta e acesso:** e-mail de acesso, nome, telefone e cidade quando informados, sessão e registros de acesso. Esses dados permitem autenticar, manter a sessão e identificar a conta.
 - **Preferências e consentimentos:** finalidade, versão do texto, decisão e data, para registrar e aplicar suas escolhas.
 - **Pedidos e atendimentos:** serviço, bairro, descrição, datas, urgência, propostas, valores, participantes, estados, observações e avaliações, para organizar o pedido e seu acompanhamento.
 - **Cadastro profissional:** apresentação, ocupações, áreas atendidas e documentos exigidos pelo cadastro, quando enviados, para análise e apresentação do perfil.
