@@ -17,6 +17,10 @@ No cenário-base ilustrativo de repasse a custo, a oferta reduz a contribuição
 | Quais textos e compartilhamentos exigem aprovação? | [Termos](../juridico/01-termos-de-uso.md), [prestador](../juridico/02-termos-do-prestador.md), [privacidade](../juridico/03-politica-de-privacidade.md) e [cancelamento](../juridico/04-politica-de-cancelamento-e-reembolso.md) |
 | O que o comercial pode perguntar aos candidatos? | [Minutas para revisão](15-consulta-a-operadores.md) |
 
+## Acompanhamento da execução
+
+O primeiro diagnóstico de M0 foi medido em produção em 27/11/2026. O registro traz a consulta, o cenário de equilíbrio e as evidências que faltam para iniciar M1. [Evidências de M0](15-evidencias-m0.md)
+
 ## Linha de base auditada
 
 A referência é a `main` em `a38d7ce4c415ea735eb4948d987b999d506d28c1`, integrada em 26/11 às 19h26 UTC e consultada em 27/11/2026. Foram examinados a árvore, os documentos e o código nessa revisão, as execuções públicas e as notas de release posteriores. Não havia instrução `AGENTS.md` na árvore. O modelo de PR exige conferir alegações, documentar mudanças de regra e preservar o histórico. [Commit](https://github.com/drguilhermecapel/Work-Easy/commit/a38d7ce4c415ea735eb4948d987b999d506d28c1) · [Template do PR](../../../../.github/pull_request_template.md)
