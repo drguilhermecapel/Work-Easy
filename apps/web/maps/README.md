@@ -21,7 +21,7 @@ Com o extrato importado no banco local de testes, as migrações aplicadas, os a
 
 ```sh
 WORKEASY_OSRM_URL=http://127.0.0.1:5017 WORKEASY_ROUTING_DB_PORT=5432 \
-  npm test -- test/functions/ride-route-local-smoke.test.ts
+  npm test -- test/local/ride-route-local-smoke.test.ts
 ```
 
 A porta é a do PostgreSQL **dentro** do contêiner local `supabase_db_workeasy`. O teste exige o ambiente `simulation`, encontra os dois estabelecimentos pelo índice importado, envia os pontos confirmados ao handler de medição e verifica os 401 m de percurso. Em seguida, compara a classe de um veículo de ensaio, aceita a cotação e verifica a criação de um trecho em procura de motorista. A transação reverte todos os dados de passageiros, turnos e solicitações ao encerrar.
