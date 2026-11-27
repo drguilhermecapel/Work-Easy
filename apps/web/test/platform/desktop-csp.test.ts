@@ -25,7 +25,7 @@ const NATIVO = read('docs', 'arquitetura', 'nativo.md');
 
 const SENTRY = ['https://*.ingest.sentry.io', 'https://*.ingest.de.sentry.io', 'https://*.ingest.us.sentry.io'];
 // ipc: and http://ipc.localhost are Tauri's internal channel (macOS and Linux, and Windows).
-const RELEASE_CONNECT = ["'self'", 'ipc:', 'http://ipc.localhost', 'https://*.supabase.co', ...SENTRY];
+const RELEASE_CONNECT = ["'self'", 'ipc:', 'http://ipc.localhost', 'https://*.supabase.co', 'wss://*.supabase.co', ...SENTRY];
 const DEVELOPMENT_ONLY_CONNECT = ['ws://localhost:3000', 'http://localhost:3000'];
 
 describe('desktop: connect-src lista só os hosts que o app usa', () => {
@@ -37,9 +37,9 @@ describe('desktop: connect-src lista só os hosts que o app usa', () => {
     expect([...(DEVELOPMENT.get('connect-src') ?? [])].sort()).toEqual([...RELEASE_CONNECT, ...DEVELOPMENT_ONLY_CONNECT].sort());
   });
 
-  it('nenhuma das duas tem websocket do Supabase: o app não abre canal Realtime', () => {
+  it('ambas limitam o websocket de despacho ao Supabase', () => {
     for (const d of [RELEASE, DEVELOPMENT]) {
-      expect((d.get('connect-src') ?? []).filter(value => value.startsWith('wss:'))).toEqual([]);
+      expect((d.get('connect-src') ?? []).filter(value => value.startsWith('wss:'))).toEqual(['wss://*.supabase.co']);
     }
   });
 

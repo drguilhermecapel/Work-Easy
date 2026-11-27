@@ -231,10 +231,9 @@ select is((select status::text from public.requests where id = (select id from i
 select is((select status::text from public.requests where id = (select id from ids where name = 'req1')), 'matched',
           'expire_stale leaves matched requests alone');
 select results_eq($$select jobname::text from cron.job where jobname like 'workeasy-%' order by 1$$,
-                  array['workeasy-booking-reminders', 'workeasy-dispatch-notifications', 'workeasy-expire-booking-requests',
+                  array['workeasy-booking-reminders', 'workeasy-dispatch-notifications', 'workeasy-driver-offer-retention', 'workeasy-expire-booking-requests',
                         'workeasy-expire-pro-plans', 'workeasy-expire-stale',
-                        'workeasy-offer-alerts', 'workeasy-ride-dossier-retention', 'workeasy-ride-location-retention', 'workeasy-ride-receipt-retention',
-                        'workeasy-ride-recent-places', 'workeasy-ride-reservation-check'],
+                        'workeasy-offer-alerts', 'workeasy-recover-driver-offers', 'workeasy-ride-dossier-retention', 'workeasy-ride-location-retention', 'workeasy-ride-receipt-retention', 'workeasy-ride-recent-places', 'workeasy-ride-reservation-check'],
                   'the scheduler jobs exist');
 
 -- ---------------------------------------------------------------- accept_proposal edge cases

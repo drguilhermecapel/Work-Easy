@@ -34,6 +34,9 @@ export interface RideLeg extends PricedLeg {
   status: string;
   driver_id: string | null;
   can_cancel: boolean;
+  dispatch_state?: string;
+  can_review_no_show?: boolean;
+  pickup_estimate?: string | null;
   can_requote?: boolean;
   can_view_driver_identity?: boolean;
 }
@@ -78,6 +81,8 @@ export interface RideDashboard {
   enabled: boolean;
   quote_enabled: boolean;
   dispatch_enabled: boolean;
+  dispatch_waves?: boolean;
+  external_navigation?: boolean;
   simulation: boolean;
   areas: string[];
   extra_options?: { code: string; label: string; cents: number }[];
@@ -85,7 +90,7 @@ export interface RideDashboard {
   rides: Ride[];
   quotes: RideQuote[];
   reviews: { driver_id: string; vehicle: string; status: string; valid_until: string | null }[];
-  offers: { leg_id: string; origin: string; destination: string; pickup_at: string | null; driver_cents: number; approach_minutes?: number | null }[];
+  offers: { leg_id: string; origin: string; destination: string; pickup_at: string | null; driver_cents: number; approach_minutes?: number | null; approach_meters?: number; expires_at?: string; trip_minutes?: number; trip_meters?: number; cost_cents?: number | null; scheduled?: boolean }[];
 }
 
 export const getRideDashboard = async () => unwrap<RideDashboard>(await db().rpc('ride_dashboard'));
