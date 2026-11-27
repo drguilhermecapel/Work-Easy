@@ -24,10 +24,10 @@ with q as (
 select tests.authenticate_as('client_a');
 select throws_ok($$select public.ride_open_payment_order(pg_temp.ref('leg1'),'cash')$$,'P0001','ride_feature_disabled','No method opens before approval');
 select tests.clear_authentication();
-insert into private.ride_method_releases(environment,origin,destination,method,evidence_ref,validity,card_brands)
- select 'simulation','Saúde','Jabaquara',m,'synthetic test',tstzrange(now()-interval '1 day',now()+interval '1 day'),case when m='card' then array['VISA'] else '{}'::text[] end from unnest(array['card','pix','cash','benefit','tips','withdrawal'])m;
+insert into private.ride_method_releases(environment,origin,destination,method,evidence_ref,validity,card_brands,acquirer_profile_ref)
+ select 'simulation','Saúde','Jabaquara',m,'synthetic test',tstzrange(now()-interval '1 day',now()+interval '1 day'),case when m='card' then array['VISA'] else '{}'::text[] end,case when m='card' then 'hosted account TEST' end from unnest(array['card','pix','cash','benefit','tips','withdrawal'])m;
 select tests.authenticate_as('client_a');
-insert into refs values('cash',public.ride_open_payment_order(pg_temp.ref('leg1'),'cash')),('card',public.ride_open_payment_order(pg_temp.ref('leg2'),'card'));
+insert into refs values('cash',public.ride_open_payment_order(pg_temp.ref('leg1'),'cash')),('card',public.ride_open_payment_order(pg_temp.ref('leg2'),'card')),('issuer',public.ride_open_payment_order(pg_temp.ref('leg3'),'card'));
 select is(public.ride_open_payment_order(pg_temp.ref('leg1'),'cash'),pg_temp.ref('cash'),'Retry preserves order');
 select throws_ok($$select public.ride_open_payment_order(pg_temp.ref('leg1'),'card')$$,'P0001','ride_operation_conflict','Cannot switch an accepted method silently');
 select tests.authenticate_as('client_b');
@@ -49,6 +49,12 @@ update public.ride_legs set status='completed' where id in(select id from refs w
 select is((select settlement_source from private.ride_financial_accounts where leg_id=pg_temp.ref('leg2')),'orders','O16 and order collection are exclusive');
 select tests.authenticate_service();
 select throws_ok($$select public.claim_ride_sandbox_account(pg_temp.ref('leg2'))$$,'P0001','ride_operation_conflict','Cannot charge the leg again through O16');
+select tests.authenticate_as('provider_c');
+insert into refs values('bad_note',public.ride_cash_report(pg_temp.ref('cash'),2200,100,gen_random_uuid()));
+select tests.authenticate_as('client_a');
+select is(public.ride_cash_confirm(pg_temp.ref('bad_note'),false),'contested','Disputed tender is frozen');
+select tests.authenticate_as('admin');
+select is(public.admin_void_ride_cash_report(pg_temp.ref('bad_note'),'test-statement'),'voided','Operator can document the discrepancy without collecting money');
 select tests.authenticate_as('provider_c');
 insert into refs values('cash_note',public.ride_cash_report(pg_temp.ref('cash'),2500,500,gen_random_uuid()));
 select is((public.ride_order_desk(pg_temp.ref('leg1'))->'orders'->0->>'received')::int,0,'Driver report awaits payer confirmation');
@@ -100,6 +106,9 @@ insert into refs values('case',public.ride_request_order_review(pg_temp.ref('gue
 select tests.authenticate_as('admin');
 select is(public.ride_decide_order_review(pg_temp.ref('case'),true,'Conferido com o teste'),'approved','Decision itself is not a refund');
 select tests.authenticate_service();
+select is((public.ride_prepare_order_refund(pg_temp.ref('case'),tests.uid('admin'),'simulation',90,'provider evidence')->>'split_return')::int,909,'Refund specifies the accepted fixed split and residual fee');
+select is(public.ride_claim_order_refund(pg_temp.ref('case'),'simulation'),true,'Issue one provider refund');
+select is(public.ride_claim_order_refund(pg_temp.ref('case'),'simulation'),false,'Lost acknowledgment cannot issue another refund');
 select is(public.ride_observe_order_payment(pg_temp.ref('guest'),'simulation',pg_temp.fact('paid',1000,0,910)),'paid','Refund reverses the fee with original residual rounding');
 select is(public.ride_observe_order_payment(pg_temp.ref('guest'),'simulation',pg_temp.fact('paid',1000,910,0)),'paid','Returned split requires separate PSP evidence');
 select tests.clear_authentication();
@@ -142,5 +151,29 @@ select ok((select (legs->0->>'fee_cents')::int=((legs->0->>'fare_cents')::int-(l
  'Dynamic fare recalculates commission once at the accepted component');
 update private.ride_demand_rates set multiplier_bps=20000;
 select is((select (price_rules->'1'->>'multiplier_bps')::int from private.ride_quotes where id=pg_temp.ref('demand')),15000,'Subsequent rule version cannot change signed quote');
+select tests.authenticate_service();
+select is((public.ride_prepare_order_payment(pg_temp.ref('issuer'),tests.uid('client_a'),'simulation')->>'driver_cents')::int,3009,'Issuer example uses a separate authorized share');
+select is(public.ride_observe_order_payment(pg_temp.ref('issuer'),'simulation',
+  '{"status":"paid","payment":"pay_issuer","customer":"cus_204a","amount":3309,"splitCents":3009,"pspFee":45,"paidToDriver":3009,"returnedByDriver":0,"refunded":0}'),'paid','Provider records full gross and fixed split');
+select tests.authenticate_as('provider_c');
+insert into refs values('heldwithdraw',public.ride_request_withdrawal(md5('hold-204')::uuid,100,0));
+select tests.authenticate_service();
+select is(public.ride_observe_order_payment(pg_temp.ref('issuer'),'simulation',
+  '{"payment":"pay_issuer","reason":"card_chargeback","customer":"cus_204a","amount":3309}'),'review','Temporary issuer signal opens a review');
+select is(public.ride_claim_withdrawal_send(pg_temp.ref('heldwithdraw'),'simulation'),false,'Hold imposed after reservation blocks transport of funds');
+select tests.authenticate_as('client_b');
+select is(public.ride_issuer_status(pg_temp.ref('issuer')),null::jsonb,'Another payer cannot see this issuer case');
+select tests.authenticate_as('admin');
+select is(public.admin_resolve_ride_issuer(pg_temp.ref('issuer'),true,2000,200,'issuer final debit test'),'debited','Only final statement charges back proven principal and extras');
+select is(public.admin_resolve_ride_issuer(pg_temp.ref('issuer'),true,2000,200,'issuer final debit test'),'debited','Issuer decision replay does not reverse twice');
+select tests.clear_authentication();
+select results_eq($$select cash_delta,driver_delta,fee_delta from private.ride_financial_events where leg_id=pg_temp.ref('leg3') and kind='chargeback'$$,
+ $$select -2000,-1820,-180$$,'D14 returns only the commission on the debited base');
+select tests.authenticate_as('admin');
+select is(public.admin_record_issuer_split_return(pg_temp.ref('issuer'),1820,'bank transfer proof',md5('actual issuer return')::uuid),
+ md5('actual issuer return')::uuid,'Driver recovery needs independent transfer evidence');
+select throws_ok($$select public.admin_record_issuer_split_return(pg_temp.ref('issuer'),1,'extra',gen_random_uuid())$$,'P0001','ride_financial_mismatch','Recovery cannot exceed actual payout or backed loss');
+select tests.clear_authentication();
+select is((select sum(cash_delta::bigint+receivable_delta+processing_expense_delta+benefit_delta-driver_delta-fee_delta) from private.ride_financial_events),0::numeric,'Reconciled issuer ledger balances');
 select * from finish();
 rollback;

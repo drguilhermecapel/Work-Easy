@@ -26,3 +26,5 @@ Infraestrutura publica separadamente `ride-live-checkout` com JWT e `ride-live-w
 ## Evidência disponível
 
 Os ensaios locais exercitam o contrato HTTP com respostas injetadas, inclusive consulta canônica, split fixo, tarifa, recebedor divergente e devolução. O teste transacional local exerce liberação por ambiente e corredor, acesso do pagador, emissão única, duplicidade, custo, repasse, suspensão e estorno no mesmo livro. Em 27/11/2026 não houve credencial do PSP de transporte disponibilizada, homologação externa, cobrança, repasse ou ativação comercial nesta execução. [Protocolo local](../../test/functions/ride-live-psp.test.ts) · [Teste do banco](../../supabase/tests/database/152_ride_live_checkout.test.sql)
+
+O plano opcional de pagamento por componente, os perfis de cartão e a conciliação de saques estão no [runbook de ordens e carteira](ordens-e-carteira-de-corridas.md).

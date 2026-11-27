@@ -210,7 +210,7 @@ function DriverPanel(actions: ConsoleActions) {
                         </button>
                       </div>
                     )}
-                    <RideOrderPayments legId={leg.id} completed={leg.status==='completed'} />
+                    <RideOrderPayments mode="driver-leg" legId={leg.id} completed={leg.status==='completed'} />
                     <RideSafety status={leg.status} leg={leg.id} onChange={reload}/>
                     <RideAmendmentPanel legId={leg.id} legStatus={leg.status} onChanged={reload} />
                     <RideAftercare legId={leg.id} completed={leg.status === 'completed'} />
