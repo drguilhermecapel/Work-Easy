@@ -3,7 +3,14 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RouteCases } from '../../components/mobility/RouteCases';
 import { listRideRouteCases, prepareRoute, measureRoute, type RideRouteCase } from '../../services/rideRoutes';
-vi.mock('../../services/rideRoutes',()=>({listRideRouteCases:vi.fn(),prepareRoute:vi.fn(),measureRoute:vi.fn(),completeRoute:vi.fn()}));
+// Rendering WebGL is covered by the map acceptance check; exercise the surrounding form here.
+vi.mock('../../components/mobility/LocalRideMap', () => ({
+  LocalRideMap: ({label}: {label?:string}) => <div aria-label={label} />,
+}));
+vi.mock('../../services/rideRoutes', async (original) => ({
+  ...await original<typeof import('../../services/rideRoutes')>(),
+  listRideRouteCases:vi.fn(),prepareRoute:vi.fn(),measureRoute:vi.fn(),completeRoute:vi.fn(),
+}));
 const caseRow:RideRouteCase={
   id:'route-id',booking_id:null,status:'awaiting_review',origin_area:'Saúde',destination_area:'Jabaquara',
   service_endpoint:null,origin:null,destination:null,can_complete:false,can_claim:false,can_verify:false,can_quote:false,minutes:null,meters:null,valid_until:null,

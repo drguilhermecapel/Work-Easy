@@ -7,6 +7,10 @@ import Operacao from '../../pages/mobilidade/Operacao';
 import * as rides from '../../services/rides';
 import type { RideDashboard, RideLeg } from '../../services/rides';
 
+// Rendering WebGL is covered by the map acceptance check; exercise the surrounding form here.
+vi.mock('../../components/mobility/LocalRideMap', () => ({
+  LocalRideMap: ({label}: {label?:string}) => <div aria-label={label} />,
+}));
 vi.mock('../../contexts/AuthContext', () => ({
   useAuth: () => ({ authUser: { id: 'driver-a' }, isAuthenticated: true, loading: false, mode: 'backend' }),
 }));

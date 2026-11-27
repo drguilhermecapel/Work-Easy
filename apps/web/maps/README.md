@@ -14,3 +14,14 @@ Para atualizar o exemplo, baixar o XML da área, executar `python3 extract.py sn
 2. Para uma Edge Function na rede Docker do Supabase local, conectar o contêiner do roteador com `docker network connect --alias workeasy-router supabase_network_workeasy "$(docker compose ps -q router)"`. Configurar `OSRM_URL=http://workeasy-router:5000` exclusivamente no backend. O navegador recebe o traçado autorizado para o participante.
 3. Depois da migração que cria `private.ride_places_osm` e `private.ride_route_areas`, importar somente no projeto local de simulação com `python3 extract.py import-sql | docker exec -i supabase_db_workeasy psql -U postgres -d postgres -X -v ON_ERROR_STOP=1`. A transação atualiza o índice de lugares e o polígono de demonstração. As autorizações comerciais, os turnos e o orçamento têm registros independentes. O importador recusa um projeto marcado como real.
 4. Para outro arquivo PMTiles servido pela mesma origem, configurar `VITE_RIDE_PMTILES_PATH` no build. O arquivo deve expor a camada vetorial `context` e os tipos de feição presentes em `extract.py`. Conferir cobertura, direitos de uso e disponibilidade do servidor no corredor antes de abrir.
+
+## Ensaio da jornada do passageiro
+
+Com o extrato importado no banco local de testes, as migrações aplicadas, os auxiliares de pgTAP carregados e o OSRM em execução, rode em `apps/web`:
+
+```sh
+WORKEASY_OSRM_URL=http://127.0.0.1:5017 WORKEASY_ROUTING_DB_PORT=5432 \
+  npm test -- test/functions/ride-route-local-smoke.test.ts
+```
+
+A porta é a do PostgreSQL **dentro** do contêiner local `supabase_db_workeasy`. O teste exige o ambiente `simulation`, encontra os dois estabelecimentos pelo índice importado, envia os pontos confirmados ao handler de medição e verifica os 401 m de percurso. Em seguida, compara a classe de um veículo de ensaio, aceita a cotação e verifica a criação de um trecho em procura de motorista. A transação reverte todos os dados de passageiros, turnos e solicitações ao encerrar.

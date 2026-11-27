@@ -1,3 +1,4 @@
+import {DriverCapacityReview} from '../../components/mobility/DriverCapacityReview';
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatDateTime, shortId } from '../../components/admin/format';
@@ -164,7 +165,7 @@ function OperationsPanel({ dashboard, userId, busy, run, reload }: ConsoleAction
   const [ledgerLeg, setLedgerLeg] = useState<string | null>(null);
   return (
     <>
-      {!dashboard.simulation && <RouteCases bookingId={null} areas={dashboard.areas} admin />}
+      {dashboard.quote_enabled && <RouteCases bookingId={null} areas={dashboard.areas} admin />}
       <section aria-label="Revisão de motoristas" className="space-y-2">
         <h2 className="text-lg font-semibold">Revisão de motoristas</h2>
         {dashboard.reviews.length === 0 && <EmptyState>Nenhuma ficha de motorista disponível para revisão.</EmptyState>}
@@ -197,6 +198,7 @@ function OperationsPanel({ dashboard, userId, busy, run, reload }: ConsoleAction
                   {reviewing === driver.driver_id && <DriverDossier driverId={driver.driver_id} onChanged={reload} />}
                 </Card>
               )}
+              {driver.status==='approved' && driver.driver_id!==userId && <DriverCapacityReview driverId={driver.driver_id}/>}
             </li>
           ))}
         </ul>
