@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sync OTP templates and optionally provision the configured WorkEasy Auth sender."""
+"""Sync WorkEasy email OTP settings and optionally provision the Auth sender."""
 
 import argparse
 import os
@@ -14,13 +14,15 @@ from supabase_management import PRODUCTION_PROJECT, request_config
 WEB = Path(__file__).resolve().parents[1]
 
 
-def expected_templates():
+def expected_mailer_config(sync_otp_length=False):
     with (WEB / "supabase/config.toml").open("rb") as source:
-        email = tomllib.load(source)["auth"]["email"]["template"]
+        email = tomllib.load(source)["auth"]["email"]
 
     result = {}
+    if sync_otp_length:
+        result["mailer_otp_length"] = email["otp_length"]
     for name in ("confirmation", "magic_link"):
-        template = email[name]
+        template = email["template"][name]
         content = (WEB / template["content_path"]).read_text(encoding="utf-8")
         if "{{ .Token }}" not in content:
             raise SystemExit(f"O modelo {name} precisa incluir o código de acesso.")
@@ -79,8 +81,10 @@ def provision_sender(token, remote):
     print("Remetente SMTP de Auth configurado e conferido.")
 
 
-def sync_templates(token, apply, verify=False, configure_sender=False, check_sender=False):
-    expected = expected_templates()
+def sync_templates(
+    token, apply, verify=False, configure_sender=False, check_sender=False, *, sync_otp_length=False
+):
+    expected = expected_mailer_config(sync_otp_length)
     remote = request_config(token, "GET")
     print("SMTP de Auth configurado:", "sim" if remote.get("smtp_host") else "não")
     print("Send Email Hook habilitado:", "sim" if remote.get("hook_send_email_enabled") else "não")
@@ -90,12 +94,12 @@ def sync_templates(token, apply, verify=False, configure_sender=False, check_sen
         provision_sender(token, remote)
     changed = {name: value for name, value in expected.items() if remote.get(name) != value}
     if not changed:
-        print("Os modelos de código já correspondem ao repositório.")
+        print("A configuração do código por e-mail corresponde ao repositório.")
         return
 
     print("Campos divergentes: " + ", ".join(changed))
     if verify:
-        raise SystemExit("Aplique os modelos de código no workflow do Supabase antes de publicar o site.")
+        raise SystemExit("Sincronize a configuração do código por e-mail antes de publicar o site.")
     if not apply:
         print("Ensaio concluído sem alterações.")
         return
@@ -103,8 +107,8 @@ def sync_templates(token, apply, verify=False, configure_sender=False, check_sen
     request_config(token, "PATCH", changed)
     actual = request_config(token, "GET")
     if any(actual.get(name) != value for name, value in expected.items()):
-        raise SystemExit("A leitura após a publicação não confirmou os modelos.")
-    print("Modelos de confirmação e login verificados no projeto de produção.")
+        raise SystemExit("A releitura do Supabase não confirmou a configuração do código por e-mail.")
+    print("Configuração do código por e-mail verificada no projeto de produção.")
 
 
 if __name__ == "__main__":
@@ -114,6 +118,7 @@ if __name__ == "__main__":
     mode.add_argument("--verify", action="store_true")
     parser.add_argument("--configure-sender", action="store_true")
     parser.add_argument("--check-sender", action="store_true")
+    parser.add_argument("--sync-otp-length", action="store_true", help="Inclui o tamanho do código por e-mail.")
     args = parser.parse_args()
     if args.configure_sender and not args.apply:
         parser.error("--configure-sender requer --apply")
@@ -122,4 +127,11 @@ if __name__ == "__main__":
     token = os.environ.get("SUPABASE_ACCESS_TOKEN")
     if not token:
         raise SystemExit("Configure SUPABASE_ACCESS_TOKEN no ambiente protegido.")
-    sync_templates(token, args.apply, args.verify, args.configure_sender, args.check_sender)
+    sync_templates(
+        token,
+        args.apply,
+        verify=args.verify,
+        configure_sender=args.configure_sender,
+        check_sender=args.check_sender,
+        sync_otp_length=args.sync_otp_length,
+    )
