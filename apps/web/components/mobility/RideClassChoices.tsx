@@ -53,7 +53,7 @@ export function RideClassChoices({
           />{' '}
           {c.label} · {c.seats} lugares
           {c.tools ? ' · espaço para equipamentos e bagagem' : ''}
-          {c.accessible ? ' · acessibilidade verificada' : ''}
+          {c.accessible ? ' · recursos de acessibilidade disponíveis' : ''}
           <span className="block">
             {formatCents(c.fare_cents)} antes dos adicionais
             {c.duration_minutes !== null && ' · ' + c.duration_minutes + ' min de percurso'}
