@@ -69,6 +69,7 @@ export const BUDGETS_KB = {
   policies: 10,
   css: 16,
   maps: 415,
+  mobility: 72,
   total: 600,
 };
 
@@ -79,6 +80,7 @@ const LABELS = {
   catalog: 'dados do catálogo (areas.json)',
   policies: 'regras de uma área (maior policies-*)',
   css: 'CSS do aplicativo',
+  mobility: 'jornadas opcionais de mobilidade',
   maps: 'mapa opcional (motor, worker e estilos)',
   total: 'JavaScript do app sem os grupos medidos à parte',
 };
@@ -116,6 +118,13 @@ export const summarize = ({ files, initial }) => {
     (file.endsWith('.js') && ['maplibre-gl-csp', 'maplibre-gl-csp-worker'].includes(chunkName(file))) ||
     (file.endsWith('.css') && chunkName(file) === 'maplibre-gl')
   )));
+  // Independently loaded rider, driver and operations screens in the authenticated build.
+  // All these chunks still face the 15 kB page limit; an eager import is charged to the shell.
+  // O17 E4 measured 60.4 kB together, with a 72 kB ceiling.
+  const mobilityNames = new Set(['Corridas', 'Motorista', 'Operacao', 'RideDriverIdentity', 'RideAftercare',
+    'driverLabels', 'rideSafety', 'RideCheckout', 'RidePilot']);
+  const mobilityAssets = new Set([...files.keys()].filter(file =>
+    !initial.has(file) && file.endsWith('.js') && mobilityNames.has(chunkName(file))));
   const lazy = [...files.keys()].filter(file => file.endsWith('.js') && !initial.has(file) && !isData(file) && !mapAssets.has(file));
   const largest = lazy.reduce((best, file) => (files.get(file) > (files.get(best) ?? 0) ? file : best), '');
   const js = [...files.keys()].filter(file => file.endsWith('.js'));
@@ -129,8 +138,10 @@ export const summarize = ({ files, initial }) => {
     policiesAll: sum(policyFiles),
     css: sum([...files.keys()].filter(file => file.endsWith('.css') && !mapAssets.has(file))),
     maps: sum(mapAssets),
+    mobility: sum(mobilityAssets),
+    allScripts: sum(js),
     // every script but the rules, which have their own two figures (the sum of all areas is not a download)
-    total: sum(js.filter(file => !isPolicies(file) && !mapAssets.has(file))),
+    total: sum(js.filter(file => !isPolicies(file) && !mapAssets.has(file) && !mobilityAssets.has(file))),
     largestRoute: largest,
   };
 };

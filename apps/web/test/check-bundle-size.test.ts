@@ -61,6 +61,16 @@ describe('check-bundle-size', () => {
     expect(runGate(dist).stdout).toMatch(/ACIMA maior página/);
   });
 
+  it('keeps the per-page limit on optional mobility routes and adds their combined cost', () => {
+    const dist = makeDist(Buffer.from('0'));
+    for (const name of ['Corridas','Motorista','Operacao','RideDriverIdentity','RideAftercare','RideCheckout']) {
+      writeFileSync(join(dist, 'assets', name + '-AbC123xY.js'), randomBytes(14_000));
+    }
+    expect(runGate(dist).stdout).toMatch(/ACIMA jornadas opcionais/);
+    writeFileSync(join(dist, 'assets', 'Corridas-AbC123xY.js'), randomBytes(17_000));
+    expect(runGate(dist).stdout).toMatch(/ACIMA maior página/);
+  });
+
   it('exits with 2 when there is no build to read', () => {
     const missing = join(tmpdir(), `check-size-missing-${process.pid}-${Date.now()}`);
     const result = runGate(missing);
