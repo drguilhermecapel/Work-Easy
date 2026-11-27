@@ -1,12 +1,12 @@
 # Métricas, portões e consultas (O08)
 
-Documento O08 · versão de 08/11/2026 · uso interno do dono do WorkEasy, que opera sozinho. Consultas em `kpis.sql`, na mesma pasta.
+Documento O08 · métricas do concierge de 08/11 e protocolo de mobilidade proposto em 27/11/2026. As consultas do concierge ficam em [kpis.sql](kpis.sql).
 
 > **Rascunho para revisão de advogado. Não é parecer jurídico.** Este é um documento operacional. Onde ele toca a regra de comissão, de pagamento retido ou de profissão regulamentada, o trecho vem marcado `[CONDICIONAL: depende de parecer]` e remete a `docs/DECISOES.md`.
 >
-> **Estado do produto:** o MVP está em `main`, **não está implantado**, não tem usuários reais e nada foi testado contra o Asaas, o WhatsApp ou o Resend de verdade. Comissão e pagamento retido estão desligados (`docs/DECISOES.md`).
+> **Base em 27/11/2026.** O backend de produção foi implantado em 25/11 e a prerelease v0.1.1 acessou seu catálogo público. A publicação HTTPS e o teste de login têm pendências. Os registros consultados não trazem resultados de um piloto de viagens reais nem comprovam ativação de comissão ou pagamento retido. [Entrega O14](14-entrega-multiplataforma.md) · [Prerelease v0.1.1](https://github.com/drguilhermecapel/Work-Easy/releases/tag/v0.1.1) · [Decisões](../DECISOES.md)
 >
-> **Nenhum número deste documento é resultado.** Os limiares são do plano (O01) ou propostas minhas, marcadas `[proposta]`. Hoje o banco local não tem pedidos nem prestadores reais: as consultas foram conferidas com dados sintéticos (seção 7).
+> **Nenhum número deste documento é resultado.** Os limiares são do plano (O01) ou propostas minhas, marcadas `[proposta]`. A conferência local documentada em novembro usou dados sintéticos (seção 7). O experimento da seção 9 requer observações reais.
 
 | Marca | Significa |
 |---|---|
@@ -50,7 +50,7 @@ psql "$PGURL" -X --csv \
 
 | # | Métrica | Definição | Fórmula | Fonte (tabela.coluna) | Meta ou limite | Cadência | Consulta |
 |---|---|---|---|---|---|---|---|
-| E | **Serviços concluídos e pagos no app** (estrela, por mês) | Atendimento que chegou a `completed` ou `released`, de origem `platform` ou `own`, com pagamento `received` ou `confirmed`; mais orçamento aceito com pagamento recebido | contagem por mês de `booking_events.at` onde `to_status = 'completed'`; orçamento pelo mês de `payments.updated_at` (aproximação) | `bookings.status`, `bookings.origin`, `booking_events.to_status/at`, `payments.booking_id/quote_id/status/updated_at`, `quotes.status` | Sem meta mensal no plano. No D45, G2 ≥ 20 acumulados (seção 2). A meta mensal sai do memorando do D45 `[proposta]` | mensal; semanal na revisão | Q01 |
+| E | **Serviços concluídos e pagos no app** (estrela, por mês) | Atendimento que chegou a `completed` ou `released`, de origem `platform` ou `own`, com pagamento `received` ou `confirmed`; mais orçamento aceito com pagamento recebido | contagem por mês de `booking_events.at` onde `to_status = 'completed'`; orçamento pelo mês do primeiro `coalesce(payments.received_at, payments.updated_at)` elegível | `bookings.status`, `bookings.origin`, `booking_events.to_status/at`, `payments.booking_id/quote_id/status/updated_at`, `quotes.status` | Sem meta mensal no plano. No D45, G2 ≥ 20 acumulados (seção 2). A meta mensal sai do memorando do D45 `[proposta]` | mensal; semanal na revisão | Q01 |
 | G1 | **Prestadores ativos na agenda por semana** (guarda: prestadores ativos semanais) | Prestador aprovado com ao menos um evento de agenda na semana ISO (seção 2) | `count(distinct prestador)` por semana | `booking_events.actor_id/at`, `availability.provider_id/created_at`, `time_off.provider_id/created_at`, `providers.status` | ≥ 30 nas semanas 5 e 6 (O01, G1) | semanal | Q04 (lista: Q04b) |
 | G3 | **Liquidez por categoria e distrito** (guarda: pedidos com proposta em 2 h) | Pedido válido com proposta dentro de 2 h do relógio (seção 2) | `pedidos com proposta em 2 h ÷ pedidos válidos`, por categoria e distrito | `requests.created_at/occupation_slug/neighborhood_id/status/client_id`, `proposals.created_at/request_id`, `neighborhoods.slug` | ≥ 70% com ≥ 30 pedidos válidos (O01, G3). Abaixo de 30 pedidos o resultado é "sem prova" | semanal; em cada CP | Q03; demanda fora do escopo: Q03b |
 | G2 | **Serviços pagos pela plataforma** (guarda: caixa) | Serviço com pagamento recebido ou confirmado (seção 2) | contagem e soma de `payments.amount_cents` por trilha, categoria e prestador | `booking_events` (`to_status = 'paid'`), `payments.status/amount_cents/booking_id/quote_id`, `quotes.status` | ≥ 20 no D45 (O01, G2) | semanal | Q02 |
@@ -86,15 +86,15 @@ As metas vêm do O01. As definições operacionais abaixo são as do banco. Cada
 
 ### 2.2 Como ler G3
 
-- O banco mede o **teto**: conta toda proposta do pedido. O banco não guarda se a proposta diz "quando pode ir" (o critério de "qualificada" do O01). Confira uma amostra de 10 propostas por semana na planilha.
+- O banco mede o **teto**: conta toda proposta do pedido. A disponibilidade `proposals.available_from` é opcional e Q03 não a exige. Confira uma amostra de 10 propostas por semana na planilha.
 - Feriados não são descontados do relógio. Em feriado, ajuste na planilha.
 - Q03 usa `janela_g3` (padrão 30/11). Para o acumulado desde o D1, rode com `janela_g3=2026-11-09`.
 
-### 2.3 Diferenças em relação ao O01 (o O01 deve ser corrigido)
+### 2.3 Correspondência com os indicadores do O01
 
-1. **G1, "atendimento criado por ele"**: esta versão do O01 (§5.1) já usa `booking_events.actor_id`, e a referência dele "(O08, nota 1)" deve apontar para esta seção, item 1. `bookings` não guarda quem criou. Quem fez a mudança fica em `booking_events.actor_id`, gravado pelo trigger de histórico em todo `INSERT` e `UPDATE` de status (`private.log_booking_status`, `20261019000005_bookings.sql`).
-2. **G1, contas de teste**: o O01 exclui contas de teste. Aqui também saem os eventos de atendimentos de conta de teste, porque um atendimento de teste não é uso real da agenda, mesmo com prestador real.
-3. **P1 (parcela paga)**: o O01 não diz a origem. Aqui vale só a origem `platform`: o CRM do próprio prestador não é o marketplace.
+1. **G1, "atendimento criado por ele"**: o O01 §5.1 usa `booking_events.actor_id` e remete a este item. `bookings` não guarda quem criou. Quem fez a mudança fica em `booking_events.actor_id`, gravado pelo trigger de histórico em todo `INSERT` e `UPDATE` de status (`private.log_booking_status`, `20261019000005_bookings.sql`).
+2. **G1, contas de teste**: o O01 §5.1 e esta consulta excluem eventos de um atendimento cujo cliente ou prestador seja de teste, mesmo se o outro participante for real.
+3. **P1 (parcela paga)**: o indicador usa os atendimentos concluídos de origem `platform`, conforme O01 §11.1; excluir participantes de teste.
 4. **Estrela (E)**: o O01 (§11.1) dá o mesmo nome ao G2, acumulado e sem exigir conclusão. A estrela é mensal e exige conclusão; G2 exige só pagamento.
 5. **D1 (disputa)**: o O01 diz "atendimentos `disputed`". Aqui é a coorte de pagos, que é o denominador do DECISOES, seção 4.
 
@@ -182,12 +182,11 @@ Layout para a revisão de sexta (O01, seção 12). Uma tela, na ordem de leitura
 | Limite | Efeito | O que fazer |
 |---|---|---|
 | Trilha B (orçamento e cobrança pela conta do prestador) não tem pedido nem proposta no banco | G3 da trilha B não entra em Q03 | Planilha `pedidos` (O01, 11.2) |
-| `payments` não guarda a data de recebimento | Orçamento usa `payments.updated_at` (aproximação). Atendimento usa o evento `paid`, que é exato | Quando houver recebimento datado, trocar a aproximação |
-| Orçamento aceito não tem etapa de conclusão | A estrela conta orçamento pelo pagamento | Registrar a conclusão na planilha por ora |
-| Proposta não guarda "quando pode ir" | G3 é um teto | Conferir amostra semanal (seção 2.2) |
-| Não há data de aprovação de prestador | A primeira aprovação vem do `audit_log` | Já coberto por Q11 |
-| Assinatura guarda só o estado atual | Churn e conversão dependem do `audit_log` | Já coberto por Q07 e Q08; `subscription.cancel` não guarda o estado anterior |
-| "Aprovado" é o estado atual de `providers.status` | G1 e o funil não têm histórico de aprovação | Aceitar como aproximação até o fim do D45 |
+| Datas de recebimento anteriores à migração podem estar vazias | Q01 e Q02 usam `received_at` ou, para o legado, `updated_at` | Quantificar e sinalizar a aproximação se afetar a janela |
+| Orçamentos aceitos podem receber `completed_at` | A estrela Q01 ainda usa o pagamento como aproximação para orçamento | Para mobilidade usar atendimento com evento de conclusão do serviço |
+| A data opcional `proposals.available_from` pode estar vazia | G3 ainda aproxima proposta qualificada | Conferir disponibilidade na amostra semanal (§2.2) |
+| `providers.approved_at` registra a primeira aprovação | Q04/G1 ainda usa o status atual e Q11 considera registros de auditoria | Expor a aproximação para a série histórica |
+| `subscription_status_history` guarda transições | Q07 e Q08 ainda dependem do `audit_log` | Ver o alcance de registros anteriores à migração (§8.2) |
 | Incidente grave e "família com incidente aberto" | Não estão no banco | Planilha `incidentes` e `cuidado` |
 | Contas de teste | Só os `user id` de `contas_teste` saem. O banco não reconhece uma pessoa pelo CPF | Manter a planilha `contas_de_teste` completa (O01, 11.3) |
 | Feriados | O relógio do G3 não os desconta | Ajustar na planilha |
@@ -217,23 +216,23 @@ Layout para a revisão de sexta (O01, seção 12). Uma tela, na ordem de leitura
 
 ## 8. Pendências e lacunas
 
-### 8.1 Correções ao O01
+### 8.1 Correções incorporadas ao O01
 
-1. Já feito: o O01 atual (§5.1, G1) usa `booking_events.actor_id`. Falta só trocar a referência "(O08, nota 1)" dele por "O08, seção 2.3, item 1".
-2. Seção 5.1, G1 e P1: incluir as exclusões da seção 2.3 deste documento.
-3. Seção 11.1: a parcela paga no app vale só para origem `platform`.
+1. O O01 §5.1 usa `booking_events.actor_id` e remete ao §2.3, item 1.
+2. O O01 remete às exclusões do §2.3 em P1 e identifica contas de teste de ambas as partes em G1.
+3. O O01 §11.1 restringe a parcela paga no app à origem `platform`.
 
 ### 8.2 Lacunas do produto
 
 Os itens 1 a 6 foram corrigidos no código em 24/11/2026 (migrações `20261124100003` e `20261124100004`; `docs/DECISOES.md`, DD65 e DD66). Linhas anteriores à migração ficam sem as datas novas: não houve backfill.
 
-1. Não há data de recebimento em `payments` (só `updated_at`). Orçamento depende de aproximação. **Feito:** `payments.received_at`, gravada pelo banco na primeira vez que o pagamento fica pago; `kpis.sql` usa a coluna e cai em `updated_at` quando ela é nula.
-2. Orçamento aceito não tem estado de conclusão (`quotes.status` não vai além de `accepted`). **Feito:** `quotes.completed_at`, marcada pelo prestador em `/pro/orcamentos` (`mark_quote_completed`); o status continua `accepted`. As consultas ainda não a usam.
-3. Não há data de aprovação em `providers`. A primeira aprovação só existe no `audit_log` (`provider.status`). **Feito:** `providers.approved_at` (primeira aprovação). As consultas ainda usam a situação atual; trocar quando houver dados.
-4. Assinatura não tem histórico de estados. `subscription.cancel` não guarda o estado anterior (`from`). **Feito:** tabela `subscription_status_history` (`from_status`, `to_status`, `changed_at`). As consultas de assinatura ainda leem o `audit_log`.
-5. Proposta não tem campo estruturado de disponibilidade ("quando pode ir"). **Feito:** `proposals.available_from` (data, opcional), no formulário da proposta e na tela do cliente.
-6. Não há aviso de pedido novo ao prestador: ele vê o pedido ao abrir `/pro/pedidos` (O01, 16.1, item 2). Os sete modelos de notificação do banco não cobrem esse caso: o sétimo, `agendamento_solicitado` (migração `20261109300006`), avisa só de agendamento direto, não de pedido do marketplace (`requests`). `ARQUITETURA.md` (Notificações) e o O01 (16.1, item 2) ainda dizem seis. **Feito:** modelo `pedido_novo` e gatilho `requests_60_notify_providers`; `ARQUITETURA.md` e o O01 foram corrigidos (10 modelos).
-7. A medição de eventos de produto (`product_events`, agregada por `admin_funnel_daily()`) está na migração `20261108100000_product_events.sql`, aplicada no banco local, mas não está implantada, e as consultas deste documento não a usam. Pode dar datas exatas de recebimento e de primeira proposta. `[PLANEJADO]` para a medição em produção.
+1. Recebimento. O banco grava `payments.received_at` na primeira vez em que o pagamento fica pago. `kpis.sql` usa `updated_at` quando a data está ausente no legado.
+2. Conclusão do orçamento. O prestador marca `quotes.completed_at` em `/pro/orcamentos` (`mark_quote_completed`), mantendo `status = accepted`. As consultas ainda usam o pagamento como aproximação.
+3. Aprovação. `providers.approved_at` registra a primeira aprovação. As consultas ainda usam a situação atual.
+4. Assinatura. `subscription_status_history` registra `from_status`, `to_status` e `changed_at`. As consultas de assinatura ainda leem o `audit_log`.
+5. Disponibilidade. `proposals.available_from` é uma data opcional exibida na proposta. Q03 aceita propostas sem a data; a amostra semanal do §2.2 verifica quando o prestador pode ir.
+6. Aviso de pedido do marketplace. O modelo `pedido_novo` e o gatilho `requests_60_notify_providers` foram adicionados em 24/11 e se somaram ao aviso de agendamento direto. A entrega em canal humano/externo exige configuração e prova de recebimento. [Migrações de métricas](../../supabase/migrations/20261124100003_metrics_data.sql) · [Aviso de novo pedido](../../supabase/migrations/20261124100004_new_request_notice.sql)
+7. A migração de `product_events` e `admin_funnel_daily()` integra o conjunto implantado em 25/11 segundo O14. As consultas do concierge não usam esses eventos. Faltam evidências de medição em pedidos reais e instrumentação própria de mobilidade. [Migração](../../supabase/migrations/20261108100000_product_events.sql) · [Implantação](14-entrega-multiplataforma.md)
 8. `ARQUITETURA.md` usa "fase" com sentido de construção, e o O01 com sentido de lançamento. Padronizar o termo.
 9. A lista de contas de teste é uma planilha. Nenhuma consulta a acessa; se a planilha não for completa, as métricas saem infladas.
 
@@ -242,6 +241,44 @@ Os itens 1 a 6 foram corrigidos no código em 24/11/2026 (migrações `202611241
 - Confirmar com o plano estratégico privado os nomes e os limiares das fases 2 e 3 (seção 3).
 - Rodar `kpis.sql` com dados reais no primeiro ensaio (O01, P10) e comparar a planilha com o banco (O01, 11.3, item 3).
 - CSV: decidir se o `BEGIN` e o `ROLLBACK` devem sair da saída.
+
+---
+
+## 9. Experimento de mobilidade
+
+Protocolo proposto, com limites a registrar antes da primeira atribuição real. G1–G4 medem o concierge com as definições da seção 2. O módulo terá um registro próprio de cada solicitação elegível, ainda a implementar. O G3 exclui cancelamentos e, por isso, seu denominador não serve para avaliar a oferta de transporte. [Operação O01](01-plano-de-45-dias-concierge.md) · [Roadmap O15](15-mobilidade-de-prestadores.md)
+
+### População e comparação
+
+- Registrar uma vez por solicitação real e única, antes da cotação ou da resposta do cliente, sua elegibilidade, data, microárea, ocupação aprovada, janela coberta, prestador disponível e alternativas viáveis. Excluir duplicatas, equipe/testes e simulações com motivo registrado. Pedidos que dependem inteiramente de transporte podem seguir pelo suporte dentro das autorizações e do orçamento. Medir esse grupo à parte, pois não dispõe de alternativa comparável.
+- Onde ambas as opções forem viáveis, atribuir 1:1, aleatoriamente em blocos por categoria, área e janela, **oferta opcional do operador** ou **serviço com prestador próximo/deslocamento próprio**. Registrar atribuição, preço exibido e versão da proposta antes do aceite. No acompanhamento, usar o braço de origem inclusive para recusa, troca de meio, ausência, falha da reserva, cancelamento e falha de pagamento. Registrar desvios, sem atribuir a aceitação ao preço subsidiado a uma oferta a preço integral.
+- Registrar o canal de entrada, origem aproximada, ticket, duração e primeira contratação elegível versus recorrência no serviço. Em ausência de randomização, parear solicitações comparáveis nas mesmas janelas e documentar diferenças de composição, seleção, demanda reprimida e incerteza. Uma decisão comercial exige evidência capaz de separar o efeito da oferta do perfil dos participantes.
+
+### Registro e denominadores
+
+A operação documenta uma linha por solicitação e registros vinculados por atendimento, trecho e tentativa. Guarda horários de eventos com fuso e agrega em `America/Sao_Paulo`. Restringe identificadores e comprovantes ao ambiente operacional. O painel publica agregados, valores ausentes e quantidade de observações por braço. Conciliação financeira usa recibos do operador e registros do PSP. O registro do atendimento confirma o serviço. A leitura pontual de localização do app não acompanha corrida ou produz prova de chegada. [Atendimentos](../../services/bookings.ts) · [Eventos no banco](../../supabase/migrations/20261019000005_bookings.sql) · [Geolocalização pontual](../../platform/geolocation.ts)
+
+| Indicador | Cálculo e leitura |
+|---|---|
+| Aceitação e conversão | Aceites de mobilidade com preço e consentimentos ÷ ofertas de mobilidade efetivamente apresentadas; exibir também propostas apresentadas ÷ atribuídas. Serviços concluídos ÷ todas as solicitações elegíveis do braço, incluindo recusas e cancelamentos. |
+| Pontualidade e perdas | Chegadas do profissional ao endereço dentro da janela aceita ÷ atendimentos confirmados com janela encerrada. Registrar separadamente atrasos, ausência, cancelamento após confirmação e chegada sem comprovação. Calcular cancelamentos por solicitante/causa ÷ elegíveis e corridas concluídas sem serviço ÷ corridas concluídas, mais o custo. |
+| Contribuição e discrepância | Por braço, somar MC de todos os pedidos, perdas, suporte e ajustes de cancelamento e dividir pelo número de solicitações elegíveis, incluindo as de contribuição zero. Comparar a diferença oferta menos controle. Isolar recebimento e remuneração autorizados, custo e despesas variáveis de mobilidade por trecho, e final menos cotado em R$ e % quando cotação positiva. Expor adicionais autorizados, cobranças contestadas e autorizações excedidas. |
+| Prestador e recompra | Renda líquida/h por profissional = (soma de repasses − soma de custos próprios) ÷ soma das horas de serviço, deslocamento de todos os trechos e espera. Apresentar mediana por braço, distribuição e cobertura de registro de tempo e custos. Para recompra, clientes com outro serviço concluído em 30 dias ÷ clientes únicos com primeiro serviço concluído e 30 dias completos de observação. |
+| Capacidade e caixa | Minutos do coordenador e do fundador por elegível e por pedido, turnos cobertos e gasto com subsídio por solicitação e por pedido. Mostrar pico diário de caixa necessário, reserva de obrigações pendentes, exposição a estornos e prazos de efetivo desembolso e recebimento. Por par origem–destino e slot, contar elegíveis/concluídos e medir distância, duração, retorno/continuação, espera e concentração (% dos elegíveis no par mais frequente). |
+
+A planilha apresenta MC do pedido sem assinatura rateada e resultado por coorte/mês com assinaturas efetivas. O processamento e os demais custos são apropriados uma vez. Recalcular o resultado com subsídio encerrado e validar com oferta a preço integral, pois elasticidade a preço não é conhecida. [Modelo financeiro O09](09-modelo-financeiro.md)
+
+### Avanço e interrupção
+
+| Decisão | Regra proposta e prova |
+|---|---|
+| Abrir M1 | Instrumento e canal do operador validados, responsabilidades e pagadores definidos, escala com titular e suplente até o último retorno, autorizações e conciliação testadas e caixa reservado. Arquivar evidência do ensaio por cenário no ambiente identificado e aprovações de operação. Habilitar monetização requer a sua permissão comercial específica. |
+| Limitar exposição | Janela de quatro semanas, capacidade exploratória de 50–100 elegíveis. Encerrar inclusão ao atingir 100 ou o fim da janela. O limite proposto de **R$ 5.000** cobre todo o caixa incremental da operação M1, inclusive escala remunerada do coordenador e suplente, demais custos operacionais e obrigações futuras assumidas. O subsídio promocional está dentro desse teto, com **até R$ 10 por solicitação e R$ 300 no total**, e encerra ao consumir R$ 300 ou terminar a janela. Engenharia tem orçamento separado a aprovar; o PR documental não autoriza esses gastos. No caixa consolidado, atribuir cada desembolso uma vez à operação ou à engenharia e baixar a obrigação reservada ao pagá-la. Antes de reservar, somar desembolsos e obrigações pendentes (ida, retorno, adicionais autorizados, cancelamentos); se o próximo compromisso romper o teto, suspender novas reservas. Registrar desembolso e recebimento separadamente e honrar os compromissos assumidos. |
+| Parar e recuperar | Um acesso indevido a localização, reserva/cobrança duplicada, despesa sem autorização ou liberação indevida de repasse suspende novas reservas na rota afetada, com bloqueio mais amplo se a abrangência for desconhecida. Se faltar cobertura humana para a janela ou o último retorno, suspender imediatamente novas reservas e acionar a contingência para os compromissos em curso. Manter reservado o custo ainda incerto até a reconciliação. Nomear responsável, atender viagens em curso, conciliar e testar a correção antes de reabrir. [Runbook](../RUNBOOKS.md) |
+| Encerrar o piloto operacional | Todas as solicitações incluídas têm desfecho ou acompanhamento identificado, todos os trechos e obrigações têm custo/estado reconciliado para o fechamento financeiro e restam zero incidentes críticos abertos. Relatar quantidade real e lacunas mesmo abaixo de 50. Em cada revisão semanal observar pontualidade ≥90% e queda máxima de 5 pontos percentuais frente ao controle, renda/h mediana ≥95% da mediana de controle e suporte médio ≤15 min por elegível. Desvio requer revisão da escala/área e congela expansão. Dado ausente ou controle sem observações deixa o indicador inconclusivo. |
+| Demonstrar benefício econômico e expandir | Usar braço comparável, horizonte completo de ajustes e recompra, contribuição incremental por elegível com limite inferior do IC de 95% acima de R$ 0 a preço sustentável, guardas de qualidade/renda/suporte cumpridas e caixa compatível. Para comercializar margem de transporte, exigir também autorização e margem de mobilidade positiva após custos e sem subsídio permanente. Publicar motivos de divergências e cobertura da amostra. Se o intervalo incluir zero ou a seleção impedir atribuição confiável, manter ou encerrar o escopo limitado e indicar a próxima evidência necessária. |
+
+Os 50–100 elegíveis dimensionam o trabalho inicial. Para a etapa confirmatória, pré-registrar a diferença mínima economicamente relevante em R$ por elegível e em conversão. Para contribuição, com alocação equilibrada, usar aproximadamente `2 × (1,96 + 0,84)² × variância / efeito²` observações por braço com variância estimada no piloto. Para conversão, uma hipótese ilustrativa de 60% para 70%, teste bilateral de 5% e poder de 80%, exige cerca de **356 por braço** antes de perdas. Escolher o maior tamanho necessário, ajustar para repetição de clientes/prestadores, perdas e escassez por estrato; estimar intervalos respeitando essa dependência. Recompras ainda sem 30 dias de observação aguardam fechamento.
 
 ---
 

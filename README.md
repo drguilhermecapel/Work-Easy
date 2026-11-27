@@ -43,5 +43,7 @@ dependem de parecer jurídico, como pagamento retido e comissão, ficam desligad
 | `deploy-web.yml` | só manual, a partir de `main`, digitando `DEPLOY` e com aprovação do ambiente `production` | build e publicação do site no Cloudflare Pages |
 | `deploy-supabase.yml` | só manual, com aprovação do ambiente `production` | migrações, catálogo e Edge Functions; com `dry_run` (padrão) nada é publicado |
 
-O ambiente `production` existe e o backend WorkEasy foi implantado em 25/11/2026. O estado de cada canal e as evidências ficam no [registro da entrega multiplataforma](apps/web/docs/operacao/14-entrega-multiplataforma.md).
+O backend WorkEasy foi implantado em 25/11/2026. A pré-release `v0.1.1` de 26/11 contém os pacotes web e desktop. A publicação do site no domínio final e a validação com usuários reais continuam pendentes na auditoria de 27/11. [Registro da entrega multiplataforma](apps/web/docs/operacao/14-entrega-multiplataforma.md)
+
+O transporte opcional dos prestadores é uma proposta vinculada ao atendimento. As etapas de implementação, contratação e piloto estão no [roadmap de mobilidade](apps/web/docs/operacao/15-mobilidade-de-prestadores.md).
 

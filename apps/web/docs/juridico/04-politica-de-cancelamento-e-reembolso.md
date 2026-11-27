@@ -225,6 +225,21 @@ Só o banco de dados muda o estado de um atendimento. Cada mudança entra no his
 
 12.2 Atendimentos já aceitos seguem a versão desta política em que nasceram. [PROPOSTA]
 
+## Cancelamento de transporte ligado ao serviço — minuta de 27/11/2026
+
+**Proposta para revisão jurídica e comercial.** O pagador recebe na cotação as regras do operador e os limites de cada trecho. A equipe registra quem solicitou a mudança, horário, estado confirmado do trecho e alternativa oferecida. Serviço e transporte recebem decisões próprias. O pedido pode ser feito pelo canal e no horário exibidos na confirmação.
+
+| Situação | Tratamento proposto |
+|---|---|
+| Cliente ou prestador cancela, falta ao embarque ou ao endereço | Apurar quem faltou, comunicação, tolerância e condição aceita. Pedir cancelamento dos trechos pendentes. Para cada um, informar ao pagador a situação, o valor efetivamente devido e o comprovante. Aplicar ao atendimento a regra própria. |
+| Operador cancela, não há veículo ou a cotação vence | Oferecer nova cotação, deslocamento próprio, profissional próximo ou reagendamento. Quem pagar decide sobre a nova despesa. A equipe solicita as restituições devidas ao operador e registra o responsável por acompanhá-las. |
+| Cancelamento em trânsito ou após a corrida | Preservar os custos incorridos de cada trecho mesmo quando o serviço é cancelado. Apurar responsabilidade e limites contratuais antes de qualquer débito ao pagador. Encerrar ou recontratar a volta conforme o combinado. |
+| Falha de conexão ao cancelar | Registrar tentativa pendente com protocolo, consultar a reserva original e confirmar estado e custo junto ao operador. Informar pendência ao pagador. A operação só registra cancelamento ou valor zero após confirmação verificável. |
+| Mudam prestador, local, horário ou duração do trabalho | Rever ida, volta, estacionamento e espera. Se o motorista precisar aguardar, informar custo e teto por tempo e obter o aceite do pagador. Oferecer retorno em outro veículo quando disponível. |
+| Divergência da estimativa, cobrança indevida, disputa ou falha do meio de pagamento | Identificar cobrador e pagador de cada componente, confrontar autorização, custo final e recibo. Suspender a cobrança de excedente não autorizado. Apurar devolução integral ou parcial por componente e acompanhar o protocolo do estorno até confirmação. |
+
+Apresentar a diferença entre pedido de cancelamento, confirmação da viagem, pedido de estorno e devolução efetiva. O jurídico validará nos termos do CDC o exercício do direito de arrependimento, as consequências do início de execução e as responsabilidades de cada parte antes da publicação. [Cláusula 6 deste documento](#6-direito-de-arrependimento) · [O15](../operacao/15-mobilidade-de-prestadores.md)
+
 ## Pontos para o advogado
 
 **A. Papel do WorkEasy e aplicação das normas**

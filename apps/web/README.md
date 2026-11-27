@@ -2,7 +2,9 @@
 
 Plataforma para encontrar e contratar serviços e profissionais liberais de todas as áreas e categorias, de reformas e limpeza a aulas, beleza, tecnologia, cuidados e saúde.
 
-> **Status: MVP em construção, não validado com usuários e não implantado.** Sem um projeto Supabase configurado, o app roda como demonstração com dados fictícios e nada é enviado ou guardado. Com o Supabase, há cadastro por código, pedidos, propostas, agenda, orçamentos, administração e linha de cuidado, testados contra um banco local. **Pagamento retido e comissão ficam desligados** até haver parecer jurídico, a cobrança depende de conta Asaas configurada, e verificação de identidade, vídeo, teleconsulta e prontuário **não existem**. Não use para atendimento real.
+> **Situação em 27/11/2026.** O backend Supabase foi implantado em 25/11. A pré-release `v0.1.1` teve ensaios de instalação da PWA e de consulta ao catálogo de produção. Publicação HTTPS, login por código no domínio final e validação com usuários reais seguem pendentes. Sem projeto Supabase configurado, o app usa dados de demonstração. Cadastro, pedidos, propostas, agenda, orçamentos, administração e cuidado têm testes com banco local. Comissão, pagamento retido e abertura da linha de cuidado permanecem desligados. A cobrança exige configuração Asaas e os portões financeiros aplicáveis. Verificação de identidade, vídeo, teleconsulta e prontuário estão fora do escopo implementado. [Evidências por canal](docs/operacao/14-entrega-multiplataforma.md)
+
+A proposta de mobilidade opcional acompanha o serviço contratado. A implementação, o contrato de transporte e a validação com viagens reais são etapas futuras. [Roadmap de mobilidade](docs/operacao/15-mobilidade-de-prestadores.md)
 
 ## O que existe hoje
 

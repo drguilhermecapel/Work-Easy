@@ -511,6 +511,16 @@ Esta tarefa é de texto. As lacunas abaixo estão listadas e não foram corrigid
 | G15 | `pages/conta/Conta.tsx`, linha 138 | "Consulta de antecedentes" sugere consulta a órgãos. | Engano sobre o que o WorkEasy faz. | Título da seção 3.4. |
 | G16 | Assistente (`supabase/functions/request-assist`) | Função existe, sem tela. Não há aviso de IA na interface. | Nada a expor hoje; quando a tela existir, o aviso da seção 4.3 é obrigatório. | Ligar o aviso junto com a tela. |
 
+## Aceites de mobilidade — minutas para o piloto de 27/11/2026
+
+Usar somente após aprovação, preencher os campos com a versão da proposta e guardar pagador, passageiro e escolhas de cada trecho. Quem paga e quem viaja podem ser pessoas diferentes.
+
+- **Pagador.** “Autorizo o trecho [ida/volta/continuação] com [operador], em [data e janela], até [valor e moeda], conforme as condições apresentadas. Receberei uma nova proposta se esse limite precisar aumentar.”
+- **Prestador.** “Confirmo o atendimento [serviço e janela].” Em uma escolha independente, “Quero o transporte de [ponto escolhido] para [destino] em [janela]” ou “Vou por conta própria”.
+- **Privacidade.** “O operador [nome] recebe os dados necessários ao embarque e ao destino. O cliente vê a previsão de chegada. Você pode digitar um ponto de encontro.” Exibir link para o aviso vigente antes do envio.
+
+Recolher novo aceite do pagador quando a alteração ultrapassar o valor ou mudar as condições autorizadas. O aceite da despesa, a confirmação pelo passageiro e a eventual permissão de localização do aparelho têm registros distintos. Ver [minuta do prestador](02-termos-do-prestador.md) e [privacidade](03-politica-de-privacidade.md).
+
 ## Pontos para o advogado
 
 ### Perguntas abertas

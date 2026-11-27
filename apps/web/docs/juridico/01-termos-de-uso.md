@@ -332,6 +332,16 @@ Resumo. As regras completas estão na Política de Avaliações e Moderação (d
 
 [PLANEJADO: repetir estes dados em local de destaque, no rodapé do site e do app, e na ficha das lojas de aplicativos (Decreto 7.962/2013, art. 2º, I e II; documento 10).]
 
+## Mobilidade opcional e preço discriminado — minuta de 27/11/2026
+
+**Texto proposto para a cláusula 6, sujeito ao contrato do parceiro e à aprovação jurídica.** Ao escolher um serviço, você recebe o preço do atendimento, o endereço e a janela. Se houver opção de transporte do profissional, você poderá recusá-la quando o atendimento for viável com profissional próximo ou com deslocamento organizado por ele. A equipe informará a alternativa, inclusive eventual mudança de horário ou profissional, para sua escolha.
+
+Antes da confirmação, a proposta mostrará o operador, a classe de veículo, os trechos de ida, volta ou continuação previstos, a validade, a moeda, o pagador e o valor máximo autorizado por trecho. O resumo mostrará preço do serviço, transporte, adicionais, eventual subsídio, total do pedido e parcela que cabe a você. O demonstrativo identificará quem cobra cada componente e se o transporte é pago ao operador ou à WorkEasy. Espera, estacionamento, pedágios e bagagem constarão da proposta quando aplicáveis. Você poderá consultar a versão aceita.
+
+Cotação vencida, troca de endereço, de horário ou de profissional exige conferir a nova proposta. Se o custo ultrapassar o limite aceito, o pagador deverá autorizar o novo valor antes de assumir a despesa. A previsão de chegada é atualizada conforme a informação do operador ou da equipe. O SAC indicado na proposta poderá providenciar alternativa, reagendamento ou cancelamento. As regras para os trechos já iniciados e para o serviço constam da [minuta de cancelamento](04-politica-de-cancelamento-e-reembolso.md).
+
+**Para revisão interna.** O preço do serviço segue D5/D6 e a política da ocupação. Exibir somente a modalidade comercial permitida ao parceiro e à conta. As regras operacionais e os critérios de habilitação estão em [O15](../operacao/15-mobilidade-de-prestadores.md).
+
 ## Pontos para o advogado
 
 Esta seção é interna. Cada ponto diz o que o rascunho assume e o que precisa de decisão. As fontes (F1 a F18) estão na última seção.

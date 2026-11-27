@@ -434,6 +434,14 @@ Estes Termos do Prestador ("Termos") são um contrato entre você e [RAZÃO SOCI
 | Vigência destes Termos | [DATA DE VIGÊNCIA] |
 | Versão | 2026-10-rascunho |
 
+## Mobilidade do prestador — minuta de adesão em 27/11/2026
+
+**Proposta sujeita à aprovação jurídica.** Para o atendimento agendado, você pode informar sua disponibilidade, um ponto seguro de embarque, a necessidade de transporte e as dimensões dos equipamentos. Pode usar deslocamento próprio ou recusar o transporte oferecido quando conseguir realizar o atendimento de outra forma. Uma origem aproximada basta para avaliar a cobertura. Informe o ponto exato quando for necessário para a cotação ou o embarque.
+
+Antes do aceite, você verá o valor do serviço, os descontos aplicáveis, a remuneração líquida estimada, a duração prevista do trabalho, do trajeto e da espera, o pagador de cada trecho e os limites autorizados. Você confirma separadamente o atendimento e os trechos acordados. Quando precisar de volta ou continuação, confira o destino, o pagador e a disponibilidade. Uma nova despesa a seu cargo exige sua autorização. Embarque, chegada ao cliente, início e fim do serviço têm confirmações próprias. O repasse do atendimento segue as condições da contratação do serviço.
+
+**Para revisão interna.** A modalidade de transporte não altera a política de honorários, as exigências por ocupação nem a trava de recorrência de trabalho doméstico do catálogo. O aceite financeiro documenta quem assume uma despesa. A base e a informação para o tratamento de dados constam da [minuta de privacidade](03-politica-de-privacidade.md). [D5, D6 e D13](../DECISOES.md)
+
 ## Anexo I. Condições vigentes em 2026-10-rascunho
 
 Estes valores são configurações da plataforma. O dono pode mudá-los sem novo deploy. Quando a mudança piorar a situação do prestador, vale o item 3.3. A coluna "Onde está" é para o dono e para o advogado: apague-a na versão publicada.
