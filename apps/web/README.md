@@ -1,5 +1,8 @@
 # WorkEasy
 
+O módulo de corridas e a transição comercial de 10% têm controles separados no servidor. Consulte o [roadmap da rede de motoristas](docs/operacao/16-rede-propria-de-motoristas.md) para o estado da engenharia e as condições da primeira viagem.
+
+
 Plataforma para encontrar e contratar serviços e profissionais liberais de todas as áreas e categorias, de reformas e limpeza a aulas, beleza, tecnologia, cuidados e saúde.
 
 > **Situação em 27/11/2026.** O backend Supabase foi implantado em 25/11. A pré-release `v0.1.1` teve ensaios de instalação da PWA e de consulta ao catálogo de produção. Publicação HTTPS, login por código no domínio final e validação com usuários reais seguem pendentes. Sem projeto Supabase configurado, o app usa dados de demonstração. Cadastro, pedidos, propostas, agenda, orçamentos, administração e cuidado têm testes com banco local. Comissão, pagamento retido e abertura da linha de cuidado permanecem desligados. A cobrança exige configuração Asaas e os portões financeiros aplicáveis. Verificação de identidade, vídeo, teleconsulta e prontuário estão fora do escopo implementado. [Evidências por canal](docs/operacao/14-entrega-multiplataforma.md)

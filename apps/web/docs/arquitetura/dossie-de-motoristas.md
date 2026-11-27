@@ -1,0 +1,21 @@
+# Dossiê de verificação de motoristas
+
+O dossiê vincula a habilitação do condutor a um veículo. Só recebe dados reais no projeto de produção, após habilitação do módulo, de pelo menos uma área com autorização vigente e da política privada de coleta. Um administrador revisor deve ser diferente do titular. O ensaio usa categorias fictícias e dispensa upload. [Migração e permissões](../../supabase/migrations/20261127000601_ride_driver_dossiers.sql) · [Regras municipais e condições de ativação](../juridico/13-rede-direta-de-motoristas.md)
+
+## Preparar a coleta
+
+1. Jurídico e encarregado aprovam finalidade, base legal, versão do aviso, validade, prazo de retenção em dias e acesso. Registrar referências verificáveis em `private.ride_dossier_policy` e `private.ride_area_authorizations`. As migrações deixam a política de coleta vazia. Conferir que o aviso vinculado em `/legal` comunica esses termos e que o canal de exercício dos direitos responde.
+2. Infra provisiona o bucket privado e as funções `ride-driver-file` (token da sessão) e `ride-dossier-purge` (segredo da rotina). Configurar no Vault `ride_dossier_purge_url` para esse endpoint protegido e `cron_secret` correspondente ao ambiente. O job `workeasy-ride-dossier-retention` roda a cada hora. Ensaiar expiração, indisponibilidade transitória de Storage e nova tentativa no ambiente controlado.
+3. Operações cadastra o responsável pela revisão, confere a lista municipal atual e define o prazo de resposta e a via para correção de documentos. Qualquer comprovante adicional necessário ao enquadramento precisa de autorização específica antes de iniciar esse caso.
+
+## Envio e revisão
+
+O candidato registra nome exibível, número municipal aplicável, modelo e placa. Cada arquivo entra com a finalidade escolhida. Há campos separados para fotos de identificação e para CNH com EAR, licença municipal, licenciamento do veículo, certificado do veículo e seguro. A Edge Function limita tamanho, confere assinatura dos bytes e remove metadados de fotos JPEG/PNG antes de escrever no Storage. O banco limita tentativas por motorista/dia e grava a relação do arquivo com o dossiê. A operação só pode aprovar uma ficha enviada e completa. Verificar autenticidade e vigência nas fontes competentes e considerar a primeira data de expiração em cada conjunto documental. O sistema grava essa atestação, exige a menor das vigências para que o motorista atenda e guarda o motivo quando a ficha é rejeitada.
+
+O reenvio de uma ficha rejeitada e a renovação abrem nova revisão. Abrir nova revisão exige que o motorista termine seus trechos ativos e pausa as novas ofertas. Um cadastro anterior à migração deve ter fotos e identificação verificadas antes de nova atribuição real.
+
+## Acesso e descarte
+
+O navegador pede acesso à Edge Function com a sessão do usuário. Cada leitura é autorizada no servidor e fornece uma URL de 120 segundos para um único arquivo. Motorista e revisor veem o dossiê pertinente. O passageiro designado pode consultar nome, registro, modelo, placa e as duas fotos de identificação enquanto o trecho está aceito, a caminho ou embarcado. O pagador ou contratante do serviço sem papel de passageiro recebe a projeção de acompanhamento prevista. A emissão de novas URLs para o passageiro termina com a corrida. A janela residual de um link já emitido é de até dois minutos.
+
+Na chegada do prazo, o sistema exige nova coleta/revisão para voltar a usar o registro. O worker remove do Storage os arquivos vencidos, substituídos ou órfãos e reprocessa as falhas. A base elimina fichas expiradas após remover os respectivos objetos. A exclusão da conta antecipa a expiração do dossiê e bloqueia novas leituras com um JWT ainda válido. Uma obrigação de guarda específica, registrada pelo custodiante em `private.ride_dossier_holds` com referência e termo final, preserva a prova em custódia restrita. Ela não estende o acesso da interface. Ao fim do prazo, o expurgo prossegue. Os recibos já emitidos continuam sob a tabela e a finalidade de guarda do transporte. O encarregado e Infra conferem o horário do último expurgo, a quantidade pendente e a política de backup antes de declarar uma solicitação de eliminação concluída. [Recibos](../../supabase/migrations/20261127000501_ride_receipts.sql)

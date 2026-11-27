@@ -57,6 +57,8 @@ export const createProFake = (): ProFake => {
   const baseReset = base.reset;
   fake.reset = () => {
     baseReset();
+    fake.rpcs.service_commission_options = () => ok([]);
+    fake.rpcs.service_pro_sales_allowed = () => ok(true);
     fake.uploads = [];
     fake.removed = [];
     fake.uploadError = null;

@@ -1,5 +1,10 @@
 # Entrega multiplataforma do WorkEasy
 
+## Rede própria em revisão
+
+O [PR #47](https://github.com/drguilhermecapel/Work-Easy/pull/47) passa a incluir localização por trecho e alertas de oferta para motoristas. Consultar os resultados de integração e builds da revisão exata na aba de verificações. Para habilitar o canal móvel, faltam ensaios em aparelhos físicos bloqueados com as credenciais do projeto, retenção/expurgo, aprovação de distribuição e verificação autenticada da configuração final. A pré-release v0.1.1 continua sendo evidência do produto anterior. [Roadmap e portões](16-rede-propria-de-motoristas.md)
+
+
 O produto usa React/Vite, Capacitor e Tauri em `apps/web`. Os protótipos Expo, Web Prefeitura e FastAPI permanecem em suas pastas.
 
 ## Auditoria de 27/11/2026

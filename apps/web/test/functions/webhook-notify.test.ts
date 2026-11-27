@@ -229,6 +229,16 @@ describe('asaas-webhook: payments', () => {
     expect(log.processed).toEqual([['evrow-1', 'payrow-1']]);
   });
 
+  it('records an actual payment under split review without advancing the booking', async () => {
+    const { deps, log } = webhookDeps({
+      payment: { id: 'payrow-1', status: 'pending', booking_id: BOOKING_ID, provider_id: PROVIDER.id, escrow: false, service_split_review_required: true },
+    });
+    const res = await read(await webhook(hook(received), deps));
+    expect(res.body.data.payment_status).toBe('received');
+    expect(log.transitions).toEqual([]);
+    expect(log.processed).toEqual([['evrow-1', 'payrow-1']]);
+  });
+
   it('does not trust the body: a forged PAYMENT_RECEIVED for a charge Asaas shows as pending changes nothing', async () => {
     const pending: Remote = { body: { id: 'pay_1', status: 'PENDING', dueDate: '2026-10-19' } };
     const { deps, log } = webhookDeps({ remote: { 'GET /v3/payments/pay_1': pending } });

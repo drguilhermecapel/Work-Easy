@@ -63,7 +63,7 @@ export interface ChargesCreateDeps extends BaseDeps {
   asaas: AsaasClient | null;
   session(req: Request): Promise<{
     user: AuthUser;
-    getProvider(): Promise<(ProviderApproval & { id: string; plan: string }) | null>;
+    getProvider(): Promise<(ProviderApproval & { id: string; plan: string; migratedOccupations?: string[]; fullyMigrated?: boolean }) | null>;
     getBooking(id: string): Promise<OwnBooking | null>;
     getQuote(id: string): Promise<ProviderQuote | null>;
     getProviderClient(id: string): Promise<ProviderClient | null>;
@@ -141,7 +141,10 @@ export function handler(req: Request, deps: ChargesCreateDeps): Promise<Response
 
     const provider = await session.getProvider();
     if (!provider || provider.id !== session.user.id) throw errors.notAllowed('Disponível apenas para prestadores.');
-    if (provider.plan !== 'pro') throw new HttpError(403, 'pro_required', 'Cobranças de clientes próprios fazem parte do plano Pro.');
+    const fullAccess = provider.plan === 'pro' || provider.fullyMigrated === true;
+    const migratedOccupations = provider.migratedOccupations ?? [];
+    const proRequired = () => new HttpError(403, 'pro_required', 'A cobrança deste cliente próprio exige o plano Pro ou uma ocupação migrada.');
+    if (!fullAccess && (input.quote_id || migratedOccupations.length === 0)) throw proRequired();
     // Money moves only for an account the admin approved (checked again for the booking's occupation)
     requireApprovedProvider(provider);
 
@@ -159,6 +162,7 @@ export function handler(req: Request, deps: ChargesCreateDeps): Promise<Response
         throw errors.conflict('booking_not_chargeable', 'Este atendimento não pode ser cobrado no status atual.');
       }
       requireApprovedProvider(provider, booking.occupation_slug);
+      if (!fullAccess && !migratedOccupations.includes(booking.occupation_slug)) throw proRequired();
       amount = booking.price_cents ?? 0;
       linkedClient = booking.provider_client_id;
       // Generic on purpose, as in payments-create: the processor and the payer's statement see this text

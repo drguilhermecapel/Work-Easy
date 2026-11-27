@@ -28,6 +28,7 @@ const PROVIDER_PAYMENT_ACCOUNT_COLUMNS = ['provider_id', 'asaas_account_id', 'as
 
 export const EXPORT_PLAN: ExportQuery[] = [
   { table: 'profiles', ownerColumns: ['id'] },
+  { table: 'my_ride_data_export', ownerColumns: ['id'], columns: ['id', 'mobility'] },
   { table: 'providers', ownerColumns: ['id'] },
   { table: 'provider_occupations', ownerColumns: ['provider_id'] },
   { table: 'provider_neighborhoods', ownerColumns: ['provider_id'] },

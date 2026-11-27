@@ -20,6 +20,9 @@ export interface BookingForPayment {
   client_id: string | null;
   provider_id: string;
   occupation_slug: string;
+  service_fee_policy_version?: string | null;
+  service_fee_covered_by_pro?: boolean;
+  service_fee_offered?: boolean;
   status: string;
   origin: string;
   price_cents: number | null;
@@ -33,6 +36,7 @@ export interface PaymentRecord {
   status: PaymentStatus;
   amount_cents: number;
   invoice_url: string | null;
+  service_split_review_required?: boolean;
   pix_qr_code: string | null;
   pix_payload: string | null;
   due_date: string | null;
@@ -50,6 +54,7 @@ export interface NewPayment {
   status: PaymentStatus;
   escrow: boolean;
   invoice_url: string | null;
+  service_split_review_required?: boolean;
   pix_qr_code: string | null;
   pix_payload: string | null;
   due_date: string;
@@ -84,7 +89,12 @@ const Body = object({
   cpf_cnpj: optional(cpfCnpj()),
 });
 
+function splitUnderReview() {
+  return errors.conflict('service_split_review', 'Esta cobrança aguarda conferência do repasse. Entre em contato com o suporte.');
+}
+
 export function paymentView(p: PaymentRecord, reused: boolean) {
+  if (p.service_split_review_required) throw splitUnderReview();
   return {
     payment_id: p.id,
     asaas_payment_id: p.asaas_payment_id,
@@ -250,6 +260,25 @@ export async function saveCharge(input: {
   }
 }
 
+/** Only two-decimal PSP amounts can fund the exact centavo promised in the accepted service. */
+function coversFixedPayout(amountCents: number, dueCents: number, gross: number, net?: number): boolean {
+  if (typeof net !== 'number' || net < 0 || gross !== centsToReais(amountCents)) return false;
+  const available = Math.round(net * 100);
+  return Number.isSafeInteger(available) && available / 100 === net && available >= dueCents && available <= amountCents;
+}
+
+async function confirmAvailableNet(asaas: AsaasClient, amount: number, payout: number, method: PaymentMethod) {
+  const billingType = BILLING_TYPE[method];
+  if (method === 'undefined' || billingType === 'UNDEFINED') {
+    throw errors.conflict('service_split_method', 'Escolha Pix, boleto ou cartão para calcular o repasse do serviço.');
+  }
+  const estimate = await callAsaas(() => asaas.simulatePayment(centsToReais(amount), billingType));
+  const field = { pix: 'pix', boleto: 'bankSlip', credit_card: 'creditCard' } as const;
+  if (!coversFixedPayout(amount, payout, estimate.value, estimate[field[method]]?.netValue)) {
+    throw errors.conflict('service_split_unavailable', 'Esta forma de pagamento não cobre o repasse contratado. Escolha outra ou fale com o suporte.');
+  }
+}
+
 export function handler(req: Request, deps: PaymentsCreateDeps): Promise<Response> {
   return route(req, { methods: ['POST'], ...corsOf(deps), onError: deps.logError }, async () => {
     const session = await deps.session(req);
@@ -276,6 +305,7 @@ export function handler(req: Request, deps: PaymentsCreateDeps): Promise<Respons
 
     const today = saoPauloDate(deps.now());
     const open = await deps.admin.findOpenPayment(booking.id);
+    if (open?.service_split_review_required) throw splitUnderReview();
     if (open && canReuseCharge(open, { method: input.method, today })) return { data: paymentView(open, true) };
     if (open) await refuseIfSettled(asaas, open);
 
@@ -285,13 +315,20 @@ export function handler(req: Request, deps: PaymentsCreateDeps): Promise<Respons
     }
 
     const fee = booking.platform_fee_cents ?? 0;
+    const recurringOffer = Boolean(booking.service_fee_policy_version && booking.service_fee_offered && !booking.service_fee_covered_by_pro);
+    const contractedFee = Math.floor(amount / 10);
+    if (recurringOffer && fee !== 0 && fee !== contractedFee) throw splitUnderReview();
+    // A waiver issued while charging was suspended preserves the original no-commission checkout.
+    const fixedProviderPayout = recurringOffer && fee === contractedFee;
     const plan = buildProviderSplit({
+      fixedProviderPayout,
       amountCents: amount,
       platformFeeCents: fee,
       providerWalletId: wallet,
       reference: `booking:${booking.id}`,
     });
 
+    if (fixedProviderPayout) await confirmAvailableNet(asaas, amount, plan.providerCents, input.method);
     const customerId = await ensurePlatformCustomer({ admin: deps.admin, asaas }, user, input.cpf_cnpj);
     const dueDate = addDays(today, 1);
     const payment = await callAsaas(() =>
@@ -308,7 +345,9 @@ export function handler(req: Request, deps: PaymentsCreateDeps): Promise<Respons
     );
 
     let pix: { encodedImage: string; payload: string } | null = null;
-    if (input.method === 'pix') {
+    // A different final tariff (or absent net) goes to reconciliation without a payable link.
+    const needsReview = fixedProviderPayout && !coversFixedPayout(amount, plan.providerCents, payment.value, payment.netValue);
+    if (!needsReview && input.method === 'pix') {
       try {
         pix = await callAsaas(() => asaas.getPixQrCode(payment.id));
       } catch (error) {
@@ -329,7 +368,8 @@ export function handler(req: Request, deps: PaymentsCreateDeps): Promise<Respons
       status: 'pending',
       // escrow_enabled stays false until the legal review (contract)
       escrow: false,
-      invoice_url: payment.invoiceUrl ?? null,
+      invoice_url: needsReview ? null : payment.invoiceUrl ?? null,
+      service_split_review_required: needsReview,
       pix_qr_code: pix?.encodedImage ?? null,
       pix_payload: pix?.payload ?? null,
       due_date: dueDate,

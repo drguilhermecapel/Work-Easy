@@ -46,6 +46,24 @@ beforeEach(() => {
 const VALID_CPF = '529.982.247-25';
 
 describe('/pro/assinatura: plan', () => {
+  it('requires explicit acceptance of a version and stops offering Pro on an exclusively migrated account', async () => {
+    let accepted = false;
+    fake.rpcs.service_commission_options = () => ok([{
+      occupation_slug: 'diarista', version: 'r1', charging_enabled: true, terms_reference: 'https://terms.example.test/r1',
+      accepted_at: accepted ? '2026-11-27T14:00:00Z' : null, applies_from: accepted ? '2026-11-27T14:00:00Z' : null,
+    }]);
+    fake.rpcs.service_pro_sales_allowed = () => ok(!accepted);
+    fake.rpcs.accept_service_commission = () => { accepted = true; return ok('2026-11-27T14:00:00Z'); };
+    renderPro('/pro/assinatura');
+    expect(await screen.findByRole('link', { name: /condições da versão r1/ })).toHaveAttribute('href', 'https://terms.example.test/r1');
+    await userEvent.click(screen.getByRole('button', { name: 'Revisar aceite' }));
+    expect(accepted).toBe(false);
+    await userEvent.click(screen.getByRole('button', { name: 'Aceitar a política de 10%' }));
+    expect(await screen.findByText(/Política aceita/)).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Assinar o Pro' })).not.toBeInTheDocument());
+    expect(fake.rpcCalls).toContainEqual({ name: 'accept_service_commission', args: { p_occupation: 'diarista', p_version: 'r1' } });
+  });
+
   it('shows the free plan and the monthly price read from platform_settings', async () => {
     price = 6900;
     renderPro('/pro/assinatura');

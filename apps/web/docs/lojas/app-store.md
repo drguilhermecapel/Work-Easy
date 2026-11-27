@@ -1,5 +1,8 @@
 # App Store (iOS e macOS): kit de envio, privacidade e diretrizes
 
+**Atualização D14 para a próxima submissão.** O binário da rede de motoristas passa a declarar localização e registro de aparelho para alertas. Antes de publicar, atualizar as respostas de privacidade, captura da divulgação no app, finalidade, retenção e materiais para revisão da loja. As verificações históricas de ausência de localização abaixo são referentes às versões anteriores. [Comportamento por plataforma e ensaios físicos](../arquitetura/nativo.md#rede-de-motoristas-d14-27112026)
+
+
 > **Rascunho para revisão de advogado. Não é parecer jurídico.**
 > Documento S02 do plano. Versão `2026-11-08-rascunho-1`. Data de referência: **08/11/2026**. Estado do produto: protótipo (MVP em `main`), **não implantado, sem usuários reais, nada testado contra Asaas, WhatsApp ou Resend reais**. Este kit diz o que enviar à Apple quando houver backend no ar e um build de loja. Nada aqui afirma que o app foi enviado, aprovado ou que cumpre qualquer norma. Trechos de diretriz em inglês são citações literais das páginas abertas em 08/11/2026; a leitura em português é nossa.
 

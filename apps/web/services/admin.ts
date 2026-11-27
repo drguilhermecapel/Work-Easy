@@ -749,7 +749,7 @@ export const listPayments = async ({ id, status, from: fromDay, to: toDay, page 
 // ---------------------------------------------------------------------------
 
 /** The audit entries the webhook writes when money needs a manual decision. */
-export type PaymentAttentionAction = 'payment.refund_failed' | 'payment.received_after_cancel';
+export type PaymentAttentionAction = 'payment.refund_failed' | 'payment.received_after_cancel' | 'payment.service_split_review';
 
 /** One row of admin_payments_attention: an open audit entry with the payment it is about. */
 export interface PaymentAttentionEvent {
@@ -849,7 +849,7 @@ export const markPaymentReviewed = async (paymentId: string, reason: string): Pr
 // Settings (platform_settings, written only by admin_set_setting)
 // ---------------------------------------------------------------------------
 
-export const BOOLEAN_SETTINGS = ['commission_enabled', 'escrow_enabled'] as const;
+export const BOOLEAN_SETTINGS = ['commission_enabled', 'service_recurring_commission_enabled', 'escrow_enabled'] as const;
 export const NUMBER_SETTINGS = [
   'commission_bps',
   'pro_price_cents',
@@ -934,6 +934,7 @@ export const setSetting = async (key: BooleanSettingKey | NumberSettingKey, valu
 /** The exact words an administrator types to turn a money feature on. */
 export const ENABLE_PHRASES: Record<BooleanSettingKey, string> = {
   commission_enabled: 'ligar comissão',
+  service_recurring_commission_enabled: 'ligar comissão recorrente',
   escrow_enabled: 'ligar pagamento retido',
 };
 

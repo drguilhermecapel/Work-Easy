@@ -1,5 +1,8 @@
 # Work Easy (`work-easy`)
 
+[Roadmap de serviços e corridas da rede WorkEasy](apps/web/docs/operacao/16-rede-propria-de-motoristas.md)
+
+
 Monorepo B2C/B2G. **O produto real é `apps/web`** (com backend em Supabase). `services/api`, `apps/mobile` e
 `apps/web-prefeitura` são **protótipos antigos**, sem integração real: não são produção.
 

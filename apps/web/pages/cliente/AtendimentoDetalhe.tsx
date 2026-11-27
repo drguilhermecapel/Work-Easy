@@ -112,6 +112,11 @@ const BookingDetail: React.FC<{ id: string; userId: string }> = ({ id, userId })
           refresh();
         }}
       />
+      {booking.role && booking.origin === 'platform' && ['accepted', 'paid', 'in_progress'].includes(booking.status) && (
+        <Link to={`/atendimentos/${id}/mobilidade`} className="block rounded-xl border border-gray-200 bg-white p-4 font-semibold text-primary">
+          Transporte opcional do profissional
+        </Link>
+      )}
       <PaymentPanel booking={booking} payments={payments} escrowEnabled={escrowEnabled} today={today} onChanged={refresh} />
       <ReviewPanel
         booking={booking}

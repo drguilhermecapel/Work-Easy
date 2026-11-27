@@ -677,6 +677,12 @@ Depende de G01, G02 e G17.
 | DPA | Contrato de tratamento de dados entre quem decide (controlador) e quem trata por conta dele (operador). |
 | ROPA | Registro das operações de tratamento (`07-registro-das-operacoes-de-tratamento.md`). |
 
+## Rede direta — avaliação proposta de D14
+
+As operações OP-30 e OP-31 ampliam o escopo para motoristas inscritos diretamente e passageiros do público. Além da exposição da origem de um profissional, avaliar perfilamento de motoristas, decisão de habilitação indevida, associação de trajetos repetidos, captura de localização fora da corrida, exposição de dados de habilitação/antecedentes e destinatário incorreto de recibo. Revisão humana, trilha de acesso, revogação por veículo/condutor e canal de incidente são controles a testar antes de qualquer viagem.
+
+Ensaiar com passageiro, cliente de serviço distinto, pagador e motorista: somente o usuário devido recebe o recibo obrigatório com mapa e a identificação do condutor. Conferir remessa municipal em canal autorizado, bloqueio de acesso a trajetos encerrados por motoristas sem finalidade e separação das cópias descartáveis de recibos/arquivos legais. Testar encerramento de coleta, descarte de cotação expirada, reexpurgo após restauração e retenção individual com prazo e justificativa. Encarregado documenta risco residual, resultado e aceite da matriz de temporalidade. [OP-30 e OP-31](07-registro-das-operacoes-de-tratamento.md) · [Matriz de habilitação](13-rede-direta-de-motoristas.md)
+
 ## Adendo de risco da mobilidade opcional — avaliação proposta em 27/11/2026
 
 A [OP-29](07-registro-das-operacoes-de-tratamento.md) trata de transporte de prestador para um atendimento. O risco principal é revelar o domicílio ou a rotina por ponto, mapa, recibo ou mensagem. A repetição de trechos em uma microárea também permite reidentificação em relatórios. Uma cotação pode envolver um endereço de terceiro antes da contratação.

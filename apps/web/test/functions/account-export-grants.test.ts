@@ -7,6 +7,7 @@ import { baseDeps, post, read, USER } from './helpers.ts';
 // Column grants of supabase/migrations/20261019000006_payments.sql. The API role has no table-level
 // SELECT on these tables: `select *` is refused with 42501, and only the granted columns can be read.
 const GRANTED: Record<string, string[]> = {
+  my_ride_data_export: ['id', 'mobility'],
   payments: [
     'id', 'booking_id', 'quote_id', 'provider_id', 'payer_id', 'asaas_payment_id', 'method', 'amount_cents',
     'platform_fee_cents', 'status', 'escrow', 'invoice_url', 'pix_qr_code', 'pix_payload', 'due_date',
@@ -16,6 +17,7 @@ const GRANTED: Record<string, string[]> = {
 };
 
 const ROWS: Record<string, Record<string, unknown>[]> = {
+  my_ride_data_export: [{ id: USER.id, mobility: { legs: [{ id: 'leg-1', payer: true }] } }],
   payments: [{
     id: 'pay-1', payer_id: USER.id, provider_id: 'p-2', amount_cents: 15000, status: 'received', escrow: false,
     raw: { customer: { cpfCnpj: '52998224725', name: 'Ana' } }, pix_qr_code: null,
@@ -60,6 +62,13 @@ describe('account-export: granted columns of payments', () => {
     expect(res.body.data.unavailable).not.toContain('payments');
     expect(res.body.data.data.payments).toHaveLength(1);
     expect(res.body.data.data.payments[0]).toMatchObject({ id: 'pay-1', amount_cents: 15000, status: 'received' });
+  });
+
+  it('includes the caller-specific ride projection in the downloaded JSON', async () => {
+    const { deps } = grantedSession();
+    const res = await read(await accountExport(post('account-export', {}), deps));
+    expect(res.body.data.data.my_ride_data_export).toEqual(ROWS.my_ride_data_export);
+    expect(EXPORT_PLAN.find(query => query.table === 'my_ride_data_export')?.ownerColumns).toEqual(['id']);
   });
 
   it('never reads the raw gateway payload or the Vault reference', async () => {

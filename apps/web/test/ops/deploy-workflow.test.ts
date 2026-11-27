@@ -323,7 +323,7 @@ describe('deploy-supabase.yml: dry_run não publica nada', () => {
 
     beforeEach(() => {
       dir = mkdtempSync(join(tmpdir(), 'deploy-supabase-'));
-      for (const fn of ['_shared', '_runtime', 'asaas-webhook', 'notify-dispatch', 'background-check-purge', 'charges-create', 'quote-assist']) {
+      for (const fn of ['_shared', '_runtime', 'asaas-webhook', 'notify-dispatch', 'background-check-purge', 'ride-alerts', 'ride-live-checkout', 'ride-live-webhook', 'ride-sandbox-checkout', 'ride-sandbox-webhook', 'charges-create', 'quote-assist']) {
         mkdirSync(join(dir, 'supabase', 'functions', fn), { recursive: true });
       }
       mkdirSync(join(dir, 'bin'));
@@ -358,6 +358,9 @@ describe('deploy-supabase.yml: dry_run não publica nada', () => {
       expect(summary).toMatch(/seriam publicadas a partir de 0123456789abcdef0123456789abcdef01234567 \(ensaio: nada publicado\)/);
       expect(summary).toContain('- `asaas-webhook` (sem JWT)');
       expect(summary).toContain('- `notify-dispatch` (sem JWT)');
+      expect(summary).toContain('- `ride-alerts` (sem JWT)');
+      expect(summary).not.toMatch(/ride-sandbox-/);
+      expect(summary).toContain('- `ride-live-webhook` (sem JWT)');
       expect(summary).toContain('- `background-check-purge` (sem JWT)');
       expect(summary).toContain('- `charges-create`\n');
       expect(summary).toContain('- `quote-assist`\n');
@@ -365,15 +368,18 @@ describe('deploy-supabase.yml: dry_run não publica nada', () => {
       expect(calls).toBe('');
     });
 
-    it('a publicação de verdade publica a mesma lista, com --no-verify-jwt só nas três', () => {
+    it('a publicação de verdade publica a mesma lista, com --no-verify-jwt apenas nos endpoints previstos', () => {
       runStep('Listar as Edge Functions a publicar', { DRY_RUN: 'false' });
       const { calls, summary } = runStep('Publicar Edge Functions', {});
       expect(calls.trim().split('\n')).toEqual([
         'functions deploy asaas-webhook --remote=abcdefghijklmnopqrst --yes --no-verify-jwt',
         'functions deploy notify-dispatch --remote=abcdefghijklmnopqrst --yes --no-verify-jwt',
         'functions deploy background-check-purge --remote=abcdefghijklmnopqrst --yes --no-verify-jwt',
+        'functions deploy ride-alerts --remote=abcdefghijklmnopqrst --yes --no-verify-jwt',
+        'functions deploy ride-live-webhook --remote=abcdefghijklmnopqrst --yes --no-verify-jwt',
         'functions deploy charges-create --remote=abcdefghijklmnopqrst --yes',
         'functions deploy quote-assist --remote=abcdefghijklmnopqrst --yes',
+        'functions deploy ride-live-checkout --remote=abcdefghijklmnopqrst --yes',
       ]);
       expect(summary).toMatch(/Edge Functions a publicar a partir de/);
       expect(summary).toMatch(/Edge Functions publicadas:/);

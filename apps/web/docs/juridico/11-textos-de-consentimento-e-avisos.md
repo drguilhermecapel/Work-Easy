@@ -511,6 +511,14 @@ Esta tarefa é de texto. As lacunas abaixo estão listadas e não foram corrigid
 | G15 | `pages/conta/Conta.tsx`, linha 138 | "Consulta de antecedentes" sugere consulta a órgãos. | Engano sobre o que o WorkEasy faz. | Título da seção 3.4. |
 | G16 | Assistente (`supabase/functions/request-assist`) | Função existe, sem tela. Não há aviso de IA na interface. | Nada a expor hoje; quando a tela existir, o aviso da seção 4.3 é obrigatório. | Ligar o aviso junto com a tela. |
 
+## Aceites na rede direta — minutas de D14
+
+- **Motorista antes de aceitar um trecho.** “A tarifa deste trecho é [valor]. A base da comissão é [valor], a dedução de 10% é [valor] e seu repasse estimado é [valor]. [Conferir despesas, cancelamento e adicionais].”
+- **Prestador em ocupação habilitada.** “Este serviço utiliza comissão de 10% por atendimento intermediado, inclusive na recorrência, sem teto. Você verá a base, o desconto e o repasse antes de aceitar.” Quando houver transição de assinatura, informar data, eventual crédito e vigência antes de obter adesão ao novo regime.
+- **Passageiro.** “Escolhi [agora/agendado], [origem], [destino] e a janela [horário]. Autorizo o valor de até [valor] a [pagador identificado]” somente quando quem aceita for o próprio pagador ou representante autorizado. Com pagador distinto, obter confirmação separada. Informar qual dado o motorista vê, como funciona acompanhamento da viagem e como acessar o recibo.
+
+Guardar versões e horários do aceite comercial e do aviso aplicável. A finalidade e a base de rastreamento, habilitação e eventual remessa ao Município constam do registro de tratamento. [Termos da rede direta](13-rede-direta-de-motoristas.md)
+
 ## Aceites de mobilidade — minutas para o piloto de 27/11/2026
 
 Usar somente após aprovação, preencher os campos com a versão da proposta e guardar pagador, passageiro e escolhas de cada trecho. Quem paga e quem viaja podem ser pessoas diferentes.

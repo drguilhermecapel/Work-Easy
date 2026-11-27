@@ -14,3 +14,6 @@ App/App/config.xml
 
 # xcodebuild -derivedDataPath output (npm run ios:build)
 build/
+
+# Local Apple notification signing key
+*.p8

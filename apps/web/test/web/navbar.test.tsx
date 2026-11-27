@@ -38,7 +38,7 @@ describe('navModelFor', () => {
   it('keeps the demo menu for each demo persona', () => {
     const demo = (type: UserType) =>
       ({ mode: 'demo', user: { ...persona, type }, switchRole: () => {}, isAuthenticated: true, loading: false }) as AuthContextType;
-    expect(labels(demo(UserType.CLIENT))).toEqual(['Categorias', 'Buscar', 'Meus Pedidos']);
+    expect(labels(demo(UserType.CLIENT))).toEqual(['Categorias', 'Buscar', 'Meus Pedidos', 'Ensaio de corrida']);
     expect(navModelFor(demo(UserType.CLIENT)).cta?.to).toBe('/register-provider');
     expect(labels(demo(UserType.PROVIDER))).toEqual(['Meu Painel']);
     expect(navModelFor(demo(UserType.PROVIDER)).cta).toBeNull();
@@ -46,13 +46,13 @@ describe('navModelFor', () => {
 
   it('shows a visitor only what works without an account', () => {
     const model = navModelFor(backend({}));
-    expect(model.items.map(i => i.to)).toEqual(['/categorias', '/pedido']);
+    expect(model.items.map(i => i.to)).toEqual(['/categorias', '/pedido', '/corridas']);
     expect(model.cta?.to).toBe('/pro/cadastro');
   });
 
   it('shows a signed-in client the client areas and the way to become a provider', () => {
     const model = navModelFor(backend({ session }));
-    expect(model.items.map(i => i.to)).toEqual(['/categorias', '/pedido', '/pedidos', '/atendimentos']);
+    expect(model.items.map(i => i.to)).toEqual(['/categorias', '/pedido', '/pedidos', '/atendimentos', '/corridas']);
     expect(model.cta?.to).toBe('/pro/cadastro');
   });
 
@@ -66,7 +66,7 @@ describe('navModelFor', () => {
 
   it('shows a provider the Pro tools and no more call to action', () => {
     const model = navModelFor(backend({ session, provider: { id: 'p' } as BackendAuth['provider'] }));
-    expect(model.items.map(i => i.to)).toEqual(['/pro', '/pro/pedidos', '/pro/agenda', '/atendimentos', '/pedido']);
+    expect(model.items.map(i => i.to)).toEqual(['/pro', '/pro/pedidos', '/pro/agenda', '/atendimentos', '/pedido', '/corridas']);
     expect(model.cta).toBeNull();
   });
 

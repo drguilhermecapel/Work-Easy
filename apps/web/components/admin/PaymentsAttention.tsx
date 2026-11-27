@@ -18,6 +18,7 @@ import { linkClass } from './styles';
 import { Badge, EmptyState } from './ui';
 
 const EVENT_LABELS: Record<PaymentAttentionAction, string> = {
+  'payment.service_split_review': 'O líquido da cobrança precisa de conferência para garantir o repasse contratado',
   'payment.refund_failed': 'O reembolso automático foi recusado',
   'payment.received_after_cancel': 'Pagamento recebido depois do cancelamento do atendimento',
 };

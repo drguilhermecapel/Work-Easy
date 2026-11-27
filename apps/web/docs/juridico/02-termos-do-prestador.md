@@ -434,6 +434,12 @@ Estes Termos do Prestador ("Termos") são um contrato entre você e [RAZÃO SOCI
 | Vigência destes Termos | [DATA DE VIGÊNCIA] |
 | Versão | 2026-10-rascunho |
 
+## Prestador de serviço e motorista da rede direta — adendo de D14
+
+Para novos serviços intermediados em ocupação autorizada e após habilitação do regime, o preço apresentado ao prestador informa a comissão recorrente de 10% da base do serviço, sem teto, inclusive ao atender novamente o mesmo cliente. Este regime usa somente comissão. Antes da adesão, a plataforma esclarecerá a transição de eventual assinatura ou período já pago e os créditos cabíveis. Honorários sujeitos a restrições seguem a política da ocupação. A origem e a versão comercial de cada serviço ficam no comprovante.
+
+Se você viajar para o atendimento, o seu papel nesse trecho é o de passageiro. Quando dirigir para outra pessoa, aplica-se a adesão e habilitação próprias de motorista. Nesse caso, cada trecho tem preço e dedução de 10% sobre sua base, sem teto. A viagem de um motorista fica vinculada ao motorista, ao veículo e ao passageiro designados. [Termos propostos de adesão do motorista](13-rede-direta-de-motoristas.md) · [Preços e vigência](../DECISOES.md)
+
 ## Mobilidade do prestador — minuta de adesão em 27/11/2026
 
 **Proposta sujeita à aprovação jurídica.** Para o atendimento agendado, você pode informar sua disponibilidade, um ponto seguro de embarque, a necessidade de transporte e as dimensões dos equipamentos. Pode usar deslocamento próprio ou recusar o transporte oferecido quando conseguir realizar o atendimento de outra forma. Uma origem aproximada basta para avaliar a cobertura. Informe o ponto exato quando for necessário para a cotação ou o embarque.

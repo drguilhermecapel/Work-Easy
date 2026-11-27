@@ -32,8 +32,18 @@ const deps: ChargesCreateDeps = {
     const { db, user } = caller;
     return {
       user,
-      getProvider() {
-        return readProviderAccount(db, user.id);
+      async getProvider() {
+        const account = await readProviderAccount(db, user.id);
+        if (!account || account.plan === 'pro') return account;
+        const [options, sales] = await Promise.all([
+          db.rpc('service_commission_options'),
+          db.rpc('service_pro_sales_allowed', { p_provider: user.id }),
+        ]);
+        const agreements = must(options) as { occupation_slug: string; accepted_at: string | null }[];
+        return {
+          ...account, fullyMigrated: must(sales) === false,
+          migratedOccupations: agreements.filter(o => o.accepted_at !== null).map(o => o.occupation_slug),
+        };
       },
       async getBooking(id) {
         return must(

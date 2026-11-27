@@ -25,6 +25,9 @@ const deps: SubscriptionsDeps = {
     };
   },
   admin: {
+    async proSalesAllowed(providerId) {
+      return must(await serviceClient().rpc('service_pro_sales_allowed', { p_provider: providerId })) === true;
+    },
     async getSubscription(providerId) {
       return must(
         await serviceClient()

@@ -65,6 +65,13 @@ export interface CreatePaymentInput {
   split?: AsaasSplitItem[];
 }
 
+export interface AsaasPaymentSimulation {
+  value: number;
+  pix?: { netValue: number };
+  creditCard?: { netValue: number };
+  bankSlip?: { netValue: number };
+}
+
 export interface AsaasPayment {
   id: string;
   status: string;
@@ -231,6 +238,11 @@ export class AsaasClient {
 
   createCustomer(input: CreateCustomerInput): Promise<AsaasCustomer> {
     return this.request('POST', '/customers', input);
+  }
+
+  /** Official sales simulator. No charge is created or customer data transmitted. */
+  simulatePayment(value: number, billingType: Exclude<BillingType, 'UNDEFINED'>): Promise<AsaasPaymentSimulation> {
+    return this.request('POST', '/payments/simulate', { value, billingTypes: [billingType] });
   }
 
   createPayment(input: CreatePaymentInput): Promise<AsaasPayment> {

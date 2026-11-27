@@ -1,4 +1,4 @@
-import { assertCents, MoneyError } from './money.ts';
+import { assertCents, centsToReais, MoneyError } from './money.ts';
 
 // Asaas split reference: https://docs.asaas.com/reference/criar-nova-cobranca
 // (split[].walletId, fixedValue, percentualValue). The split is applied to the
@@ -30,13 +30,15 @@ const PERCENT_SCALE = 1_000_000n;
  * is smaller than the Asaas fee (R$ 10,00 at 12% asks R$ 8,80 of a net value
  * near R$ 8,01). The split is therefore a percentage of the net value, floored
  * to four decimals so rounding never gives the provider more than its share.
- * The platform absorbs its proportional share of the Asaas fee.
+ * D5 shares the processor cost proportionately. An activated D14 agreement
+ * uses a fixed payout and payments-create verifies the available net first.
  */
 export function buildProviderSplit(input: {
   amountCents: number;
   platformFeeCents: number;
   providerWalletId: string;
   reference?: string;
+  fixedProviderPayout?: boolean;
 }): SplitPlan {
   const { amountCents, platformFeeCents, providerWalletId, reference } = input;
   assertCents(amountCents, 'amount_cents');
@@ -50,7 +52,9 @@ export function buildProviderSplit(input: {
   const providerCents = amountCents - platformFeeCents;
   // BigInt keeps providerCents * 10^6 exact for any safe integer amount
   const percentual = Number((BigInt(providerCents) * PERCENT_SCALE) / BigInt(amountCents)) / 10_000;
-  const item: AsaasSplitItem = { walletId: providerWalletId, percentualValue: percentual };
+  const item: AsaasSplitItem = input.fixedProviderPayout
+    ? { walletId: providerWalletId, fixedValue: centsToReais(providerCents) }
+    : { walletId: providerWalletId, percentualValue: percentual };
   if (reference) item.externalReference = reference;
   return { providerCents, platformCents: platformFeeCents, split: [item] };
 }

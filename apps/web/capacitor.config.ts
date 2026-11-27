@@ -15,6 +15,8 @@ const config: CapacitorConfig = {
     iosScheme: 'capacitor',
     cleartext: false,
   },
+  // Background location uses the Capacitor bridge while a driver locks the phone.
+  android: { useLegacyBridge: true },
   ios: {
     contentInset: 'never',
   },
