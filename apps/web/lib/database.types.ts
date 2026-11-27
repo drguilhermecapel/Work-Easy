@@ -987,6 +987,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"ride_driver_inbox": {
+                  Row: {
+                    "driver_id": string,"revision": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "driver_id": string,"revision"?: number
+                  }
+                  Update: {
+                    "driver_id"?: string,"revision"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "ride_driver_inbox_driver_id_fkey"
+      columns: ["driver_id"]
+isOneToOne: true
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"ride_drivers": {
                   Row: {
                     "environment": string,"id": string,"online": boolean,"reviewed_at": string | null,"reviewed_by": string | null,"status": string,"updated_at": string,"valid_until": string | null,"vehicle": string
@@ -1619,6 +1639,30 @@ isOneToOne: true
 "custom_access_token_hook":
 { Args: { "event": Json }; Returns: Json
                            },
+"driver_airport_queue":
+{ Args: { "p_accuracy": number,"p_join": boolean,"p_lat": number,"p_lng": number,"p_terminal": string }; Returns: undefined
+                           },
+"driver_decide_offer":
+{ Args: { "p_accept": boolean,"p_expires": string,"p_key": string,"p_leg": string }; Returns: Json
+                           },
+"driver_navigation":
+{ Args: { "p_leg": string }; Returns: Json
+                           },
+"driver_opportunities":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"driver_preferences":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"driver_reach_waypoint":
+{ Args: { "p_index": number,"p_leg": string }; Returns: number
+                           },
+"driver_release_reservation":
+{ Args: { "p_key": string,"p_leg": string,"p_no_show"?: boolean }; Returns: undefined
+                           },
+"driver_save_preferences":
+{ Args: { "p_arrive_by": string,"p_cost_per_km": number,"p_destination": string }; Returns: undefined
+                           },
 "export_ride_municipal":
 { Args: { "p_after": string,"p_from": string,"p_limit": number,"p_until": string }; Returns: Json
                            },
@@ -1661,6 +1705,9 @@ isOneToOne: true
                            },
 "open_support_task":
 { Args: { "p_kind": string,"p_payload": Json }; Returns: string
+                           },
+"record_ride_driver_reward":
+{ Args: { "p_campaign": string,"p_cents": number,"p_kind": string,"p_leg": string,"p_operation": string,"p_reference": string }; Returns: undefined
                            },
 "record_ride_sandbox_financial_event":
 { Args: { "p_amount_cents": number,"p_extras_cents"?: number,"p_kind": string,"p_leg": string,"p_operation": string }; Returns: Json
@@ -1719,6 +1766,9 @@ isOneToOne: true
 "ride_dashboard":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
+"ride_dashboard_before_waves":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
 "ride_decide_amendment":
 { Args: { "p_accept": boolean,"p_change": string }; Returns: Json
                            },
@@ -1747,6 +1797,12 @@ isOneToOne: true
                            },
 "ride_dossier_upload_target":
 { Args: Record<PropertyKey, never>; Returns: string
+                           },
+"ride_driver_diary":
+{ Args: { "p_cost_cents": number,"p_day": string,"p_empty_meters": number,"p_paid_meters": number }; Returns: boolean
+                           },
+"ride_driver_statement":
+{ Args: { "p_day": string,"p_week"?: boolean }; Returns: Json
                            },
 "ride_enroll":
 { Args: { "p_market": string,"p_reference": string,"p_stratum": string }; Returns: string
@@ -1819,6 +1875,9 @@ isOneToOne: true
                            },
 "ride_rate":
 { Args: { "p_leg": string,"p_stars": number }; Returns: undefined
+                           },
+"ride_register_interest":
+{ Args: { "p_leg": string }; Returns: undefined
                            },
 "ride_remove_shift":
 { Args: { "p_shift": string }; Returns: Json
