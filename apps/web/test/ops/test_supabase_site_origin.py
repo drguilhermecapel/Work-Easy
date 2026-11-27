@@ -1,9 +1,11 @@
 """Regression tests for the protected site_origin_only workflow. No external requests."""
 
-from contextlib import nullcontext
+from contextlib import nullcontext, redirect_stdout
 from email.message import Message
 import importlib.util
+import io
 import os
+import runpy
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -12,10 +14,52 @@ from unittest.mock import call, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 import supabase_site_origin as origin
+import supabase_management as management
 
 auth_spec = importlib.util.spec_from_file_location("auth_templates", Path(origin.__file__).with_name("supabase-auth-templates.py"))
 auth = importlib.util.module_from_spec(auth_spec)
 auth_spec.loader.exec_module(auth)
+
+
+class AuthTokenSelectionTest(unittest.TestCase):
+    tokens = {"SUPABASE_ACCESS_TOKEN": "general-test-credential", "SUPABASE_AUTH_CONFIG_TOKEN": "specific-test-credential"}
+
+    def test_default_keeps_specific_first_and_existing_general_fallback(self):
+        for source in ("", "config"):
+            with self.subTest(source=source):
+                self.assertEqual(management.select_auth_token({**self.tokens, "SUPABASE_AUTH_TOKEN_SOURCE": source}),
+                                 self.tokens["SUPABASE_AUTH_CONFIG_TOKEN"])
+        self.assertEqual(management.select_auth_token({"SUPABASE_ACCESS_TOKEN": "existing-selected-token"}), "existing-selected-token")
+
+    def test_access_selection_uses_only_general_and_never_prints_values(self):
+        output = io.StringIO()
+        with redirect_stdout(output):
+            actual = management.select_auth_token({**self.tokens, "SUPABASE_AUTH_TOKEN_SOURCE": "access"})
+        self.assertEqual(actual, self.tokens["SUPABASE_ACCESS_TOKEN"])
+        self.assertEqual(output.getvalue(), "Credencial selecionada para Auth: SUPABASE_ACCESS_TOKEN.\n")
+        for token in self.tokens.values():
+            self.assertNotIn(token, output.getvalue())
+
+    def test_missing_selected_access_or_invalid_source_fails_before_requests(self):
+        with self.assertRaisesRegex(SystemExit, "Configure SUPABASE_ACCESS_TOKEN"):
+            management.select_auth_token({"SUPABASE_AUTH_TOKEN_SOURCE": "access", "SUPABASE_AUTH_CONFIG_TOKEN": "present"})
+        for source in ("invalid", "ACCESS"):
+            with self.subTest(source=source), self.assertRaisesRegex(SystemExit, "deve ser config ou access"):
+                management.select_auth_token({**self.tokens, "SUPABASE_AUTH_TOKEN_SOURCE": source})
+
+    def test_both_entrypoints_keep_the_selected_token_and_stop_on_auth_failure(self):
+        for source, key in (("access", "SUPABASE_ACCESS_TOKEN"), ("config", "SUPABASE_AUTH_CONFIG_TOKEN")):
+            env = {**self.tokens, "SUPABASE_AUTH_TOKEN_SOURCE": source,
+                   "SUPABASE_PROJECT_ID": management.PRODUCTION_PROJECT, "VITE_SITE_URL": origin.SITE}
+            for name in ("supabase_site_origin.py", "supabase-auth-templates.py"):
+                for mode in ([], ["--apply"], ["--verify"]):
+                    path = Path(origin.__file__).with_name(name)
+                    with self.subTest(source=source, script=name, mode=mode), patch.dict(os.environ, env, clear=True), \
+                            patch.object(sys, "argv", [str(path), *mode]), \
+                            patch.object(management, "request_config", side_effect=SystemExit("HTTP 401")) as request, \
+                            self.assertRaisesRegex(SystemExit, "HTTP 401"):
+                        runpy.run_path(str(path), run_name="__main__")
+                    request.assert_called_once_with(self.tokens[key], "GET")
 
 
 class SiteOriginTest(unittest.TestCase):
@@ -209,3 +253,4 @@ class AuthPreflightTest(unittest.TestCase):
         auth.sync_templates("test", True)
 
         api.assert_called_once_with("test", "GET")
+
