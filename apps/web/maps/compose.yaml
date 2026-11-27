@@ -1,0 +1,26 @@
+name: workeasy-rotas
+services:
+  preparar:
+    image: ${OSRM_IMAGE:-ghcr.io/project-osrm/osrm-backend:v6.0.0}
+    volumes:
+      - ./saude.osm.bz2:/entrada/saude.osm.bz2:ro
+      - malha:/data
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        cp /entrada/saude.osm.bz2 /data/saude.osm.bz2
+        osrm-extract -t 2 -p /opt/car.lua /data/saude.osm.bz2
+        osrm-partition -t 2 /data/saude.osrm
+        osrm-customize -t 2 /data/saude.osrm
+  router:
+    image: ${OSRM_IMAGE:-ghcr.io/project-osrm/osrm-backend:v6.0.0}
+    depends_on:
+      preparar:
+        condition: service_completed_successfully
+    command: ["osrm-routed", "--algorithm", "mld", "-t", "2", "/data/saude.osrm"]
+    volumes:
+      - malha:/data:ro
+    ports:
+      - "127.0.0.1:5017:5000"
+volumes:
+  malha:
