@@ -19,7 +19,7 @@ const asRecord = (value: unknown): Record<string, unknown> | null =>
  * do something different. lib/errors.ts keeps a sentence for both as the fallback. Every other code keeps
  * the app's own sentence: a server text is never shown for a code that is not listed here.
  */
-export const SERVER_SENTENCE_CODES: ReadonlySet<string> = new Set(['trial_requires_payment_account']);
+export const SERVER_SENTENCE_CODES: ReadonlySet<string> = new Set(['trial_requires_payment_account', 'route_unavailable']);
 const SERVER_SENTENCE_MAX = 300;
 
 /**

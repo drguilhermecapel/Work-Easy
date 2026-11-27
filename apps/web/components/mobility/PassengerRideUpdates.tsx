@@ -49,7 +49,7 @@ export function PassengerRideUpdates({ revision }: { revision: number }) {
               );
             }}
           />{' '}
-          Receber também no contato verificado da minha conta
+          Receber também no contato confirmado na minha conta
         </label>
       )}
       <ul>
