@@ -62,7 +62,7 @@ describe('/legal index', () => {
     for (const doc of LEGAL_DOCS) {
       expect(main.getByRole('link', { name: doc.title })).toHaveAttribute('href', doc.route);
     }
-    expect(screen.getAllByText('Versão 2026-10-rascunho')).toHaveLength(LEGAL_DOCS.length);
+    expect(screen.getAllByText('Versão 2026-11-rascunho')).toHaveLength(LEGAL_DOCS.length);
   });
 });
 
@@ -72,7 +72,7 @@ describe('legal text pages', () => {
   it.each(LEGAL_DOCS.map(doc => [doc.route, doc.title] as const))('%s shows the title, the version and the draft notice', async (route, title) => {
     renderAt(route);
     expect(await screen.findByRole('heading', { level: 1, name: title })).toBeInTheDocument();
-    expect(screen.getByText('Versão 2026-10-rascunho')).toBeInTheDocument();
+    expect(screen.getByText('Versão 2026-11-rascunho')).toBeInTheDocument();
     expect(screen.getByText(DRAFT_NOTICE)).toBeInTheDocument();
     // the title of the file is not repeated: one h1 per page
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
@@ -117,7 +117,7 @@ describe('legal text pages', () => {
     renderAt('/termos');
     expect(await screen.findByRole('heading', { level: 1, name: 'Termos de Uso' })).toBeInTheDocument();
     expect(screen.queryByText(DRAFT_NOTICE)).toBeNull();
-    expect(screen.getByText('Versão 2026-10')).toBeInTheDocument();
+    expect(screen.getByText('Versão 2026-11')).toBeInTheDocument();
   });
 
   it('keeps the draft notice for any other status', async () => {

@@ -22,13 +22,13 @@ const ExcluirConta: React.FC = () => {
         <Trash2 size={22} className="text-red-600 shrink-0" aria-hidden="true" /> Excluir a conta do WorkEasy
       </h1>
       <p className="text-gray-600 mt-3">
-        Você pode excluir a sua conta a qualquer momento, pelo site ou pelo aplicativo, sem falar com ninguém.
+        Você pode solicitar a exclusão pela página Minha conta, observadas as restrições descritas abaixo.
       </p>
 
       <section aria-labelledby="excluir-como" className="mt-8">
         <h2 id="excluir-como" className="font-bold text-gray-800 mb-2">Como excluir</h2>
         <ol className="list-decimal pl-5 space-y-1 text-sm text-gray-700">
-          <li>Entre na sua conta com o código enviado ao seu e-mail ou celular.</li>
+          <li>Entre na sua conta com o código enviado pelo canal disponível na tela de entrada.</li>
           <li>Abra a página “Minha conta”.</li>
           <li>Na seção “Excluir minha conta”, digite a palavra de confirmação e toque em “Excluir minha conta”.</li>
         </ol>
@@ -54,7 +54,7 @@ const ExcluirConta: React.FC = () => {
             Documentos enviados e textos escritos por você: descrições de pedidos, mensagens de propostas, comentários de avaliações e
             observações de atendimentos.
           </li>
-          <li>Nome das casas, dados das pessoas cuidadas, notas de plantões e textos do relatório diário da linha de cuidado.</li>
+          <li>Para casas sob sua responsabilidade: nome das casas, dados das pessoas cuidadas e seus plantões e relatórios.</li>
           <li>Bloqueios, entradas em lista de espera e o texto das denúncias que você fez.</li>
         </ul>
       </section>
@@ -63,32 +63,35 @@ const ExcluirConta: React.FC = () => {
         <h2 id="excluir-mantido" className="font-bold text-gray-800 mb-2">O que continua guardado</h2>
         <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
           <li>
-            Valores e datas de pagamentos e atendimentos já realizados, sem os seus dados de identificação, porque a lei fiscal
-            obriga a guardar esses registros.
+            Valores e datas de pagamentos e atendimentos, com remoção ou redução de dados pessoais conforme o tipo de registro.
           </li>
-          <li>O registro de que você aceitou os termos, guardado sem identificação direta, como prova do consentimento.</li>
+          <li>O registro dos aceites e consentimentos, guardado com identificação indireta e vínculo restrito. Registros de auditoria e prevenção de abuso também podem permanecer.</li>
           <li>
             Para profissionais: os itens e o total dos orçamentos continuam, porque são o registro do que foi cobrado, sem o nome, o telefone
             e as observações do cliente. Os títulos de orçamentos e de serviços são trocados por um texto neutro.
           </li>
         </ul>
         <p className="text-sm text-gray-600 mt-3">
-          Os prazos e os detalhes estão na{' '}
+          Consulte as informações de conservação na{' '}
           <Link to="/privacidade" className="text-primary underline">
             Política de Privacidade
           </Link>
-          . Plantões e atendimentos aceitos e ainda não pagos são cancelados, e a outra parte é avisada.
+          . Atendimentos aceitos e ainda não pagos e os plantões abrangidos pela exclusão são cancelados; os avisos às outras partes seguem os canais de notificação disponíveis.
         </p>
         <p className="text-sm text-gray-600 mt-2">
           A exclusão é recusada enquanto houver atendimento pago, em andamento ou em contestação: conclua ou resolva esses atendimentos
-          antes de excluir a conta.
+          antes de concluir a exclusão pelo app. Você pode apresentar ao SAC um pedido específico sobre seus dados mesmo nessa situação.
+        </p>
+        <p className="text-sm text-gray-600 mt-2">
+          Excluir a conta não elimina todos os registros nem os cadastros mantidos por fornecedores externos, como o provedor de pagamentos.
+          Se o processo apresentar erro, procure o SAC para conferir o que foi concluído.
         </p>
       </section>
 
       <section aria-labelledby="excluir-ajuda" className="mt-8">
         <h2 id="excluir-ajuda" className="font-bold text-gray-800 mb-2">Não consegue entrar na conta?</h2>
         <p className="text-sm text-gray-700">
-          Peça a exclusão pelo atendimento ao consumidor. Vamos confirmar que a conta é sua antes de excluir.
+          Peça ajuda pelo atendimento ao consumidor. A confirmação da identidade ou da representação pode ser necessária antes de fornecer dados ou realizar alterações.
         </p>
         <ul className="mt-2 space-y-1 text-sm text-gray-700">
           {sacEmail && (
