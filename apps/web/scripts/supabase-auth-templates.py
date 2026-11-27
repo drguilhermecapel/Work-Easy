@@ -9,7 +9,7 @@ from email.errors import HeaderParseError
 from email.headerregistry import Address
 from pathlib import Path
 import tomllib
-from supabase_management import PRODUCTION_PROJECT, request_config
+from supabase_management import PRODUCTION_PROJECT, request_config, select_auth_token
 
 WEB = Path(__file__).resolve().parents[1]
 
@@ -124,9 +124,7 @@ if __name__ == "__main__":
         parser.error("--configure-sender requer --apply")
     if os.environ.get("SUPABASE_PROJECT_ID") != PRODUCTION_PROJECT:
         raise SystemExit("SUPABASE_PROJECT_ID não corresponde à produção do WorkEasy.")
-    token = os.environ.get("SUPABASE_ACCESS_TOKEN")
-    if not token:
-        raise SystemExit("Configure SUPABASE_ACCESS_TOKEN no ambiente protegido.")
+    token = select_auth_token(os.environ)
     sync_templates(
         token,
         args.apply,
@@ -135,3 +133,4 @@ if __name__ == "__main__":
         check_sender=args.check_sender,
         sync_otp_length=args.sync_otp_length,
     )
+
