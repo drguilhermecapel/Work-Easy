@@ -103,6 +103,20 @@ describe('rede de motoristas', () => {
     expect(rides.setDriverOnline).toHaveBeenCalledWith(false);
   });
 
+  it('retoma a mesma ação após reabrir o painel e perder a resposta do aceite', async () => {
+    dashboard.driver = { status: 'approved', vehicle: 'compact', valid_until: '2099-12-31', online: true };
+    dashboard.offers = [{ leg_id: 'retomada', origin: 'A', destination: 'B', pickup_at: null, driver_cents: 1800 }];
+    vi.mocked(rides.acceptRideOffer).mockRejectedValueOnce(new Error('offline'));
+    const original = renderDriver();
+    await userEvent.click(await screen.findByRole('button', {name:'Aceitar trecho'}));
+    await screen.findByRole('alert');
+    const first = vi.mocked(rides.acceptRideOffer).mock.calls[0][1];
+    original.unmount();
+    renderDriver();
+    await userEvent.click(await screen.findByRole('button', {name:'Aceitar trecho'}));
+    expect(rides.acceptRideOffer).toHaveBeenLastCalledWith('retomada',first);
+  });
+
   it('repete a mesma chave ao recusar uma oferta após perder a resposta', async () => {
     dashboard.driver = { status: 'approved', vehicle: 'compact', valid_until: '2099-12-31', online: true };
     dashboard.offers = [{ leg_id: 'leg-1', origin: 'A', destination: 'B', pickup_at: null, driver_cents: 1800 }];

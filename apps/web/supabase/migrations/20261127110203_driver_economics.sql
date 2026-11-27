@@ -115,13 +115,19 @@ end $$;
 create trigger ride_quote_driver_tolls before insert on private.ride_quotes for each row execute function private.snapshot_driver_tolls();
 
 -- Signed changes in driver income and cash. A capture, processing fee or failed payout never earns the fare twice.
+-- Later payment modes extend this projection while the private statement view preserves its shape.
+create function private.ride_driver_event_amounts(e private.ride_financial_events)
+returns table(income bigint,paid bigint,extras bigint) language sql immutable set search_path='' as $$
+ select case when e.kind in ('earned','refund','chargeback') then e.driver_delta::bigint else 0 end,
+        case when e.kind in ('payout','payout_reversal') then -e.driver_delta::bigint else 0 end,
+        case when e.kind='earned' then e.extras_cents when e.kind in ('refund','chargeback') then -e.extras_cents else 0 end::bigint
+$$;
+revoke all on function private.ride_driver_event_amounts(private.ride_financial_events) from public,anon,authenticated,service_role;
 create view private.ride_driver_book_entries with (security_invoker=true) as
 select a.driver_id,a.environment,e.leg_id,e.operation_id,e.recorded_at at_time,e.kind,e.amount_cents::bigint gross,
-  case when e.kind in ('earned','refund','chargeback') then e.driver_delta::bigint else 0 end income,
-  case when e.kind in ('payout','payout_reversal') then -e.driver_delta::bigint else 0 end paid,
-  e.fee_delta::bigint fee, case when e.kind='earned' then e.extras_cents when e.kind in ('refund','chargeback') then -e.extras_cents else 0 end::bigint extras,
-  0::bigint reward
+  movement.income,movement.paid,e.fee_delta::bigint fee,movement.extras,0::bigint reward
 from private.ride_financial_events e join private.ride_financial_accounts a using(leg_id)
+cross join lateral private.ride_driver_event_amounts(e) movement
 union all
 select l.driver_id,l.environment,c.leg_id,c.leg_id,c.opened_at,'cancel_pending',null,0,0,0,0,0
 from private.ride_interruption_costs c join public.ride_legs l on l.id=c.leg_id

@@ -105,6 +105,8 @@ function JourneyLeg({ leg, onChange, canCancel, simulation }: { leg: RideLeg; on
     <p className="text-sm">Pagador: {payers[leg.payer]} · Preço: {fare(leg.fare_cents)}</p>
     {leg.next_booking_id && <Link className="text-sm text-primary underline" to={`/atendimentos/${leg.next_booking_id}`}>Abrir meu atendimento seguinte</Link>}
     {leg.can_view_driver_identity && <RideDriverIdentity legId={leg.id} />}
+    {leg.dispatch_state==='no_driver' && <p role="status">A busca terminou sem motorista disponível. Consulte o plantão para reagendar ou cancelar.</p>}
+    {leg.pickup_estimate && <p>Previsão de embarque deste trecho: {when(leg.pickup_estimate)}.</p>}
     {leg.status === 'unknown' && <p className="rounded-xl bg-amber-50 p-3 text-sm">A operação está conferindo este trecho e os valores devidos. Aguarde a conciliação antes de solicitar outra viagem.</p>}
     <TripProgress legId={leg.id} />
     {leg.status === 'completed' && <RideCheckout legId={leg.id} simulation={simulation} />}
