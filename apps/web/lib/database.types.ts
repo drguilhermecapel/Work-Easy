@@ -1683,6 +1683,9 @@ isOneToOne: true
 "ride_aftercare":
 { Args: { "p_leg": string }; Returns: Json
                            },
+"ride_amendment_state":
+{ Args: { "p_leg": string }; Returns: Json
+                           },
 "ride_apply_driver":
 { Args: { "p_vehicle": string }; Returns: Json
                            },
@@ -1692,8 +1695,14 @@ isOneToOne: true
 "ride_can_transmit":
 { Args: { "p_leg": string }; Returns: boolean
                            },
+"ride_choose_class":
+{ Args: { "p_code": string,"p_departure"?: string,"p_route": string }; Returns: undefined
+                           },
 "ride_claim_route":
 { Args: { "p_route": string }; Returns: Json
+                           },
+"ride_class_options":
+{ Args: { "p_departure"?: string,"p_route": string }; Returns: Json
                            },
 "ride_close_observation":
 { Args: { "p_completed": boolean,"p_margin_cents": number,"p_reference": string,"p_support_minutes": number }; Returns: undefined
@@ -1709,6 +1718,9 @@ isOneToOne: true
                            },
 "ride_dashboard":
 { Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"ride_decide_amendment":
+{ Args: { "p_accept": boolean,"p_change": string }; Returns: Json
                            },
 "ride_decide_dossier":
 { Args: { "p_approve": boolean,"p_dossier": string,"p_driver_until": string,"p_insurance_until": string,"p_reason": string,"p_vehicle_until": string }; Returns: boolean
@@ -1742,6 +1754,9 @@ isOneToOne: true
 "ride_export_my_data":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
+"ride_forget_place":
+{ Args: { "p_id": string }; Returns: undefined
+                           },
 "ride_leg_points":
 { Args: { "p_leg": string }; Returns: Json
                            },
@@ -1763,8 +1778,23 @@ isOneToOne: true
 "ride_mark_at_pickup":
 { Args: { "p_leg": string }; Returns: string
                            },
+"ride_measure_commit":
+{ Args: { "p_geometry": Json,"p_meters": number,"p_minutes": number,"p_route": string,"p_user": string,"p_version": number }; Returns: boolean
+                           },
+"ride_measure_input":
+{ Args: { "p_route": string,"p_user": string }; Returns: Json
+                           },
+"ride_my_places":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"ride_navigation_data":
+{ Args: { "p_leg": string }; Returns: Json
+                           },
 "ride_open_help":
 { Args: { "p_leg": string,"p_reason": string }; Returns: string
+                           },
+"ride_passenger_updates":
+{ Args: { "p_forward"?: boolean }; Returns: Json
                            },
 "ride_pilot_report":
 { Args: Record<PropertyKey, never>; Returns: Json
@@ -1774,6 +1804,9 @@ isOneToOne: true
                            },
 "ride_progress":
 { Args: { "p_leg": string }; Returns: Json
+                           },
+"ride_propose_amendment":
+{ Args: { "p_key": string,"p_leg": string,"p_pickup_at"?: string,"p_route": string }; Returns: Json
                            },
 "ride_purge_dossier_rows":
 { Args: Record<PropertyKey, never>; Returns: undefined
@@ -1805,6 +1838,12 @@ isOneToOne: true
 "ride_route_cases":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
+"ride_route_detail":
+{ Args: { "p_route": string }; Returns: Json
+                           },
+"ride_route_waypoints":
+{ Args: { "p_instruction": string,"p_route": string,"p_stops": Json }; Returns: undefined
+                           },
 "ride_sandbox_claim_send":
 { Args: { "p_leg": string }; Returns: boolean
                            },
@@ -1820,11 +1859,17 @@ isOneToOne: true
 "ride_sandbox_prepare_charge":
 { Args: { "p_leg": string,"p_user": string }; Returns: Json
                            },
+"ride_search_places":
+{ Args: { "p_area"?: string,"p_search": string }; Returns: Json
+                           },
 "ride_send_position":
 { Args: { "p_accuracy": number,"p_at": string,"p_lat": number,"p_leg": string,"p_lng": number }; Returns: boolean
                            },
 "ride_set_online":
 { Args: { "p_online": boolean }; Returns: Json
+                           },
+"ride_store_place":
+{ Args: { "p_kind": string,"p_point": Json }; Returns: string
                            },
 "ride_submit_dossier":
 { Args: { "p_dossier": string }; Returns: boolean
@@ -1837,6 +1882,9 @@ isOneToOne: true
                            },
 "ride_trip_driver_identity":
 { Args: { "p_leg": string }; Returns: Json
+                           },
+"ride_validate_capacity":
+{ Args: { "p_accessible": boolean,"p_driver": string,"p_reference": string,"p_seats": number,"p_tools": boolean,"p_until": string }; Returns: undefined
                            },
 "ride_verify_route":
 { Args: { "p_meters": number,"p_minutes": number,"p_reference": string,"p_route": string }; Returns: Json
