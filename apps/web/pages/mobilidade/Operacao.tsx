@@ -1,11 +1,14 @@
 import { useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 import { formatDateTime, shortId } from '../../components/admin/format';
 import { dangerButton, inputClass, primaryButton, secondaryButton } from '../../components/admin/styles';
 import { Card, EmptyState, Field } from '../../components/admin/ui';
 import { formatCents } from '../../lib/money';
 import { formatDateBR, saoPauloDateTime, todayInSaoPaulo } from '../../lib/timezone';
 import { resolveCompletedRide, resolveRide, reviewDriver, type RideDashboard } from '../../services/rides';
+import { RideSupportQueue } from '../../components/mobility/RideSupport';
 import { RouteCases } from '../../components/mobility/RouteCases';
+import { RidePspReviews } from '../../components/mobility/RideCheckout';
 import { RideLedgerPanel } from '../admin/RideLedgerPanel';
 import DriverDossier from './DriverDossier';
 import DriverConsole, { type ConsoleActions } from './DriverConsole';
@@ -92,7 +95,7 @@ function ResolveLeg({ busy, resolve }: { busy: boolean; resolve: (proof: Complet
   const finish = instant(ended);
   const ref = reference.trim();
   const validReference = /^[A-Za-z0-9][A-Za-z0-9_./:-]{3,159}$/.test(ref) && !ref.includes('//');
-  const valid = outcome === 'cancelled' || (outcome === 'completed' && validReference && start && finish && finish > start);
+  const valid = outcome === 'cancelled' || (outcome === 'completed' && validReference && start && finish && finish >= start);
   return (
     <form
       className="space-y-2"
@@ -126,13 +129,21 @@ function ResolveLeg({ busy, resolve }: { busy: boolean; resolve: (proof: Complet
           </label>
           <label className="text-sm">
             Embarque confirmado (São Paulo)
-            <input className={inputClass} type="datetime-local" required value={boarded} onChange={(e) => setBoarded(e.target.value)} />
+            <input
+              className={inputClass}
+              type="datetime-local"
+              step={1}
+              required
+              value={boarded}
+              onChange={(e) => setBoarded(e.target.value)}
+            />
           </label>
           <label className="text-sm">
             Desembarque confirmado (São Paulo)
             <input
               className={inputClass}
               type="datetime-local"
+              step={1}
               required
               value={ended}
               min={boarded}
@@ -240,6 +251,7 @@ function OperationsPanel({ dashboard, userId, busy, run, reload }: ConsoleAction
                           {ledgerLeg === leg.id && <RideLedgerPanel key={leg.id} legId={leg.id} />}
                         </>
                       )}
+                      {!dashboard.simulation && <RidePspReviews legId={leg.id} />}
                     </li>
                   ))}
                 </ol>
@@ -253,5 +265,11 @@ function OperationsPanel({ dashboard, userId, busy, run, reload }: ConsoleAction
 }
 
 export default function Operacao() {
-  return <DriverConsole title="Operação de corridas" content={OperationsPanel} />;
+  const { authUser } = useAuth();
+  return (
+    <>
+      <DriverConsole title="Operação de corridas" content={OperationsPanel} />
+      {authUser && <RideSupportQueue key={authUser.id} />}
+    </>
+  );
 }

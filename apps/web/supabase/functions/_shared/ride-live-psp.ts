@@ -31,6 +31,11 @@ export const liveContract: RidePaymentContract = {
     const net = asCents(payment.netValue);
     if (net < intent.driver_cents || net > intent.amount_cents) return review('net_mismatch');
     if (piece.status === 'DONE' && (piece.totalValue == null || asCents(piece.totalValue) !== intent.driver_cents)) return review('split_paid_mismatch');
+    // CONFIRMED acknowledges the payment before the balance is credited.
+    if (payment.status === 'CONFIRMED') {
+      observed.status = 'settling';
+      observed.invoice = null;
+    }
     if (observed.status === 'review') return review('provider_status_requires_review');
     const completed = (payment.refunds ?? []).filter(refund => refund.status === 'DONE');
     if (observed.refunded > 0 && completed.reduce((n, r) => n + asCents(r.value), 0) !== observed.refunded) return review('missing_refund_breakdown');

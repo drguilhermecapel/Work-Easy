@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { RideAftercare } from '../../components/mobility/RideAftercare';
 import { DriverLegPoints } from '../../components/mobility/RouteCases';
 import DriverSignals, { DriverAlerts } from '../../components/mobility/DriverSignals';
 import RequireSession from '../../components/RequireSession';
@@ -10,6 +11,7 @@ import { formatDateBR, todayInSaoPaulo } from '../../lib/timezone';
 import { acceptRideOffer, applyDriver, declineRideOffer, setDriverOnline, transitionRide } from '../../services/rides';
 import { markAtPickup } from '../../services/driverDossier';
 import DriverDossier from './DriverDossier';
+import DriverShifts from './DriverShifts';
 import DriverConsole, { type ConsoleActions } from './DriverConsole';
 import { mobilityLabel, VEHICLES, type Vehicle } from './driverLabels';
 
@@ -57,20 +59,22 @@ function DriverPanel({ dashboard, userId, busy, run, reload }: ConsoleActions) {
           </form>
         )}
         {driver && !dashboard.simulation && <DriverDossier onChanged={reload} />}
-        {driver?.status === 'approved' && ((valid && dashboard.dispatch_enabled) || driver.online) && (
-          <button
-            type="button"
-            className={secondaryButton}
-            disabled={busy}
-            onClick={() => void run(`online:${!driver.online}`, () => setDriverOnline(!driver.online))}
-          >
-            {driver.online ? 'Parar de receber ofertas' : 'Ficar disponível para ofertas'}
-          </button>
-        )}
+        {driver?.status === 'approved' &&
+          ((valid && dashboard.dispatch_enabled && (dashboard.simulation || !!driver.shifts?.length)) || driver.online) && (
+            <button
+              type="button"
+              className={secondaryButton}
+              disabled={busy}
+              onClick={() => void run(`online:${!driver.online}`, () => setDriverOnline(!driver.online))}
+            >
+              {driver.online ? 'Parar de receber ofertas' : 'Ficar disponível para ofertas'}
+            </button>
+          )}
         {driver?.status === 'approved' && !valid && (
           <p className="text-sm text-amber-800">Cadastro vencido. Peça a revisão da validade à operação.</p>
         )}
       </Card>
+      {valid && driver && <DriverShifts dashboard={dashboard} run={run} busy={busy} />}
       {driver && !dashboard.dispatch_enabled && (
         <p role="status" className="text-sm text-gray-700">
           O recebimento de novas ofertas está pausado neste ambiente.
@@ -90,6 +94,7 @@ function DriverPanel({ dashboard, userId, busy, run, reload }: ConsoleActions) {
                   </p>
                   <p className="text-sm">
                     {formatDateTime(offer.pickup_at) || 'Saída imediata'} · Sua parte {formatCents(offer.driver_cents)}
+                    {offer.approach_minutes != null && ` · Aproximação estimada pela área: ${offer.approach_minutes} min`}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <button
@@ -134,7 +139,7 @@ function DriverPanel({ dashboard, userId, busy, run, reload }: ConsoleActions) {
                     {step && !dashboard.simulation && (
                       <>
                         <DriverLegPoints legId={leg.id} />
-                        <DriverSignals legId={leg.id} />
+                        <DriverSignals legId={leg.id} canLocate={leg.status === 'arriving' || leg.status === 'boarded'} />
                       </>
                     )}
                     {step && (
@@ -177,6 +182,7 @@ function DriverPanel({ dashboard, userId, busy, run, reload }: ConsoleActions) {
                         </button>
                       </div>
                     )}
+                    <RideAftercare legId={leg.id} completed={leg.status === 'completed'} />
                   </Card>
                 </li>
               );

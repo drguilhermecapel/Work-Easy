@@ -11,6 +11,7 @@ export interface RideLegInput {
   pickup_at?: string;
   replaces?: string;
   route_id?: string;
+  next_booking_id?: string;
   extras?: string[];
 }
 
@@ -55,7 +56,15 @@ export interface Ride {
   legs: RideLeg[];
 }
 
+export interface DriverShift {
+  id: string;
+  area: string;
+  starts_at: string;
+  ends_at: string;
+}
+
 export interface DriverProfile {
+  shifts?: DriverShift[];
   status: string;
   vehicle: string;
   valid_until: string | null;
@@ -73,7 +82,7 @@ export interface RideDashboard {
   rides: Ride[];
   quotes: RideQuote[];
   reviews: { driver_id: string; vehicle: string; status: string; valid_until: string | null }[];
-  offers: { leg_id: string; origin: string; destination: string; pickup_at: string | null; driver_cents: number }[];
+  offers: { leg_id: string; origin: string; destination: string; pickup_at: string | null; driver_cents: number; approach_minutes?: number | null }[];
 }
 
 export const getRideDashboard = async () => unwrap<RideDashboard>(await db().rpc('ride_dashboard'));
@@ -117,3 +126,10 @@ export const resolveCompletedRide = async (legId:string, key:string, evidenceRef
   unwrap(await db().rpc('ride_resolve_with_evidence',{
     p_leg:legId, p_key:key, p_evidence_ref:evidenceRef, p_boarded_at:boardedAt, p_ended_at:endedAt,
   }));
+
+
+export const configureDriverShift = async (area: string, from: string, until: string) =>
+  unwrap(await db().rpc('ride_configure_shift', { p_area: area, p_from: from, p_until: until }));
+
+export const removeDriverShift = async (id: string) =>
+  unwrap(await db().rpc('ride_remove_shift', { p_shift: id }));

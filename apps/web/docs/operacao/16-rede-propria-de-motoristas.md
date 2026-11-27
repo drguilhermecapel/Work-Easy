@@ -45,7 +45,7 @@ A referência de R$ 800 por dia-pessoa serve à estimativa de engenharia. Contra
 
 ## Registro dos marcos
 
-A escala do concierge conserva G1–G4, um ponto cada, ou três quando a exclusão de G4 estiver documentada em O08. D13 conserva M0–M3 com pesos 15/30/35/20 e **0/100 etapas encerradas** na última medição; documentos e testes têm evidência própria. O estudo condicional de M4 daquele modelo fica fora desse denominador. A rede direta usa 10/20/35/25/10 pontos para M0–M4. Pontuar ao cumprir todos os aceites de uma etapa, inclusive evidência externa quando exigida. No início desta branch, o novo placar era **0/100**. Avanço de engenharia pode ocorrer enquanto a consulta jurídica tramita.
+A escala do concierge conserva G1–G4, um ponto cada, ou três quando a exclusão de G4 estiver documentada em O08. D13 conserva M0–M3 com pesos 15/30/35/20 e **0/100 etapas encerradas** na última medição; documentos e testes têm evidência própria. O estudo condicional de M4 daquele modelo fica fora desse denominador. A rede direta usa 10/20/35/25/10 pontos para M0–M4. Pontuar ao cumprir todos os aceites de uma etapa, inclusive evidência externa quando exigida. No início desta branch, o novo placar era **0/100**. Na revisão desta branch, M1 atende os aceites técnicos de cadastro, cotação, recusa, autorizações por trecho e isolamento entre corrida e atendimento, com identidades de ensaio. O placar da branch é **20/100** (M0 0/10, M1 20/20, M2 0/35, M3 0/25, M4 0/10). M0 aguarda evidência municipal e de campo. M2 aguarda homologação financeira e ensaio com aparelhos físicos. M3 e M4 dependem dos resultados de operação. Os testes de software não acrescentam solicitações ao denominador do piloto.
 
 A branch e o PR registram a implementação e as verificações de software. A decisão de encaminhar minutas, o deferimento de credenciamento, a aprovação individual, a homologação de PSP, a publicação, a primeira corrida real, o encerramento do piloto e a demonstração de benefício devem receber datas e fontes próprias. O orçamento autorizado nesta revisão é R$ 0. [PR da rede direta](https://github.com/drguilhermecapel/Work-Easy/pull/47)
 
@@ -53,3 +53,15 @@ A branch e o PR registram a implementação e as verificações de software. A d
 ### Capacidade e expansão com dados reais
 
 Para cada corredor e faixa, estimar a ocupação do motorista por minutos de viagem remunerada divididos pelos minutos online. Recalcular custo por corrida concluída incluindo aproximação, retorno sem passageiro, espera, custo variável e turnos sem demanda. No estudo de capacidade dedicada, o ponto de equilíbrio em corridas por turno é o custo fixo adicional do turno dividido pela economia variável por corrida em relação à alternativa atual. Se a economia for zero ou negativa, o turno dedicado não se paga com o aumento de volume sob aquelas premissas. Para veículos próprios, incluir depreciação, seguro, motorista, manutenção, financiamento e valor residual, com os mesmos quilômetros vazios e taxa de utilização. A linha de base de 27/11 sustenta manter aquisição de frota e expansão suspensas até haver volume e renda de campo.
+
+## Próximos atos externos
+
+| Responsável | Próximo passo e evidência |
+|---|---|
+| Jurídico e representante legal | Revisar a minuta ao CMUV e obter enquadramento, lista vigente de requisitos e deferimento aplicável. Associar a referência documental à região antes de recrutar para viagens pagas. |
+| Operações e seguradora | Conferir habilitação e apólice de cada motorista e veículo, cadastrar responsáveis pela revisão e pelas renovações, ensaiar sinistro e contato do suplente. |
+| Finanças, contador e Asaas | Confirmar quem recebe, emite recibo fiscal, recolhe tributos, suporta tarifas e estornos e mantém capital de giro. Obter carteira do motorista, confirmar titularidade e medir split fixo com credenciais e autorização apropriadas. Conciliar em centavos o valor cobrado, o líquido e o repasse. |
+| Mobile, Infraestrutura e Privacidade | Provisionar conta de mapas com direitos de uso e tráfego para o corredor, chaves FCM/APNs de homologação, builds assinados, aparelhos físicos e documentação da loja. Registrar entrega com tela bloqueada, consentimento e expurgo. |
+| Operações e Dados | Completar as quatro janelas de descoberta, anotar demanda e oferta nos dois sentidos e congelar protocolo, piso líquido por hora do motorista, escala pagável e teto. Registrar por escrito a decisão sobre primeira viagem. |
+
+[Minutas para revisão](../juridico/14-minutas-rede-direta.md) · [Fontes do enquadramento](../juridico/13-rede-direta-de-motoristas.md)

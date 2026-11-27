@@ -20,6 +20,9 @@ export type RideCostReview = {
   status: 'unknown' | 'cancelled';
   environment: 'simulation' | 'live';
   cost_cents: number | null;
+  can_review: boolean;
+  paid_cents: number;
+  payable_cents: number | null;
   evidence: string | null;
 };
 
@@ -54,4 +57,14 @@ export const simulateRideFinanceEvent = async (
 export const confirmSimulatedRideCost = async (legId: string, operationId: string, costCents: number, evidence: string) =>
   unwrap<RideSettlement>(await db().rpc('admin_confirm_simulated_ride_cost', {
     p_leg: legId, p_operation: operationId, p_cost_cents: costCents, p_reference: evidence,
+  }));
+
+export const confirmLiveRideCost = async (legId: string, operationId: string, costCents: number, evidence: string) =>
+  unwrap<RideSettlement>(await db().rpc('admin_confirm_live_ride_cost', {
+    p_leg: legId, p_operation: operationId, p_cost_cents: costCents, p_reference: evidence,
+  }));
+
+export const recordRideCostDisbursement = async (legId: string, operationId: string, amountCents: number, evidence: string) =>
+  unwrap<RideSettlement>(await db().rpc('admin_record_ride_cost_disbursement', {
+    p_leg: legId, p_operation: operationId, p_amount_cents: amountCents, p_reference: evidence,
   }));

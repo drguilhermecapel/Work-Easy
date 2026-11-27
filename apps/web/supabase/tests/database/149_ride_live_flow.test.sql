@@ -8,7 +8,10 @@ grant select,insert on live_case to authenticated;
 update private.ride_deployment set environment='live';
 update private.ride_network set module_enabled=true,quote_enabled=true,dispatch_enabled=true,monetization_enabled=true where environment='live';
 insert into private.ride_area_authorizations(area,legal_ref,privacy_ref,ops_ref,until_at,quote_enabled,dispatch_enabled,monetization_enabled)
- select area,'test-legal','test-privacy','test-ops',now()+interval '1 day',true,true,true from (values('Bairro A'),('Bairro B')) a(area);
+ select area,'test-legal','test-privacy','test-ops',now()+interval '1 day',true,true,true from (values('Bairro A'),('Bairro B'),('Bairro distante')) a(area);
+insert into private.ride_approach_routes(environment,origin_area,destination_area,minutes,reference,valid_until) values
+ ('live','Bairro distante','Bairro A',55,'test-approach',now()+interval '1 day'),
+ ('live','Bairro A','Bairro A',6,'test-approach',now()+interval '1 day');
 insert into private.ride_tariffs(environment,valid_from,base_cents,km_cents,minute_cents,minimum_cents,commission_bps)
  values('live',now()-interval '1 day',500,200,40,1200,1000);
 insert into private.ride_receipt_policy values('live','test-only',7,false,now()+interval '1 day');
@@ -27,6 +30,9 @@ select lives_ok($$select public.ride_submit_dossier((select id from live_case wh
 select tests.authenticate_as('admin');
 select lives_ok($$select public.ride_decide_dossier((select id from live_case where k='dossier'),true,current_date+2,current_date+3,current_date+4,'')$$,'independent reviewer approves current driver, vehicle and insurance');
 select tests.authenticate_as('client_b');
+select throws_ok($$select public.ride_set_online(true)$$,'P0001','driver_shift_required','live driver needs declared shift and area');
+insert into live_case select 'distant_shift',(public.ride_configure_shift('Bairro distante',now(),now()+interval '2 hours')->>'id')::uuid;
+select is((public.ride_configure_shift('Bairro distante',now(),now()+interval '2 hours')->>'id')::uuid,(select id from live_case where k='distant_shift'),'retry keeps one shift');
 select lives_ok($$select public.ride_set_online(true)$$,'current licensed driver goes online');
 select tests.authenticate_as('client_a');
 select throws_ok($$select public.ride_quote(gen_random_uuid(),null,null,'[{"origin":"Bairro A","destination":"Bairro B","payer":"passenger"}]')$$,
@@ -42,9 +48,17 @@ insert into live_case select 'quote',(public.ride_quote(gen_random_uuid(),null,n
 select is((public.ride_dashboard()->'quotes'->0->>'total_cents')::int,1700,'price frozen at 500 + 3 × 200 + 15 × 40');
 select throws_ok($$select public.ride_consent((select id from live_case where k='quote'),true)$$,'P0001','ride_pilot_unstaffed','global and area gates alone do not dispatch');
 select tests.clear_authentication();
-insert into private.ride_pilot(period,approved_ref,budget_cents) values(tstzrange(now()-interval '10 minutes',now()+interval '2 hours'),'test-finance',1699);
-insert into private.ride_coverage(pilot,period,lead_id,backup_id)
- select id,period,tests.uid('admin'),tests.uid('provider_a') from private.ride_pilot;
+insert into public.admins(user_id) values(tests.create_user('ride_support_backup_149','Suplente de ensaio'));
+with pilot as (
+ insert into private.ride_pilot(period,approved_ref,budget_cents) values(tstzrange(now()-interval '10 minutes',now()+interval '2 hours'),'test-finance',1699)
+ returning id,period
+), coverage as (
+ insert into private.ride_coverage(pilot,period,lead_id,backup_id)
+   select id,period,tests.uid('admin'),tests.uid('ride_support_backup_149') from pilot
+   returning id
+)
+insert into private.ride_support_channels(coverage_id,channel,address,team,verified_ref)
+  select id,'email','plantao@example.test','Equipe de ensaio','TEST-VERIFIED' from coverage;
 select tests.authenticate_as('client_a');
 select throws_ok($$select public.ride_consent((select id from live_case where k='quote'),true)$$,'P0001','ride_pilot_budget','one cent over budget blocks dispatch atomically');
 select tests.clear_authentication();
@@ -55,6 +69,12 @@ select tests.clear_authentication();
 insert into live_case select 'leg',id from public.ride_legs where ride_id=(select id from live_case where k='ride');
 select is((select amount_cents::int from private.ride_commitments where leg_id=(select id from live_case where k='leg')),1700,'only authorized gross fare committed');
 select tests.authenticate_as('client_b');
+select is(jsonb_array_length(public.ride_dashboard()->'offers'),0,'distant declared origin cannot reach immediate pickup');
+select throws_ok($$select public.ride_accept_offer((select id from live_case where k='leg'),gen_random_uuid())$$,'P0001','offer_unavailable','knowing a distant leg ID cannot bypass reachability');
+select lives_ok($$select public.ride_remove_shift((select id from live_case where k='distant_shift'))$$,'driver can close a shift without commitments');
+select lives_ok($$select public.ride_configure_shift('Bairro A',now(),now()+interval '2 hours')$$,'declare the actual nearby shift');
+select lives_ok($$select public.ride_set_online(true)$$,'resume offers after declaring nearby origin');
+select is((public.ride_dashboard()->'offers'->0->>'approach_minutes')::int,6,'offer labels the calibrated six-minute approach');
 select throws_ok($$select public.ride_accept_offer((select id from live_case where k='leg'),gen_random_uuid())$$,
  'P0001','ride_receipt_not_ready','assignment also requires location and receipt/reporting readiness');
 select tests.clear_authentication();
@@ -62,8 +82,12 @@ update private.ride_receipt_policy set export_enabled=true where environment='li
 update private.ride_signal_settings set location_enabled=true;
 select tests.authenticate_as('client_b');
 select is(public.ride_accept_offer((select id from live_case where k='leg'),gen_random_uuid())->>'status','accepted','driver accepts using public RPC after all live-mode gates');
+select is(public.ride_can_transmit((select id from live_case where k='leg')),false,'accepting alone never starts location tracking');
+select throws_ok($$select public.ride_send_position((select id from live_case where k='leg'),now(),-23.61,-46.65,5)$$,'P0001','transmission_ended','a device cannot upload GPS before approach starts');
 select is(public.ride_leg_points((select id from live_case where k='leg'))->'origin'->>'label','Ensaio ponto A','assigned driver receives exact authorized point');
 select lives_ok($$select public.ride_transition((select id from live_case where k='leg'),'arriving',gen_random_uuid())$$,'driver en route');
+select throws_ok($$select public.ride_transition((select id from live_case where k='leg'),'boarded',gen_random_uuid())$$,
+ 'P0001','ride_pickup_arrival_required','driver records actual arrival before boarding in live mode');
 select lives_ok($$select public.ride_mark_at_pickup((select id from live_case where k='leg'))$$,'physical arrival recorded separately');
 select lives_ok($$select public.ride_transition((select id from live_case where k='leg'),'boarded',gen_random_uuid())$$,'boarding confirmed');
 select lives_ok($$select public.ride_transition((select id from live_case where k='leg'),'completed',gen_random_uuid())$$,'trip complete independently of settlement');

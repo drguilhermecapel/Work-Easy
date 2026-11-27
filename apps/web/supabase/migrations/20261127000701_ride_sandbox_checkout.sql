@@ -31,7 +31,7 @@ language plpgsql stable security definer set search_path='' as $$
 declare c private.ride_sandbox_charges; l public.ride_legs;
 begin
  select * into l from public.ride_legs where id=p_leg and payer_id=auth.uid() and status='completed' and environment='simulation';
- if not found or private.ride_env()<>'simulation' then return null; end if;
+ if not found or private.ride_env()<>'simulation' or not exists(select from public.profiles where id=auth.uid() and deleted_at is null) then return null; end if;
  select * into c from private.ride_sandbox_charges where leg_id=p_leg;
  if not found and not (exists(select from private.ride_sandbox_psp where enabled)
    and exists(select from private.ride_network where environment='simulation' and module_enabled)
@@ -68,8 +68,9 @@ language plpgsql security definer set search_path='' as $$
 begin
  if private.ride_env()<>'simulation' or not exists(select from private.ride_sandbox_psp where enabled)
     or not exists(select from private.ride_network where environment='simulation' and module_enabled) then return false; end if;
- update private.ride_sandbox_charges set send_claimed=true,updated_at=now()
-  where leg_id=p_leg and not send_claimed and external_id is null;
+ update private.ride_sandbox_charges c set send_claimed=true,updated_at=now()
+  where c.leg_id=p_leg and not c.send_claimed and c.external_id is null and private.ride_active_user(c.payer_id)
+    and exists(select from private.ride_sandbox_customers cust where cust.payer_id=c.payer_id and cust.customer_ref=c.customer_ref);
  return found;
 end $$;
 

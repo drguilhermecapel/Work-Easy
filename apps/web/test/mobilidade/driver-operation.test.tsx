@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import Motorista from '../../pages/mobilidade/Motorista';
@@ -19,9 +19,12 @@ vi.mock('../../services/rides', () => ({
   applyDriver: vi.fn(),
   reviewDriver: vi.fn(),
   setDriverOnline: vi.fn(),
+  configureDriverShift: vi.fn(),
+  removeDriverShift: vi.fn(),
   acceptRideOffer: vi.fn(),
   declineRideOffer: vi.fn(),
   resolveRide: vi.fn(),
+  resolveCompletedRide: vi.fn(),
   transitionRide: vi.fn(),
 }));
 
@@ -116,6 +119,23 @@ describe('rede de motoristas', () => {
     expect(screen.queryByText('Ativar alertas do motorista')).not.toBeInTheDocument();
   });
 
+  it('envia o turno em UTC a partir do horário de São Paulo e distingue ETA aproximada', async () => {
+    dashboard.driver = { status: 'approved', vehicle: 'compact', valid_until: '2099-12-31', online: true, shifts: [] };
+    dashboard.areas = ['Saúde', 'Vila Mariana'];
+    dashboard.offers = [
+      { leg_id: 'leg-1', origin: 'Saúde', destination: 'Vila Mariana', pickup_at: null, driver_cents: 1800, approach_minutes: 12 },
+    ];
+    renderDriver();
+    expect(await screen.findByText(/Aproximação estimada pela área: 12 min/)).toBeInTheDocument();
+    await userEvent.selectOptions(screen.getByLabelText('Área de partida do turno'), 'Saúde');
+    fireEvent.change(screen.getByLabelText('Início do turno (São Paulo)'), { target: { value: '2030-05-02T09:00' } });
+    fireEvent.change(screen.getByLabelText('Fim do turno (São Paulo)'), { target: { value: '2030-05-02T23:00' } });
+    expect(screen.getByRole('button', { name: 'Cadastrar turno' })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('Fim do turno (São Paulo)'), { target: { value: '2030-05-02T15:00' } });
+    await userEvent.click(screen.getByRole('button', { name: 'Cadastrar turno' }));
+    expect(rides.configureDriverShift).toHaveBeenCalledWith('Saúde', '2030-05-02T12:00:00.000Z', '2030-05-02T18:00:00.000Z');
+  });
+
   it('mantém aceite e alertas inativos enquanto o despacho estiver pausado', async () => {
     dashboard.dispatch_enabled = false;
     dashboard.simulation = false;
@@ -156,5 +176,33 @@ describe('rede de motoristas', () => {
     await userEvent.selectOptions(screen.getByLabelText('Resultado conferido'), 'cancelled');
     await userEvent.click(resolve);
     expect(rides.resolveRide).toHaveBeenCalledWith('leg-1', 'cancelled', expect.any(String));
+  });
+
+  it('exige referência em custódia e horários do trecho para concluir uma interrupção', async () => {
+    dashboard.rides = [{ id: 'ride-1', kind: 'public', status: 'unknown', booking_id: null, scheduled_at: null, legs: [leg('unknown')] }];
+    render(
+      <MemoryRouter>
+        <Operacao />
+      </MemoryRouter>,
+    );
+    await userEvent.selectOptions(await screen.findByLabelText('Resultado conferido'), 'completed');
+    const resolve = screen.getByRole('button', { name: 'Registrar resolução' });
+    const reference = screen.getByLabelText('Referência do comprovante em custódia');
+    await userEvent.type(reference, 'https://test.invalid');
+    const stamp = { target: { value: '2026-01-10T07:55' } };
+    fireEvent.change(screen.getByLabelText('Embarque confirmado (São Paulo)'), stamp);
+    fireEvent.change(screen.getByLabelText('Desembarque confirmado (São Paulo)'), stamp);
+    expect(resolve).toBeDisabled();
+    await userEvent.clear(reference);
+    await userEvent.type(reference, 'caso-153');
+    await userEvent.click(resolve);
+    expect(rides.resolveCompletedRide).toHaveBeenCalledWith(
+      'leg-1',
+      expect.any(String),
+      'caso-153',
+      '2026-01-10T10:55:00.000Z',
+      '2026-01-10T10:55:00.000Z',
+    );
+    expect(rides.resolveRide).not.toHaveBeenCalled();
   });
 });

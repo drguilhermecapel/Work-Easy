@@ -72,6 +72,7 @@ comment on column public.payments.service_split_review_required is 'D14: bloquea
 alter table public.proposals add column service_fee_policy_version text,
   add column service_fee_offered boolean not null default false;
 alter table public.bookings add column service_fee_policy_version text,
+  add column service_fee_agreed_at timestamptz,
   add column service_fee_offered boolean not null default false,
   add column service_fee_covered_by_pro boolean not null default false;
 create function private.agreed_service_commission(p_provider uuid,p_occupation text,p_at timestamptz)
@@ -203,6 +204,7 @@ declare
 begin
   if tg_op='INSERT' then
     new.service_fee_policy_version := null;
+    new.service_fee_agreed_at := null;
     new.service_fee_covered_by_pro := false;
     new.service_fee_offered := false;
     if new.origin='platform' then
@@ -216,10 +218,10 @@ begin
       end if;
     end if;
     if new.service_fee_policy_version is not null then
-      select exists(select 1 from private.service_commission_agreements a where
-        a.provider_id=new.provider_id and a.occupation_slug=new.occupation_slug
-        and a.version=new.service_fee_policy_version and a.applies_from>a.accepted_at and a.applies_from>v_offered_at)
-        into new.service_fee_covered_by_pro;
+      select a.accepted_at,(a.applies_from>a.accepted_at and a.applies_from>v_offered_at)
+        into strict new.service_fee_agreed_at,new.service_fee_covered_by_pro
+        from private.service_commission_agreements a where a.provider_id=new.provider_id
+          and a.occupation_slug=new.occupation_slug and a.version=new.service_fee_policy_version;
     end if;
     new.platform_fee_cents:=0;
   end if;

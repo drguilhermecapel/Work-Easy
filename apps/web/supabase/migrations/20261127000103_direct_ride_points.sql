@@ -72,8 +72,9 @@ begin
     if p_service_endpoint is not null or p_origin is null or p_destination is null then raise exception 'invalid_point'; end if;
   else
     select * into b from public.bookings where id=p_booking;
-    if not found or b.origin<>'platform' or b.status not in ('accepted','paid','in_progress') or b.client_id is null
-       or u not in (b.provider_id,b.client_id) then raise exception 'booking_not_eligible'; end if;
+    if not found or b.origin<>'platform' or (b.status not in ('accepted','paid','in_progress') and
+       not (b.status in ('completed','released','disputed','canceled') and p_service_endpoint='origin' and private.ride_rescuable_return(b.id))) or b.client_id is null
+       or not private.ride_active_user(b.provider_id) or not private.ride_active_user(b.client_id) or u not in (b.provider_id,b.client_id) then raise exception 'booking_not_eligible'; end if;
     passenger:=b.provider_id;client:=b.client_id;
     if p_service_endpoint is null or p_service_endpoint not in ('origin','destination') then raise exception 'invalid_endpoint'; end if;
     if u=client and ((p_service_endpoint='origin' and (p_origin is null or p_destination is not null))
@@ -115,6 +116,7 @@ declare u uuid:=private.require_ride_feature('quote');c private.ride_route_cases
 begin
  if not public.is_admin() then raise exception 'not_allowed'; end if;
  update private.ride_route_cases set reviewer_id=u where id=p_route and environment=private.ride_env() and status='awaiting_review'
+   and private.ride_active_user(passenger_id) and (client_id is null or private.ride_active_user(client_id))
    and valid_until>now() and (reviewer_id is null or reviewer_id=u) and u<>passenger_id and u is distinct from client_id returning * into c;
  if not found then raise exception 'not_allowed'; end if;
  perform private.audit('ride.route_claim','ride_route_cases',c.id::text,jsonb_build_object('environment',c.environment));
@@ -129,7 +131,7 @@ begin
  if p_meters is null or p_meters not between 1 and 100000 or p_minutes is null or p_minutes not between 1 and 240
     or p_reference is null or p_reference !~ '^[[:alnum:]_.:/-]{3,120}$' then raise exception 'invalid_route_measurement'; end if;
  select * into c from private.ride_route_cases where id=p_route and environment=private.ride_env() and reviewer_id=u for update;
- if not found or c.valid_until<=now() or c.status not in ('awaiting_review','verified') then raise exception 'route_unavailable'; end if;
+ if not found or not private.ride_active_user(c.passenger_id) or (c.client_id is not null and not private.ride_active_user(c.client_id)) or c.valid_until<=now() or c.status not in ('awaiting_review','verified') then raise exception 'route_unavailable'; end if;
  if c.status='verified' then
    if c.meters<>p_meters or c.minutes<>p_minutes or c.source_ref<>p_reference then raise exception 'route_measurement_locked'; end if;
    return private.ride_route_view(c,u);
@@ -144,7 +146,7 @@ end $$;
 create function public.ride_route_cases() returns jsonb language sql stable security definer set search_path='' as $$
  select coalesce(jsonb_agg(private.ride_route_view(c::private.ride_route_cases,auth.uid()) order by c.created_at desc),'[]'::jsonb)
  from (select rc.* from private.ride_route_cases rc where rc.environment=private.ride_env() and auth.uid() is not null
-    and exists(select from public.profiles p where p.id=auth.uid() and p.deleted_at is null)
+    and private.ride_active_user(auth.uid()) and private.ride_active_user(rc.passenger_id) and (rc.client_id is null or private.ride_active_user(rc.client_id))
     and (auth.uid()=rc.passenger_id or auth.uid()=rc.client_id or
       (public.is_admin() and (rc.reviewer_id=auth.uid() or (rc.status='awaiting_review' and rc.reviewer_id is null and rc.valid_until>now()))))
     order by rc.created_at desc limit 100) c

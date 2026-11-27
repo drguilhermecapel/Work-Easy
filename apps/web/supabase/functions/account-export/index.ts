@@ -11,6 +11,8 @@ const deps: ExportDeps = {
   async session(req) {
     const caller = await authenticate(req);
     if (!caller) return null;
+    const profile = must(await caller.db.from('profiles').select('id').eq('id', caller.user.id).is('deleted_at', null).maybeSingle());
+    if (!profile) return null;
     return {
       user: caller.user,
       async selectOwned(table, orFilter, columns) {

@@ -17,7 +17,10 @@ serve((req) =>
       if (typeof path !== 'string') throw errors.notAllowed();
       const { data, error } = await bucket.createSignedUrl(path, 120);
       if (error) throw errors.upstream('Não foi possível abrir o arquivo.');
-      return { data: { url: data.signedUrl } };
+      // Hosted and local Edge runtimes can use an internal gateway host. The
+      // browser already knows the public origin for this same Supabase project.
+      const signed = new URL(data.signedUrl);
+      return { data: { path: signed.pathname + signed.search } };
     }
     const dossier = must(await caller.db.rpc('ride_dossier_upload_target'));
     if (typeof dossier !== 'string') throw errors.notAllowed();

@@ -6,7 +6,7 @@ import { quoteRide, type RideLegInput, type RidePayer } from '../../services/rid
 
 const field = 'block w-full mt-1 rounded-xl border border-gray-300 bg-white p-2.5 text-gray-900';
 
-interface RouteOption { id: string; origin_area: string; destination_area: string; }
+interface RouteOption { id: string; origin_area: string; destination_area: string; service_endpoint?: string | null; }
 interface ExtraOption { code: string; label: string; cents: number; }
 function ExtraChoices({ options, selected, onChange, label }: {
   options: ExtraOption[]; selected: string[]; onChange: (v: string[]) => void; label: string;
@@ -22,7 +22,7 @@ function RouteChoice({ routes, value, onChange, label, required }: {
 }) {
   if (!routes.length) return required ? <p>Cadastre os pontos e aguarde a medição da operação para cotar este trecho.</p> : null;
   return <label className="block">{label}<select className={field} value={value} required={required} onChange={e => onChange(e.target.value)}>
-    <option value="">{required ? 'Selecione uma medição verificada' : 'Usar pontos de encontro do catálogo'}</option>
+    <option value="">{required ? 'Selecione uma medição da operação' : 'Usar pontos de encontro do catálogo'}</option>
     {routes.map(r => <option key={r.id} value={r.id}>{r.origin_area} → {r.destination_area} · {r.id.slice(-8)}</option>)}
   </select></label>;
 }
@@ -32,6 +32,7 @@ interface Props {
   replaces?: string;
   requiresRoute?: boolean;
   routes?: RouteOption[];
+  nextBookings?: { id: string; label: string }[];
   extras?: ExtraOption[];
   onQuoted: (id: string) => void;
 }
@@ -41,7 +42,7 @@ function toInstant(value: string): string | null {
   return saoPauloDateTime(day, time)?.toISOString() ?? null;
 }
 
-export default function QuoteForm({ areas, bookingId, replaces, routes = [], extras = [], requiresRoute = false, onQuoted }: Props) {
+export default function QuoteForm({ areas, bookingId, replaces, routes = [], nextBookings = [], extras = [], requiresRoute = false, onQuoted }: Props) {
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
   const [scheduled, setScheduled] = useState(Boolean(bookingId));
@@ -53,6 +54,7 @@ export default function QuoteForm({ areas, bookingId, replaces, routes = [], ext
   const [nextPayer, setNextPayer] = useState<RidePayer>(bookingId ? 'client' : 'passenger');
   const [routeId, setRouteId] = useState('');
   const [nextRouteId, setNextRouteId] = useState('');
+  const [nextBooking, setNextBooking] = useState('');
   const [firstExtras, setFirstExtras] = useState<string[]>([]);
   const [nextExtras, setNextExtras] = useState<string[]>([]);
   const measured = routes.find(r => r.id === routeId);
@@ -79,7 +81,7 @@ export default function QuoteForm({ areas, bookingId, replaces, routes = [], ext
       return;
     }
     if (requiresRoute && (!measured || (anotherLeg && !measuredNext))) {
-      setValidation('É preciso selecionar uma medição verificada para cada trecho.');
+      setValidation('É preciso selecionar uma medição da operação para cada trecho.');
       return;
     }
     if (!from || !to || (!measured && from === to) || (anotherLeg && (!onward || (!measuredNext && to === onward) || (measuredNext && measuredNext.origin_area !== to)))) {
@@ -89,6 +91,10 @@ export default function QuoteForm({ areas, bookingId, replaces, routes = [], ext
     if ((scheduled && (!first || Date.parse(first) <= now || Date.parse(first) > last)) ||
         (anotherLeg && (!next || Date.parse(next) > last || Date.parse(next) <= (first ? Date.parse(first) : now)))) {
       setValidation('Escolha datas nos próximos 30 dias e marque o próximo trecho depois da ida, no horário de São Paulo.');
+      return;
+    }
+    if (nextBooking && requiresRoute && (anotherLeg ? measuredNext : measured)?.service_endpoint !== 'origin') {
+      setValidation('Para seguir a outro atendimento, selecione a medição que parte do endereço do atendimento atual.');
       return;
     }
     const legs: RideLegInput[] = [{ origin: from, destination: to, payer: firstPayer }];
@@ -102,6 +108,7 @@ export default function QuoteForm({ areas, bookingId, replaces, routes = [], ext
       if (nextExtras.length) second.extras = nextExtras;
       legs.push(second);
     }
+    if (nextBooking && nextBookings.some(b => b.id === nextBooking)) legs[legs.length - 1].next_booking_id = nextBooking;
     const payload = JSON.stringify([bookingId, first, legs]);
     if (request.current?.payload !== payload) request.current = { payload, key: crypto.randomUUID() };
     sending.current = true;
@@ -148,6 +155,13 @@ export default function QuoteForm({ areas, bookingId, replaces, routes = [], ext
           <label className="block">Data e hora do próximo trecho (São Paulo)<input className={field} required type="datetime-local" value={nextTime} onChange={e => setNextTime(e.target.value)} /></label>
           {bookingId && <label className="block">Quem paga o próximo trecho?<select className={field} value={nextPayer} onChange={e => setNextPayer(e.target.value as RidePayer)}>{payers}</select></label>}
         </div>}
+        {nextBookings.length > 0 && <label className="block">Atendimento seguinte do profissional
+          <select className={field} value={nextBooking} onChange={e => setNextBooking(e.target.value)}>
+            <option value="">Sem vínculo com outro atendimento</option>
+            {nextBookings.map(b => <option key={b.id} value={b.id}>{b.label}</option>)}
+          </select>
+          <span className="text-sm text-gray-600">O último trecho leva ao compromisso escolhido. O segundo cliente não paga este deslocamento.</span>
+        </label>}
         {validation && <p role="alert" className="text-red-700">{validation}</p>}
         <ErrorAlert error={failure} />
         <button type="submit" className="rounded-xl bg-primary px-4 py-2 font-semibold text-white disabled:opacity-50">{busy ? 'Cotando…' : 'Consultar preço'}</button>

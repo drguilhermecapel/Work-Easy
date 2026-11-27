@@ -69,5 +69,9 @@ select throws_ok($$select public.ride_complete_route((select v from route_test w
  'P0001','not_allowed','client cannot replace the private origin while completing destination');
 select is(public.ride_complete_route((select v from route_test where k='reversed'),null,
  '{"label":"Local do serviço","lat":2,"lng":2}')->>'status','awaiting_review','service client independently completes the service destination');
+select tests.authenticate_as('client_b');
+select lives_ok($$select public.ride_prepare_route(gen_random_uuid(),null,'Saúde','Saúde',
+ '{"label":"Ponto fictício da mesma área A","lat":1,"lng":1}','{"label":"Ponto fictício da mesma área B","lat":1.01,"lng":1.02}',null)$$,
+ 'a reviewed pair can lie within a single authorized area');
 select * from finish();
 rollback;

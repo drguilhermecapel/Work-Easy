@@ -179,14 +179,14 @@ isOneToOne: false
                   ]
                 },"bookings": {
                   Row: {
-                    "canceled_reason": string | null,"client_id": string | null,"created_at": string,"household_id": string | null,"id": string,"notes": string | null,"occupation_slug": string,"origin": Database["public"]['Enums']["booking_origin"],"period": unknown,"platform_fee_cents": number,"price_cents": number,"proposal_id": string | null,"provider_client_id": string | null,"provider_id": string | null,"request_id": string | null,"service_fee_covered_by_pro": boolean,"service_fee_policy_version": string | null,"service_id": string | null,"status": Database["public"]['Enums']["booking_status"],"updated_at": string
+                    "canceled_reason": string | null,"client_id": string | null,"created_at": string,"household_id": string | null,"id": string,"notes": string | null,"occupation_slug": string,"origin": Database["public"]['Enums']["booking_origin"],"period": unknown,"platform_fee_cents": number,"price_cents": number,"proposal_id": string | null,"provider_client_id": string | null,"provider_id": string | null,"request_id": string | null,"service_fee_agreed_at": string | null,"service_fee_covered_by_pro": boolean,"service_fee_offered": boolean,"service_fee_policy_version": string | null,"service_id": string | null,"status": Database["public"]['Enums']["booking_status"],"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "canceled_reason"?: string | null,"client_id"?: string | null,"created_at"?: string,"household_id"?: string | null,"id"?: string,"notes"?: string | null,"occupation_slug": string,"origin"?: Database["public"]['Enums']["booking_origin"],"period": unknown,"platform_fee_cents"?: number,"price_cents": number,"proposal_id"?: string | null,"provider_client_id"?: string | null,"provider_id"?: string | null,"request_id"?: string | null,"service_fee_covered_by_pro"?: boolean,"service_fee_policy_version"?: string | null,"service_id"?: string | null,"status"?: Database["public"]['Enums']["booking_status"],"updated_at"?: string
+                    "canceled_reason"?: string | null,"client_id"?: string | null,"created_at"?: string,"household_id"?: string | null,"id"?: string,"notes"?: string | null,"occupation_slug": string,"origin"?: Database["public"]['Enums']["booking_origin"],"period": unknown,"platform_fee_cents"?: number,"price_cents": number,"proposal_id"?: string | null,"provider_client_id"?: string | null,"provider_id"?: string | null,"request_id"?: string | null,"service_fee_agreed_at"?: string | null,"service_fee_covered_by_pro"?: boolean,"service_fee_offered"?: boolean,"service_fee_policy_version"?: string | null,"service_id"?: string | null,"status"?: Database["public"]['Enums']["booking_status"],"updated_at"?: string
                   }
                   Update: {
-                    "canceled_reason"?: string | null,"client_id"?: string | null,"created_at"?: string,"household_id"?: string | null,"id"?: string,"notes"?: string | null,"occupation_slug"?: string,"origin"?: Database["public"]['Enums']["booking_origin"],"period"?: unknown,"platform_fee_cents"?: number,"price_cents"?: number,"proposal_id"?: string | null,"provider_client_id"?: string | null,"provider_id"?: string | null,"request_id"?: string | null,"service_fee_covered_by_pro"?: boolean,"service_fee_policy_version"?: string | null,"service_id"?: string | null,"status"?: Database["public"]['Enums']["booking_status"],"updated_at"?: string
+                    "canceled_reason"?: string | null,"client_id"?: string | null,"created_at"?: string,"household_id"?: string | null,"id"?: string,"notes"?: string | null,"occupation_slug"?: string,"origin"?: Database["public"]['Enums']["booking_origin"],"period"?: unknown,"platform_fee_cents"?: number,"price_cents"?: number,"proposal_id"?: string | null,"provider_client_id"?: string | null,"provider_id"?: string | null,"request_id"?: string | null,"service_fee_agreed_at"?: string | null,"service_fee_covered_by_pro"?: boolean,"service_fee_offered"?: boolean,"service_fee_policy_version"?: string | null,"service_id"?: string | null,"status"?: Database["public"]['Enums']["booking_status"],"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -669,14 +669,14 @@ isOneToOne: false
                   ]
                 },"proposals": {
                   Row: {
-                    "available_from": string | null,"created_at": string,"id": string,"message": string | null,"price_cents": number,"provider_id": string,"request_id": string,"service_fee_policy_version": string | null,"status": Database["public"]['Enums']["proposal_status"],"valid_until": string | null
+                    "available_from": string | null,"created_at": string,"id": string,"message": string | null,"price_cents": number,"provider_id": string,"request_id": string,"service_fee_offered": boolean,"service_fee_policy_version": string | null,"status": Database["public"]['Enums']["proposal_status"],"valid_until": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "available_from"?: string | null,"created_at"?: string,"id"?: string,"message"?: string | null,"price_cents": number,"provider_id"?: string,"request_id": string,"service_fee_policy_version"?: string | null,"status"?: Database["public"]['Enums']["proposal_status"],"valid_until"?: string | null
+                    "available_from"?: string | null,"created_at"?: string,"id"?: string,"message"?: string | null,"price_cents": number,"provider_id"?: string,"request_id": string,"service_fee_offered"?: boolean,"service_fee_policy_version"?: string | null,"status"?: Database["public"]['Enums']["proposal_status"],"valid_until"?: string | null
                   }
                   Update: {
-                    "available_from"?: string | null,"created_at"?: string,"id"?: string,"message"?: string | null,"price_cents"?: number,"provider_id"?: string,"request_id"?: string,"service_fee_policy_version"?: string | null,"status"?: Database["public"]['Enums']["proposal_status"],"valid_until"?: string | null
+                    "available_from"?: string | null,"created_at"?: string,"id"?: string,"message"?: string | null,"price_cents"?: number,"provider_id"?: string,"request_id"?: string,"service_fee_offered"?: boolean,"service_fee_policy_version"?: string | null,"status"?: Database["public"]['Enums']["proposal_status"],"valid_until"?: string | null
                   }
                   Relationships: [
                     {
@@ -999,30 +999,18 @@ isOneToOne: false
                     "environment"?: string,"id"?: string,"online"?: boolean,"reviewed_at"?: string | null,"reviewed_by"?: string | null,"status"?: string,"updated_at"?: string,"valid_until"?: string | null,"vehicle"?: string
                   }
                   Relationships: [
-                    {
-      foreignKeyName: "ride_drivers_id_fkey"
-      columns: ["id"]
-isOneToOne: true
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "ride_drivers_reviewed_by_fkey"
-      columns: ["reviewed_by"]
-isOneToOne: false
-      referencedRelation: "profiles"
-      referencedColumns: ["id"]
-    }
+                    
                   ]
                 },"ride_legs": {
                   Row: {
-                    "destination": string,"driver_cents": number,"driver_id": string | null,"duration_minutes": number,"environment": string,"extras_cents": number,"fare_cents": number,"fee_cents": number,"id": string,"origin": string,"payer_id": string,"pickup_at": string,"quote_seq": number | null,"replaces_id": string | null,"revision": number,"ride_id": string,"route_case_id": string | null,"seq": number,"service_endpoint": string | null,"slot": unknown,"source_quote_id": string | null,"status": string,"tariff_id": string,"updated_at": string
+                    "destination": string,"driver_cents": number,"driver_id": string | null,"driver_slot": unknown,"duration_minutes": number,"environment": string,"extras_cents": number,"fare_cents": number,"fee_cents": number,"id": string,"next_booking_id": string | null,"origin": string,"payer_id": string,"pickup_at": string,"quote_seq": number | null,"replaces_id": string | null,"revision": number,"ride_id": string,"route_case_id": string | null,"seq": number,"service_endpoint": string | null,"slot": unknown,"source_quote_id": string | null,"status": string,"tariff_id": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "destination": string,"driver_cents": number,"driver_id"?: string | null,"duration_minutes": number,"environment": string,"extras_cents"?: number,"fare_cents": number,"fee_cents": number,"id"?: string,"origin": string,"payer_id": string,"pickup_at": string,"quote_seq"?: number | null,"replaces_id"?: string | null,"revision"?: number,"ride_id": string,"route_case_id"?: string | null,"seq": number,"service_endpoint"?: string | null,"slot": unknown,"source_quote_id"?: string | null,"status"?: string,"tariff_id": string,"updated_at"?: string
+                    "destination": string,"driver_cents": number,"driver_id"?: string | null,"driver_slot"?: unknown,"duration_minutes": number,"environment": string,"extras_cents"?: number,"fare_cents": number,"fee_cents": number,"id"?: string,"next_booking_id"?: string | null,"origin": string,"payer_id": string,"pickup_at": string,"quote_seq"?: number | null,"replaces_id"?: string | null,"revision"?: number,"ride_id": string,"route_case_id"?: string | null,"seq": number,"service_endpoint"?: string | null,"slot": unknown,"source_quote_id"?: string | null,"status"?: string,"tariff_id": string,"updated_at"?: string
                   }
                   Update: {
-                    "destination"?: string,"driver_cents"?: number,"driver_id"?: string | null,"duration_minutes"?: number,"environment"?: string,"extras_cents"?: number,"fare_cents"?: number,"fee_cents"?: number,"id"?: string,"origin"?: string,"payer_id"?: string,"pickup_at"?: string,"quote_seq"?: number | null,"replaces_id"?: string | null,"revision"?: number,"ride_id"?: string,"route_case_id"?: string | null,"seq"?: number,"service_endpoint"?: string | null,"slot"?: unknown,"source_quote_id"?: string | null,"status"?: string,"tariff_id"?: string,"updated_at"?: string
+                    "destination"?: string,"driver_cents"?: number,"driver_id"?: string | null,"driver_slot"?: unknown,"duration_minutes"?: number,"environment"?: string,"extras_cents"?: number,"fare_cents"?: number,"fee_cents"?: number,"id"?: string,"next_booking_id"?: string | null,"origin"?: string,"payer_id"?: string,"pickup_at"?: string,"quote_seq"?: number | null,"replaces_id"?: string | null,"revision"?: number,"ride_id"?: string,"route_case_id"?: string | null,"seq"?: number,"service_endpoint"?: string | null,"slot"?: unknown,"source_quote_id"?: string | null,"status"?: string,"tariff_id"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -1032,10 +1020,16 @@ isOneToOne: false
       referencedRelation: "ride_drivers"
       referencedColumns: ["id"]
     },{
-      foreignKeyName: "ride_legs_payer_id_fkey"
-      columns: ["payer_id"]
+      foreignKeyName: "ride_legs_next_booking_id_fkey"
+      columns: ["next_booking_id"]
 isOneToOne: false
-      referencedRelation: "profiles"
+      referencedRelation: "admin_open_disputes"
+      referencedColumns: ["booking_id"]
+    },{
+      foreignKeyName: "ride_legs_next_booking_id_fkey"
+      columns: ["next_booking_id"]
+isOneToOne: false
+      referencedRelation: "bookings"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "ride_legs_replaces_id_fkey"
@@ -1074,12 +1068,6 @@ isOneToOne: false
       columns: ["booking_id"]
 isOneToOne: false
       referencedRelation: "bookings"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "rides_passenger_id_fkey"
-      columns: ["passenger_id"]
-isOneToOne: false
-      referencedRelation: "profiles"
       referencedColumns: ["id"]
     }
                   ]
@@ -1432,6 +1420,14 @@ isOneToOne: true
       referencedColumns: ["id"]
     }
                   ]
+                },"my_ride_data_export": {
+                  Row: {
+                    "id": string | null,"mobility": Json | null
+                  }
+                  ComputedFields: never
+                  Relationships: [
+                    
+                  ]
                 }
           }
           Functions: {
@@ -1449,6 +1445,9 @@ isOneToOne: true
                            },
 "admin_close_service_commission":
 { Args: { "p_ends_at": string,"p_occupation": string,"p_version": string }; Returns: undefined
+                           },
+"admin_confirm_live_ride_cost":
+{ Args: { "p_cost_cents": number,"p_leg": string,"p_operation": string,"p_reference": string }; Returns: Json
                            },
 "admin_confirm_simulated_ride_cost":
 { Args: { "p_cost_cents": number,"p_leg": string,"p_operation": string,"p_reference": string }; Returns: Json
@@ -1472,6 +1471,9 @@ isOneToOne: true
 "admin_publish_service_commission":
 { Args: { "p_occupation": string,"p_starts_at": string,"p_terms_url": string,"p_version": string }; Returns: undefined
                            },
+"admin_record_ride_cost_disbursement":
+{ Args: { "p_amount_cents": number,"p_leg": string,"p_operation": string,"p_reference": string }; Returns: Json
+                           },
 "admin_resolve_dispute":
 { Args: { "p_booking": string,"p_reason": string,"p_to": Database["public"]['Enums']["booking_status"] }; Returns: Database["public"]['Enums']["booking_status"]
                            },
@@ -1484,8 +1486,17 @@ isOneToOne: true
 "admin_review_payment":
 { Args: { "p_payment": string,"p_reason": string }; Returns: boolean
                            },
+"admin_ride_psp_reviews":
+{ Args: { "p_leg": string }; Returns: Json
+                           },
 "admin_ride_settlement":
 { Args: { "p_leg": string }; Returns: Json
+                           },
+"admin_ride_support_action":
+{ Args: { "p_action": string,"p_code": string,"p_protocol": string }; Returns: string
+                           },
+"admin_ride_support_queue":
+{ Args: Record<PropertyKey, never>; Returns: Json
                            },
 "admin_set_occupation_approval":
 { Args: { "p_approved": boolean,"p_occupation": string,"p_provider": string,"p_reason"?: string }; Returns: boolean
@@ -1593,6 +1604,9 @@ isOneToOne: true
               "attempt": number,"device": string,"leg": string,"token": string,"transport": string
             }[]
                            },
+"claim_ride_live_account":
+{ Args: { "p_leg": string }; Returns: Json
+                           },
 "claim_ride_sandbox_account":
 { Args: { "p_leg": string }; Returns: Json
                            },
@@ -1651,6 +1665,9 @@ isOneToOne: true
 "record_ride_sandbox_financial_event":
 { Args: { "p_amount_cents": number,"p_extras_cents"?: number,"p_kind": string,"p_leg": string,"p_operation": string }; Returns: Json
                            },
+"record_verified_live_ride_event":
+{ Args: { "p_amount_cents": number,"p_driver_split_cents"?: number,"p_extras_cents"?: number,"p_kind": string,"p_leg": string,"p_operation": string,"p_psp_fee_cents"?: number }; Returns: Json
+                           },
 "report_content":
 { Args: { "p_details"?: string,"p_reason": string,"p_target": string,"p_type": string }; Returns: string
                            },
@@ -1683,6 +1700,9 @@ isOneToOne: true
                            },
 "ride_complete_route":
 { Args: { "p_destination": Json,"p_origin": Json,"p_route": string }; Returns: Json
+                           },
+"ride_configure_shift":
+{ Args: { "p_area": string,"p_from": string,"p_until": string }; Returns: Json
                            },
 "ride_consent":
 { Args: { "p_accept": boolean,"p_quote": string }; Returns: Json
@@ -1719,8 +1739,26 @@ isOneToOne: true
 "ride_enroll":
 { Args: { "p_market": string,"p_reference": string,"p_stratum": string }; Returns: string
                            },
+"ride_export_my_data":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
 "ride_leg_points":
 { Args: { "p_leg": string }; Returns: Json
+                           },
+"ride_live_claim_send":
+{ Args: { "p_leg": string }; Returns: boolean
+                           },
+"ride_live_find_charge":
+{ Args: { "p_leg": string }; Returns: Json
+                           },
+"ride_live_observe_charge":
+{ Args: { "p_amount": number,"p_customer": string,"p_fee": number,"p_invoice": string,"p_leg": string,"p_payment": string,"p_payout": number,"p_reason": string,"p_refunded": number,"p_reversal": number,"p_split": number,"p_status": string }; Returns: Json
+                           },
+"ride_live_payment_view":
+{ Args: { "p_leg": string }; Returns: Json
+                           },
+"ride_live_prepare_charge":
+{ Args: { "p_leg": string,"p_user": string }; Returns: Json
                            },
 "ride_mark_at_pickup":
 { Args: { "p_leg": string }; Returns: string
@@ -1748,6 +1786,9 @@ isOneToOne: true
                            },
 "ride_rate":
 { Args: { "p_leg": string,"p_stars": number }; Returns: undefined
+                           },
+"ride_remove_shift":
+{ Args: { "p_shift": string }; Returns: Json
                            },
 "ride_report_eta":
 { Args: { "p_leg": string,"p_minutes": number }; Returns: undefined
@@ -1788,6 +1829,9 @@ isOneToOne: true
 "ride_submit_dossier":
 { Args: { "p_dossier": string }; Returns: boolean
                            },
+"ride_support_contact":
+{ Args: { "p_leg": string }; Returns: Json
+                           },
 "ride_transition":
 { Args: { "p_key": string,"p_leg": string,"p_to": string }; Returns: Json
                            },
@@ -1807,7 +1851,7 @@ isOneToOne: true
                            },
 "service_commission_options":
 { Args: Record<PropertyKey, never>; Returns: {
-              "accepted_at": string,"applies_from": string,"occupation_slug": string,"terms_reference": string,"version": string
+              "accepted_at": string,"applies_from": string,"charging_enabled": boolean,"occupation_slug": string,"terms_reference": string,"version": string
             }[]
                            },
 "service_pro_sales_allowed":

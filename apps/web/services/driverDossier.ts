@@ -62,7 +62,14 @@ export const decideDriverDossier = async (
   );
 export const getDriverIdentity = async (legId: string) =>
   unwrapMaybe<DriverIdentity>(await db().rpc('ride_trip_driver_identity', { p_leg: legId }));
-export const getDossierPhoto = async (file: string, leg?: string) => invokeFunction<{ url: string }>('ride-driver-file', { file, leg });
+export async function getDossierPhoto(file: string, leg?: string) {
+  const { path } = await invokeFunction<{ path: string }>('ride-driver-file', { file, leg });
+  if (!path?.startsWith('/storage/v1/object/sign/ride-driver-files/')) throw new AppError('server_error');
+  const backendUrl = import.meta.env.VITE_SUPABASE_URL?.trim();
+  if (!backendUrl) throw new AppError('server_error');
+  const origin = new URL(backendUrl).origin;
+  return { url: new URL(path, origin).href };
+}
 export const markAtPickup = async (legId: string) => unwrap(await db().rpc('ride_mark_at_pickup', { p_leg: legId }));
 
 export async function uploadDriverFile(kind: DriverFileKind, file: File) {

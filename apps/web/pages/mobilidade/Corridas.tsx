@@ -7,14 +7,14 @@ import RequireSession from '../../components/RequireSession';
 import { TripProgress } from '../../components/mobility/TripProgress';
 import { RouteCases } from '../../components/mobility/RouteCases';
 import { listRideRouteCases } from '../../services/rideRoutes';
-import { SandboxCheckout } from '../../components/mobility/SandboxCheckout';
+import { RideCheckout } from '../../components/mobility/RideCheckout';
 import { RideAftercare } from '../../components/mobility/RideAftercare';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatCents } from '../../lib/money';
 import { backendEnabled } from '../../lib/supabase';
 import { APP_TIME_ZONE } from '../../lib/timezone';
 import { useAsync } from '../../lib/useAsync';
-import { getBooking } from '../../services/bookings';
+import { getBooking, listMyBookings } from '../../services/bookings';
 import { consentToRide, getRideDashboard, transitionRide, type RideLeg, type RidePayer, type RideQuote } from '../../services/rides';
 import Ensaio from './Ensaio';
 import QuoteForm from './QuoteForm';
@@ -103,10 +103,11 @@ function JourneyLeg({ leg, onChange, canCancel, simulation }: { leg: RideLeg; on
     <p className="font-medium">{leg.origin === 'Reservado ao passageiro' ? 'Trajeto reservado ao profissional' : `${leg.origin} → ${leg.destination}`}</p>
     <p>{statusNames[leg.status] ?? leg.status} · {leg.pickup_at ? when(leg.pickup_at) : 'Saída imediata'}</p>
     <p className="text-sm">Pagador: {payers[leg.payer]} · Preço: {fare(leg.fare_cents)}</p>
+    {leg.next_booking_id && <Link className="text-sm text-primary underline" to={`/atendimentos/${leg.next_booking_id}`}>Abrir meu atendimento seguinte</Link>}
     {leg.can_view_driver_identity && <RideDriverIdentity legId={leg.id} />}
     {leg.status === 'unknown' && <p className="rounded-xl bg-amber-50 p-3 text-sm">A operação está conferindo este trecho e os valores devidos. Aguarde a conciliação antes de solicitar outra viagem.</p>}
     <TripProgress legId={leg.id} />
-    {simulation && leg.status === 'completed' && <SandboxCheckout legId={leg.id} />}
+    {leg.status === 'completed' && <RideCheckout legId={leg.id} simulation={simulation} />}
     <RideAftercare legId={leg.id} completed={leg.status === 'completed'} />
     {active && canCancel && (confirm ? <div className="space-y-2">
       <p>Solicitar cancelamento deste trecho? A operação apura os custos devidos. O atendimento tem regras próprias.</p>
@@ -122,6 +123,17 @@ function PassengerArea({ id, userId }: { id: string | null; userId: string }) {
     const [dashboard, booking] = await Promise.all([getRideDashboard(), id ? getBooking(id, userId) : Promise.resolve(null)]);
     return { dashboard, booking, loaded: Date.now() };
   }, JSON.stringify([id, userId]));
+  const provider = result.data?.booking?.role === 'provider' && result.data.dashboard.quote_enabled;
+  const laterBookings = useAsync(async () => {
+    if (!provider || !id) return [];
+    const current = result.data?.booking;
+    const cutoff = Math.max(Date.now(), current?.when?.end.getTime() ?? 0);
+    return (await listMyBookings(userId))
+      .filter(b => b.id !== id && b.role === 'provider' && b.origin === 'platform' &&
+        ['paid', 'accepted'].includes(b.status) && b.when && b.when.start.getTime() >= cutoff)
+      .sort((a, b) => a.when!.start.getTime() - b.when!.start.getTime())
+      .map(b => ({ id: b.id, label: b.when!.start.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }) + ' · ' + b.occupation_slug }));
+  }, JSON.stringify([provider, id, userId]));
   const [notice, setNotice] = useState('');
   const caseAccess = !!result.data?.dashboard.quote_enabled && !result.data.dashboard.simulation;
   const cases = useAsync(() => caseAccess ? listRideRouteCases() : Promise.resolve([]), JSON.stringify([id, userId, caseAccess]));
@@ -161,7 +173,7 @@ function PassengerArea({ id, userId }: { id: string | null; userId: string }) {
       <RouteCases bookingId={id} areas={dashboard.areas} isServiceClient={booking?.role === 'client'} onChange={cases.reload} />
       <ErrorAlert error={cases.error} />
     </>}
-    {dashboard.enabled && dashboard.quote_enabled && canQuote && <QuoteForm requiresRoute={!dashboard.simulation} areas={dashboard.areas} bookingId={id} routes={routesFor(id)} extras={dashboard.extra_options} onQuoted={() => { setNotice('Cotação registrada. Confira os trechos e os pagadores abaixo.'); result.reload(); }} />}
+    {dashboard.enabled && dashboard.quote_enabled && canQuote && <QuoteForm requiresRoute={!dashboard.simulation} areas={dashboard.areas} bookingId={id} nextBookings={laterBookings.data} routes={routesFor(id)} extras={dashboard.extra_options} onQuoted={() => { setNotice('Cotação registrada. Confira os trechos e os pagadores abaixo.'); result.reload(); }} />}
     {(!dashboard.enabled || !dashboard.quote_enabled) && <p>Novas cotações estão indisponíveis neste ambiente.</p>}
     {dashboard.enabled && !dashboard.dispatch_enabled && <p>Reservas e chamadas de motoristas estão desativadas.</p>}
     {dashboard.enabled && !canQuote && <p>Este atendimento não permite uma nova solicitação de transporte.</p>}
@@ -173,7 +185,7 @@ function PassengerArea({ id, userId }: { id: string | null; userId: string }) {
       <ol className="space-y-4">{ride.legs.map(leg => <JourneyLeg key={leg.id} leg={leg} canCancel={leg.can_cancel} simulation={dashboard.simulation} onChange={result.reload} />)}</ol>
       {dashboard.quote_enabled && ride.legs.filter(leg => leg.status === 'cancelled' && leg.can_requote).map(leg => <div key={leg.id}>
         {replacement === leg.id ? <>
-          <QuoteForm requiresRoute={!dashboard.simulation} areas={dashboard.areas} bookingId={ride.booking_id} routes={routesFor(ride.booking_id)} extras={dashboard.extra_options} replaces={leg.id} onQuoted={() => { setReplacement(null); setNotice('Nova cotação registrada. Confira o preço e autorize o novo trecho.'); reload(); }} />
+          <QuoteForm requiresRoute={!dashboard.simulation} areas={dashboard.areas} bookingId={ride.booking_id} nextBookings={ride.booking_id === id ? laterBookings.data : undefined} routes={routesFor(ride.booking_id)} extras={dashboard.extra_options} replaces={leg.id} onQuoted={() => { setReplacement(null); setNotice('Nova cotação registrada. Confira o preço e autorize o novo trecho.'); reload(); }} />
           <button className="mt-2 underline" onClick={() => setReplacement(null)}>Fechar nova cotação</button>
         </> : <button className={secondary} onClick={() => setReplacement(leg.id)}>Recotar trecho cancelado {leg.seq}</button>}
       </div>)}

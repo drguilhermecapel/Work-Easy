@@ -210,6 +210,13 @@ describe('payments-create', () => {
     expect(inserted[0]).toMatchObject({ amount_cents: 300009, platform_fee_cents: 30000, service_split_review_required: false });
   });
 
+  it('refuses an inconsistent recurring fee snapshot instead of falling back to a percentage split', async () => {
+    const { deps, calls } = paymentsDeps({ booking: { ...recurring, platform_fee_cents: 29999 } });
+    const res = await read(await paymentsCreate(post('payments-create', { booking_id: BOOKING_ID, method: 'pix' }), deps));
+    expect(res.body.error.code).toBe('service_split_review');
+    expect(calls).toHaveLength(0);
+  });
+
   it('keeps a zero rounded commission exact on a 9-cent eligible service', async () => {
     const { deps, calls, inserted } = paymentsDeps({ booking: { ...recurring, price_cents: 9, platform_fee_cents: 0 },
       routes: { 'POST /v3/payments/simulate': { body: { value: 0.09, pix: { netValue: 0.08 } } } } });

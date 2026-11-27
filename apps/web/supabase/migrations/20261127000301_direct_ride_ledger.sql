@@ -81,11 +81,24 @@ create view private.ride_financial_unknown with (security_invoker = true) as
         where later.leg_id=e.leg_id and later.operation_id=e.operation_id and later.kind<>e.kind);
 revoke all on private.ride_financial_unknown from public,anon,authenticated,service_role;
 
+-- A release for the live finance book needs its own dated evidence, in addition
+-- to the configured PSP/verified wallet, deployment, module and area permissions.
+create table private.ride_live_finance_release (
+  singleton boolean primary key default true check (singleton),
+  enabled boolean not null default false,
+  evidence_ref text, until_at timestamptz,
+  check (not enabled or (evidence_ref is not null and length(trim(evidence_ref)) between 1 and 160 and until_at is not null))
+);
+insert into private.ride_live_finance_release(singleton) values(true);
+alter table private.ride_live_finance_release enable row level security;
+revoke all on private.ride_live_finance_release from public,anon,authenticated,service_role;
+
 -- An interrupted trip can cost money even when no fare is earned. Keep the
 -- exposure separate from payer receivables until liability and evidence are reviewed.
 create table private.ride_interruption_costs (
   leg_id uuid primary key references public.ride_legs(id),
   opened_at timestamptz not null default now(),
+  live_release_ref text,
   cost_cents integer check (cost_cents >= 0),
   evidence_ref text, operation_id uuid unique, reviewed_by uuid, reviewed_at timestamptz,
   check ((cost_cents is null and evidence_ref is null and operation_id is null and reviewed_at is null)
@@ -94,18 +107,42 @@ create table private.ride_interruption_costs (
 );
 alter table private.ride_interruption_costs enable row level security;
 revoke all on private.ride_interruption_costs from public,anon,authenticated,service_role;
+-- This is evidence of permission to review an already incurred expense.
+-- Capturing it at interruption lets authorized staff finish evidence/reconciliation
+-- if new dispatch or new sales are later stopped.
+create function private.ride_cost_release(p_leg uuid)
+returns text language sql stable security definer set search_path='' as $$
+  select f.evidence_ref from private.ride_live_finance_release f
+    join private.ride_deployment d on d.environment='live'
+    join private.ride_network n on n.environment=d.environment and n.module_enabled and n.dispatch_enabled
+    join public.ride_legs l on l.environment=d.environment and l.id=p_leg
+    where f.enabled and f.until_at>now() and private.ride_area_allowed('live',l.origin,'dispatch')
+      and private.ride_area_allowed('live',l.destination,'dispatch');
+$$;
+revoke all on function private.ride_cost_release(uuid) from public,anon,authenticated,service_role;
+create table private.ride_cost_disbursements (
+  operation_id uuid primary key,
+  leg_id uuid not null references private.ride_interruption_costs(leg_id),
+  amount_cents integer not null check(amount_cents>0),
+  payment_ref text not null unique check(length(trim(payment_ref)) between 1 and 160),
+  recorded_by uuid not null, recorded_at timestamptz not null default clock_timestamp()
+);
+create index ride_cost_disbursements_leg on private.ride_cost_disbursements(leg_id);
+alter table private.ride_cost_disbursements enable row level security;
+revoke all on private.ride_cost_disbursements from public,anon,authenticated,service_role;
 create function private.open_ride_cost_review()
 returns trigger language plpgsql security definer set search_path='' as $$
 begin
-  insert into private.ride_interruption_costs(leg_id) values(new.id) on conflict do nothing;
+  insert into private.ride_interruption_costs(leg_id,live_release_ref) values(new.id,private.ride_cost_release(new.id))
+    on conflict(leg_id) do update set live_release_ref=coalesce(private.ride_interruption_costs.live_release_ref,excluded.live_release_ref);
   return new;
 end; $$;
 revoke all on function private.open_ride_cost_review() from public,anon,authenticated,service_role;
 create trigger ride_leg_interruption_cost after update of status on public.ride_legs
   for each row when (new.driver_id is not null and new.status in ('unknown','cancelled') and old.status is distinct from new.status)
   execute function private.open_ride_cost_review();
-insert into private.ride_interruption_costs(leg_id)
-  select id from public.ride_legs where driver_id is not null and status in ('unknown','cancelled');
+insert into private.ride_interruption_costs(leg_id,live_release_ref)
+  select id,private.ride_cost_release(id) from public.ride_legs where driver_id is not null and status in ('unknown','cancelled');
 
 create function private.ride_settlement_snapshot(p_leg uuid)
 returns jsonb language plpgsql stable security definer set search_path = '' as $$
@@ -121,8 +158,14 @@ begin
   select * into a from private.ride_financial_accounts where leg_id=p_leg;
   if not found then
     return jsonb_build_object('recognized',false,'review',(
-      select jsonb_build_object('status',l.status,'environment',l.environment,'cost_cents',c.cost_cents,'evidence',c.evidence_ref)
-      from private.ride_interruption_costs c join public.ride_legs l on l.id=c.leg_id where c.leg_id=p_leg));
+      select jsonb_build_object('status',l.status,'environment',l.environment,'cost_cents',c.cost_cents,
+        'evidence',c.evidence_ref,'paid_cents',x.paid,'payable_cents',c.cost_cents-x.paid,
+        'can_review',l.status='cancelled' and (case when l.environment='live'
+          then coalesce(c.live_release_ref,private.ride_cost_release(p_leg)) is not null else n.module_enabled or c.cost_cents is not null end))
+      from private.ride_interruption_costs c join public.ride_legs l on l.id=c.leg_id
+      join private.ride_network n on n.environment=l.environment
+      cross join lateral (select coalesce(sum(x.amount_cents),0) as paid from private.ride_cost_disbursements x where x.leg_id=c.leg_id) x
+      where c.leg_id=p_leg));
   end if;
   select * into strict b from private.ride_financial_balances where leg_id=p_leg;
   select jsonb_build_object('operation_id',operation_id,'kind',kind,'amount_cents',amount_cents,'extras_cents',extras_cents)
@@ -334,7 +377,7 @@ grant execute on function public.admin_ride_settlement(uuid),
 
 -- The reconciliation exercise records the platform's documented cancellation cost.
 -- Zero also requires evidence. There is no client charge, commission or payment instruction.
-create function public.admin_confirm_simulated_ride_cost(p_leg uuid,p_operation uuid,p_cost_cents integer,p_reference text)
+create function private.confirm_ride_cost(p_environment text,p_leg uuid,p_operation uuid,p_cost_cents integer,p_reference text)
 returns jsonb language plpgsql security definer set search_path='' as $$
 declare
   c private.ride_interruption_costs%rowtype;
@@ -343,36 +386,72 @@ begin
   if p_operation is null or p_cost_cents is null or p_cost_cents<0 or p_reference is null
     or length(trim(p_reference)) not between 1 and 160 then raise exception 'invalid_input' using errcode='P0001'; end if;
   if not exists(select 1 from public.ride_legs l join private.ride_deployment d using(environment)
-    join private.ride_network n using(environment)
-    where l.id=p_leg and l.status='cancelled' and d.environment='simulation' and n.module_enabled) then
+    where l.id=p_leg and l.status='cancelled' and d.environment=p_environment) then
     raise exception 'ride_financial_state' using errcode='P0001';
   end if;
   select * into c from private.ride_interruption_costs where leg_id=p_leg for update;
   if not found then raise exception 'not_found' using errcode='P0001'; end if;
+  if p_environment='live' and coalesce(c.live_release_ref,private.ride_cost_release(p_leg)) is null then
+    raise exception 'not_allowed' using errcode='P0001';
+  elsif p_environment='simulation' and not exists(select 1 from private.ride_network where environment='simulation' and module_enabled) then
+    raise exception 'not_allowed' using errcode='P0001';
+  end if;
   if c.cost_cents is not null then
     if c.operation_id<>p_operation or c.cost_cents<>p_cost_cents or c.evidence_ref<>trim(p_reference) then
       raise exception 'ride_operation_conflict' using errcode='P0001';
     end if;
   else
-    update private.ride_interruption_costs set cost_cents=p_cost_cents,evidence_ref=trim(p_reference),operation_id=p_operation,
+    update private.ride_interruption_costs set live_release_ref=coalesce(c.live_release_ref,private.ride_cost_release(p_leg)),cost_cents=p_cost_cents,evidence_ref=trim(p_reference),operation_id=p_operation,
       reviewed_by=auth.uid(),reviewed_at=now() where leg_id=p_leg;
   end if;
   return private.ride_settlement_snapshot(p_leg);
 end; $$;
-revoke all on function public.admin_confirm_simulated_ride_cost(uuid,uuid,integer,text) from public,anon,service_role;
-grant execute on function public.admin_confirm_simulated_ride_cost(uuid,uuid,integer,text) to authenticated;
-
--- A release for the live finance book needs its own dated evidence, in addition
--- to the configured PSP/verified wallet, deployment, module and area permissions.
-create table private.ride_live_finance_release (
-  singleton boolean primary key default true check (singleton),
-  enabled boolean not null default false,
-  evidence_ref text, until_at timestamptz,
-  check (not enabled or (evidence_ref is not null and length(trim(evidence_ref)) between 1 and 160 and until_at is not null))
-);
-insert into private.ride_live_finance_release(singleton) values(true);
-alter table private.ride_live_finance_release enable row level security;
-revoke all on private.ride_live_finance_release from public,anon,authenticated,service_role;
+revoke all on function private.confirm_ride_cost(text,uuid,uuid,integer,text) from public,anon,authenticated,service_role;
+create function public.admin_confirm_simulated_ride_cost(p_leg uuid,p_operation uuid,p_cost_cents integer,p_reference text)
+returns jsonb language sql security definer set search_path='' as $$
+ select private.confirm_ride_cost('simulation',p_leg,p_operation,p_cost_cents,p_reference);
+$$;
+create function public.admin_confirm_live_ride_cost(p_leg uuid,p_operation uuid,p_cost_cents integer,p_reference text)
+returns jsonb language sql security definer set search_path='' as $$
+ select private.confirm_ride_cost('live',p_leg,p_operation,p_cost_cents,p_reference);
+$$;
+-- This is a bank/PSP reconciliation entry for a factual, ALREADY completed transfer.
+-- No API sends money. The confirmed expense = cumulative disbursement + open liability.
+create function public.admin_record_ride_cost_disbursement(p_leg uuid,p_operation uuid,p_amount_cents integer,p_reference text)
+returns jsonb language plpgsql security definer set search_path='' as $$
+declare
+  c private.ride_interruption_costs%rowtype;
+  prior private.ride_cost_disbursements%rowtype;
+  paid bigint;
+  env text;
+begin
+  perform private.require_ride_finance_admin();
+  if p_operation is null or p_amount_cents is null or p_amount_cents<=0 or p_reference is null
+    or length(trim(p_reference)) not between 1 and 160 then raise exception 'invalid_input' using errcode='P0001'; end if;
+  select l.environment into env from public.ride_legs l join private.ride_deployment d using(environment)
+    where l.id=p_leg and l.status='cancelled';
+  if not found then raise exception 'ride_financial_state' using errcode='P0001'; end if;
+  select * into c from private.ride_interruption_costs where leg_id=p_leg for update;
+  if not found or c.cost_cents is null then raise exception 'ride_financial_state' using errcode='P0001'; end if;
+  if env='live' and c.live_release_ref is null then raise exception 'not_allowed' using errcode='P0001'; end if;
+  select * into prior from private.ride_cost_disbursements where operation_id=p_operation;
+  if found then
+    if prior.leg_id<>p_leg or prior.amount_cents<>p_amount_cents or prior.payment_ref<>trim(p_reference) then
+      raise exception 'ride_operation_conflict' using errcode='P0001'; end if;
+  else
+    select coalesce(sum(amount_cents),0) into paid from private.ride_cost_disbursements where leg_id=p_leg;
+    if paid+p_amount_cents>c.cost_cents then raise exception 'ride_financial_state' using errcode='P0001'; end if;
+    insert into private.ride_cost_disbursements(operation_id,leg_id,amount_cents,payment_ref,recorded_by)
+      values(p_operation,p_leg,p_amount_cents,trim(p_reference),auth.uid());
+  end if;
+  return private.ride_settlement_snapshot(p_leg);
+end; $$;
+revoke all on function public.admin_confirm_simulated_ride_cost(uuid,uuid,integer,text),
+  public.admin_confirm_live_ride_cost(uuid,uuid,integer,text), public.admin_record_ride_cost_disbursement(uuid,uuid,integer,text)
+  from public,anon,service_role;
+grant execute on function public.admin_confirm_simulated_ride_cost(uuid,uuid,integer,text),
+  public.admin_confirm_live_ride_cost(uuid,uuid,integer,text), public.admin_record_ride_cost_disbursement(uuid,uuid,integer,text)
+  to authenticated;
 
 create function public.claim_ride_live_account(p_leg uuid)
 returns jsonb language plpgsql security definer set search_path='' as $$
@@ -385,13 +464,15 @@ begin
   if a.environment<>'live' or not exists(select 1 from private.ride_deployment where environment='live') then
     raise exception 'not_allowed' using errcode='P0001';
   end if;
+  -- Re-check on every authorization to START a charge, including an earlier claim.
+  -- An existing financial fact uses record_verified_live_ride_event to reconcile.
+  if not exists(select 1 from private.ride_live_finance_release where enabled and until_at>now())
+     or not exists(select 1 from private.ride_network where environment='live' and module_enabled and monetization_enabled)
+     or not exists(select 1 from public.ride_legs l where id=p_leg
+         and private.ride_area_allowed('live',l.origin,'monetize') and private.ride_area_allowed('live',l.destination,'monetize')) then
+    raise exception 'not_allowed' using errcode='P0001';
+  end if;
   if a.settlement_source='unclaimed' then
-    if not exists(select 1 from private.ride_live_finance_release where enabled and until_at>now())
-       or not exists(select 1 from private.ride_network where environment='live' and module_enabled and monetization_enabled)
-       or not exists(select 1 from public.ride_legs l where id=p_leg
-           and private.ride_area_allowed('live',l.origin,'monetize') and private.ride_area_allowed('live',l.destination,'monetize')) then
-      raise exception 'not_allowed' using errcode='P0001';
-    end if;
     update private.ride_financial_accounts set settlement_source='psp_live' where leg_id=p_leg;
   elsif a.settlement_source<>'psp_live' then
     raise exception 'ride_operation_conflict' using errcode='P0001';

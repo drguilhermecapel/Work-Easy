@@ -29,6 +29,15 @@ update private.ride_sandbox_psp set enabled=true;
 select tests.authenticate_service();
 select throws_ok($$select public.ride_sandbox_prepare_charge(pg_temp.leg(),tests.uid('client_b'))$$,'P0001','not_allowed','Another payer cannot claim the leg');
 select is((public.ride_sandbox_prepare_charge(pg_temp.leg(),tests.uid('client_a'))->>'create')::boolean,true,'First request can look for a prior external charge');
+select tests.clear_authentication();
+update public.profiles set deleted_at=now() where id=tests.uid('client_a');
+select tests.authenticate_service();
+select is(public.ride_sandbox_claim_send(pg_temp.leg()),false,'Deleted payer cannot acquire first POST with a prepared intent');
+select tests.clear_authentication();
+-- Reset the synthetic identity and the provisioned sandbox customer for the next case.
+update public.profiles set deleted_at=null where id=tests.uid('client_a');
+insert into private.ride_sandbox_customers values(tests.uid('client_a'),'cus_sandbox') on conflict do nothing;
+select tests.authenticate_service();
 select is(public.ride_sandbox_claim_send(pg_temp.leg()),true,'First process acquires the send lease after a successful lookup');
 select is(public.ride_sandbox_claim_send(pg_temp.leg()),false,'A concurrent process cannot acquire the send lease');
 select is((public.ride_sandbox_prepare_charge(pg_temp.leg(),tests.uid('client_a'))->>'create')::boolean,false,'Lost response cannot issue another POST');

@@ -33,8 +33,8 @@ language sql stable security definer set search_path='' as $$
  join public.ride_drivers d on d.id=l.driver_id
  join public.profiles p on p.id=d.id and p.deleted_at is null
  cross join private.ride_signal_settings g
- where l.id=p_leg and l.driver_id=auth.uid() and l.status in ('accepted','arriving','boarded')
- and d.status='approved' and d.valid_until >= private.sp_date(now()) and r.environment='live' and g.location_enabled)
+ where l.id=p_leg and l.driver_id=auth.uid() and private.ride_active_user(r.passenger_id) and l.status in ('arriving','boarded')
+ and private.ride_driver_valid(d.id,private.sp_date(now())) and r.environment='live' and g.location_enabled)
 $$;
 create function public.ride_send_position(p_leg uuid, p_at timestamptz, p_lat double precision,
  p_lng double precision, p_accuracy double precision) returns boolean
@@ -53,7 +53,7 @@ create function public.ride_report_eta(p_leg uuid,p_minutes integer) returns voi
 language plpgsql security definer set search_path='' as $$
 begin
  if p_minutes is null or p_minutes not between 1 and 180 then raise exception 'invalid_eta'; end if;
- if not exists(select from public.ride_legs where id=p_leg and driver_id=auth.uid() and status in ('accepted','arriving','boarded') for share)
+ if not private.ride_active_user(auth.uid()) or not exists(select from public.ride_legs where id=p_leg and driver_id=auth.uid() and status in ('accepted','arriving','boarded') for share)
  then raise exception 'not_allowed'; end if;
  insert into private.ride_arrival_estimates values(p_leg,now()+make_interval(mins=>p_minutes),now())
  on conflict(leg_id) do update set arrives_at=excluded.arrives_at,updated_at=excluded.updated_at;
@@ -64,7 +64,7 @@ declare l public.ride_legs; r public.rides; eta private.ride_arrival_estimates; 
 begin
  select * into l from public.ride_legs where id=p_leg;
  select * into r from public.rides where id=l.ride_id;
- if auth.uid() is null or not (coalesce(auth.uid() in (r.passenger_id,l.payer_id,l.driver_id),false)
+ if not private.ride_active_user(auth.uid()) or not (coalesce(auth.uid() in (r.passenger_id,l.payer_id,l.driver_id),false)
    or exists(select from public.bookings b where b.id=r.booking_id and b.client_id=auth.uid()) or public.is_admin()) or r.id is null
  then raise exception 'not_allowed'; end if;
  if l.status in ('accepted','arriving','boarded') then
@@ -81,7 +81,7 @@ end $$;
 create function public.ride_rate(p_leg uuid,p_stars integer) returns void
 language plpgsql security definer set search_path='' as $$
 begin
- if auth.uid() is null or not exists(select from public.ride_legs l join public.rides r on l.ride_id=r.id
+ if not private.ride_active_user(auth.uid()) or not exists(select from public.ride_legs l join public.rides r on l.ride_id=r.id
    where l.id=p_leg and l.status='completed' and r.passenger_id=auth.uid()) then raise exception 'not_allowed'; end if;
  if p_stars is null or p_stars not between 1 and 5 then raise exception 'invalid_rating'; end if;
  insert into private.ride_ratings values(p_leg,p_stars,now()) on conflict(leg_id) do update set stars=excluded.stars;
@@ -121,13 +121,15 @@ revoke all on private.ride_devices,private.ride_push_attempts from public,anon,a
 create function public.ride_push_ready() returns boolean language sql stable security definer set search_path='' as $$
  select exists(select from private.ride_signal_settings s, private.ride_deployment e, public.ride_drivers d
  join public.profiles p on p.id=d.id and p.deleted_at is null where s.push_enabled and e.environment='live' and d.id=auth.uid()
- and d.environment='live' and d.status='approved' and d.valid_until>=private.sp_date(now()) and d.online)
+ and d.environment='live' and private.ride_driver_valid(d.id,private.sp_date(now())) and d.online)
 $$;
 create function public.ride_device(p_transport text,p_token text,p_enable boolean) returns void
 language plpgsql security definer set search_path='' as $$
 begin
- if auth.uid() is null then raise exception 'not_allowed'; end if;
- if p_enable is false then delete from private.ride_devices where driver_id=auth.uid() and transport=p_transport; return; end if;
+ -- Serialize new token registration with account erasure, which clears every device.
+ perform 1 from public.profiles where id=auth.uid() and deleted_at is null for share;
+ if not found then raise exception 'not_allowed'; end if;
+ if p_enable is false then delete from private.ride_devices where driver_id=auth.uid() and transport=p_transport and token=p_token; return; end if;
  if p_enable is null or not public.ride_push_ready() then raise exception 'push_disabled'; end if;
  if p_transport not in ('ios','android') or p_token is null or p_token !~ '^[A-Za-z0-9:_-]{20,4096}$'
    or (p_transport='ios' and p_token !~ '^[0-9A-Fa-f]{64,256}$') then raise exception 'invalid_token'; end if;
@@ -146,7 +148,7 @@ language sql security definer set search_path='' as $$
  and r.environment='live' and m.environment='live' and m.online and m.status='approved' and m.valid_until>=private.sp_date(l.pickup_at)
  and private.ride_offer_eligible(m.id,l) and d.expires_at>now() and l.status='requested'
  and not exists(select from private.ride_push_attempts a where a.device_id=d.id and a.leg_id=l.id
- and (a.delivered or a.leased_until>now() or a.attempts>=3)) order by l.pickup_at,d.id limit 12
+ and (a.delivered or a.leased_until>now() or a.attempts>=3)) order by l.pickup_at,private.ride_approach_minutes(m.id,l) nulls last,m.id,d.id limit 12
  ), acquired as (
  insert into private.ride_push_attempts as a(leg_id,device_id,attempts,leased_until)
  select p.leg,p.device,1,now()+interval '2 minutes' from pending p

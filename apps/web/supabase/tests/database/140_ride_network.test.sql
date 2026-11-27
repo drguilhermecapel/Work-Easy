@@ -64,6 +64,16 @@ select is((select fare_cents from public.ride_legs where id=(select v from ride_
 select is((select fee_cents from public.ride_legs where id=(select v from ride_case where k='leg1')),187,'simulated 10% truncated once in integer cents');
 select is((select role::text from public.profiles where id=tests.uid('provider_b')),'provider','driver onboarding preserves service provider role');
 select throws_ok($$update private.ride_deployment set environment='live'$$,'P0001','ride_environment_in_use','cannot flip a project containing simulation accounts into live');
+-- Nominal driving ends at +18m; the five-minute approach delays the actual
+-- finish until +23m, so even the last five minutes conflict with care work.
+savepoint approach_conflict;
+select tests.make_booking('provider_b','client_b','t-medico',tstzrange(now()+interval '18 minutes',now()+interval '45 minutes'),'accepted');
+select tests.authenticate_as('provider_b');
+select throws_ok($$select public.ride_accept_offer((select v from ride_case where k='leg1'),gen_random_uuid())$$,
+  'P0001','offer_unavailable','approach-delayed arrival would overlap an upcoming service');
+select ok(not exists(select from jsonb_array_elements(public.ride_dashboard()->'offers') o
+  where o->>'leg_id'=(select v::text from ride_case where k='leg1')),'infeasible immediate offer hidden from driver');
+rollback to approach_conflict;
 select tests.authenticate_as('client_b');
 insert into ride_case values('decline',gen_random_uuid());
 select lives_ok($$select public.ride_decline_offer((select v from ride_case where k='leg1'),(select v from ride_case where k='decline'))$$,'driver can decline');
@@ -75,6 +85,10 @@ select is(public.ride_accept_offer((select v from ride_case where k='leg1'),(sel
 select is(public.ride_accept_offer((select v from ride_case where k='leg1'),(select v from ride_case where k='accept'))->>'replayed','true','delivery replay confirms the same assignment');
 select throws_ok($$select public.ride_transition((select v from ride_case where k='leg1'),'boarded',(select v from ride_case where k='accept'))$$,
   'P0001','idempotency_conflict','an acceptance key cannot authorize another operation');
+select tests.clear_authentication();
+select throws_ok($$select tests.make_booking('provider_b','client_b','t-medico',
+  tstzrange(now()+interval '18 minutes',now()+interval '45 minutes'),'accepted')$$,
+  'P0001','slot_unavailable','a later service cannot overlap the assigned driver adjusted arrival');
 select tests.authenticate_as('client_a');
 insert into ride_case select 'overlap_quote',(public.ride_quote(gen_random_uuid(),null,now()+interval '5 minutes',
   '[{"origin":"Saúde","destination":"Jabaquara","payer":"passenger"}]')->>'id')::uuid;
@@ -135,5 +149,11 @@ update public.ride_drivers set valid_until=current_date-1 where id=tests.uid('pr
 select tests.authenticate_as('provider_b');
 select throws_ok($$select public.ride_set_online(true)$$,'P0001','driver_ineligible','expired review blocks online status');
 select is((select jsonb_array_length(public.ride_dashboard()->'offers')),0,'expired driver cannot receive offers');
+select tests.clear_authentication();
+update public.profiles set deleted_at=now() where id=tests.uid('client_a');
+select tests.authenticate_as('client_a');
+select throws_ok($$select public.ride_dashboard()$$,'P0001','not_allowed','deleted profile cannot read ride history with an existing session');
+select throws_ok($$select public.ride_consent((select v from ride_case where k='quote'),true)$$,
+  'P0001','not_allowed','deleted payer cannot replay a previously approved consent');
 select * from finish();
 rollback;

@@ -171,7 +171,6 @@ export function RouteCases({ bookingId, areas, admin = false, isServiceClient = 
             if (busy) return;
             setBusy(true);
             try {
-              if (originArea === destArea) throw new Error('Selecione regiões diferentes do corredor.');
               const from = showOrigin ? point(origin) : null,
                 to = showDest ? point(dest) : null;
               const payload = JSON.stringify([bookingId, originArea, destArea, from, to, serviceEnd]);
@@ -335,6 +334,7 @@ function RouteReview({
             void task(() => measureRoute(r.id, Number(meters), Number(minutes), reference));
           }}
         >
+          <p>Confira se cada ponto pertence à região declarada antes de medir o trajeto por vias.</p>
           <label className="block">
             Distância por vias (metros)
             <input

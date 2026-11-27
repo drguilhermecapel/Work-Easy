@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { db } from '../../services/client';
 
 type Progress = {
@@ -16,9 +17,19 @@ const clock = (value: string) =>
 
 // Use same-origin raster tiles supplied by the contracted map provider through
 // WorkEasy. Sending a passenger position to an arbitrary map host is avoided.
+function tileOrigin(): string | null {
+  if (!Capacitor.isNativePlatform()) return window.location.origin;
+  try {
+    const site = new URL(import.meta.env.VITE_SITE_URL ?? '');
+    return site.protocol === 'https:' && !site.username && !site.password ? site.origin : null;
+  } catch {
+    return null;
+  }
+}
 function PositionMap({ lat, lng }: { lat: number; lng: number }) {
   const base = import.meta.env.VITE_RIDE_TILE_PATH?.trim();
-  if (!base || !/^\/(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_-]+$/.test(base))
+  const origin = tileOrigin();
+  if (!origin || !base || !/^\/(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_-]+$/.test(base))
     return <p>Posição recebida. O mapa desta região está indisponível.</p>;
   const zoom = 15;
   const scale = 2 ** zoom;
@@ -42,7 +53,7 @@ function PositionMap({ lat, lng }: { lat: number; lng: number }) {
             height={256}
             referrerPolicy="no-referrer"
             className="pointer-events-none absolute max-w-none"
-            src={base + '/' + zoom + '/' + (col + dx) + '/' + (row + dy) + '.png'}
+            src={origin + base + '/' + zoom + '/' + (col + dx) + '/' + (row + dy) + '.png'}
             style={{
               left: 'calc(50% + ' + (col + dx - x) * 256 + 'px)',
               top: 'calc(50% + ' + (row + dy - y) * 256 + 'px)',

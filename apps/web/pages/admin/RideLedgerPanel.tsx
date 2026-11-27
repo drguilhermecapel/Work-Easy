@@ -4,7 +4,7 @@ import { formatCents } from '../../lib/money';
 import { useAsync } from '../../lib/useAsync';
 import { centsToInput, parseReaisToCents } from '../../services/proFormat';
 import {
-  confirmSimulatedRideCost, getRideSettlement, rideFinanceLabels, simulateRideFinanceEvent,
+  confirmLiveRideCost, confirmSimulatedRideCost, getRideSettlement, recordRideCostDisbursement, rideFinanceLabels, simulateRideFinanceEvent,
   type RideCostReview, type RideFinanceKind, type RideSettlement,
 } from '../../services/rideLedger';
 
@@ -70,17 +70,29 @@ function CancellationCost({ legId, review, onSaved }: { legId: string; review: R
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
   const operation = useRef<string | null>(null);
-  if (review.cost_cents !== null) return <p>Custo de cancelamento comprovado: {formatCents(review.cost_cents)}. Referência: {review.evidence}</p>;
+  const confirmed = review.cost_cents !== null;
   if (review.status === 'unknown') return <p>O custo permanece em apuração até a confirmação do desfecho do trecho.</p>;
-  if (review.environment !== 'simulation') return <p>O custo do cancelamento aguarda conciliação.</p>;
+  const summary = confirmed && <p>Custo de cancelamento comprovado: {formatCents(review.cost_cents!)}. Referência: {review.evidence}.
+    {' '}Desembolsado: {formatCents(review.paid_cents)}. Saldo a conciliar: {formatCents(review.payable_cents ?? 0)}.</p>;
+  if (!review.can_review) return <>{summary}<p>A revisão deste custo aguarda habilitação financeira.</p></>;
+  if (confirmed && !review.payable_cents) return summary;
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     const cents = parseReaisToCents(amount);
-    if (busy || cents === null || cents > 2147483647 || !reference.trim()) return;
+    if (busy) return;
+    if (cents === null || cents > 2147483647 || !reference.trim() || (confirmed && (cents === 0 || cents > (review.payable_cents ?? 0)))) {
+      setNotice('Confira o valor, o saldo pendente e a referência do comprovante.');
+      return;
+    }
     operation.current ??= crypto.randomUUID();
     setBusy(true);
     try {
-      await confirmSimulatedRideCost(legId, operation.current, cents, reference.trim());
+      const record = confirmed ? recordRideCostDisbursement : review.environment === 'live' ? confirmLiveRideCost : confirmSimulatedRideCost;
+      await record(legId, operation.current, cents, reference.trim());
+      operation.current = null;
+      setAmount('');
+      setReference('');
+      setNotice('');
       onSaved();
     } catch (error) {
       setNotice(toAppError(error).message);
@@ -89,10 +101,13 @@ function CancellationCost({ legId, review, onSaved }: { legId: string; review: R
     }
   };
   return <form onSubmit={submit} className="grid gap-3">
-    <p>Registre a despesa assumida pela plataforma no ensaio, inclusive valor zero quando comprovado.</p>
-    <label>Custo comprovado em reais <input required inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} /></label>
+    {summary}
+    <p>{confirmed ? 'Concilie apenas um pagamento já efetuado, usando a referência única do movimento bancário.' :
+      'Registre a despesa comprovada assumida pela plataforma, inclusive valor zero quando aplicável.'}</p>
+    <p>{review.environment === 'simulation' ? 'Ambiente de simulação.' : 'Livro da operação real.'}</p>
+    <label>{confirmed ? 'Valor já desembolsado em reais' : 'Custo comprovado em reais'} <input required inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} /></label>
     <label>Referência interna da evidência <input required maxLength={160} value={reference} onChange={e => setReference(e.target.value)} /></label>
-    <button type="submit" disabled={busy}>Registrar custo de cancelamento</button>
+    <button type="submit" disabled={busy}>{confirmed ? 'Conciliar desembolso já efetuado' : 'Registrar custo de cancelamento'}</button>
     {notice && <p role="alert">{notice}</p>}
   </form>;
 }

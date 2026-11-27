@@ -92,3 +92,18 @@ revoke all on private.ride_pilot,private.ride_coverage,private.ride_commitments,
 revoke all on function private.reserve_ride_budget() from public,anon,authenticated;
 revoke all on function public.ride_enroll(uuid,text,text),public.ride_close_observation(uuid,boolean,int,int),public.ride_pilot_report() from public,anon;
 grant execute on function public.ride_enroll(uuid,text,text),public.ride_close_observation(uuid,boolean,int,int),public.ride_pilot_report() to authenticated;
+
+-- At assignment the actual approach can extend a scheduled window, even though
+-- the price and gross commitment remain unchanged. Hold for operations in that case.
+create function private.check_driver_coverage() returns trigger language plpgsql security definer set search_path='' as $$
+begin
+ if new.environment='live' and new.driver_slot is not null and not exists (
+   select from private.ride_commitments h join private.ride_pilot p on p.id=h.pilot
+     join private.ride_coverage c on c.pilot=p.id
+   where h.leg_id=new.id and not p.frozen and p.period @> new.driver_slot and c.period @> new.driver_slot
+ ) then raise exception 'ride_pilot_unstaffed'; end if;
+ return new;
+end $$;
+revoke all on function private.check_driver_coverage() from public,anon,authenticated;
+create trigger ride_assignment_coverage before update of driver_slot on public.ride_legs
+ for each row when (new.driver_slot is distinct from old.driver_slot) execute function private.check_driver_coverage();

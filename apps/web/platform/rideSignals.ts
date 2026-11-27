@@ -121,10 +121,11 @@ export async function enableRideAlerts(signal: AbortSignal, onStatus: (text: str
     throw new Error('Autorize as notificações nas configurações do aparelho.');
   if (signal.aborted) return;
   const handles: PluginListenerHandle[] = [];
+  let registeredToken: string | null = null;
   const clean = () => {
     for (const handle of handles) void handle.remove();
     // Explicit sign-out/offline is independently checked at dispatch time.
-    void client.rpc('ride_device', { p_transport: transport, p_token: '', p_enable: false }).then(() => {});
+    if (registeredToken) void client.rpc('ride_device', { p_transport: transport, p_token: registeredToken, p_enable: false }).then(() => {});
   };
   const token = await PushNotifications.addListener('registration', async (result) => {
     if (signal.aborted) return;
@@ -133,6 +134,7 @@ export async function enableRideAlerts(signal: AbortSignal, onStatus: (text: str
       p_token: result.value,
       p_enable: true,
     });
+    if (!error) registeredToken = result.value;
     if (signal.aborted) {
       clean();
       return;

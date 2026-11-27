@@ -28,7 +28,7 @@ language plpgsql security definer set search_path='' as $$
 declare l public.ride_legs; stamp timestamptz;
 begin
   select * into l from public.ride_legs where id=p_leg and driver_id=auth.uid()
-    and environment=private.ride_env() for update;
+    and environment=private.ride_env() and private.ride_active_user(auth.uid()) for update;
   if l.id is null then raise exception 'not_allowed'; end if;
   select arrived_at into stamp from private.ride_pickup_arrivals where leg_id=p_leg;
   if found then return stamp; end if;
@@ -38,6 +38,19 @@ begin
 end $$;
 revoke all on function public.ride_mark_at_pickup(uuid) from public,anon,authenticated,service_role;
 grant execute on function public.ride_mark_at_pickup(uuid) to authenticated;
+
+create function private.require_ride_pickup_arrival() returns trigger
+language plpgsql security definer set search_path='' as $$
+begin
+  if not exists(select from private.ride_pickup_arrivals where leg_id=new.id) then
+    raise exception 'ride_pickup_arrival_required';
+  end if;
+  return new;
+end $$;
+revoke all on function private.require_ride_pickup_arrival() from public,anon,authenticated,service_role;
+create trigger require_ride_pickup_arrival before update of status on public.ride_legs
+  for each row when(new.environment='live' and old.status='arriving' and new.status='boarded')
+  execute function private.require_ride_pickup_arrival();
 
 -- Only an operator can resolve an uncertain trip. An out-of-band confirmation
 -- keeps its own actual travel times, distinct from the time of reconciliation.
@@ -198,7 +211,7 @@ begin
       case when l.environment='simulation' then d.full_name else c.public_driver_name end,c.public_driver_number,
       v.vehicle,c.vehicle_model,c.vehicle_plate,case when r.scheduled_at is null and l.seq=1 then r.created_at else l.pickup_at end,boarding,arrival,trip_end,path,distance_m,
       estimate_m,l.duration_minutes,p.approval_ref
-    from public.ride_drivers v join public.profiles d on d.id=v.id where v.id=l.driver_id
+    from public.ride_drivers v left join public.profiles d on d.id=v.id where v.id=l.driver_id
     on conflict(leg_id) do nothing;
   if found and l.environment='live' and
      (distance_m is null or boarding is null or arrival is null or c.public_driver_number is null or c.vehicle_plate is null

@@ -469,3 +469,7 @@ verify_jwt = false
 # Test project only. The Asaas sandbox uses its own webhook token.
 [functions.ride-sandbox-webhook]
 verify_jwt = false
+
+# Dedicated live Asaas token; deployment alone does not enable the integration.
+[functions.ride-live-webhook]
+verify_jwt = false

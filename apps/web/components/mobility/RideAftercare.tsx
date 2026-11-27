@@ -1,9 +1,10 @@
 import { useId, useRef, useState } from 'react';
 import { formatCents } from '../../lib/money';
 import { APP_TIME_ZONE } from '../../lib/timezone';
-import { getRideAftercare, openRideHelp, rateRide, type AftercareResult, type RideReceipt } from '../../services/rideAftercare';
+import { getRideAftercare, rateRide, type AftercareResult, type RideReceipt } from '../../services/rideAftercare';
 import ErrorAlert from '../ErrorAlert';
 import { RatingInput } from '../cliente/Stars';
+import { RideHelp } from './RideSupport';
 
 const stamp = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'medium', timeZone: APP_TIME_ZONE });
 const km = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 });
@@ -79,8 +80,6 @@ export function RideAftercare({ legId, completed }: { legId: string; completed: 
 function LegAftercare({ legId, completed }: { legId: string; completed: boolean }) {
   const [data, setData] = useState<AftercareResult | null>(null);
   const [stars, setStars] = useState(0);
-  const [reason, setReason] = useState('safety');
-  const [help, setHelp] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState<unknown>(null);
@@ -110,17 +109,7 @@ function LegAftercare({ legId, completed }: { legId: string; completed: boolean 
       const next = await getRideAftercare(legId);
       setData(next); setStars(next.stars ?? 0);
     })}>{data ? 'Atualizar documento do trecho' : 'Consultar recibo e avaliação'}</button>}{' '}
-    <button type="button" className={action} aria-expanded={help} onClick={() => setHelp(!help)}>Pedir ajuda com o trecho</button>
-    {help && <div className="space-x-2"><label htmlFor={id + '-reason'}>Motivo da ajuda </label>
-      <select id={id + '-reason'} value={reason} onChange={e => setReason(e.target.value)}>
-        <option value="safety">Segurança</option><option value="no_show">Ausência</option><option value="price">Preço</option>
-        <option value="schedule">Horário</option><option value="payment">Pagamento</option><option value="other">Outro</option>
-      </select>
-      <button type="button" className={action} disabled={busy} onClick={() => void run(async () => {
-        const protocol = await openRideHelp(legId, reason);
-        setNotice('Pedido registrado. Protocolo ' + protocol + '.');
-      })}>Registrar pedido de ajuda</button>
-    </div>}
+    <RideHelp legId={legId} />
     {data?.document && <><div ref={body}><ReceiptBody receipt={data.document} /></div>
       <button type="button" className={action} onClick={print}>Imprimir este documento</button></>}
     {data && !data.document && <p>Nenhum documento disponível para este perfil.</p>}

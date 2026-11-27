@@ -1,5 +1,5 @@
 begin;
-select plan(27);
+select plan(34);
 select tests.setup_fixture();
 create temporary table dossier_fixture(k text primary key,id uuid);
 grant select,insert on dossier_fixture to authenticated;
@@ -44,6 +44,20 @@ select is((select vehicle_plate from private.ride_driver_credentials where drive
 select ok(private.ride_driver_valid(tests.uid('client_a'),current_date+2),'current direct driver and verified dossier qualify');
 select ok(not private.ride_driver_valid(tests.uid('client_a'),current_date+4),'expired insurance blocks assignment');
 -- A client paying for a service is deliberately different from the assigned passenger.
+insert into private.ride_receipt_policy(environment,approval_ref,receipt_retention_days,export_enabled,approved_until)
+values ('live','fixture-146',30,true,now()+interval '1 day');
+update private.ride_signal_settings set location_enabled=true where singleton;
+insert into public.admins(user_id) values(tests.create_user('ride_support_backup_146','Suplente de ensaio'));
+with pilot as (
+ insert into private.ride_pilot(period,approved_ref,budget_cents) values(tstzrange(now()-interval '1 hour',now()+interval '1 day'),'fixture-146',50000)
+ returning id,period
+), coverage as (
+ insert into private.ride_coverage(pilot,period,lead_id,backup_id)
+   select id,period,tests.uid('admin'),tests.uid('ride_support_backup_146') from pilot
+   returning id
+)
+insert into private.ride_support_channels(coverage_id,channel,address,team,verified_ref)
+  select id,'email','plantao@example.test','Equipe de ensaio','TEST-VERIFIED' from coverage;
 insert into private.ride_routes(environment,origin,destination,meters,minutes) values('live','Área A','Área B',4000,15);
 insert into private.ride_tariffs(environment,valid_from,base_cents,km_cents,minute_cents,minimum_cents,commission_bps)
 values('live',now()-interval '1 day',400,150,10,1000,1000);
@@ -76,5 +90,21 @@ update public.ride_legs set status='cancelled' where id=(select id from dossier_
 select tests.authenticate_as('client_b');
 select is(public.ride_trip_driver_identity((select id from dossier_fixture where k='leg')),null,'identification projection stops on closure');
 select is(public.ride_dossier_file_path((select id from dossier_fixture where k='driver_photo'),(select id from dossier_fixture where k='leg')),null,'no new signed photo after cancellation');
+select tests.clear_authentication();
+insert into private.ride_dossier_holds(dossier_id,evidence_ref,until_at) select id,'fixture:obrigacao',now()+interval '1 day' from dossier_fixture where k='dossier';
+update public.profiles set deleted_at=now() where id in (tests.uid('admin'),tests.uid('client_a'));
+select tests.authenticate_as('admin');
+select throws_ok($$select public.ride_dossier(tests.uid('client_a'))$$,'P0001','not_allowed','a stale JWT for a deleted administrator cannot read another dossier');
+select is(public.ride_dossier_file_path((select id from dossier_fixture where k='insurance')),null,'a stale admin cannot mint file access');
+select tests.authenticate_as('client_a');
+select throws_ok($$select public.ride_begin_dossier('Nome Fictício','ABC1D23','Modelo','Ref','v1')$$,'P0001','not_allowed','deleted owner cannot open a new file collection');
+select is(public.ride_dossier_upload_target(),null,'deleted owner cannot acquire an upload slot');
+select tests.clear_authentication();
+select ok((select expires_at<=now() from private.ride_dossiers where id=(select id from dossier_fixture where k='dossier')),'erasure expires routine access immediately');
+select is((select count(*) from public.ride_dossier_expired_files() x join private.ride_dossier_files f on f.path=x.path
+ where f.dossier_id=(select id from dossier_fixture where k='dossier')),0::bigint,'formal retention prevents deletion during the specific hold');
+update private.ride_dossier_holds set until_at=now()-interval '1 second' where dossier_id=(select id from dossier_fixture where k='dossier');
+select is((select count(*) from public.ride_dossier_expired_files() x join private.ride_dossier_files f on f.path=x.path
+ where f.dossier_id=(select id from dossier_fixture where k='dossier')),7::bigint,'expired hold returns the private files to the retention worker');
 select * from finish();
 rollback;

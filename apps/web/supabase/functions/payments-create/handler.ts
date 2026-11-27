@@ -315,7 +315,11 @@ export function handler(req: Request, deps: PaymentsCreateDeps): Promise<Respons
     }
 
     const fee = booking.platform_fee_cents ?? 0;
-    const fixedProviderPayout = Boolean(booking.service_fee_policy_version && booking.service_fee_offered && !booking.service_fee_covered_by_pro && fee === Math.floor(amount / 10));
+    const recurringOffer = Boolean(booking.service_fee_policy_version && booking.service_fee_offered && !booking.service_fee_covered_by_pro);
+    const contractedFee = Math.floor(amount / 10);
+    if (recurringOffer && fee !== 0 && fee !== contractedFee) throw splitUnderReview();
+    // A waiver issued while charging was suspended preserves the original no-commission checkout.
+    const fixedProviderPayout = recurringOffer && fee === contractedFee;
     const plan = buildProviderSplit({
       fixedProviderPayout,
       amountCents: amount,

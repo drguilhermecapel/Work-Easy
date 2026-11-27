@@ -54,12 +54,12 @@ function SignalControl({ legId }: { legId?: string }) {
   );
 }
 
-export default function DriverSignals({ legId }: { legId: string }) {
+export default function DriverSignals({ legId, canLocate = false }: { legId: string; canLocate?: boolean }) {
   const [minutes, setMinutes] = useState('');
   const [status, setStatus] = useState('');
   return (
     <div className="space-y-2">
-      <SignalControl key={legId} legId={legId} />
+      {canLocate && <SignalControl key={legId} legId={legId} />}
       <form
         className="flex flex-wrap items-end gap-2"
         onSubmit={async (e) => {

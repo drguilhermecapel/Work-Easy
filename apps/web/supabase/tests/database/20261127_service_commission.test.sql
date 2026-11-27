@@ -76,5 +76,15 @@ select tests.authenticate_as('admin');
 select is((select count(*) from public.admin_payments_attention where action='payment.service_split_review'),1::bigint,'Actual split divergence enters the existing finance queue atomically');
 select tests.authenticate_as('client_b');
 select is((select count(*) from public.admin_payments_attention where action='payment.service_split_review'),0::bigint,'Finance incident stays isolated from other users');
+select tests.clear_authentication();
+insert into booking_fixture values ('erased-provider',tests.uid('provider_c'));
+select tests.authenticate_service();
+select lives_ok($$select public.anonymize_user(tests.uid('provider_c'))$$,'D7 anonymizes a provider with recurrent commission history');
+select tests.clear_authentication();
+select lives_ok($$delete from auth.users where id=(select id from booking_fixture where label='erased-provider')$$,'Hard deletion succeeds with agreements, proposals, bookings and charge history');
+select is((select count(*) from private.service_commission_agreements where provider_id=(select id from booking_fixture where label='erased-provider')),0::bigint,'Account agreements are removed with the provider');
+select ok((select provider_id is null and service_fee_policy_version='r1' and service_fee_agreed_at is not null and platform_fee_cents=30000
+  from public.bookings where id=(select id from booking_fixture where label='new')),'Anonymized booking preserves contracted version, acceptance and exact fee');
+select ok((select provider_id is null and amount_cents=300009 and platform_fee_cents=30000 from public.payments where asaas_payment_id='pay_test_split_review'),'Anonymized payment preserves its financial amounts');
 select * from finish();
 rollback;

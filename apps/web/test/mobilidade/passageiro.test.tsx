@@ -54,4 +54,20 @@ describe('cotação de mobilidade', () => {
       { origin: 'Jabaquara', destination: 'Saúde', payer: 'provider', pickup_at: '2090-06-11T17:00:00.000Z' },
     ]);
   });
+  it('envia o vínculo privado ao próximo atendimento, a medição e somente os códigos de adicionais', async () => {
+    const onQuoted = vi.fn();
+    vi.mocked(quoteRide).mockClear();
+    vi.mocked(quoteRide).mockResolvedValue({ id: 'cot', expires_at: '', legs: [], total_cents: 4000 });
+    render(<QuoteForm areas={areas} bookingId="origem" requiresRoute nextBookings={[{ id: 'seguinte', label: 'Amanhã · montagem' }]}
+      routes={[{ id: 'medida', origin_area: 'Saúde', destination_area: 'Jabaquara', service_endpoint: 'origin' }]}
+      extras={[{ code: 'luggage', label: 'Bagagem adicional', cents: 400 }]} onQuoted={onQuoted} />);
+    fireEvent.change(screen.getByLabelText('Saída'), { target: { value: 'now' } });
+    fireEvent.change(screen.getByLabelText('Medição para a ida'), { target: { value: 'medida' } });
+    fireEvent.change(screen.getByLabelText(/Atendimento seguinte do profissional/), { target: { value: 'seguinte' } });
+    fireEvent.click(screen.getByLabelText(/Bagagem adicional/));
+    fireEvent.click(screen.getByRole('button', { name: 'Consultar preço' }));
+    await waitFor(() => expect(onQuoted).toHaveBeenCalled());
+    expect(quoteRide).toHaveBeenCalledWith(expect.any(String), 'origem', null, [{ origin: 'Saúde', destination: 'Jabaquara',
+      payer: 'client', route_id: 'medida', next_booking_id: 'seguinte', extras: ['luggage'] }]);
+  });
 });

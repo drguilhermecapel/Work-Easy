@@ -6,7 +6,7 @@ import { isUuid, secretMatches } from './secrets.ts';
 
 export const sandboxContract: RidePaymentContract = { prefix: 'we-ride-sandbox:', invoiceHost: 'sandbox.asaas.com', description: 'WorkEasy · trecho de teste' };
 export type RemoteRidePayment = AsaasPayment & {
-  customer: string;
+  customer: string; currency?: string;
   split?: { id?: string; walletId?: string; fixedValue?: number; totalValue?: number; status?: string }[];
   refunds?: { status: string; value: number; refundedSplits?: { id: string; value: number; done: boolean }[] }[] | null;
 };
@@ -16,7 +16,7 @@ export interface RidePaymentContract {
   description: string;
   invoiceHost: string;
   prepareSplit?(api: AsaasClient, intent: Intent): Promise<CreatePaymentInput['split']>;
-  reconcile?(deps: SandboxDeps, intent: Intent, remote: Payment, observed: Observation): Promise<unknown>;
+  reconcile?(deps: RidePspDeps, intent: Intent, remote: Payment, observed: Observation): Promise<unknown>;
 }
 export interface Intent {
   leg_id: string; customer: string; amount_cents: number; payment_id: string | null; create: boolean;
@@ -27,7 +27,8 @@ export interface Observation {
   pspFee?: number; splitCents?: number; paidToDriver?: number; returnedByDriver?: number; reason?: string;
 
 }
-export interface SandboxDeps {
+export interface RidePspDeps {
+  reportAmbiguous?(leg: string, ids: string[]): Promise<void>;
   api: AsaasClient | null; token: string; siteUrl?: string; allowDevOrigins?: boolean;
   now(): Date; session(req: Request): Promise<string | null>;
   prepare(leg: string, user: string): Promise<Intent>; find(leg: string): Promise<Intent | null>;
@@ -35,7 +36,10 @@ export interface SandboxDeps {
   observe(leg: string, data: Observation): Promise<unknown>;
 }
 const unavailable = () => new HttpError(503, 'not_configured', 'Canal financeiro indisponível.');
-const inconsistent = () => new HttpError(409, 'ride_psp_review', 'A operação precisa conferir esta cobrança.');
+class ProviderMismatch extends HttpError {
+  constructor() { super(409, 'ride_psp_review', 'A operação precisa conferir esta cobrança.'); }
+}
+const inconsistent = () => new ProviderMismatch();
 const uncertain = () => new HttpError(409, 'ride_psp_unknown', 'O processador ainda não confirmou a situação. Consulte novamente antes de tentar outra cobrança.');
 
 export function asCents(value: unknown): number {
@@ -44,10 +48,15 @@ export function asCents(value: unknown): number {
   if (!Number.isSafeInteger(cents) || Math.abs(cents / 100 - value) > 0.000001) throw inconsistent();
   return cents;
 }
-async function apply(contract: RidePaymentContract, deps: SandboxDeps, intent: Intent, payment: Payment) {
-  if (!/^pay_[a-zA-Z0-9_-]{1,100}$/.test(payment.id) || (intent.payment_id && payment.id !== intent.payment_id) ||
-    payment.customer !== intent.customer || payment.billingType !== 'PIX' || asCents(payment.value) !== intent.amount_cents ||
-    payment.externalReference !== contract.prefix + intent.leg_id) throw inconsistent();
+async function apply(contract: RidePaymentContract, deps: RidePspDeps, intent: Intent, payment: Payment) {
+  if (typeof payment.id !== 'string' || !/^pay_[a-zA-Z0-9_-]{1,100}$/.test(payment.id)) throw inconsistent();
+  if ((intent.payment_id && payment.id !== intent.payment_id) ||
+    payment.customer !== intent.customer || (payment.currency != null && payment.currency !== 'BRL') || payment.billingType !== 'PIX' || asCents(payment.value) !== intent.amount_cents ||
+    payment.externalReference !== contract.prefix + intent.leg_id) {
+    if (!contract.reconcile) throw inconsistent();
+    return await deps.observe(intent.leg_id, { payment: payment.id, customer: payment.customer, amount: asCents(payment.value),
+      status: 'review', refunded: 0, invoice: null, reason: 'unverified_payment' });
+  }
   let status: string;
   if (payment.deleted) status = 'cancelled';
   else if (['RECEIVED', 'CONFIRMED', 'REFUNDED'].includes(payment.status)) status = 'paid';
@@ -69,7 +78,20 @@ async function apply(contract: RidePaymentContract, deps: SandboxDeps, intent: I
   return await deps.observe(intent.leg_id, observed);
 }
 
-export function rideCheckout(req: Request, deps: SandboxDeps, contract: RidePaymentContract): Promise<Response> {
+async function recordCanonical(contract: RidePaymentContract, deps: RidePspDeps, intent: Intent, payment: Payment) {
+  try {
+    return await apply(contract, deps, intent, payment);
+  } catch (error) {
+    // Preserve malformed monetary fields from a known live payment as an
+    // operational review. A DB/RPC failure still causes a retryable error.
+    if (!contract.reconcile || !(error instanceof ProviderMismatch) ||
+        !/^pay_[a-zA-Z0-9_-]{1,100}$/.test(payment.id)) throw error;
+    return await deps.observe(intent.leg_id, { payment: payment.id, customer: payment.customer, amount: intent.amount_cents,
+      status: 'review', refunded: 0, invoice: null, reason: 'unverified_provider_amount' });
+  }
+}
+
+export function rideCheckout(req: Request, deps: RidePspDeps, contract: RidePaymentContract): Promise<Response> {
   return route(req, { methods: ['POST'], siteUrl: deps.siteUrl, allowDevOrigins: deps.allowDevOrigins }, async () => {
     const user = await deps.session(req);
     if (!user) throw new HttpError(401, 'not_authenticated', 'Entre para consultar esta cobrança.');
@@ -86,7 +108,12 @@ export function rideCheckout(req: Request, deps: SandboxDeps, contract: RidePaym
     } else {
       const reference = contract.prefix + intent.leg_id;
       const page = await api.request<{ data: Payment[]; hasMore: boolean; totalCount: number }>('GET', '/payments?externalReference=' + encodeURIComponent(reference) + '&limit=2');
-      if (!Array.isArray(page.data) || page.hasMore !== false || page.totalCount !== page.data.length || page.data.length > 1) throw inconsistent();
+      if (!Array.isArray(page.data) || page.hasMore !== false || page.totalCount !== page.data.length || page.data.length > 1) {
+        if (Array.isArray(page.data) && page.data.length > 1) {
+          await deps.reportAmbiguous?.(intent.leg_id, page.data.map(payment => payment.id));
+        }
+        throw inconsistent();
+      }
       remote = page.data[0];
       if (!remote) {
         if (!intent.create) throw uncertain();
@@ -98,11 +125,19 @@ export function rideCheckout(req: Request, deps: SandboxDeps, contract: RidePaym
         } catch { throw uncertain(); }
       }
     }
-    return { data: await apply(contract, deps, intent, remote) };
+    // Search and creation responses can omit split details. For live, the
+    // invoice link is released only against the individual canonical charge.
+    if (contract.reconcile && !intent.payment_id) {
+      if (!remote.id || !/^pay_[a-zA-Z0-9_-]{1,100}$/.test(remote.id)) throw inconsistent();
+      const canonical = await api.getPayment(remote.id);
+      if (!canonical || canonical.id !== remote.id) throw uncertain();
+      remote = canonical as Payment;
+    }
+    return { data: await recordCanonical(contract, deps, intent, remote) };
   });
 }
 
-export function rideWebhook(req: Request, deps: SandboxDeps, contract: RidePaymentContract): Promise<Response> {
+export function rideWebhook(req: Request, deps: RidePspDeps, contract: RidePaymentContract): Promise<Response> {
   return route(req, { methods: ['POST'] }, async () => {
     if (!deps.api || !deps.token) throw unavailable();
     if (!secretMatches(req.headers.get('asaas-access-token'), deps.token)) throw new HttpError(401, 'invalid_token', 'Token inválido.');
@@ -118,6 +153,6 @@ export function rideWebhook(req: Request, deps: SandboxDeps, contract: RidePayme
     if (!isUuid(leg)) throw inconsistent();
     const intent = await deps.find(leg);
     if (!intent) throw inconsistent();
-    return { data: await apply(contract, deps, intent, remote) };
+    return { data: await recordCanonical(contract, deps, intent, remote) };
   });
 }
