@@ -44,6 +44,7 @@ npm run dev     # http://localhost:3000
 | `npm run check:store-bundle -- --store android\|ios\|none` | Diz para qual loja o bundle de `dist/` foi gerado e falha se não for o esperado |
 | `npm run check:app-links` | Coerência dos arquivos de deep link (App Links e Universal Links); com `-- --strict`, falha enquanto houver host de exemplo, impressão digital ou Team ID `TODO` |
 | `npm run db:test` | pgTAP: RLS, triggers e funções do banco (`supabase test db`) |
+| `npm run test:races` | Corridas concorrentes em sessões PostgreSQL reais, cada script num banco descartável: pagamentos (`scripts/test-ride-payment-races.mjs`), contas (`scripts/test-ride-party-races.mjs`) e modalidades (`scripts/test-ride-mode-races.mjs`). Exige a stack local e o pgTAP já rodado; variáveis em `docs/arquitetura/ordens-e-carteira-de-corridas.md` |
 | `npm run db:types` | Regenera `lib/database.types.ts` a partir do banco local |
 | `npm run db:seed` | Regenera `supabase/seed.sql` e `supabase/catalog.sql` a partir de `catalog/*.json` e `data/neighborhoods.json` |
 
@@ -53,12 +54,13 @@ npm run dev     # http://localhost:3000
 |---|---|---|
 | Unitários e telas (Vitest, jsdom) | `npm test` | só Node |
 | Banco (pgTAP) | `npm run db:test` | stack local de pé |
+| Corridas concorrentes (sessões PostgreSQL reais) | `npm run test:races` | stack local de pé, depois de `npm run db:test` |
 | Integração (Vitest, node, API real) | `npm run test:integration` | stack local de pé |
 | Edge Functions (tipos e lint) | `deno check --frozen --config supabase/functions/deno.json supabase/functions/*/index.ts` e `deno lint --config supabase/functions/deno.json supabase/functions` | Deno 2.9.6 |
 | Edge Functions no Deno | `npm run test:deno` | Deno 2.9.6 |
 | Edge Functions ponta a ponta | `npm run test:e2e-functions` | stack local de pé (com o edge-runtime), Docker, `psql`, `openssl` e a porta 443 livre (no CI, `setcap` no node) |
 
-Em 25/11/2026 o Vitest tem 147 arquivos e 4.111 testes; o banco tem 109 migrações em `supabase/migrations/` e 89 arquivos pgTAP em `supabase/tests/database/`.
+Em 25/11/2026 o Vitest tem 147 arquivos e 4.111 testes; o banco tem 109 migrações em `supabase/migrations/` e 89 arquivos pgTAP em `supabase/tests/database/`. Em 28/11/2026, com as etapas 4 a 6 do O17, o banco tem 156 migrações e 127 arquivos pgTAP, com 5.859 testes; o Vitest tem 186 arquivos e 4.487 testes.
 
 Stack local (Docker): `npx supabase start -x studio,imgproxy,logflare,vector,supavisor,realtime,edge-runtime` aplica as migrations e o `supabase/seed.sql`. Para recomeçar do zero: `npx supabase db reset`. `npx supabase` usa a CLI 3.4.0 fixada no `package.json` (a mesma dos workflows). Na CLI 3 os comandos de banco são locais por padrão; para o projeto vinculado use `--remote` (`--linked` é obsoleto).
 
@@ -69,7 +71,7 @@ Stack local (Docker): `npx supabase start -x studio,imgproxy,logflare,vector,sup
 - O Auth local limita os logins a 30 a cada 5 minutos por IP; uma execução usa cerca de 10. Se o limite for atingido, o teste espera e tenta de novo.
 - `npm test` não executa esses arquivos.
 
-**CI.** `.github/workflows/web-ci.yml` tem quatro jobs, todos com os mesmos filtros de caminho: `web` (lint, typecheck, testes, build, `npm run check:size`, `scripts/check-bundle-secrets.mjs`, que recusa chave de servidor no bundle, inclusive JWT com papel `service_role`, `npm run check:store-bundle -- --store none`, que confirma que o site não é build de loja, e `npm run check:app-links`, que acusa contradição entre os arquivos de deep link e só lista as pendências do dono), `database` (Supabase CLI 3, a mesma versão do `package.json`; stack local, `supabase test db`, `npm run test:integration` e a conferência de que `lib/database.types.ts` está igual ao gerado), `functions` (`deno check`, `deno lint` e `deno test`, o mesmo que `npm run test:deno`) e `functions-e2e`, que sobe a stack local com o edge-runtime e roda `npm run test:e2e-functions` (Asaas, Resend, WhatsApp e Anthropic falsos em HTTPS local; nada sai para a internet). As actions de terceiros ficam fixadas por SHA de commit, e os workflows são lidos com parser de YAML em `test/ops/workflows.test.ts`. Mudou algo no banco: crie uma migration nova (migration aplicada ou mesclada não se edita; `docs/ARQUITETURA.md`, "Testes e CI"), rode `npx supabase db reset`, `npm run db:test` e `npm run db:types`, e faça o commit do arquivo gerado.
+**CI.** `.github/workflows/web-ci.yml` tem quatro jobs, todos com os mesmos filtros de caminho: `web` (lint, typecheck, testes, build, `npm run check:size`, `scripts/check-bundle-secrets.mjs`, que recusa chave de servidor no bundle, inclusive JWT com papel `service_role`, `npm run check:store-bundle -- --store none`, que confirma que o site não é build de loja, e `npm run check:app-links`, que acusa contradição entre os arquivos de deep link e só lista as pendências do dono), `database` (Supabase CLI 3, a mesma versão do `package.json`; stack local, `supabase test db`, `npm run test:races` com as corridas concorrentes de pagamentos, contas e modalidades, `npm run test:integration` e a conferência de que `lib/database.types.ts` está igual ao gerado), `functions` (`deno check`, `deno lint` e `deno test`, o mesmo que `npm run test:deno`) e `functions-e2e`, que sobe a stack local com o edge-runtime e roda `npm run test:e2e-functions` (Asaas, Resend, WhatsApp e Anthropic falsos em HTTPS local; nada sai para a internet). As actions de terceiros ficam fixadas por SHA de commit, e os workflows são lidos com parser de YAML em `test/ops/workflows.test.ts`. Mudou algo no banco: crie uma migration nova (migration aplicada ou mesclada não se edita; `docs/ARQUITETURA.md`, "Testes e CI"), rode `npx supabase db reset`, `npm run db:test` e `npm run db:types`, e faça o commit do arquivo gerado.
 
 ## Backend e variáveis de ambiente
 
