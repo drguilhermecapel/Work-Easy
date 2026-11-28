@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import type { GeoJSONSource, Map as LibreMap, StyleSpecification } from 'maplibre-gl';
-import workerUrl from 'maplibre-gl/dist/maplibre-gl-csp-worker.js?url';
+import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 
 interface Point { lat: number; lng: number; label?: string }
 interface Props {
@@ -13,8 +13,8 @@ interface Props {
 let library: Promise<typeof import('maplibre-gl')> | undefined;
 function loadMap() {
   library ??= Promise.all([
-    import('maplibre-gl/dist/maplibre-gl-csp.js'), import('pmtiles'), import('maplibre-gl/dist/maplibre-gl.css'),
-  ]).then(([{ default: lib }, { Protocol }]) => {
+    import('maplibre-gl'), import('pmtiles'), import('maplibre-gl/dist/maplibre-gl.css'),
+  ]).then(([lib, { Protocol }]) => {
     lib.setWorkerUrl(workerUrl);
     lib.addProtocol('pmtiles', new Protocol().tile);
     return lib;
