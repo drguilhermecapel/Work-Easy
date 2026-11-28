@@ -103,6 +103,8 @@ A rede atual identifica um passageiro cadastrado e um pagador por trecho. As lin
 
 ### 6. Modalidades brasileiras e internacionais
 
+A implementação da etapa 6 registra o catálogo de mercado, as classes por capacidade, a assistência com veículo acessível, a reserva com aeroporto, o assento em linha de van, o bloco por hora e o corredor entre municípios. Táxi, moto, viagem compartilhada, transporte público, micromobilidade, locação e veículo autônomo ficam somente como registro de catálogo, com recusa no servidor. Os aceites em campo e as autorizações de cada praça continuam separados da entrega de código. [Implementação e evidências da etapa 6](../arquitetura/modalidades-e-catalogo-de-corridas.md)
+
 Inventário inicial com referências públicas consultadas em 27/11/2026. As praças identificam produtos documentados pela Uber ou seus parceiros, inclusive anúncios históricos. **A disponibilidade atual por sentido, horário, categoria e endereço está a confirmar em todas as praças.** Para WorkEasy, cada linha é proposta condicionada à evidência da última coluna. São Paulo é a primeira praça de estudo. Os exemplos estrangeiros servem à pesquisa de produto, sem previsão de lançamento. Os portes cobrem o primeiro mercado de referência de cada linha.
 
 | ID e jornada | Referência e mercado | Base e incremento WorkEasy | Responsável, dependências e porte | Aceite e prova para ativar |

@@ -41,6 +41,12 @@ const { default: Empresa } = await import('../../pages/mobilidade/Empresa');
 const { default: Frota } = await import('../../pages/mobilidade/Frota');
 const { default: Convite } = await import('../../pages/mobilidade/Convite');
 const { default: RideParties } = await import('../../pages/admin/RideParties');
+const { default: Modalidades } = await import('../../pages/mobilidade/Modalidades');
+const { default: RideModes } = await import('../../pages/admin/RideModes');
+const { default: QuoteForm } = await import('../../pages/mobilidade/QuoteForm');
+const { default: HourlyBlock } = await import('../../components/mobility/modes/HourlyBlock');
+const { default: Intercity } = await import('../../components/mobility/modes/Intercity');
+const { RideDisplayMode } = await import('../../components/mobility/safety/common');
 
 const TOKEN = 'ab'.repeat(32);
 const called = (name: string) => world.calls.filter(([call]) => call === name);
@@ -451,6 +457,187 @@ describe('the operator console of ride accounts keeps the accessibility contract
     fireEvent.click(await within(programs).findByRole('button', { name: 'Alterar Visitas' }));
     fireEvent.click(within(programs).getByRole('button', { name: 'Registrar programa para Gráfica Fictícia' }));
     expect(await screen.findByRole('heading', { level: 2, name: 'Outras ações' })).toBeInTheDocument();
+    expectAccessibleScreen();
+  });
+});
+
+// O17 stage 6: the modalities. Answers follow the jsonb the migrations 20261127110601..110609 return.
+const modality = (code: string, label: string, over: Record<string, unknown> = {}) => ({
+  code,
+  par: 'PAR-604',
+  label,
+  operational: true,
+  flow: code,
+  status: 'pilot',
+  available: true,
+  reason: null,
+  source: 'https://fonte.invalid/' + code,
+  consulted_on: '2026-11-27',
+  note: null,
+  valid_until: '2090-01-01T03:00:00Z',
+  open_from: null,
+  open_until: null,
+  roles: ['passenger'],
+  ...over,
+});
+const marketCatalog = {
+  environment: 'simulation',
+  market: { code: 'sao-paulo', country: 'BR', city: 'São Paulo' },
+  language: 'pt-BR',
+  currency: 'BRL',
+  minor_unit: 2,
+  timezone: 'America/Sao_Paulo',
+  at: '2026-11-28T12:00:00Z',
+  roles: ['passenger'],
+  gates: { module: true, quote: true, dispatch: true, monetization: false },
+  vehicles: [{ category: 'minivan', seats: 6 }],
+  classes: [{ area: 'Saúde', code: 'economico', label: 'Econômico', surcharge_cents: 0, seats: 4, tools: false, accessible: false, luggage: 1 }],
+  methods: [{ method: 'pix', origin: 'Saúde', destination: 'Jabaquara', valid_until: '2090-01-01T03:00:00Z', card_brands: [] }],
+  modalities: [
+    modality('car', 'Carro', { par: 'O16' }),
+    modality('shuttle_seat', 'Assento em linha de van'),
+    modality('hourly', 'Por hora', { par: 'PAR-606' }),
+    modality('intercity', 'Entre municípios', { par: 'PAR-606', available: false, reason: 'corridor_unavailable' }),
+    modality('taxi', 'Táxi', { par: 'PAR-603', operational: false, status: 'inventory', available: false, reason: 'not_authorized', note: 'Somente catálogo.' }),
+  ],
+};
+const shuttleBoard = {
+  simulation: true,
+  charged: false,
+  lines: [
+    {
+      id: 'linha',
+      origin_area: 'Saúde',
+      destination_area: 'Aeroporto de ensaio',
+      seat_cents: 2500,
+      minutes: 40,
+      departures: [
+        { id: 'partida', departs_at: '2090-12-01T15:00:00Z', seats_total: 12, seats_left: 3, state: 'open' },
+        { id: 'partida-2', departs_at: '2090-12-01T17:00:00Z', seats_total: 12, seats_left: 12, state: 'open' },
+      ],
+    },
+  ],
+  my_seats: [
+    { id: 'assento', line_id: 'linha', departure_id: 'partida', origin_area: 'Saúde', destination_area: 'Aeroporto de ensaio', departs_at: '2090-12-01T15:00:00Z', seats: 1, seat_cents: 2500, state: 'confirmed', replaces: null, booked_at: '2026-11-28T12:00:00Z', closed_at: null, refund_due_cents: 0, notice: null },
+  ],
+};
+
+describe('the stage 6 modalities keep the accessibility contract', () => {
+  beforeEach(() => localStorage.setItem('ride-simple', 'on'));
+
+  it('/corridas/modalidades: the market, the records, the consulted trip and the seat panel opened by the server door', async () => {
+    world.answers.ride_market_catalog = marketCatalog;
+    world.answers.ride_request_modality = { modality: 'shuttle_seat', par: 'PAR-604', flow: 'shuttle_seat', environment: 'simulation', market: 'sao-paulo', status: 'pilot', valid_until: null };
+    world.answers.ride_shuttle_board = shuttleBoard;
+    open('/corridas/modalidades', '/corridas/modalidades', <Modalidades />);
+    expect(await screen.findByRole('heading', { level: 1, name: 'Modalidades de corrida' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Modo simplificado ativado' })).toHaveAttribute('aria-pressed', 'true');
+    expect(await screen.findByRole('heading', { level: 2, name: 'Não disponíveis na WorkEasy' })).toBeInTheDocument();
+    expect(screen.getByText('Não há corredor entre municípios autorizado para este trajeto e horário.')).toBeInTheDocument();
+    expectAccessibleScreen();
+    fireEvent.change(await screen.findByLabelText('Origem'), { target: { value: 'Saúde' } });
+    fireEvent.change(screen.getByLabelText('Destino'), { target: { value: 'Jabaquara' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Consultar modalidades' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Ver partidas e assentos' }));
+    expect(await screen.findByRole('heading', { level: 3, name: 'Reservar assento' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Assentos em van de linha' })).toBeInTheDocument();
+    expect(called('ride_request_modality')[0][1]).toMatchObject({ p_modality: 'shuttle_seat', p_origin: 'Saúde', p_destination: 'Jabaquara' });
+    expectAccessibleScreen();
+    fireEvent.click(await screen.findByRole('button', { name: 'Trocar de partida' }));
+    expectAccessibleScreen();
+  });
+
+  it('the hourly block and the intercity trip, before and after the quote', async () => {
+    world.answers.ride_block_options = [{ code: '3h', minutes: 180, included_km: 60, block_cents: 24000, extra_15min_cents: 1500, extra_km_cents: 200 }];
+    world.answers.ride_quote_block = {
+      id: 'bloco', booking_id: null, expires_at: '2090-12-01T14:00:00Z', scheduled_at: '2090-12-01T15:00:00Z', total_cents: 24000, status: 'awaiting_consent',
+      required_from_me: true, accepted_by_me: false,
+      legs: [{ seq: 1, origin: 'Saúde', destination: 'Jabaquara', payer: 'passenger', fare_cents: 24000, extras_cents: 0, limit_cents: 24000, block: '3h', block_minutes: 180, block_cents: 24000 }],
+    };
+    const hourly = render(<MemoryRouter><RideDisplayMode /><HourlyBlock /></MemoryRouter>);
+    fireEvent.change(await screen.findByLabelText('Área de embarque'), { target: { value: 'Saúde' } });
+    fireEvent.change(screen.getByLabelText('Área do desembarque final'), { target: { value: 'Jabaquara' } });
+    fireEvent.change(screen.getByLabelText('Início do bloco (São Paulo)'), { target: { value: '2090-12-01T12:00' } });
+    fireEvent.click(await screen.findByRole('radio', { name: /3 horas · 60 km incluídos/ }));
+    expectAccessibleScreen();
+    fireEvent.click(screen.getByRole('button', { name: 'Consultar preço do bloco' }));
+    expect(await screen.findByRole('heading', { level: 3, name: /Bloco de 3 horas/ })).toBeInTheDocument();
+    expectAccessibleScreen();
+    hourly.unmount();
+
+    world.answers.ride_intercity_options = [
+      { origin: 'Saúde', destination: 'Município vizinho (ensaio)', origin_jurisdiction: 'São Paulo', destination_jurisdiction: 'Município vizinho', empty_return_cents: 3000, return_minutes: 40, valid_until: null },
+    ];
+    render(<MemoryRouter><RideDisplayMode /><Intercity /></MemoryRouter>);
+    fireEvent.change(await screen.findByLabelText('Área de origem'), { target: { value: 'Saúde' } });
+    fireEvent.change(screen.getByLabelText('Área de destino'), { target: { value: 'Município vizinho (ensaio)' } });
+    expect(screen.getByText(/esse retorno custa/)).toBeInTheDocument();
+    expectAccessibleScreen();
+  });
+
+  it('a scheduled leg in Corridas: the reserve without a confirmed driver, its choices and the hourly block label', async () => {
+    world.answers.ride_dashboard = {
+      ...dashboard,
+      rides: [{ id: 'viagem', passenger_id: 'pessoa', in_my_journeys: true, kind: 'standalone', status: 'requested', scheduled_at: '2090-12-01T15:00:00Z', booking_id: null, legs: [{ ...leg, payer: 'passenger', funding: undefined, fare_cents: 24000, extras_cents: 0, limit_cents: 24000 }] }],
+    };
+    world.answers.ride_reserve_state = {
+      state: 'contingency', confirm_by: '2090-12-01T13:00:00Z', pickup_at: '2090-12-01T15:00:00Z', original_pickup: '2090-12-01T15:00:00Z',
+      airport: 'GRU', terminal: 'Terminal 2', flight_ref: 'WE1234', max_shift_minutes: 180, can_shift: false, can_decide: true, shift: null,
+    };
+    world.answers.ride_block_state = {
+      code: '3h', minutes: 180, included_km: 60, extra_15min_cents: 1500, extra_km_cents: 200, extended_minutes: 0, extended_km: 0, extension_cents: 0,
+      ends_at: '2090-12-01T18:00:00Z', can_propose: false, extensions: [],
+    };
+    open('/corridas', '/corridas', <Corridas />);
+    const reserve = await screen.findByRole('region', { name: 'Reserva agendada' });
+    expect(within(reserve).getByRole('button', { name: 'Continuar buscando motorista' })).toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: 'Bloco por hora' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Modalidades e disponibilidade' })).toHaveAttribute('href', '/corridas/modalidades');
+    expectAccessibleScreen();
+    fireEvent.click(within(reserve).getByRole('button', { name: 'Remarcar para outro horário' }));
+    expect(within(reserve).getByLabelText('Novo horário de embarque (São Paulo)')).toBeInTheDocument();
+    expectAccessibleScreen();
+  });
+
+  it('assistance in the quote form, in the simplified mode, with and without a compatible vehicle', async () => {
+    world.answers.ride_class_options = [];
+    world.answers.ride_access_options = {
+      options: [
+        { assistance: 'boarding', available: true, boarding_minutes: 5, companion: true },
+        { assistance: 'folding_equipment', available: false, boarding_minutes: 5, companion: false },
+        { assistance: 'wheelchair_vehicle', available: false, boarding_minutes: 0, companion: false },
+      ],
+      channel: '+55 11 4000-0000',
+    };
+    render(
+      <MemoryRouter>
+        <RideDisplayMode />
+        <QuoteForm areas={['Saúde', 'Jabaquara']} bookingId={null} routes={[{ id: 'rota-medida-0001', origin_area: 'Saúde', destination_area: 'Jabaquara' }]} onQuoted={() => undefined} />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('button', { name: 'Modo simplificado ativado' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.change(screen.getByLabelText('Medição para a ida'), { target: { value: 'rota-medida-0001' } });
+    const access = await screen.findByRole('group', { name: 'Assistência no embarque' });
+    fireEvent.click(within(access).getByRole('radio', { name: /Ajuda para embarcar/ }));
+    expect(within(access).getByRole('checkbox', { name: /Vou com acompanhante/ })).toBeInTheDocument();
+    expectAccessibleScreen();
+    world.answers.ride_access_options = { options: [{ assistance: 'boarding', available: false, boarding_minutes: 5, companion: false }], channel: '+55 11 4000-0000' };
+    fireEvent.change(screen.getByLabelText('Medição para a ida'), { target: { value: '' } });
+    fireEvent.change(screen.getByLabelText('Medição para a ida'), { target: { value: 'rota-medida-0001' } });
+    expect(await screen.findByText(/Não há veículo compatível para este trajeto e horário\./)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '+55 11 4000-0000' })).toHaveAttribute('href', 'tel:+551140000000');
+    expectAccessibleScreen();
+  });
+
+  it('/admin/corridas/modalidades: the van departures and the cancellation with its reason', async () => {
+    world.answers.admin_shuttle_departures = {
+      simulation: true,
+      departures: [{ id: 'partida', origin_area: 'Saúde', destination_area: 'Aeroporto de ensaio', departs_at: '2090-12-01T15:00:00Z', seats_total: 12, seats_confirmed: 2, state: 'open', driver_assigned: false }],
+    };
+    render(<MemoryRouter><RideModes /></MemoryRouter>);
+    expect(await screen.findByRole('heading', { level: 1, name: 'Modalidades de corrida' })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancelar partida' }));
+    expect(screen.getByLabelText(/Motivo do cancelamento/)).toBeInTheDocument();
     expectAccessibleScreen();
   });
 });

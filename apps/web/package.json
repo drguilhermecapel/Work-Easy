@@ -22,7 +22,7 @@
     "db:seed": "node scripts/generate-seed.mjs",
     "db:types": "supabase gen types typescript > lib/database.types.ts",
     "db:test": "supabase test db",
-    "test:races": "node scripts/test-ride-payment-races.mjs && node scripts/test-ride-party-races.mjs",
+    "test:races": "node scripts/test-ride-payment-races.mjs && node scripts/test-ride-party-races.mjs && node scripts/test-ride-mode-races.mjs",
     "cap:sync": "npm run build:native && cap sync",
     "android:build": "npm run build:native && cap sync android && cd android && ./gradlew assembleDebug",
     "ios:build": "npm run build:native && cap sync ios && xcodebuild -project ios/App/App.xcodeproj -scheme App -sdk iphonesimulator -configuration Debug -derivedDataPath ios/build CODE_SIGNING_ALLOWED=NO build",

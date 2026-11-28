@@ -4,6 +4,7 @@ import { Route } from 'react-router-dom';
 
 const RidePilot = lazy(() => import('./RidePilot'));
 const RideParties = lazy(() => import('./RideParties'));
+const RideModes = lazy(() => import('./RideModes'));
 const OperacaoCorridas = lazy(() => import('../mobilidade/Operacao'));
 const AdminLayout = lazy(() => import('./AdminLayout'));
 const Painel = lazy(() => import('./Painel'));
@@ -22,6 +23,7 @@ export const adminRoutes = (
     <Route index element={<Painel />} />
     <Route path="corridas/piloto" element={<RidePilot />} />
     <Route path="corridas/contas" element={<RideParties />} />
+    <Route path="corridas/modalidades" element={<RideModes />} />
     <Route path="corridas" element={<OperacaoCorridas />} />
     <Route path="prestadores" element={<Prestadores />} />
     <Route path="prestadores/:id" element={<PrestadorDetalhe />} />

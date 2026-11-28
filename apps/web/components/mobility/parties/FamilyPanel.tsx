@@ -12,7 +12,8 @@ import { ADHESION_VALIDITY, NO_SITE, SHOWN_ONCE, legStatus, until, useInvitePage
 
 const METHODS: Record<PayMethod, string> = { pix: 'Pix', card: 'Cartão' };
 const money = (cents: number | null | undefined) => (typeof cents === 'number' ? formatCents(cents) : 'Restrito ao pagador');
-const nameOf = (member: AccountMember) => member.name ?? 'Participante sem nome';
+// Sign-in by e-mail code asks no name: number the unnamed members so the admin can tell them apart.
+const nameOf = (member: AccountMember, position: number) => member.name?.trim() || `Participante ${position} (sem nome no perfil)`;
 
 function MethodField({ value, onChange }: { value: PayMethod; onChange: (method: PayMethod) => void }) {
   return (
@@ -129,14 +130,24 @@ function Statement({ account }: { account: string }) {
   );
 }
 
-function MemberRow({ account, member, onChange }: { account: string; member: AccountMember; onChange: () => void }) {
+function MemberRow({
+  account,
+  member,
+  position,
+  onChange,
+}: {
+  account: string;
+  member: AccountMember;
+  position: number;
+  onChange: () => void;
+}) {
   const [limit, setLimit] = useState(() =>
     typeof member.member_limit_cents === 'number' ? centsToInput(member.member_limit_cents) : '',
   );
   const action = useAction(onChange);
   const cents = limit.trim() ? parseReaisToCents(limit) : null;
   const invalid = Boolean(limit.trim()) && cents === null;
-  const name = nameOf(member);
+  const name = nameOf(member, position);
   if (member.status === 'removed')
     return <li className="text-sm text-gray-600">{name} · removido · as cobranças anteriores continuam no extrato</li>;
   return (
@@ -242,8 +253,14 @@ function AdminFamily({ account, userId, onChange }: { account: PartyAccount; use
       <h4 className="font-semibold">Participantes</h4>
       {others.length ? (
         <ul className="space-y-3">
-          {others.map((member) => (
-            <MemberRow key={member.member_id} account={account.id} member={member} onChange={onChange} />
+          {others.map((member, index) => (
+            <MemberRow
+              key={member.member_id}
+              account={account.id}
+              member={member}
+              position={index + 1}
+              onChange={onChange}
+            />
           ))}
         </ul>
       ) : (

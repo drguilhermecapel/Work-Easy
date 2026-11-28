@@ -33,6 +33,17 @@ const InviteRider = lazy(invites);
 const SentRiderInvites = lazy(() => invites().then(m => ({ default: m.SentRiderInvites })));
 const UseVoucher = lazy(() => import('../../components/mobility/business/UseVoucher'));
 const GuardianWatch = lazy(() => import('../../components/mobility/parties/DependentPanel').then(m => ({ default: m.GuardianWatch })));
+// Stage 6 (modalities): the reserve terms of a scheduled leg and the hourly block of a leg, read by their own panels.
+const ReservePanel = lazy(() => import('../../components/mobility/modes/ReservePanel'));
+const ExtensionPanel = lazy(() => import('../../components/mobility/modes/ExtensionPanel'));
+const reserveOpen = ['requested', 'accepted'];
+const blockReadable = ['requested', 'accepted', 'arriving', 'boarded'];
+/** The stage 6 modality of a quote leg, as the quote states it; empty for an ordinary ride. */
+function modeLabel(leg: { block?: string; block_minutes?: number; intercity?: boolean; empty_return_cents?: number | null }) {
+  if (leg.block) return `Por hora · bloco de ${leg.block_minutes ? leg.block_minutes + ' min' : leg.block} · excedente só com extensão aceita`;
+  if (leg.intercity) return 'Entre municípios' + (typeof leg.empty_return_cents === 'number' ? ` · retorno do motorista sem passageiro ${formatCents(leg.empty_return_cents)}, incluído no preço` : '');
+  return '';
+}
 
 const fare = (value: number | null | undefined) => typeof value === 'number' ? formatCents(value) : 'Restrito ao pagador';
 const payers: Record<RidePayerLabel, string> = {
@@ -104,6 +115,7 @@ function QuoteCard({ quote, now, servicePrice, canRequest, onChange }: { quote: 
     {servicePrice !== undefined && quote.total_cents !== null && <p className="text-sm">Serviço {fare(servicePrice)} · Mobilidade {fare(quote.total_cents)} · Total dos componentes {fare(servicePrice + quote.total_cents)}</p>}
     <ol className="space-y-3">{quote.legs.map(leg => <li key={leg.seq} className="border-l-2 border-primary/30 pl-3">
       <p>{path(leg, quote.funding)}</p>
+      {modeLabel(leg) && <p className="text-sm font-medium">{modeLabel(leg)}</p>}
       <p className="text-sm text-gray-600">{leg.pickup_at ? when(leg.pickup_at) : 'Saída imediata'} · Pagador: {payers[leg.payer]}</p>
       {typeof leg.duration_minutes === 'number' && <p className="text-sm">
         Rede direta WorkEasy · {leg.duration_minutes} min{typeof leg.meters === 'number' && ` · ${(leg.meters / 1000).toLocaleString('pt-BR')} km`}
@@ -124,7 +136,7 @@ function QuoteCard({ quote, now, servicePrice, canRequest, onChange }: { quote: 
   </article>;
 }
 
-function JourneyLeg({ leg, onChange, canCancel, simulation, areas, passenger, dependent }: { areas:string[]; passenger:boolean; leg: RideLeg; onChange: () => void; canCancel: boolean; simulation: boolean; dependent?: string }) {
+function JourneyLeg({ leg, onChange, canCancel, simulation, areas, passenger, dependent, scheduled }: { areas:string[]; passenger:boolean; leg: RideLeg; onChange: () => void; canCancel: boolean; simulation: boolean; dependent?: string; scheduled?: boolean }) {
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<unknown>(null);
@@ -161,6 +173,8 @@ function JourneyLeg({ leg, onChange, canCancel, simulation, areas, passenger, de
       <Suspense fallback={null}><UseVoucher legId={leg.id} onChange={onChange} /></Suspense>}
     <RideOrderPayments legId={leg.id} completed={leg.status === 'completed'} />
     <RideAmendmentPanel legId={leg.id} legStatus={leg.status} areas={areas} onChanged={onChange} />
+    {scheduled && reserveOpen.includes(leg.status) && <Suspense fallback={null}><ReservePanel leg={leg} passenger={passenger} onChanged={onChange} /></Suspense>}
+    {blockReadable.includes(leg.status) && <Suspense fallback={null}><ExtensionPanel legId={leg.id} legStatus={leg.status} onChanged={onChange} /></Suspense>}
     {leg.status === 'completed' && <RideCheckout legId={leg.id} simulation={simulation} />}
     {passenger && leg.status==='arriving' && <PassengerCue leg={leg.id}/>}
     {passenger && <RideSafety status={leg.status} leg={leg.id} onChange={onChange}/>}
@@ -250,7 +264,7 @@ function PassengerArea({ id, userId }: { id: string | null; userId: string }) {
     {rides.length > 0 && <section className="space-y-3"><h2 className="text-lg font-semibold">Viagens</h2>{rides.map(ride => <article key={ride.id} className="space-y-3 rounded-2xl border border-gray-200 bg-white p-5">
       <h3 className="font-semibold">{ride.booking_id ? 'Viagem vinculada ao atendimento' : 'Corrida avulsa'}</h3>
       {ride.booking_id && <Link className="text-sm text-primary underline" to={`/atendimentos/${ride.booking_id}`}>Ver atendimento</Link>}
-      <ol className="space-y-4">{ride.legs.map(leg => <JourneyLeg key={leg.id} leg={leg} passenger={ride.passenger_id===userId} dependent={carried.data?.[leg.id]} areas={dashboard.areas} canCancel={leg.can_cancel} simulation={dashboard.simulation} onChange={result.reload} />)}</ol>
+      <ol className="space-y-4">{ride.legs.map(leg => <JourneyLeg key={leg.id} leg={leg} scheduled={!!ride.scheduled_at} passenger={ride.passenger_id===userId} dependent={carried.data?.[leg.id]} areas={dashboard.areas} canCancel={leg.can_cancel} simulation={dashboard.simulation} onChange={result.reload} />)}</ol>
       {dashboard.quote_enabled && ride.legs.filter(leg => leg.status === 'cancelled' && leg.can_requote).map(leg => <div key={leg.id}>
         {replacement === leg.id ? <>
           <QuoteForm passengerCanRequestAccess={!id || booking?.role === 'provider'} requiresRoute={!dashboard.simulation} areas={dashboard.areas} bookingId={ride.booking_id} nextBookings={ride.booking_id === id ? laterBookings.data : undefined} routes={routesFor(ride.booking_id)} extras={dashboard.extra_options} replaces={leg.id} onQuoted={() => { setReplacement(null); setNotice('Nova cotação registrada. Confira o preço e autorize o novo trecho.'); reload(); }} />
@@ -259,7 +273,8 @@ function PassengerArea({ id, userId }: { id: string | null; userId: string }) {
       </div>)}
     </article>)}</section>}
     <div className="flex flex-wrap items-center gap-4"><button type="button" onClick={result.reload} disabled={result.loading} className={secondary}>Atualizar corridas</button>
-    <Link className="text-primary underline" to="/corridas/motorista">Área do motorista</Link></div>
+    <Link className="text-primary underline" to="/corridas/motorista">Área do motorista</Link>
+    <Link className="text-primary underline" to="/corridas/modalidades">Modalidades e disponibilidade</Link></div>
     <nav aria-label="Quem viaja e quem paga" className="flex flex-wrap gap-4">
       <Link className="text-primary underline" to="/corridas/grupos">Família, acompanhante e dependentes</Link>
       <Link className="text-primary underline" to="/corridas/empresa">Empresa</Link>

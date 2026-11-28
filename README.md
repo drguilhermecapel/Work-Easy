@@ -40,7 +40,7 @@ dependem de parecer jurídico, como pagamento retido e comissão, ficam desligad
 
 | Workflow | Quando roda | O que faz |
 |---|---|---|
-| `web-ci.yml` | push em `main`/`develop` e pull request que mudam `apps/web/**` (ou o próprio arquivo) | jobs `web` (lint, typecheck, Vitest, build e verificadores), `database` (pgTAP, integração e tipos do banco) `functions` (`deno check`, `deno lint`, `deno test`) e `functions-e2e` (ponta a ponta das Edge Functions no edge-runtime, com serviços externos falsos). Detalhes em [`apps/web/README.md`](apps/web/README.md) |
+| `web-ci.yml` | push em `main`/`develop` e pull request que mudam `apps/web/**` (ou o próprio arquivo) | jobs `web` (lint, typecheck, Vitest, build e verificadores), `database` (pgTAP, corridas concorrentes de pagamentos, contas e modalidades, integração e tipos do banco), `functions` (`deno check`, `deno lint`, `deno test`) e `functions-e2e` (ponta a ponta das Edge Functions no edge-runtime, com serviços externos falsos). Detalhes em [`apps/web/README.md`](apps/web/README.md) |
 | `web-release.yml` | sob demanda, tags `vX.Y.Z` e pull requests que mudam o empacotamento nativo | builds de verificação sob demanda e em PRs. Tags integradas à main geram prerelease web e desktop com o backend de produção |
 | `ci-security.yml` | push em `main`/`develop` e pull request que mudam `services/api/**` | `pytest` do protótipo `services/api` (Python 3.12) |
 | `deploy-web.yml` | só manual, a partir de `main`, digitando `DEPLOY` e com aprovação do ambiente `production` | build e publicação do site no Cloudflare Pages |

@@ -7,6 +7,7 @@ const Corridas = lazy(() => import('../mobilidade/Corridas'));
 const Grupos = lazy(() => import('../mobilidade/Grupos'));
 const Empresa = lazy(() => import('../mobilidade/Empresa'));
 const Frota = lazy(() => import('../mobilidade/Frota'));
+const Modalidades = lazy(() => import('../mobilidade/Modalidades'));
 const Motorista = lazy(() => import('../mobilidade/Motorista'));
 const Pedido = lazy(() => import('./Pedido'));
 const Pedidos = lazy(() => import('./Pedidos'));
@@ -23,6 +24,7 @@ export const clienteRoutes = (
     <Route path="/corridas/grupos" element={<Grupos />} />
     <Route path="/corridas/empresa" element={<Empresa />} />
     <Route path="/corridas/frota" element={<Frota />} />
+    <Route path="/corridas/modalidades" element={<Modalidades />} />
     <Route path="/atendimentos/:id/mobilidade" element={<Corridas />} />
     <Route path="/pedido" element={<Pedido />} />
     <Route path="/pedidos" element={<Pedidos />} />

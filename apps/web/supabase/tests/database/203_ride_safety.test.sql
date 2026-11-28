@@ -104,8 +104,12 @@ select throws_ok($$select public.admin_ride_decide_appeal(current_setting('tests
 select tests.authenticate_as('safety_reviewer');
 select ok(public.admin_ride_decide_appeal(current_setting('tests.restrict203')::uuid,true,'REVIEW-203'),'Another staffed operator grants an appeal');
 select tests.authenticate_as('client_a');
-select is(public.ride_set_access(pg_temp.key('leg2'),'visual','wheelchair_vehicle',true)->>'available','false','No certified adapted capacity is shown when unavailable');
+-- PAR-602 (110608): with no certified adapted capacity the requirement is refused, never promised.
+select throws_ok($$select public.ride_set_access(pg_temp.key('leg2'),'visual','wheelchair_vehicle',true)$$,'P0001','ride_assistance_unavailable','No certified adapted capacity is shown when unavailable');
 select tests.clear_authentication();
+-- Fixture: the requirement as a legitimate request of the passenger freezes it, for the pairing checks below.
+insert into private.ride_access_preferences(leg,owner_id,cue,assistance,share_cue) values(pg_temp.key('leg2'),tests.uid('client_a'),'visual','wheelchair_vehicle',true)
+ on conflict(leg) do update set cue=excluded.cue,assistance=excluded.assistance,share_cue=excluded.share_cue;
 select ok(not private.ride_safety_can_pair(tests.uid('provider_c'),l),'An incompatible vehicle alone cannot match') from public.ride_legs l where l.id=pg_temp.key('leg2');
 insert into private.ride_driver_credentials(driver_id,vehicle_identifier,vehicle_category,driver_document_ref,vehicle_document_ref,insurance_ref,driver_until,vehicle_until,insurance_until,inspected_by)
  values(tests.uid('provider_c'),'QA-vehicle','sedan','QA-driver','QA-vehicle','QA-policy',current_date+1,current_date+1,current_date+1,tests.uid('admin'));
@@ -164,10 +168,21 @@ select tests.authenticate_as('client_b');
 select is(public.ride_shared_progress(current_setting('tests.old_invite203')),null::jsonb,'Reassignment also withdraws an existing trusted invite');
 select tests.clear_authentication();
 select is((select count(*) from private.ride_pins where consumed_at is not null and length(digest)>0),0::bigint,'A consumed code retains proof but no reusable digest');
+-- Fixture (PAR-602, 110608): a driver on a declared shift trained for boarding help makes the
+-- request below a legitimate one; it goes off shift once the quote is accepted.
+select tests.create_user('assist_203');
+insert into public.ride_drivers(id,environment,vehicle,status,valid_until,reviewed_by,online)
+ values(tests.uid('assist_203'),'simulation','sedan','approved',private.sp_date(now())+3,tests.uid('admin'),true);
+insert into private.ride_driver_credentials(driver_id,vehicle_identifier,vehicle_category,driver_document_ref,vehicle_document_ref,insurance_ref,driver_until,vehicle_until,insurance_until,inspected_by)
+ values(tests.uid('assist_203'),'ASSIST-203','sedan','DOC-203A','ASSIST-203','POLICY-203A',private.sp_date(now())+3,private.sp_date(now())+3,private.sp_date(now())+3,tests.uid('admin'));
+insert into private.ride_assist_capabilities values(tests.uid('assist_203'),'ASSIST-203','boarding','TRAIN-203A','VEH-203A',now()+interval '1 day');
+insert into private.ride_driver_shifts(driver_id,area,period) values(tests.uid('assist_203'),'Saúde',tstzrange(now()-interval '5 minutes',now()+interval '3 hours'));
 select tests.authenticate_as('client_b');
 select set_config('tests.assistquote203',public.ride_quote_with_access(pg_temp.key('req-access'),null,null,'[{"origin":"Saúde","destination":"Jabaquara","payer":"passenger"}]','boarding')->>'id',true);
 select lives_ok($$select public.ride_consent(current_setting('tests.assistquote203')::uuid,true)$$,'Passenger accepts a priced quote with a functional requirement before dispatch');
 select tests.clear_authentication();
+update public.ride_drivers set online=false where id=tests.uid('assist_203');
+delete from private.ride_driver_shifts where driver_id=tests.uid('assist_203');
 select ok(exists(select from private.ride_access_preferences p join public.ride_legs l on l.id=p.leg join public.rides r on r.id=l.ride_id where r.quote_id=current_setting('tests.assistquote203')::uuid and p.assistance='boarding'),
  'Every new leg receives the frozen assistance requirement atomically');
 -- New driver may serve the same leg, but cannot inherit an old safety case.

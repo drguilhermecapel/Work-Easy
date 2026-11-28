@@ -16,6 +16,16 @@ insert into amendment_test select 'original',(public.ride_prepare_route(gen_rand
 select tests.authenticate_as('admin');
 select public.ride_claim_route(pg_temp.uid('original'));
 select public.ride_verify_route(pg_temp.uid('original'),2000,12,'amendment/test1');
+-- Fixture (PAR-602, 110608): a driver on a declared shift trained for folding equipment makes
+-- the quote with assistance below a legitimate one; it goes off shift once the quote is accepted.
+select tests.clear_authentication();
+select tests.create_user('assist_201c');
+insert into public.ride_drivers(id,environment,vehicle,status,valid_until,reviewed_by,online)
+ values(tests.uid('assist_201c'),'simulation','sedan','approved',private.sp_date(now())+3,tests.uid('admin'),true);
+insert into private.ride_driver_credentials(driver_id,vehicle_identifier,vehicle_category,driver_document_ref,vehicle_document_ref,insurance_ref,driver_until,vehicle_until,insurance_until,inspected_by)
+ values(tests.uid('assist_201c'),'ASSIST-201C','sedan','DOC-201CA','ASSIST-201C','POLICY-201CA',private.sp_date(now())+3,private.sp_date(now())+3,private.sp_date(now())+3,tests.uid('admin'));
+insert into private.ride_assist_capabilities values(tests.uid('assist_201c'),'ASSIST-201C','folding_equipment','TRAIN-201CA','VEH-201CA',now()+interval '1 day');
+insert into private.ride_driver_shifts(driver_id,area,period) values(tests.uid('assist_201c'),'Saúde',tstzrange(now()-interval '5 minutes',now()+interval '6 hours'));
 select tests.authenticate_as('provider_a');
 insert into amendment_test select 'q',(public.ride_quote_with_access(gen_random_uuid(),pg_temp.uid('booking'),null,
  jsonb_build_array(jsonb_build_object('origin','Saúde','destination','Jabaquara','route_id',pg_temp.uid('original'),'payer','client','extras',jsonb_build_array('luggage'))),'folding_equipment')->>'id')::uuid;
@@ -24,6 +34,8 @@ select tests.authenticate_as('client_a');
 insert into amendment_test select 'r',(public.ride_consent(pg_temp.uid('q'),true)->>'ride_id')::uuid;
 select tests.clear_authentication();
 insert into amendment_test select 'leg',id from public.ride_legs where ride_id=pg_temp.uid('r');
+update public.ride_drivers set online=false where id=tests.uid('assist_201c');
+delete from private.ride_driver_shifts where driver_id=tests.uid('assist_201c');
 select tests.authenticate_as('client_b');
 select public.ride_apply_driver('compact');
 select tests.authenticate_as('admin');

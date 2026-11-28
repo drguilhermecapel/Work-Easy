@@ -90,9 +90,10 @@ jobs:
         run: supabase start -x studio,imgproxy,logflare,vector,supavisor,realtime,edge-runtime
       - name: pgTAP
         run: supabase test db
-      # Two real concurrent sessions per race, on a disposable database cloned inside the database
-      # container (its own psql and pg_dump, port 5432). After pgTAP: 00_helpers left the tests schema.
-      - name: Corridas concorrentes de pagamentos e contas (banco descartável)
+      # Real concurrent sessions per race (payments, accounts and modalities), each script on its own
+      # disposable database cloned inside the database container (its own psql and pg_dump, port 5432).
+      # After pgTAP: 00_helpers left the tests schema.
+      - name: Corridas concorrentes de pagamentos, contas e modalidades (banco descartável)
         env:
           RIDE_TEST_DB_CONTAINER: supabase_db_workeasy
           PGHOST: 127.0.0.1
