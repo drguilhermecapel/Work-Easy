@@ -168,12 +168,67 @@ describe('reserva agendada', () => {
     expect(await screen.findByText('Reserva cancelada. O trecho foi encerrado.')).toBeVisible();
   });
 
+  it('mostra quantas remarcações restam e esconde a remarcação no teto da área', async () => {
+    vi.mocked(rideReserve.state).mockResolvedValue(
+      terms({ state: 'contingency', can_decide: true, max_rebooks: 2, rebooks_used: 1, rebooks_left: 1, choices: ['keep_searching', 'rebook', 'cancel'] }),
+    );
+    const { unmount } = render(<ReservePanel leg={leg} />);
+    expect(await screen.findByText('Você ainda pode remarcar esta reserva 1 vez pelo mesmo preço.')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Remarcar para outro horário' })).toBeVisible();
+    unmount();
+
+    vi.mocked(rideReserve.state).mockResolvedValue(
+      terms({ state: 'contingency', can_decide: true, max_rebooks: 2, rebooks_used: 2, rebooks_left: 0, choices: ['keep_searching', 'cancel'] }),
+    );
+    render(<ReservePanel leg={leg} />);
+    expect(await screen.findByText(/Esta reserva chegou ao limite de remarcações/)).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Remarcar para outro horário' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Cancelar reserva' })).toBeVisible();
+
+    // At the cap the keep-searching notice must not promise a rebook.
+    vi.mocked(rideReserve.contingency).mockResolvedValue({
+      state: 'awaiting_driver',
+      choice: 'keep_searching',
+      pickup_at: '2090-01-10T12:00:00Z',
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Continuar buscando motorista' }));
+    expect(await screen.findByText('A busca por motorista continua. Você ainda pode cancelar por aqui.')).toBeVisible();
+    expect(screen.queryByText(/Você ainda pode remarcar ou cancelar/)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Remarcar para outro horário' })).toBeNull();
+  });
+
+  it('explica o teto quando o servidor recusa a remarcação e reenvia com a mesma chave', async () => {
+    vi.mocked(rideReserve.state).mockResolvedValue(
+      terms({ state: 'contingency', can_decide: true, rebooks_left: 1, choices: ['keep_searching', 'rebook', 'cancel'] }),
+    );
+    vi.mocked(rideReserve.contingency).mockRejectedValue(refusal('ride_rebook_limit'));
+    render(<ReservePanel leg={leg} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Remarcar para outro horário' }));
+    fireEvent.change(screen.getByLabelText('Novo horário de embarque (São Paulo)'), {
+      target: { value: '2090-01-11T09:00' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar novo horário' }));
+    expect(await screen.findByText(/limite de remarcações da área/)).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar novo horário' }));
+    await waitFor(() => expect(rideReserve.contingency).toHaveBeenCalledTimes(2));
+    const [first, second] = vi.mocked(rideReserve.contingency).mock.calls;
+    expect(second[3]).toBe(first[3]);
+  });
+
   it('quem não é o passageiro acompanha a reserva sem ações, e uma corrida sem agendamento não consulta nada', async () => {
     vi.mocked(rideReserve.state).mockResolvedValue(terms({ state: 'contingency', flight_ref: null, terminal: null }));
     const { unmount } = render(<ReservePanel leg={leg} passenger={false} />);
     expect(await screen.findByText(/O passageiro escolhe entre continuar a busca, remarcar ou cancelar/)).toBeVisible();
     expect(screen.queryByRole('button')).toBeNull();
     unmount();
+
+    vi.mocked(rideReserve.state).mockResolvedValue(
+      terms({ state: 'contingency', flight_ref: null, terminal: null, rebooks_left: 0, choices: ['keep_searching', 'cancel'] }),
+    );
+    const capped = render(<ReservePanel leg={leg} passenger={false} />);
+    expect(await screen.findByText(/O passageiro escolhe entre continuar a busca ou cancelar/)).toBeVisible();
+    expect(screen.queryByText(/remarcar ou cancelar/)).toBeNull();
+    capped.unmount();
 
     vi.mocked(rideReserve.state).mockClear();
     const { container } = render(<ReservePanel leg={{ id: 'trecho-agora', status: 'requested', pickup_at: null }} />);

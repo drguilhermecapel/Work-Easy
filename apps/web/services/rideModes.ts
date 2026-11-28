@@ -38,6 +38,14 @@ export interface ReserveTerms {
   can_decide?: boolean;
   /** The latest request to move the pickup, if any. */
   shift: ReserveShift | null;
+  /** Contingency rebooks the area policy allows on this leg; null without an enabled policy. */
+  max_rebooks?: number | null;
+  /** Contingency rebooks already made on this leg (a replay never counts twice). */
+  rebooks_used?: number;
+  /** Contingency rebooks still allowed; 0 at the cap. */
+  rebooks_left?: number | null;
+  /** The contingency choices the passenger has now; empty when there is nothing to decide. */
+  choices?: ContingencyChoice[];
 }
 export interface ShiftResult {
   id: string;
