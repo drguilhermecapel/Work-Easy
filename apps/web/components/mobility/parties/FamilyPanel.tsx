@@ -8,6 +8,7 @@ import { centsToInput, parseReaisToCents } from '../../../services/proFormat';
 import { parties, type AccountMember, type PartyAccount, type PayMethod } from '../../../services/rideParties';
 import { useAction } from '../safety/state';
 import { ConfirmAction, InviteLink, ValidityField, card, field, primary, secondary } from './common';
+import Ownership from './Ownership';
 import { ADHESION_VALIDITY, NO_SITE, SHOWN_ONCE, legStatus, until, useInvitePage, validEmail } from './state';
 
 const METHODS: Record<PayMethod, string> = { pix: 'Pix', card: 'Cartão' };
@@ -134,11 +135,14 @@ function MemberRow({
   account,
   member,
   position,
+  removable,
   onChange,
 }: {
   account: string;
   member: AccountMember;
   position: number;
+  /** Only the holder removes someone who administers the group (DD118). */
+  removable: boolean;
   onChange: () => void;
 }) {
   const [limit, setLimit] = useState(() =>
@@ -182,20 +186,24 @@ function MemberRow({
         >
           Salvar limite de {name}
         </button>
-        <ConfirmAction
-          label={`Remover ${name}`}
-          confirmLabel="Confirmar remoção"
-          busy={action.busy}
-          onConfirm={() =>
-            action.run('remove', async (key) => {
-              await parties.removeMember(account, member.member_id, key);
-              return 'Participante removido. As cobranças anteriores foram mantidas.';
-            })
-          }
-        >
-          {name} deixa de pedir corridas pagas pelo grupo. As corridas e cobranças anteriores continuam no extrato e nada
-          é apagado.
-        </ConfirmAction>
+        {removable ? (
+          <ConfirmAction
+            label={`Remover ${name}`}
+            confirmLabel="Confirmar remoção"
+            busy={action.busy}
+            onConfirm={() =>
+              action.run('remove', async (key) => {
+                await parties.removeMember(account, member.member_id, key);
+                return 'Participante removido. As cobranças anteriores foram mantidas.';
+              })
+            }
+          >
+            {name} deixa de pedir corridas pagas pelo grupo. As corridas e cobranças anteriores continuam no extrato e nada
+            é apagado.
+          </ConfirmAction>
+        ) : (
+          <span className="text-sm text-gray-600">Faz parte da administração: só quem é titular remove.</span>
+        )}
       </div>
       {action.message}
     </li>
@@ -219,8 +227,11 @@ function AdminFamily({ account, userId, onChange }: { account: PartyAccount; use
     <article className={card}>
       <h3 className="font-semibold">{account.name}</h3>
       <p className="text-sm">
-        Você administra este grupo e paga as corridas feitas com o perfil do grupo. Você vê preço, recibo e previsão de
-        embarque dessas corridas; as corridas pessoais de cada participante não aparecem aqui.
+        {account.owner
+          ? 'Você é titular deste grupo e paga as corridas feitas com o perfil do grupo.'
+          : 'Você faz parte da administração deste grupo; as corridas feitas com o perfil do grupo são pagas por quem é titular.'}{' '}
+        Você vê preço, recibo e previsão de embarque dessas corridas; as corridas pessoais de cada participante não
+        aparecem aqui.
       </p>
       {typeof account.committed_cents === 'number' && typeof account.monthly_limit_cents === 'number' && (
         <p>
@@ -259,6 +270,7 @@ function AdminFamily({ account, userId, onChange }: { account: PartyAccount; use
               account={account.id}
               member={member}
               position={index + 1}
+              removable={account.owner || member.role !== 'admin'}
               onChange={onChange}
             />
           ))}
@@ -317,6 +329,7 @@ function AdminFamily({ account, userId, onChange }: { account: PartyAccount; use
         </ul>
       )}
       {action.message}
+      <Ownership account={account} userId={userId} onChange={onChange} />
       <Statement account={account.id} />
     </article>
   );

@@ -109,6 +109,10 @@ export const DATABASE_ERROR_CODES = [
   'ride_invoice_closed',
   'ride_minor_unavailable',
   'ride_fleet_review_required',
+  // O17 follow-up (DD118): account ownership transfer
+  'ride_account_owner_required',
+  'ride_transfer_target_invalid',
+  'ride_transfer_dependents_open',
   // O17 stage 6: modalities (market catalog, assistance, reserve, shuttle seats, hourly blocks, intercity)
   'ride_modality_unavailable',
   'ride_assistance_unavailable',
@@ -253,6 +257,12 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
     'A viagem de adolescente não está liberada para este trajeto: confira se o cadastro do dependente foi conferido e está na validade e se a origem e o destino aceitam a faixa etária. Se estiver tudo certo, escolha outro horário ou fale com o plantão.',
   ride_fleet_review_required:
     'Você dirige por uma frota e a cessão do veículo ainda não foi aprovada pela operação, ou os documentos venceram. Confira a situação em Frota e peça à frota que regularize a cessão.',
+  ride_account_owner_required:
+    'Só quem é titular desta conta pode fazer isso. Peça a quem é titular para transferir a conta ou para mudar a administração.',
+  ride_transfer_target_invalid:
+    'A conta só pode ir para outra pessoa que esteja na administração e com o perfil ativo. Nomeie a pessoa para a administração e tente de novo.',
+  ride_transfer_dependents_open:
+    'Você é responsável por dependentes cadastrados neste grupo familiar, e essa responsabilidade não passa para outra pessoa. Retire os dependentes do grupo e tente transferir de novo.',
   ride_modality_unavailable:
     'Esta modalidade não está liberada para este trajeto e horário. Nada foi solicitado. Veja em Modalidades o que está aberto agora ou escolha outro horário.',
   ride_assistance_unavailable:
