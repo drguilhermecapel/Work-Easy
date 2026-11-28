@@ -70,7 +70,7 @@ function Groups({ userId }: { userId: string }) {
           {data && (
             <Suspense fallback={<p role="status">Carregando…</p>}>
               <FamilyPanel accounts={data.accounts} onChange={reload} />
-              <CompanionPanel companions={data.companions} onChange={reload} />
+              <CompanionPanel companions={data.companions} invites={data.companionInvites} onChange={reload} />
               <DependentPanel accounts={data.accounts} dependents={data.dependents} onChange={reload} />
               <section aria-labelledby="viagens-para-outra-pessoa" className="space-y-3">
                 <h2 id="viagens-para-outra-pessoa" className="text-lg font-semibold">

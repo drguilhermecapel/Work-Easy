@@ -1,5 +1,5 @@
 import type { Json } from '../lib/database.types';
-import type { RideLegInput, RideQuote } from './rides';
+import type { RideLegInput } from './rides';
 import { db, nullable, unwrap, unwrapMaybe } from './client';
 
 // Organizations, trip grants, voucher programs and invoices of the ride module (O17 PAR-505..507).
@@ -41,12 +41,14 @@ export interface VoucherProgram {
   budget_cents: number | null;
   committed_cents: number | null;
   ride_value_cents: number;
+  /** What one person may use of the whole program; null when the program sets no individual limit. */
   member_limit_cents: number | null;
+  /** Empty means any area or any class. */
   areas: string[];
   classes: string[];
   group_tag: string | null;
-  valid_from: string | null;
-  valid_until: string | null;
+  valid_from: string;
+  valid_until: string;
   excess_payer: 'rider' | 'none';
   requires_approval: boolean;
 }
@@ -61,6 +63,8 @@ export interface TripGrant {
   status: 'requested' | 'approved' | 'rejected' | 'used' | 'expired';
   valid_from: string;
   valid_until: string;
+  /** Issued by the travel desk for somebody outside the company; nobody decides it. */
+  guest: boolean;
   /** True when the caller is the beneficiary: an approver never decides their own request. */
   mine: boolean;
 }
@@ -97,15 +101,34 @@ export interface IssuedInvite {
 export interface ReportRow {
   /** Local date of the trip (São Paulo), "YYYY-MM-DD". */
   date: string;
+  /** Code of the cost center; the label comes beside it. */
   cost_center: string | null;
+  cost_center_label: string | null;
   member: string;
   ride_class: string | null;
+  /** Cents the company paid and got back in this month, by the day the money moved. */
   voucher_cents: number;
   refunded_cents: number;
+  /** Cents held for a trip of this month whose voucher was not used yet: not an expense. */
+  reserved_cents: number;
+}
+
+export interface CostCenterTotal {
+  cost_center: string | null;
+  cost_center_label: string | null;
+  voucher_cents: number;
+  refunded_cents: number;
+  net_cents: number;
 }
 
 export interface OrgReport {
+  account_id: string;
+  month: string;
   rows: ReportRow[];
+  by_cost_center: CostCenterTotal[];
+  voucher_cents: number;
+  refunded_cents: number;
+  reserved_cents: number;
   /** The closed invoice of this month, when finance has closed it. */
   invoice: { id: string; status: string; total_cents: number; closed_at: string } | null;
 }
@@ -116,21 +139,33 @@ export interface InvoiceLine {
   id: string;
   kind: InvoiceLineKind;
   billable: boolean;
+  /** Local date (São Paulo) of the movement. */
+  date: string;
+  occurred_at: string;
   cost_center: string | null;
-  member: string | null;
+  cost_center_label: string | null;
+  member: string;
   /** Signed: credits are negative. */
   cents: number;
-  occurred_at: string;
-  dispute: { status: 'open' | 'accepted' | 'rejected'; decision: string | null } | null;
+  dispute: { id: string; status: 'open' | 'accepted' | 'rejected'; decision: string | null } | null;
 }
 
 export interface Invoice {
   id: string;
+  account_id: string;
   month: string;
   status: string;
   closed_at: string;
   total_cents: number;
   lines: InvoiceLine[];
+  by_cost_center: {
+    cost_center: string | null;
+    cost_center_label: string | null;
+    voucher_cents: number;
+    refund_cents: number;
+    adjustment_cents: number;
+    billable_cents: number;
+  }[];
 }
 
 export interface VoucherRedemption {
@@ -141,20 +176,28 @@ export interface VoucherRedemption {
   remainder_cents: number;
 }
 
-export interface GuestInviteAnswer {
-  status: string;
-  ride_id: string | null;
+/** What a company's guest reads before answering: who invites, areas and time. Never a price. */
+export interface GuestInviteView {
+  id: string;
+  status: 'pending' | 'accepted' | 'declined' | 'expired' | 'revoked';
+  account_name: string;
+  /** Areas only; empty once the invite is closed. */
+  legs: { seq: number; origin: string; destination: string; pickup_at: string | null }[];
+  scheduled_at: string | null;
+  expires_at: string;
+  simulation: boolean;
 }
 
-/** What a professional quote answers: the rider stays the payer and the legs carry the company's share. */
-export type FundedQuote = Pick<RideQuote, 'id' | 'expires_at' | 'total_cents' | 'legs'>;
+export interface GuestInviteAnswer {
+  status: 'accepted' | 'declined';
+  quote_id: string | null;
+  ride_id: string | null;
+}
 
 export const business = {
   /** The organizations the caller belongs to (family and fleet accounts have their own screens). */
   accounts: async () => {
-    // The database answers a plain list; the envelope is accepted too because the family screens read one.
-    const data = unwrapMaybe<OrgAccount[] | { accounts?: OrgAccount[] }>(await db().rpc('ride_my_accounts'));
-    const rows = Array.isArray(data) ? data : (data?.accounts ?? []);
+    const rows = unwrapMaybe<OrgAccount[]>(await db().rpc('ride_my_accounts')) ?? [];
     return rows
       .filter((account) => account.kind === 'organization')
       .map((account) => ({ ...account, members: account.members ?? [], invites: account.invites ?? [] }));
@@ -173,9 +216,9 @@ export const business = {
     ),
   /** The issuer or an admin ends a pending invite; false when it was no longer pending. */
   revokeInvite: async (id: string) => unwrap<boolean>(await db().rpc('ride_revoke_account_invite', { p_id: id })),
-  /** Answers nothing; a refusal arrives as an error. */
+  /** Admin only, never for the owner; `group` null clears the group. A refusal arrives as an error. */
   setRole: async (account: string, member: string, role: OrgRole, group: string | null) => {
-    unwrapMaybe<null>(
+    unwrap<boolean>(
       await db().rpc('ride_set_member_role', {
         p_account: account,
         p_member: member,
@@ -212,8 +255,11 @@ export const business = {
         p_key: key,
       }),
     ),
+  /** Answers the state the request ended in: a lapsed request answers 'expired' whatever was asked. */
   decideGrant: async (grant: string, approve: boolean) =>
-    unwrap<string>(await db().rpc('ride_decide_trip_grant', { p_grant: grant, p_approve: approve })),
+    unwrap<'approved' | 'rejected' | 'used' | 'expired'>(
+      await db().rpc('ride_decide_trip_grant', { p_grant: grant, p_approve: approve }),
+    ),
   inviteGuest: async (
     account: string,
     program: string,
@@ -236,6 +282,8 @@ export const business = {
         p_key: key,
       }),
     ),
+  /** Ends a pending guest invite and its authorization; false when it was no longer pending. */
+  revokeGuestInvite: async (id: string) => unwrap<boolean>(await db().rpc('ride_revoke_guest_invite', { p_id: id })),
   /** `month` is the first day of the month, "YYYY-MM-01". */
   report: async (account: string, month: string) =>
     unwrap<OrgReport>(await db().rpc('ride_org_report', { p_account: account, p_month: month })),
@@ -246,26 +294,6 @@ export const business = {
     unwrap<string>(await db().rpc('ride_dispute_invoice_line', { p_line: line, p_reason: reason, p_key: key })),
 };
 
-/** A ride on the professional profile; a personal ride is the plain `quoteRide`. */
-export const quoteFunded = async (
-  key: string,
-  scheduledAt: string | null,
-  legs: RideLegInput[],
-  program: string,
-  costCenter: string,
-  grant: string | null = null,
-) =>
-  unwrap<FundedQuote>(
-    await db().rpc('ride_quote_funded', {
-      p_key: key,
-      p_scheduled_at: nullable(scheduledAt)!,
-      p_legs: legs.map((leg) => ({ ...leg })) satisfies Json,
-      p_program: program,
-      p_cost_center: costCenter,
-      p_grant: nullable(grant),
-    }),
-  );
-
 /**
  * Applies the company voucher to a completed leg, in the payer's own session. What the voucher does
  * not cover stays on the same payment order for `method`. A replay answers the same result.
@@ -273,9 +301,14 @@ export const quoteFunded = async (
 export const redeemVoucher = async (leg: string, method: VoucherMethod) =>
   unwrap<VoucherRedemption>(await db().rpc('ride_redeem_voucher', { p_leg: leg, p_method: method }));
 
+/** The guest invite of a token, for the confirmed recipient only; null for anyone else. */
+export const guestInvite = async (token: string) =>
+  unwrapMaybe<GuestInviteView>(await db().rpc('ride_guest_invite', { p_token: token }));
+
 /**
  * Answer of the invited guest. Accepting creates the funded quote and the consent in the guest's
- * own session; a token that is not a guest invite for this account raises `ride_invite_unavailable`.
+ * own session; a token that is not a guest invite for this account raises `ride_invite_unavailable`,
+ * and a fare above the voucher raises `ride_voucher_unavailable` (the guest never owes anything).
  */
 export const answerGuestInvite = async (token: string, accept: boolean, key: string) =>
   unwrap<GuestInviteAnswer>(

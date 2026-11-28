@@ -63,12 +63,27 @@ describe('check-bundle-size', () => {
 
   it('keeps the per-page limit on optional mobility routes and adds their combined cost', () => {
     const dist = makeDist(Buffer.from('0'));
-    for (const name of ['Corridas','Motorista','Operacao','RideDriverIdentity','RideAftercare','RideCheckout']) {
-      writeFileSync(join(dist, 'assets', name + '-AbC123xY.js'), randomBytes(14_000));
-    }
-    expect(runGate(dist).stdout).toMatch(/ACIMA jornadas opcionais/);
-    writeFileSync(join(dist, 'assets', 'Corridas-AbC123xY.js'), randomBytes(17_000));
+    const chunk = (name: string, bytes = 14_000) => writeFileSync(join(dist, 'assets', name + '-AbC123xY.js'), randomBytes(bytes));
+    // Six rider, driver and operation chunks at 14 kB: 84 kB, inside the 150 kB of the group
+    for (const name of ['Corridas', 'Motorista', 'Operacao', 'RideDriverIdentity', 'RideAftercare', 'RideCheckout']) chunk(name);
+    expect(runGate(dist).status).toBe(0);
+    // The pages of groups, company and fleet, the invite views and the operator console belong to the same group
+    for (const name of ['Grupos', 'Empresa', 'Frota', 'FleetPanel', 'RideParties', 'AccountInvite']) chunk(name);
+    const over = runGate(dist);
+    expect(over.stdout).toMatch(/ACIMA jornadas opcionais/);
+    expect(over.stdout).not.toMatch(/ACIMA JavaScript do app/);
+    chunk('Corridas', 17_000);
     expect(runGate(dist).stdout).toMatch(/ACIMA maior página/);
+  });
+
+  it('charges a mobility chunk that index.html loads to the first load, not to the optional group', () => {
+    const dist = makeDist(Buffer.from('0'));
+    const name = 'Grupos-AbC123xY.js';
+    writeFileSync(join(dist, 'assets', name), randomBytes(200_000));
+    writeFileSync(join(dist, 'index.html'), '<script src="/assets/' + name + '"></script>');
+    const result = runGate(dist);
+    expect(result.stdout).toMatch(/ACIMA carga inicial/);
+    expect(result.stdout).not.toMatch(/ACIMA jornadas opcionais/);
   });
 
   it('exits with 2 when there is no build to read', () => {

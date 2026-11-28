@@ -40,14 +40,16 @@ const family: PartyAccount = {
   name: 'Família Teste',
   role: 'admin',
   owner: true,
+  verified: true,
+  group_tag: null,
   monthly_limit_cents: 10000,
   committed_cents: 8000,
   member_limit_cents: null,
   default_method: 'pix',
   mandate_id: null,
   members: [
-    { member_id: 'titular', name: 'Titular', role: 'admin', status: 'active', member_limit_cents: null },
-    { member_id: 'bia', name: 'Bia', role: 'member', status: 'active', member_limit_cents: 4000 },
+    { member_id: 'titular', name: 'Titular', role: 'admin', status: 'active', member_limit_cents: null, group_tag: null },
+    { member_id: 'bia', name: 'Bia', role: 'member', status: 'active', member_limit_cents: 4000, group_tag: null },
   ],
   invites: [{ id: 'pendente', role: 'member', expires_at: '2090-12-01T14:00:00Z', status: 'pending' }],
 };
@@ -62,7 +64,7 @@ const asMember: PartyAccount = {
   members: [],
   invites: [],
 };
-const empty: PartyOverview = { accounts: [], mandates: [], companions: [], dependents: [], programs: [] };
+const empty: PartyOverview = { accounts: [], mandates: [], companions: [], companionInvites: [], dependents: [], programs: [] };
 const dashboard = { enabled: true, simulation: true } as RideDashboard;
 const change = vi.fn();
 const panel = (accounts: PartyAccount[]) =>
@@ -139,10 +141,13 @@ describe('grupo familiar', () => {
     vi.mocked(parties.revokeAccountInvite).mockResolvedValue(true);
     panel([family]);
     fireEvent.change(screen.getByLabelText('E-mail do participante'), { target: { value: 'leo@exemplo.test' } });
+    // An adhesion invite may stay open for days: the default is one day, and the person may choose up to seven
+    expect(screen.getByLabelText('Validade do convite')).toHaveValue('1440');
+    fireEvent.change(screen.getByLabelText('Validade do convite'), { target: { value: '10080' } });
     fireEvent.click(screen.getByRole('button', { name: 'Gerar convite de adesão' }));
     const link = (await screen.findByLabelText('Link do convite')) as HTMLInputElement;
     expect(link.value).toMatch(new RegExp('/corridas/convite#adesao=' + token + '$'));
-    expect(parties.inviteMember).toHaveBeenCalledWith('grupo', 'leo@exemplo.test', 'member', 60, expect.any(String));
+    expect(parties.inviteMember).toHaveBeenCalledWith('grupo', 'leo@exemplo.test', 'member', 10080, expect.any(String));
     const pending = screen.getByRole('list', { name: 'Convites pendentes' });
     fireEvent.click(within(pending).getByRole('button', { name: 'Revogar convite' }));
     expect(parties.revokeAccountInvite).not.toHaveBeenCalled();
@@ -166,6 +171,8 @@ describe('grupo familiar', () => {
       refunded_cents: 0,
     };
     vi.mocked(parties.statement).mockResolvedValue({
+      account_id: 'grupo',
+      default_method: 'pix',
       month: '2090-12-01',
       role: 'admin',
       monthly_limit_cents: 10000,
@@ -181,6 +188,8 @@ describe('grupo familiar', () => {
     expect(vi.mocked(parties.statement).mock.calls[0]).toEqual(['grupo', expect.stringMatching(/^\d{4}-\d{2}-01$/)]);
     admin.unmount();
     vi.mocked(parties.statement).mockResolvedValue({
+      account_id: 'grupo',
+      default_method: 'pix',
       month: '2090-12-01',
       role: 'member',
       monthly_limit_cents: null,
@@ -260,7 +269,8 @@ describe('quem viaja e quem paga', () => {
     ...empty,
     mandates: [
       { id: 'mandato', kind: 'family', account_id: 'grupo', payer_label: 'Família Teste', ceiling_cents: null, limit_cents: 5000, valid_until: null },
-      { id: 'usado', kind: 'sponsor', account_id: null, payer_label: 'Outra pessoa', ceiling_cents: 3000, limit_cents: null, valid_until: null },
+      { id: 'vencido', kind: 'companion', account_id: null, payer_label: 'Outra pessoa', ceiling_cents: 3000, limit_cents: null, valid_until: '2020-01-01T00:00:00Z' },
+      { id: 'acompanhante', kind: 'companion', account_id: null, payer_label: 'Tio Beto', ceiling_cents: 15000, limit_cents: null, valid_until: null },
     ],
     programs: [
       {
@@ -269,6 +279,8 @@ describe('quem viaja e quem paga', () => {
         account_name: 'Empresa Teste',
         label: 'Visitas',
         requires_approval: true,
+        excess_payer: 'rider',
+        ride_value_cents: 4000,
         cost_centers: [
           { id: 'cc1', code: 'ADM', label: 'Administrativo' },
           { id: 'cc2', code: 'OBR', label: 'Obras' },
@@ -296,64 +308,106 @@ describe('quem viaja e quem paga', () => {
     fireEvent.click(screen.getByLabelText(/o grupo familiar Família Teste paga · seu limite mensal é R\$\s50,00/));
     expect(seen).toHaveBeenLastCalledWith({ kind: 'mandate', mandate: 'mandato' });
     expect(screen.getByText(/Quem paga vê o preço, o recibo e a previsão de embarque/)).toBeVisible();
+    expect(screen.getByLabelText(/Tio Beto, acompanhante, paga · até R\$\s150,00 por corrida/)).toBeVisible();
     fireEvent.click(screen.getByLabelText('Eu viajo a trabalho · Empresa Teste · Visitas'));
-    expect(seen).toHaveBeenLastCalledWith({ kind: 'funded', program: 'programa', costCenter: '', grant: null });
+    expect(seen).toHaveBeenLastCalledWith({ kind: 'funded', program: 'programa', costCenter: '', grant: null, approval: true });
     expect(fundingProblem(seen.mock.lastCall![0])).toMatch(/centro de custo/);
+    expect(screen.getByText(/A empresa paga até R\$\s40,00 por corrida\. Se o preço passar disso, a diferença aparece na cotação/)).toBeVisible();
+    // A program that asks for approval cannot be quoted before an approved authorization is chosen
+    fireEvent.change(screen.getByLabelText('Centro de custo'), { target: { value: 'cc1' } });
+    expect(fundingProblem(seen.mock.lastCall![0])).toMatch(/autorização aprovada/);
     fireEvent.change(screen.getByLabelText('Autorização aprovada'), { target: { value: 'aut' } });
-    expect(seen).toHaveBeenLastCalledWith({ kind: 'funded', program: 'programa', costCenter: 'cc2', grant: 'aut' });
+    expect(seen).toHaveBeenLastCalledWith({ kind: 'funded', program: 'programa', costCenter: 'cc2', grant: 'aut', approval: true });
     expect(fundingProblem(seen.mock.lastCall![0])).toBeNull();
     expect(screen.getByLabelText('Centro de custo')).toHaveValue('cc2');
     expectAccessibleScreen();
   });
 
-  it('lê as contas do servidor e deriva o mandato familiar e os programas da empresa', async () => {
+  it('lê as contas e os acompanhantes do servidor e deriva mandatos, dependentes e programas', async () => {
     const actual = await vi.importActual<typeof import('../../services/rideParties')>('../../services/rideParties');
-    rpc.mockResolvedValue({
-      error: null,
-      data: [
-        family,
-        asMember,
-        {
-          ...asMember,
-          id: 'empresa',
-          kind: 'organization',
-          name: 'Empresa Teste',
-          mandate_id: null,
-          verified: true,
-          cost_centers: [
-            { id: 'cc1', code: 'ADM', label: 'Administrativo', active: true },
-            { id: 'cc0', code: 'OLD', label: 'Encerrado', active: false },
-          ],
-          programs: [
-            { id: 'programa', label: 'Visitas', enabled: true, requires_approval: true },
-            { id: 'parado', label: 'Parado', enabled: false, requires_approval: false },
-          ],
-          grants: [
-            { id: 'aut', program_id: 'programa', cost_center_id: 'cc1', purpose: 'Visita', status: 'approved', valid_until: '2090-12-31T00:00:00Z', mine: true },
-            { id: 'de-outro', program_id: 'programa', cost_center_id: 'cc1', purpose: 'Outra', status: 'approved', valid_until: '2090-12-31T00:00:00Z', mine: false },
-          ],
-        },
-      ],
-    });
+    const program = {
+      label: 'Visitas',
+      enabled: true,
+      requires_approval: true,
+      excess_payer: 'none',
+      ride_value_cents: 4000,
+      group_tag: null,
+      valid_from: '2020-01-01T00:00:00Z',
+      valid_until: '2090-12-31T00:00:00Z',
+    };
+    const dependent = {
+      id: 'dep',
+      account_id: 'grupo',
+      label: 'Nina',
+      age_band: '13-15',
+      legal_basis: 'parental_authority',
+      status: 'verified',
+      valid_until: '2090-06-30',
+      legs: [{ leg_id: 'trecho-nina', status: 'accepted', pickup_at: '2090-12-01T15:00:00Z' }],
+    };
+    const accounts = [
+      { ...family, dependents: [dependent] },
+      asMember,
+      {
+        ...asMember,
+        id: 'empresa',
+        kind: 'organization',
+        name: 'Empresa Teste',
+        mandate_id: null,
+        group_tag: 'campo',
+        cost_centers: [
+          { id: 'cc1', code: 'ADM', label: 'Administrativo', active: true },
+          { id: 'cc0', code: 'OLD', label: 'Encerrado', active: false },
+        ],
+        programs: [
+          { ...program, id: 'programa' },
+          { ...program, id: 'parado', label: 'Parado', enabled: false },
+          { ...program, id: 'encerrado', label: 'Encerrado', valid_until: '2021-01-01T00:00:00Z' },
+          { ...program, id: 'de-outro-grupo', label: 'Diretoria', group_tag: 'diretoria' },
+          { ...program, id: 'do-grupo', label: 'Campo', group_tag: 'campo', requires_approval: false },
+        ],
+        grants: [
+          { id: 'aut', program_id: 'programa', cost_center_id: 'cc1', purpose: 'Visita', status: 'approved', valid_until: '2090-12-31T00:00:00Z', mine: true },
+          { id: 'de-outro', program_id: 'programa', cost_center_id: 'cc1', purpose: 'Outra', status: 'approved', valid_until: '2090-12-31T00:00:00Z', mine: false },
+          { id: 'usada', program_id: 'programa', cost_center_id: 'cc1', purpose: 'Antiga', status: 'used', valid_until: '2090-12-31T00:00:00Z', mine: true },
+        ],
+      },
+      // A company whose check lapsed offers no program
+      { ...asMember, id: 'vencida', kind: 'organization', name: 'Vencida', mandate_id: null, verified: false, programs: [{ ...program, id: 'x' }] },
+    ];
+    const links = {
+      companions: [{ owner_id: 'titular', companion_id: 'beto', label: 'Tio Beto', mine: true, notices: ['arriving'], pays: true, since: '2090-01-01T00:00:00Z' }],
+      mandates: [{ id: 'm-beto', kind: 'companion', account_id: null, payer_label: 'Tio Beto', ceiling_cents: 15000, limit_cents: null, valid_until: null }],
+      invites: [{ id: 'c1', status: 'pending', notices: ['arriving'], pays: false, expires_at: '2090-12-01T14:00:00Z' }],
+    };
+    rpc.mockImplementation(async (name: string) => ({ error: null, data: name === 'ride_my_accounts' ? accounts : links }));
     const overview = await actual.parties.overview();
-    expect(rpc).toHaveBeenCalledWith('ride_my_accounts');
-    expect(overview.accounts.map((a) => a.id)).toEqual(['grupo', 'grupo', 'empresa']);
+    expect(rpc.mock.calls.map(([name]) => name).sort()).toEqual(['ride_my_accounts', 'ride_my_companions']);
+    expect(overview.accounts.map((a) => a.id)).toEqual(['grupo', 'grupo', 'empresa', 'vencida']);
     expect(overview.mandates).toEqual([
       { id: 'mandato', kind: 'family', account_id: 'grupo', payer_label: 'Família Teste', ceiling_cents: null, limit_cents: 4000, valid_until: null },
+      links.mandates[0],
     ]);
-    expect(overview.programs).toEqual([
-      {
-        program_id: 'programa',
-        account_id: 'empresa',
-        account_name: 'Empresa Teste',
-        label: 'Visitas',
-        requires_approval: true,
-        cost_centers: [{ id: 'cc1', code: 'ADM', label: 'Administrativo', active: true }],
-        grants: [expect.objectContaining({ id: 'aut' })],
-      },
-    ]);
-    expect(overview.companions).toEqual([]);
-    expect(overview.dependents).toEqual([]);
+    expect(overview.programs.map((item) => item.program_id)).toEqual(['programa', 'do-grupo']);
+    expect(overview.programs[0]).toEqual({
+      program_id: 'programa',
+      account_id: 'empresa',
+      account_name: 'Empresa Teste',
+      label: 'Visitas',
+      requires_approval: true,
+      excess_payer: 'none',
+      ride_value_cents: 4000,
+      cost_centers: [{ id: 'cc1', code: 'ADM', label: 'Administrativo', active: true }],
+      grants: [expect.objectContaining({ id: 'aut' })],
+    });
+    expect(overview.companions).toEqual(links.companions);
+    expect(overview.companionInvites).toEqual(links.invites);
+    expect(overview.dependents).toEqual([dependent]);
+    // The legs that carry a dependent, for the guardian's watch on the ride page
+    rpc.mockClear();
+    expect(await actual.parties.dependentLegs()).toEqual({ 'trecho-nina': 'Nina' });
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledWith('ride_my_accounts');
   });
 
   it('roteia a cotação para a chamada do servidor que corresponde à escolha', async () => {
@@ -364,7 +418,7 @@ describe('quem viaja e quem paga', () => {
     const base = { p_key: 'chave', p_scheduled_at: null, p_legs: legs };
     expect(await quoteRideFor({ kind: 'mandate', mandate: 'mandato' }, 'chave', null, legs)).toEqual(quoted);
     expect(rpc).toHaveBeenLastCalledWith('ride_quote_sponsored', { ...base, p_mandate: 'mandato' });
-    await quoteRideFor({ kind: 'funded', program: 'programa', costCenter: 'cc1', grant: null }, 'chave', null, legs);
+    await quoteRideFor({ kind: 'funded', program: 'programa', costCenter: 'cc1', grant: null, approval: false }, 'chave', null, legs);
     expect(rpc).toHaveBeenLastCalledWith('ride_quote_funded', { ...base, p_program: 'programa', p_cost_center: 'cc1', p_grant: null });
     await quoteRideFor({ kind: 'dependent', dependent: 'dep', consent: true }, 'chave', '2090-12-01T15:00:00Z', legs);
     expect(rpc).toHaveBeenLastCalledWith('ride_quote_for_dependent', {

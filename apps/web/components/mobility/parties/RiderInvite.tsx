@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import ErrorAlert from '../../ErrorAlert';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -13,11 +13,15 @@ const CLOSED: Record<string, string> = {
   declined: 'Este convite foi recusado.',
   expired: 'Este convite expirou. Peça um novo a quem convidou.',
   revoked: 'Quem convidou revogou este convite.',
-  reprice: 'O preço passou do valor autorizado por quem convidou. Nada foi cobrado: peça um novo convite.',
 };
+const CHANNELS = { email: 'e-mail', phone: 'telefone' };
 
-/** The rider's view of a ride someone else offered to pay (fragment `#viagem=`). */
-export default function RiderInvite({ token }: { token: string }) {
+/**
+ * The rider's view of a ride someone else offered to pay (fragment `#viagem=`). The same fragment
+ * carries a company's guest invite: when this token is not a ride invite for the account, the
+ * page shows `fallback` instead of the unavailable notice.
+ */
+export default function RiderInvite({ token, fallback }: { token: string; fallback?: ReactNode }) {
   const { authUser } = useAuth();
   const result = useAsync(
     () => (token ? parties.riderInvite(token) : Promise.resolve(null)),
@@ -35,6 +39,7 @@ export default function RiderInvite({ token }: { token: string }) {
       return accept ? 'Viagem pedida. O embarque aparece em Corridas.' : 'Convite recusado. Nenhuma viagem foi pedida.';
     });
 
+  if (fallback && !invite && !result.loading && !result.error && !answer) return <>{fallback}</>;
   return (
     <main className="mx-auto max-w-lg space-y-4 p-5">
       <h1 className="text-xl font-semibold">Convite de viagem</h1>
@@ -68,16 +73,20 @@ export default function RiderInvite({ token }: { token: string }) {
               <span className="font-semibold">Instruções de quem convidou:</span> {invite.instructions}
             </p>
           )}
-          {invite.support?.address ? (
+          {invite.support ? (
             <p className="text-sm">
-              Ajuda humana{invite.support.team ? ` · ${invite.support.team}` : ''}: {invite.support.address}
+              Ajuda humana · {invite.support.team} por {CHANNELS[invite.support.channel]}: {invite.support.address}
+              {invite.support.on_duty ? ' · plantão em atendimento agora' : ' · fora do horário de plantão agora'}
             </p>
           ) : (
             <p className="text-sm">Depois do aceite, o contato do plantão aparece no trecho, em Corridas.</p>
           )}
           {pending ? (
             <>
-              <p className="text-sm text-gray-600">Convite válido até {until(invite.expires_at)}.</p>
+              <p className="text-sm text-gray-600">
+                Convite válido até {until(invite.expires_at)}. O preço é conferido de novo no aceite: se passar do valor
+                autorizado por quem convidou, a viagem não é pedida e nada é cobrado.
+              </p>
               <div className="flex flex-wrap items-center gap-4">
                 <button type="button" className={primary} disabled={action.busy} onClick={() => void decide(true)}>
                   Aceitar e pedir a viagem

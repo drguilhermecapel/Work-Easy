@@ -5,18 +5,12 @@ import { card, cardTitle, hint } from './shared';
 
 function state(program: VoucherProgram, now: number) {
   if (!program.enabled) return 'Pausado';
-  if (program.valid_until && Date.parse(program.valid_until) <= now) return 'Encerrado';
-  if (program.valid_from && Date.parse(program.valid_from) > now) return 'Ainda não começou';
+  if (Date.parse(program.valid_until) <= now) return 'Encerrado';
+  if (Date.parse(program.valid_from) > now) return 'Ainda não começou';
   return 'Ativo';
 }
 
-function validity(program: VoucherProgram) {
-  if (program.valid_from && program.valid_until)
-    return formatDateBR(program.valid_from) + ' a ' + formatDateBR(program.valid_until);
-  if (program.valid_until) return 'até ' + formatDateBR(program.valid_until);
-  if (program.valid_from) return 'a partir de ' + formatDateBR(program.valid_from);
-  return 'sem prazo definido';
-}
+const validity = (program: VoucherProgram) => formatDateBR(program.valid_from) + ' a ' + formatDateBR(program.valid_until);
 
 function Budget({ program }: { program: VoucherProgram }) {
   const { budget_cents: budget, committed_cents: committed } = program;
@@ -69,7 +63,7 @@ export default function Programs({ programs, now }: { programs: VoucherProgram[]
               <ul className="space-y-1 text-sm">
                 <li>Valor por corrida: até {formatCents(program.ride_value_cents)}.</li>
                 <li>
-                  Limite por colaborador:{' '}
+                  Limite por pessoa no programa inteiro:{' '}
                   {typeof program.member_limit_cents === 'number'
                     ? formatCents(program.member_limit_cents)
                     : 'sem limite individual'}
@@ -97,8 +91,9 @@ export default function Programs({ programs, now }: { programs: VoucherProgram[]
         <p>Esta empresa ainda não tem programa de voucher. Sem programa, as corridas seguem pelo perfil pessoal.</p>
       )}
       <p className={hint}>
-        O comprometido soma as viagens aceitas e não canceladas. Só a parcela de fato estornada volta ao orçamento.
-        Programas e orçamentos são cadastrados pelo financeiro WorkEasy: para contratar ou alterar, fale com o plantão.
+        O comprometido soma as viagens aceitas e não canceladas; um voucher não usado deixa de contar 30 dias depois da
+        viagem. Só a parcela de fato estornada volta ao orçamento. Programas e orçamentos são cadastrados pelo financeiro
+        WorkEasy: para contratar ou alterar, fale com o plantão.
       </p>
     </section>
   );

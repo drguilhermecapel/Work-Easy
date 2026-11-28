@@ -30,7 +30,6 @@ const STATUS: Record<string, string> = {
   declined: 'Recusado',
   expired: 'Expirado',
   revoked: 'Revogado',
-  reprice: 'O preço passou do valor autorizado',
 };
 
 /** "Pedir para outra pessoa" on the caller's own awaiting quote: turns the quote into a single-use invite. */
@@ -89,7 +88,8 @@ export default function InviteRider({
       <h4 className="font-semibold">Pedir para outra pessoa</h4>
       <p className="text-sm">
         A pessoa convidada viaja e você paga até {formatCents(totalCents)}. Esta cotação dá lugar ao convite: o preço é
-        conferido de novo no aceite e, se passar desse valor, nada é cobrado e um novo convite é necessário.
+        conferido de novo no aceite e, se passar desse valor, nada é cobrado e a viagem não é pedida. O convite leva só as
+        áreas de origem e destino e o horário.
       </p>
       <label className="block">
         E-mail de quem vai viajar
@@ -127,7 +127,8 @@ export default function InviteRider({
 }
 
 /** The sponsor's invites, with the link of the one just created and the revocation of pending ones. */
-export function SentRiderInvites({ emptyText }: { emptyText?: string }) {
+export function SentRiderInvites({ emptyText, level = 3 }: { emptyText?: string; /** Heading level that fits where the list is mounted. */ level?: 2 | 3 }) {
+  const Heading = level === 2 ? 'h2' : 'h3';
   const revision = useFreshLinks();
   const result = useSafetyPoll(() => parties.riderInvites(), 'rider-invites');
   const reload = result.reload;
@@ -141,7 +142,7 @@ export function SentRiderInvites({ emptyText }: { emptyText?: string }) {
     return emptyText && !result.loading ? <p className="text-sm text-gray-600">{emptyText}</p> : null;
   return (
     <section aria-label="Convites de viagem enviados" className={card}>
-      <h3 className="font-semibold">Convites de viagem enviados</h3>
+      <Heading className="font-semibold">Convites de viagem enviados</Heading>
       <ErrorAlert error={result.error} />
       <ul className="space-y-3">
         {invites.map((invite) => {
@@ -153,7 +154,10 @@ export function SentRiderInvites({ emptyText }: { emptyText?: string }) {
               </p>
               {invite.status === 'pending' && <p className="text-sm text-gray-600">Válido até {until(invite.expires_at)}</p>}
               {invite.status === 'accepted' && (
-                <p className="text-sm text-gray-600">Para cancelar depois do aceite, use o trecho em Corridas.</p>
+                <p className="text-sm text-gray-600">
+                  Para cancelar depois do aceite, use o trecho em Corridas. Convites encerrados saem desta lista um dia
+                  depois da resposta.
+                </p>
               )}
               {invite.status === 'pending' && link && <InviteLink link={link.link} expires={link.expires} />}
               {invite.status === 'pending' && (

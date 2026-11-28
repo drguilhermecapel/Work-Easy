@@ -217,7 +217,7 @@ export default function DependentPanel({
       ) : (
         <p className="text-sm text-gray-600">
           Para cadastrar um dependente, crie antes um grupo familiar nesta página: o cadastro fica ligado ao grupo que
-          você administra.
+          você administra, e só quem administra o grupo pede e acompanha as viagens do dependente.
         </p>
       )}
     </section>

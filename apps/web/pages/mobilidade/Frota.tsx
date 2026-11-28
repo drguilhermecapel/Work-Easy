@@ -73,16 +73,17 @@ function AccountStatus({ account }: { account: FleetAccount }) {
           Frota conferida pela operação
           {account.verified_until && ' · conferência válida até ' + formatDateBR(account.verified_until)}.
         </p>
+      ) : account.verified_until ? (
+        <p role="status" className={banner}>
+          A conferência desta frota deixou de valer em {formatDateBR(account.verified_until)}. Até a operação WorkEasy
+          conferir de novo, os motoristas da frota não recebem ofertas e não é possível salvar veículos nem convidar
+          pessoas.
+        </p>
       ) : (
-        <div role="status" className={banner + ' space-y-2'}>
-          <p>
-            Em análise pela operação WorkEasy. Você não precisa fazer nada agora: quando a conferência do contrato e dos
-            dados terminar, veículos, motoristas e o resumo do mês aparecem aqui.
-          </p>
-          <p>
-            Se a operação pedir, informe o código da conta: <span className="break-all font-mono">{account.id}</span>
-          </p>
-        </div>
+        <p role="status" className={banner}>
+          Em análise pela operação WorkEasy. A conta já está na fila de conferência e você não precisa fazer nada agora:
+          quando a conferência do contrato e dos dados terminar, veículos, motoristas e o resumo do mês aparecem aqui.
+        </p>
       )}
     </section>
   );
@@ -180,7 +181,8 @@ function Workspace({ userId }: { userId: string }) {
             </label>
           )}
           <AccountStatus account={account} />
-          {account.verified && (
+          {/* A driver always reaches the membership card: leaving the fleet must not depend on its review. */}
+          {(account.verified || !!account.verified_until || account.role === 'fleet_driver') && (
             <Suspense fallback={<p role="status">Carregando a frota…</p>}>
               <FleetPanel key={account.id} account={account} userId={userId} refresh={reload} onLeft={setNotice} />
             </Suspense>

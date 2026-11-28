@@ -27,40 +27,37 @@ const DISPUTES = { open: 'Contestação em análise', accepted: 'Contestação a
 const cell = 'px-2 py-1.5 text-left align-top';
 const amount = 'px-2 py-1.5 text-right align-top whitespace-nowrap';
 
+const center = (code: string | null, label: string | null) => (code ? code + (label ? ' · ' + label : '') : 'Sem centro de custo');
+
 function Report({ report, month }: { report: OrgReport; month: string }) {
-  const centers = new Map<string, number>();
-  let voucher = 0;
-  let refunded = 0;
-  for (const row of report.rows) {
-    const name = row.cost_center ?? 'Sem centro de custo';
-    centers.set(name, (centers.get(name) ?? 0) + row.voucher_cents - row.refunded_cents);
-    voucher += row.voucher_cents;
-    refunded += row.refunded_cents;
-  }
   if (!report.rows.length)
-    return <p>Nenhum valor pago pela empresa em {monthName(month)}. Escolha outra competência para consultar.</p>;
+    return <p>Nenhum valor pago ou reservado pela empresa em {monthName(month)}. Escolha outra competência para consultar.</p>;
   return (
     <>
       <p role="status" className="font-semibold">
-        Voucher {formatCents(voucher)} · Estornos {formatCents(refunded)} · Líquido {formatCents(voucher - refunded)}
+        Voucher {formatCents(report.voucher_cents)} · Estornos {formatCents(report.refunded_cents)} · Líquido{' '}
+        {formatCents(report.voucher_cents - report.refunded_cents)}
+        {report.reserved_cents > 0 && ` · Reservado e ainda não usado ${formatCents(report.reserved_cents)}`}
       </p>
-      <div>
-        <h3 className="font-semibold">Líquido por centro de custo</h3>
-        <ul className="text-sm">
-          {[...centers].map(([name, cents]) => (
-            <li key={name}>
-              {name}: {formatCents(cents)}
-            </li>
-          ))}
-        </ul>
-      </div>
+      {report.by_cost_center.length > 0 && (
+        <div>
+          <h3 className="font-semibold">Líquido por centro de custo</h3>
+          <ul className="text-sm">
+            {report.by_cost_center.map((item) => (
+              <li key={item.cost_center ?? ''}>
+                {center(item.cost_center, item.cost_center_label)}: {formatCents(item.net_cents)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <caption className="sr-only">Viagens pela empresa em {monthName(month)}</caption>
           <thead>
             <tr className="border-b border-gray-200">
               <th scope="col" className={cell}>
-                Data
+                Data da viagem
               </th>
               <th scope="col" className={cell}>
                 Centro de custo
@@ -77,22 +74,30 @@ function Report({ report, month }: { report: OrgReport; month: string }) {
               <th scope="col" className={amount}>
                 Estornado
               </th>
+              <th scope="col" className={amount}>
+                Reservado
+              </th>
             </tr>
           </thead>
           <tbody>
             {report.rows.map((row, index) => (
               <tr key={index} className="border-b border-gray-100">
                 <td className={cell}>{formatDateBR(row.date)}</td>
-                <td className={cell}>{row.cost_center ?? '—'}</td>
+                <td className={cell}>{center(row.cost_center, row.cost_center_label)}</td>
                 <td className={cell}>{row.member}</td>
                 <td className={cell}>{row.ride_class ?? '—'}</td>
                 <td className={amount}>{formatCents(row.voucher_cents)}</td>
                 <td className={amount}>{formatCents(row.refunded_cents)}</td>
+                <td className={amount}>{formatCents(row.reserved_cents)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      <p className={hint}>
+        Voucher e estorno entram no mês em que o dinheiro se moveu. O reservado é o voucher de uma viagem deste mês que
+        ainda não foi usado: não é despesa e não entra na fatura.
+      </p>
     </>
   );
 }
@@ -110,8 +115,7 @@ function Line({ line, refresh }: { line: InvoiceLine; refresh: () => void }) {
         {!line.billable && ' · informativo, fora do total'}
       </p>
       <p className={hint}>
-        {line.cost_center ?? 'Sem centro de custo'}
-        {line.member && ' · ' + line.member}
+        {center(line.cost_center, line.cost_center_label)} · {line.member}
       </p>
       {line.dispute ? (
         <p>
@@ -152,7 +156,8 @@ function Line({ line, refresh }: { line: InvoiceLine; refresh: () => void }) {
           </div>
         </div>
       ) : (
-        line.billable && (
+        // Only a charge is contested: credits and the rider's own complement are not billed to the company.
+        line.kind === 'voucher' && (
           <button type="button" className="text-sm text-primary underline" onClick={() => setOpen(true)}>
             Contestar este item
           </button>
@@ -253,8 +258,10 @@ export default function Invoices({ account }: { account: OrgAccount }) {
             <ClosedInvoice key={report.invoice.id} summary={report.invoice} month={month} />
           ) : (
             <p>
-              Esta competência ainda não foi fechada pelo financeiro WorkEasy. Os valores do relatório podem mudar até
-              o fechamento; estornos posteriores entram como crédito na fatura do mês em que ocorrerem.
+              {month >= current
+                ? 'A fatura de um mês só é fechada depois que ele termina. Até lá os valores do relatório podem mudar.'
+                : 'Esta competência ainda não foi fechada pelo financeiro WorkEasy. Os valores do relatório podem mudar até o fechamento.'}{' '}
+              Estornos posteriores entram como crédito na fatura do mês em que ocorrerem.
             </p>
           )}
         </section>

@@ -1,9 +1,10 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { formatDateBR, lastBookableDayInSaoPaulo, validityEnd } from '../../lib/timezone';
+import { formatDateBR, lastBookableDayInSaoPaulo, saoPauloDateTime, validityEnd } from '../../lib/timezone';
 import RideParties from '../../pages/admin/RideParties';
-import { partiesAdmin } from '../../services/rideFleets';
+import { partiesAdmin, type AdminOrganization, type PartyQueue } from '../../services/ridePartiesAdmin';
 import { getRideDashboard, type RideDashboard } from '../../services/rides';
+import { expectAccessibleScreen } from '../a11y/contract';
 
 const session = vi.hoisted(() => ({ mode: 'backend' }));
 vi.mock('../../lib/supabase', () => ({ backendEnabled: true, supabase: null }));
@@ -11,18 +12,22 @@ vi.mock('../../contexts/AuthContext', () => ({
   useAuth: () => ({ mode: session.mode, authUser: { id: 'operadora' }, loading: false, isAuthenticated: true }),
 }));
 vi.mock('../../services/rides', () => ({ getRideDashboard: vi.fn() }));
-vi.mock('../../services/rideFleets', () => ({
+vi.mock('../../services/ridePartiesAdmin', () => ({
   partiesAdmin: {
+    queue: vi.fn(),
+    organizations: vi.fn(),
+    cessionDossiers: vi.fn(),
     verifyAccount: vi.fn(),
     reviewDependent: vi.fn(),
     reviewAssignment: vi.fn(),
+    setDriverClearance: vi.fn(),
+    saveProgram: vi.fn(),
     closeInvoice: vi.fn(),
     decideDispute: vi.fn(),
   },
 }));
 
-const CODE = '0a1b2c3d-1111-4222-8333-444455556666';
-const INVOICE = '9f8e7d6c-aaaa-4bbb-8ccc-ddddeeeeffff';
+const FLEET = '0a1b2c3d-1111-4222-8333-444455556666';
 // Inside every validity window of the forms, whatever day the test runs.
 const SOON = lastBookableDayInSaoPaulo(new Date(), 30);
 const dashboard = {
@@ -30,50 +35,123 @@ const dashboard = {
   simulation: true,
   quote_enabled: true,
   dispatch_enabled: true,
-  areas: [],
+  areas: ['Saúde', 'Jabaquara'],
   driver: null,
   rides: [],
   quotes: [],
   offers: [],
-  reviews: [],
+  reviews: [
+    { driver_id: 'd1a2b3c4-0000-4000-8000-000000000001', vehicle: 'sedan', status: 'approved', valid_until: '2090-01-01' },
+    { driver_id: 'e5f6a7b8-0000-4000-8000-000000000002', vehicle: 'van', status: 'pending', valid_until: null },
+  ],
 } satisfies RideDashboard;
+const emptyQueue: PartyQueue = { accounts: [], dependents: [], cessions: [], disputes: [], invoices: [] };
+// What the operation reads of each thing that waits: no place, no e-mail, and of a minor only label and age band
+const queue: PartyQueue = {
+  accounts: [
+    { id: 'org-nova', kind: 'organization', name: 'Ateliê Fictício', state: 'pending', verified_until: null, created_at: '2026-11-20T12:00:00Z' },
+    { id: 'frota-velha', kind: 'fleet', name: 'Locadora Fictícia', state: 'expiring', verified_until: '2026-12-10T15:00:00Z', created_at: '2026-01-05T12:00:00Z' },
+  ],
+  dependents: [{ id: 'dep', label: 'Teca', age_band: '16-17', requested_at: '2026-11-25T12:00:00Z' }],
+  cessions: [
+    { id: 'cessao', fleet_name: 'Locadora Fictícia', vehicle_identifier: 'ABC1D23', driver_label: 'Bruno', from: '2026-12-01T03:00:00Z', until: '2027-06-01T03:00:00Z' },
+  ],
+  disputes: [
+    { id: 'disputa', account_name: 'Ateliê Fictício', month: '2026-10-01', kind: 'voucher', cents: 3000, reason: 'Valor em duplicidade', raised_at: '2026-11-05T12:00:00Z' },
+  ],
+  invoices: [{ account_id: 'org-antiga', account_name: 'Gráfica Fictícia', months: ['2026-09-01', '2026-10-01'] }],
+};
+const organization: AdminOrganization = {
+  id: 'org-antiga',
+  name: 'Gráfica Fictícia',
+  verified: true,
+  verified_until: '2027-05-30T15:00:00Z',
+  created_at: '2026-01-05T12:00:00Z',
+  programs: [
+    {
+      id: 'prog',
+      label: 'Visitas',
+      enabled: true,
+      budget_cents: 100000,
+      committed_cents: 25000,
+      ride_value_cents: 4000,
+      member_limit_cents: null,
+      areas: ['Saúde'],
+      classes: [],
+      group_tag: null,
+      valid_from: '2026-11-01T03:00:00Z',
+      valid_until: '2027-11-01T03:00:00Z',
+      excess_payer: 'rider',
+      requires_approval: false,
+      funding_ref: 'CONTRATO-12',
+      evidence_ref: 'DOSSIE-12',
+      created_at: '2026-10-20T12:00:00Z',
+    },
+  ],
+};
 
-/** Opens the page and answers the card of one action. */
-async function card(title: string) {
+/** Opens the page and answers one of its sections by its heading. */
+async function section(title: RegExp) {
   render(<RideParties />);
-  return screen.findByRole('region', { name: title });
+  return screen.findByRole('region', { name: title }, { timeout: 5000 });
 }
 const type = (area: HTMLElement, label: string | RegExp, value: string) =>
   fireEvent.change(within(area).getByLabelText(label), { target: { value } });
-const press = (area: HTMLElement, name: string) => fireEvent.click(within(area).getByRole('button', { name }));
+const press = (area: HTMLElement, name: string | RegExp) => fireEvent.click(within(area).getByRole('button', { name }));
 
 beforeEach(() => {
   vi.resetAllMocks();
   session.mode = 'backend';
   vi.mocked(getRideDashboard).mockResolvedValue(dashboard);
+  vi.mocked(partiesAdmin.queue).mockResolvedValue(queue);
+  vi.mocked(partiesAdmin.organizations).mockResolvedValue([organization]);
 });
 
 describe('Administração · contas de corridas', () => {
-  it('mostra o aviso de ensaio e as cinco ações da operação', async () => {
+  it('lista o que aguarda a operação, com a contagem de cada fila, e mantém o contrato de acessibilidade', async () => {
     render(<RideParties />);
     expect(await screen.findByText(/Ensaio com dados fictícios/)).toBeVisible();
     expect(screen.getByRole('heading', { level: 1, name: 'Contas de corridas' })).toBeVisible();
     for (const name of [
-      'Conferir conta de empresa ou frota',
-      'Revisar cessão de frota',
-      'Revisar dependente',
-      'Fechar fatura mensal',
-      'Decidir contestação de fatura',
+      'Contas para conferir (2)',
+      'Dependentes para revisar (1)',
+      'Cessões de frota para revisar (1)',
+      'Faturas para fechar (1)',
+      'Contestações de fatura (1)',
     ])
-      expect(screen.getByRole('heading', { level: 3, name })).toBeVisible();
+      expect(await screen.findByRole('heading', { level: 2, name })).toBeVisible();
+    expect(screen.getByRole('heading', { level: 3, name: 'Ateliê Fictício · Empresa' })).toBeVisible();
+    expect(screen.getByRole('heading', { level: 3, name: 'Locadora Fictícia · Frota' })).toBeVisible();
+    expect(screen.getByRole('heading', { level: 3, name: 'Teca (16 ou 17 anos)' })).toBeVisible();
+    expect(await screen.findByRole('heading', { level: 2, name: 'Programas de voucher das empresas' }, { timeout: 5000 })).toBeVisible();
+    expect(await screen.findByRole('heading', { level: 2, name: 'Outras ações' }, { timeout: 5000 })).toBeVisible();
+    const programs = screen.getByRole('region', { name: 'Programas de voucher das empresas' });
+    expect(await within(programs).findByRole('heading', { level: 3, name: 'Gráfica Fictícia' })).toBeVisible();
+    expect(partiesAdmin.queue).toHaveBeenCalledTimes(1);
+    expectAccessibleScreen();
   });
 
-  it('com o módulo desligado não oferece ações', async () => {
+  it('com as filas vazias, diz que nada aguarda em vez de pedir um código', async () => {
+    vi.mocked(partiesAdmin.queue).mockResolvedValue(emptyQueue);
+    render(<RideParties />);
+    expect(await screen.findByText('Nenhuma conta aguardando conferência.')).toBeVisible();
+    expect(screen.getByText('Nenhum dependente aguardando revisão.')).toBeVisible();
+    expect(screen.getByText('Nenhuma cessão aguardando revisão.')).toBeVisible();
+    expect(screen.getByText('Nenhuma competência encerrada aguardando fechamento.')).toBeVisible();
+    expect(screen.getByText('Nenhuma contestação aguardando decisão.')).toBeVisible();
+    expect(screen.queryByLabelText(/Código da conta$/)).toBeNull();
+    expect(screen.queryByLabelText(/Código do dependente/)).toBeNull();
+    expect(screen.queryByLabelText(/Código da cessão/)).toBeNull();
+    expect(screen.queryByLabelText(/Código da contestação/)).toBeNull();
+  });
+
+  it('com o módulo desligado não consulta a fila nem oferece ações', async () => {
     vi.mocked(getRideDashboard).mockResolvedValue({ ...dashboard, enabled: false });
     render(<RideParties />);
     expect(await screen.findByText('O módulo de corridas está desativado neste ambiente.')).toBeVisible();
     expect(screen.queryByRole('textbox')).toBeNull();
     expect(screen.queryByText(/Ensaio com dados fictícios/)).toBeNull();
+    expect(partiesAdmin.queue).not.toHaveBeenCalled();
   });
 
   it('sem servidor configurado não consulta nada', () => {
@@ -81,134 +159,251 @@ describe('Administração · contas de corridas', () => {
     render(<RideParties />);
     expect(screen.getByText(/precisam do servidor configurado/)).toBeVisible();
     expect(getRideDashboard).not.toHaveBeenCalled();
+    expect(partiesAdmin.queue).not.toHaveBeenCalled();
   });
 });
 
 describe('Administração · conferência de conta', () => {
-  it('exige o código completo e registra a conferência até o fim do dia escolhido', async () => {
+  it('registra a conferência na linha da conta, até o fim do dia escolhido, e relê a fila', async () => {
     vi.mocked(partiesAdmin.verifyAccount).mockResolvedValue(true);
-    const area = await card('Conferir conta de empresa ou frota');
-    type(area, 'Código da conta', '0a1b2c3d');
-    expect(within(area).getByText('Cole o código completo, com 36 caracteres.')).toBeVisible();
-    expect(within(area).getByLabelText('Código da conta')).toHaveAttribute('aria-invalid', 'true');
-    type(area, 'Referência da conferência', ' DOSSIE-41 ');
-    type(area, 'Conferência válida até', SOON);
-    expect(within(area).getByRole('button', { name: 'Registrar conferência' })).toBeDisabled();
-    type(area, 'Código da conta', ` ${CODE} `);
-    press(area, 'Registrar conferência');
-    expect(await within(area).findByRole('status')).toHaveTextContent(
-      `Conferência da conta 0a1b2c3d registrada, válida até ${formatDateBR(SOON)}.`,
-    );
-    expect(partiesAdmin.verifyAccount).toHaveBeenCalledWith(CODE, 'DOSSIE-41', validityEnd(SOON)!.toISOString());
+    const area = await section(/^Contas para conferir/);
+    expect(within(area).getByText(/· nunca conferida\. Até a conferência, a conta não convida pessoas nem opera/)).toBeVisible();
+    const submit = within(area).getByRole('button', { name: 'Registrar conferência de Ateliê Fictício' });
+    expect(submit).toBeDisabled();
+    type(area, 'Referência da conferência de Ateliê Fictício', ' DOSSIE-41 ');
+    type(area, 'Conferência de Ateliê Fictício válida até', SOON);
+    fireEvent.click(submit);
+    expect(await within(area).findByText(`Conferência de Ateliê Fictício registrada, válida até ${formatDateBR(SOON)}.`)).toBeVisible();
+    expect(partiesAdmin.verifyAccount).toHaveBeenCalledWith('org-nova', 'DOSSIE-41', validityEnd(SOON)!.toISOString());
+    await waitFor(() => expect(partiesAdmin.queue).toHaveBeenCalledTimes(2));
   });
 
-  it('retira a conferência só depois da confirmação, sem data', async () => {
+  it('só oferece retirar a conferência de quem ainda a tem, e só retira depois da confirmação', async () => {
     vi.mocked(partiesAdmin.verifyAccount).mockResolvedValue(false);
-    const area = await card('Conferir conta de empresa ou frota');
-    expect(within(area).getByRole('button', { name: 'Retirar conferência' })).toBeDisabled();
-    type(area, 'Código da conta', CODE);
-    type(area, 'Referência da conferência', 'DOSSIE-42');
-    press(area, 'Retirar conferência');
-    expect(within(area).getByText(/Retirar a conferência da conta 0a1b2c3d\?/)).toBeVisible();
+    const area = await section(/^Contas para conferir/);
+    expect(within(area).queryByRole('button', { name: 'Retirar conferência de Ateliê Fictício' })).toBeNull();
+    expect(within(area).getByRole('button', { name: 'Retirar conferência de Locadora Fictícia' })).toBeDisabled();
+    type(area, 'Referência da conferência de Locadora Fictícia', 'DOSSIE-42');
+    press(area, 'Retirar conferência de Locadora Fictícia');
+    expect(within(area).getByText(/A conta deixa de operar até uma nova conferência/)).toBeVisible();
     expect(partiesAdmin.verifyAccount).not.toHaveBeenCalled();
     press(area, 'Confirmar retirada');
-    expect(await within(area).findByRole('status')).toHaveTextContent(/Conferência da conta 0a1b2c3d retirada/);
-    expect(partiesAdmin.verifyAccount).toHaveBeenCalledWith(CODE, 'DOSSIE-42', null);
+    expect(await within(area).findByText(/Conferência de Locadora Fictícia retirada/)).toBeVisible();
+    expect(partiesAdmin.verifyAccount).toHaveBeenCalledWith('frota-velha', 'DOSSIE-42', null);
   });
 });
 
 describe('Administração · dependente e cessão de frota', () => {
-  it('aprova o vínculo do dependente com evidência e validade', async () => {
-    const area = await card('Revisar dependente');
-    expect(within(area).getByText(/Não registre data de nascimento nem número de documento/)).toBeVisible();
-    type(area, 'Código do dependente', CODE);
-    type(area, 'Referência da evidência conferida', 'DOSSIE-7');
-    expect(within(area).getByRole('button', { name: 'Aprovar vínculo' })).toBeDisabled();
-    type(area, 'Vínculo válido até', SOON);
-    press(area, 'Aprovar vínculo');
-    expect(await within(area).findByRole('status')).toHaveTextContent(/Vínculo do dependente 0a1b2c3d aprovado até/);
-    expect(partiesAdmin.reviewDependent).toHaveBeenCalledWith(CODE, true, 'DOSSIE-7', SOON);
+  it('aprova o vínculo do dependente com um código de evidência e a validade', async () => {
+    vi.mocked(partiesAdmin.reviewDependent).mockResolvedValue(true);
+    const area = await section(/^Dependentes para revisar/);
+    expect(within(area).getByText(/cada leitura e cada revisão ficam no registro de acesso/)).toBeVisible();
+    type(area, 'Referência da evidência conferida de Teca', 'certidão 12');
+    // The database takes only a reference code: the form says so instead of letting the call fail
+    expect(within(area).getByText(/sem espaços/)).toBeVisible();
+    expect(within(area).getByRole('button', { name: 'Aprovar vínculo de Teca' })).toBeDisabled();
+    type(area, 'Referência da evidência conferida de Teca', 'DOSSIE-7');
+    type(area, 'Vínculo de Teca válido até', SOON);
+    press(area, 'Aprovar vínculo de Teca');
+    expect(await within(area).findByText(`Vínculo de Teca (16 ou 17 anos) aprovado até ${formatDateBR(SOON)}.`)).toBeVisible();
+    expect(partiesAdmin.reviewDependent).toHaveBeenCalledWith('dep', true, 'DOSSIE-7', SOON);
   });
 
   it('recusa o vínculo só depois da confirmação e sem validade', async () => {
-    const area = await card('Revisar dependente');
-    type(area, 'Código do dependente', CODE);
-    type(area, 'Referência da evidência conferida', 'DOSSIE-8');
-    press(area, 'Recusar vínculo');
+    vi.mocked(partiesAdmin.reviewDependent).mockResolvedValue(false);
+    const area = await section(/^Dependentes para revisar/);
+    type(area, 'Referência da evidência conferida de Teca', 'DOSSIE-8');
+    press(area, 'Recusar vínculo de Teca');
     expect(partiesAdmin.reviewDependent).not.toHaveBeenCalled();
     press(area, 'Confirmar recusa');
-    expect(await within(area).findByRole('status')).toHaveTextContent('Vínculo do dependente 0a1b2c3d recusado.');
-    expect(partiesAdmin.reviewDependent).toHaveBeenCalledWith(CODE, false, 'DOSSIE-8', null);
+    expect(await within(area).findByText('Vínculo de Teca (16 ou 17 anos) recusado.')).toBeVisible();
+    expect(partiesAdmin.reviewDependent).toHaveBeenCalledWith('dep', false, 'DOSSIE-8', null);
   });
 
-  it('aprova e recusa uma cessão de frota com a referência da revisão', async () => {
-    const area = await card('Revisar cessão de frota');
-    type(area, 'Código da cessão', CODE);
-    expect(within(area).getByRole('button', { name: 'Aprovar cessão' })).toBeDisabled();
-    type(area, 'Referência da revisão', 'REVISAO-3');
-    press(area, 'Aprovar cessão');
-    expect(await within(area).findByRole('status')).toHaveTextContent(/Cessão 0a1b2c3d aprovada/);
-    expect(partiesAdmin.reviewAssignment).toHaveBeenCalledWith(CODE, true, 'REVISAO-3');
-    expect(within(area).getByLabelText('Código da cessão')).toHaveValue('');
-    type(area, 'Código da cessão', CODE);
-    press(area, 'Recusar cessão');
-    expect(within(area).getByText(/Recusar a cessão 0a1b2c3d\?/)).toBeVisible();
+  it('mostra o que a frota declarou só quando pedido e decide a cessão com a referência da revisão', async () => {
+    vi.mocked(partiesAdmin.cessionDossiers).mockResolvedValue([
+      {
+        id: 'cessao',
+        account_verified: true,
+        category: 'sedan',
+        document_ref: 'DOC-1',
+        insurance_ref: 'APOLICE-9',
+        inspection_ref: 'VISTORIA-3',
+        vehicle_until: '2090-12-31',
+        insurance_until: '2090-06-30',
+        inspection_until: '2090-03-31',
+        driver_vehicle_match: false,
+        cession_ref: 'CONTRATO-7',
+        beneficiary: 'fleet',
+        status: 'pending_review',
+      },
+    ]);
+    vi.mocked(partiesAdmin.reviewAssignment).mockResolvedValue(true);
+    const area = await section(/^Cessões de frota para revisar/);
+    expect(within(area).getByRole('heading', { name: 'Locadora Fictícia · ABC1D23 a Bruno' })).toBeVisible();
+    expect(partiesAdmin.cessionDossiers).not.toHaveBeenCalled();
+    press(area, 'Ver o que a frota declarou sobre ABC1D23');
+    expect(await within(area).findByText(/Seguro: APOLICE-9 · válido até 30\/06\/2090/)).toBeVisible();
+    expect(within(area).getByText(/contrato de cessão CONTRATO-7 ·\s+beneficiário contratado: frota/)).toBeVisible();
+    expect(within(area).getByText(/o identificador não é o do veículo no cadastro do motorista/)).toBeVisible();
+    type(area, 'Referência da revisão da cessão de ABC1D23 a Bruno', 'REV-3');
+    press(area, 'Aprovar cessão de ABC1D23 a Bruno');
+    expect(await within(area).findByText(/Cessão de ABC1D23 a Bruno aprovada/)).toBeVisible();
+    expect(partiesAdmin.reviewAssignment).toHaveBeenCalledWith('cessao', true, 'REV-3');
+    type(area, 'Referência da revisão da cessão de ABC1D23 a Bruno', 'REV-4');
+    press(area, 'Recusar cessão de ABC1D23 a Bruno');
     expect(partiesAdmin.reviewAssignment).toHaveBeenCalledTimes(1);
     press(area, 'Confirmar recusa');
-    expect(await within(area).findByText('Cessão 0a1b2c3d recusada.')).toBeVisible();
-    expect(partiesAdmin.reviewAssignment).toHaveBeenLastCalledWith(CODE, false, 'REVISAO-3');
+    expect(await within(area).findByText('Cessão de ABC1D23 a Bruno recusada.')).toBeVisible();
+    expect(partiesAdmin.reviewAssignment).toHaveBeenLastCalledWith('cessao', false, 'REV-4');
   });
 });
 
 describe('Administração · faturas', () => {
-  it('fecha a competência depois da confirmação e a nova tentativa reutiliza a chave', async () => {
-    vi.mocked(partiesAdmin.closeInvoice).mockRejectedValueOnce(new Error('rede')).mockResolvedValueOnce(INVOICE);
-    const area = await card('Fechar fatura mensal');
-    expect(within(area).getByRole('button', { name: 'Fechar competência' })).toBeDisabled();
-    type(area, 'Código da conta da empresa', CODE);
-    type(area, 'Competência', '2020-03');
-    press(area, 'Fechar competência');
-    expect(within(area).getByText(/Fechar março de 2020 para a conta 0a1b2c3d\?/)).toBeVisible();
+  it('fecha a competência mais antiga depois da confirmação e a nova tentativa reutiliza a chave', async () => {
+    vi.mocked(partiesAdmin.closeInvoice).mockRejectedValueOnce(new Error('rede')).mockResolvedValueOnce('fatura');
+    const area = await section(/^Faturas para fechar/);
+    // Months close in order: only the oldest open one is offered, and the current month never comes in the queue
+    expect(within(area).getByText(/Competência a fechar: setembro de 2026\.\s+Depois dela: outubro de 2026/)).toBeVisible();
+    expect(within(area).queryByRole('button', { name: /Fechar outubro/ })).toBeNull();
+    press(area, 'Fechar setembro de 2026 de Gráfica Fictícia');
+    expect(within(area).getByText(/As linhas da fatura ficam imutáveis/)).toBeVisible();
     expect(partiesAdmin.closeInvoice).not.toHaveBeenCalled();
     press(area, 'Confirmar fechamento');
     expect(await within(area).findByRole('alert')).toBeVisible();
     press(area, 'Confirmar fechamento');
-    expect(await within(area).findByRole('status')).toHaveTextContent('Competência março de 2020 fechada para a conta 0a1b2c3d.');
-    expect(within(area).getByText(/Código da fatura/)).toHaveTextContent(INVOICE);
+    expect(await within(area).findByText(/Competência setembro de 2026 fechada para Gráfica Fictícia/)).toBeVisible();
     const calls = vi.mocked(partiesAdmin.closeInvoice).mock.calls;
     expect(calls).toHaveLength(2);
-    expect(calls[0].slice(0, 2)).toEqual([CODE, '2020-03-01']);
+    expect(calls[0].slice(0, 2)).toEqual(['org-antiga', '2026-09-01']);
     expect(calls[0][2]).toMatch(/^[0-9a-f-]{36}$/);
     expect(calls[1]).toEqual(calls[0]);
   });
 
-  it('não fecha uma competência futura', async () => {
-    const area = await card('Fechar fatura mensal');
-    type(area, 'Código da conta da empresa', CODE);
-    type(area, 'Competência', '2090-01');
-    expect(within(area).getByRole('button', { name: 'Fechar competência' })).toBeDisabled();
-  });
-
-  it('aceita uma contestação com fundamentação e avisa que vira ajuste', async () => {
+  it('aceita uma contestação com fundamentação, lendo o motivo da empresa, e avisa que vira ajuste', async () => {
     vi.mocked(partiesAdmin.decideDispute).mockResolvedValue('accepted');
-    const area = await card('Decidir contestação de fatura');
-    type(area, 'Código da contestação', CODE);
-    expect(within(area).getByRole('button', { name: 'Aceitar contestação' })).toBeDisabled();
-    type(area, 'Fundamentação da decisão', ' Voucher aplicado em duplicidade. ');
-    press(area, 'Aceitar contestação');
-    expect(await within(area).findByRole('status')).toHaveTextContent(/entra como ajuste no próximo fechamento/);
-    expect(partiesAdmin.decideDispute).toHaveBeenCalledWith(CODE, true, 'Voucher aplicado em duplicidade.');
+    const area = await section(/^Contestações de fatura/);
+    expect(within(area).getByRole('heading', { name: /Ateliê Fictício, outubro de 2026 · Voucher de viagem de R\$\s30,00/ })).toBeVisible();
+    expect(within(area).getByText('Valor em duplicidade')).toBeVisible();
+    const accept = within(area).getByRole('button', { name: 'Aceitar contestação de Ateliê Fictício, outubro de 2026' });
+    expect(accept).toBeDisabled();
+    type(area, 'Fundamentação da decisão sobre Ateliê Fictício, outubro de 2026', ' Cobrança em duplicidade confirmada ');
+    fireEvent.click(accept);
+    expect(await within(area).findByText(/O crédito entra como ajuste no próximo fechamento/)).toBeVisible();
+    expect(partiesAdmin.decideDispute).toHaveBeenCalledWith('disputa', true, 'Cobrança em duplicidade confirmada');
   });
 
   it('rejeita uma contestação só depois da confirmação', async () => {
     vi.mocked(partiesAdmin.decideDispute).mockResolvedValue('rejected');
-    const area = await card('Decidir contestação de fatura');
-    type(area, 'Código da contestação', CODE);
-    type(area, 'Fundamentação da decisão', 'Linha conferida com o recibo.');
-    press(area, 'Rejeitar contestação');
+    const area = await section(/^Contestações de fatura/);
+    type(area, 'Fundamentação da decisão sobre Ateliê Fictício, outubro de 2026', 'Valor conferido com o recibo');
+    press(area, 'Rejeitar contestação de Ateliê Fictício, outubro de 2026');
     expect(partiesAdmin.decideDispute).not.toHaveBeenCalled();
     press(area, 'Confirmar rejeição');
-    expect(await within(area).findByRole('status')).toHaveTextContent(/Contestação 0a1b2c3d rejeitada/);
-    expect(partiesAdmin.decideDispute).toHaveBeenCalledWith(CODE, false, 'Linha conferida com o recibo.');
+    expect(await within(area).findByText(/A linha da fatura fica como está/)).toBeVisible();
+    expect(partiesAdmin.decideDispute).toHaveBeenCalledWith('disputa', false, 'Valor conferido com o recibo');
+  });
+});
+
+describe('Administração · programas de voucher', () => {
+  it('registra um programa novo usando a chave da tentativa como código e a repete depois de uma falha', async () => {
+    vi.mocked(partiesAdmin.saveProgram).mockRejectedValueOnce(new Error('rede')).mockResolvedValueOnce('novo');
+    const area = await section(/^Programas de voucher das empresas/);
+    expect(await within(area).findByRole('heading', { level: 3, name: 'Gráfica Fictícia' })).toBeVisible();
+    expect(within(area).getByText(/Orçamento R\$\s1\.000,00 · comprometido R\$\s250,00/)).toBeVisible();
+    press(area, 'Registrar programa para Gráfica Fictícia');
+    type(area, 'Nome do programa', 'Eventos');
+    type(area, 'Orçamento total (R$)', '500,00');
+    type(area, 'Valor pago por corrida, até (R$)', '600,00');
+    type(area, 'Vigência a partir de (São Paulo)', '2027-01-01T00:00');
+    type(area, 'Vigência até (São Paulo)', '2027-07-01T00:00');
+    type(area, 'Referência do custeio', 'CONTRATO-13');
+    type(area, 'Referência da evidência conferida', 'DOSSIE-13');
+    press(area, 'Registrar programa de Gráfica Fictícia');
+    expect(await within(area).findByRole('alert')).toHaveTextContent('não pode passar do orçamento');
+    expect(partiesAdmin.saveProgram).not.toHaveBeenCalled();
+    type(area, 'Valor pago por corrida, até (R$)', '40,00');
+    fireEvent.click(within(area).getByLabelText('Jabaquara'));
+    fireEvent.click(within(area).getByLabelText(/Programa ativo/));
+    press(area, 'Registrar programa de Gráfica Fictícia');
+    await waitFor(() => expect(partiesAdmin.saveProgram).toHaveBeenCalledTimes(1));
+    expect(await within(area).findByRole('alert')).toBeVisible();
+    press(area, 'Registrar programa de Gráfica Fictícia');
+    expect(await within(area).findByText('Programa Eventos de Gráfica Fictícia salvo e ativo.')).toBeVisible();
+    const calls = vi.mocked(partiesAdmin.saveProgram).mock.calls;
+    expect(calls).toHaveLength(2);
+    expect(calls[0][0]).toEqual({
+      id: expect.stringMatching(/^[0-9a-f-]{36}$/),
+      account: 'org-antiga',
+      label: 'Eventos',
+      budgetCents: 50000,
+      rideValueCents: 4000,
+      memberLimitCents: null,
+      areas: ['Jabaquara'],
+      classes: [],
+      group: null,
+      from: saoPauloDateTime('2027-01-01', '00:00')!.toISOString(),
+      until: saoPauloDateTime('2027-07-01', '00:00')!.toISOString(),
+      excessPayer: 'none',
+      requiresApproval: false,
+      fundingRef: 'CONTRATO-13',
+      evidenceRef: 'DOSSIE-13',
+      enabled: true,
+    });
+    expect(calls[1][0].id).toBe(calls[0][0].id);
+  });
+
+  it('altera um programa existente sem deixar o orçamento abaixo do já comprometido', async () => {
+    vi.mocked(partiesAdmin.saveProgram).mockResolvedValue('prog');
+    const area = await section(/^Programas de voucher das empresas/);
+    fireEvent.click(await within(area).findByRole('button', { name: 'Alterar Visitas' }));
+    expect(within(area).getByLabelText('Nome do programa')).toHaveValue('Visitas');
+    expect(within(area).getByLabelText('Saúde')).toBeChecked();
+    type(area, 'Orçamento total (R$)', '200,00');
+    press(area, 'Salvar alterações de Visitas');
+    expect(await within(area).findByRole('alert')).toHaveTextContent(/não pode ficar abaixo do que já está comprometido: R\$\s250,00/);
+    expect(partiesAdmin.saveProgram).not.toHaveBeenCalled();
+    type(area, 'Orçamento total (R$)', '2.000,00');
+    fireEvent.click(within(area).getByLabelText(/Programa ativo/));
+    press(area, 'Salvar alterações de Visitas');
+    expect(await within(area).findByText('Programa Visitas de Gráfica Fictícia salvo, pausado.')).toBeVisible();
+    expect(partiesAdmin.saveProgram).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'prog', account: 'org-antiga', budgetCents: 200000, rideValueCents: 4000, areas: ['Saúde'], excessPayer: 'rider', enabled: false }),
+    );
+  });
+});
+
+describe('Administração · outras ações', () => {
+  it('libera um motorista aprovado da lista da operação e retira a liberação só depois da confirmação', async () => {
+    vi.mocked(partiesAdmin.setDriverClearance).mockResolvedValue(true);
+    const area = await section(/^Outras ações/);
+    const drivers = within(area).getByLabelText('Motorista aprovado');
+    // Only approved drivers of the operation's own review list are offered: no code is pasted
+    expect(within(drivers).getAllByRole('option').map((option) => option.textContent)).toEqual(['Selecione', 'Motorista d1a2b3c4 · Sedã']);
+    type(area, 'Motorista aprovado', 'd1a2b3c4-0000-4000-8000-000000000001');
+    type(area, 'Referência da checagem', 'CHECAGEM-5');
+    type(area, 'Liberação válida até', SOON);
+    press(area, 'Registrar liberação');
+    expect(await within(area).findByText(`Liberação do motorista d1a2b3c4 registrada até ${formatDateBR(SOON)}.`)).toBeVisible();
+    expect(partiesAdmin.setDriverClearance).toHaveBeenCalledWith('d1a2b3c4-0000-4000-8000-000000000001', 'CHECAGEM-5', validityEnd(SOON)!.toISOString());
+    press(area, 'Retirar liberação');
+    expect(partiesAdmin.setDriverClearance).toHaveBeenCalledTimes(1);
+    press(area, 'Confirmar retirada');
+    expect(await within(area).findByText(/Liberação do motorista d1a2b3c4 retirada/)).toBeVisible();
+    expect(partiesAdmin.setDriverClearance).toHaveBeenLastCalledWith('d1a2b3c4-0000-4000-8000-000000000001', 'CHECAGEM-5', null);
+  });
+
+  it('o único código colado é o de uma frota fora da fila, e precisa estar completo', async () => {
+    vi.mocked(partiesAdmin.verifyAccount).mockResolvedValue(true);
+    const area = await section(/^Outras ações/);
+    type(area, 'Código da conta da frota', 'abc');
+    expect(within(area).getByText('Cole o código completo, com 36 caracteres.')).toBeVisible();
+    expect(within(area).queryByRole('button', { name: /Registrar conferência/ })).toBeNull();
+    type(area, 'Código da conta da frota', FLEET);
+    type(area, 'Referência da conferência de a conta 0a1b2c3d', 'DOSSIE-50');
+    type(area, 'Conferência de a conta 0a1b2c3d válida até', SOON);
+    press(area, 'Registrar conferência de a conta 0a1b2c3d');
+    expect(await within(area).findByText(/registrada, válida até/)).toBeVisible();
+    expect(partiesAdmin.verifyAccount).toHaveBeenCalledWith(FLEET, 'DOSSIE-50', validityEnd(SOON)!.toISOString());
   });
 });

@@ -259,7 +259,7 @@ function CostCenters({ account, refresh }: PanelProps) {
     });
   function submit(event: FormEvent) {
     event.preventDefault();
-    const next = { code: code.trim(), label: label.trim() };
+    const next = { code: code.trim().toUpperCase(), label: label.trim() };
     void action.run('center:' + JSON.stringify(next), async () => {
       await business.saveCostCenter(account.id, next.code, next.label, true);
       setCode('');
@@ -291,11 +291,23 @@ function CostCenters({ account, refresh }: PanelProps) {
       )}
       <form className="space-y-3" onSubmit={submit}>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field id="centro-codigo" label="Código" hint="Salvar um código existente atualiza o nome.">
-            <input id="centro-codigo" className={field} required maxLength={20} value={code} onChange={(event) => setCode(event.target.value)} />
+          <Field
+            id="centro-codigo"
+            label="Código"
+            hint="Letras, números, ponto, hífen ou sublinhado, até 24 caracteres. O código é salvo em maiúsculas; salvar um código existente atualiza o nome."
+          >
+            <input
+              id="centro-codigo"
+              className={field}
+              required
+              maxLength={24}
+              pattern="[A-Za-z0-9][A-Za-z0-9._\-]{0,23}"
+              value={code}
+              onChange={(event) => setCode(event.target.value)}
+            />
           </Field>
           <Field id="centro-nome" label="Nome do centro de custo">
-            <input id="centro-nome" className={field} required maxLength={60} value={label} onChange={(event) => setLabel(event.target.value)} />
+            <input id="centro-nome" className={field} required maxLength={80} value={label} onChange={(event) => setLabel(event.target.value)} />
           </Field>
         </div>
         <button type="submit" className={primary} disabled={action.busy || !code.trim() || !label.trim()}>

@@ -1,17 +1,10 @@
 import { useState } from 'react';
 import ErrorAlert from '../../ErrorAlert';
-import { parties, type Companion } from '../../../services/rideParties';
+import { parties, type Companion, type CompanionInvite } from '../../../services/rideParties';
 import { useAction, useSafetyPoll } from '../safety/state';
 import { ConfirmAction, InviteLink, ValidityField, banner, card, field, primary, secondary } from './common';
-import { NO_SITE, SHOWN_ONCE, legStatus, until, useInvitePage, validEmail } from './state';
+import { ADHESION_VALIDITY, NO_SITE, NOTICES, SHOWN_ONCE, legStatus, until, useInvitePage, validEmail } from './state';
 
-const NOTICES: [code: string, label: string][] = [
-  ['accepted', 'Motorista confirmado'],
-  ['arriving', 'Motorista a caminho'],
-  ['boarded', 'Embarque'],
-  ['completed', 'Chegada ao destino'],
-  ['cancelled', 'Cancelamento'],
-];
 const noticeNames = (codes: string[]) =>
   NOTICES.filter(([code]) => codes.includes(code))
     .map(([, label]) => label.toLowerCase())
@@ -150,11 +143,11 @@ function Accompanied({ companion, onChange }: { companion: Companion; onChange: 
   );
 }
 
-function InviteCompanion({ onChange }: { onChange: () => void }) {
+function InviteCompanion({ pending, onChange }: { pending: CompanionInvite[]; onChange: () => void }) {
   const [email, setEmail] = useState('');
   const [notices, setNotices] = useState(['arriving', 'boarded', 'completed']);
   const [pays, setPays] = useState(false);
-  const [minutes, setMinutes] = useState(60);
+  const [minutes, setMinutes] = useState(1440);
   const [invite, setInvite] = useState<{ link: string; expires: string } | null>(null);
   const action = useAction(onChange);
   const page = useInvitePage();
@@ -170,7 +163,11 @@ function InviteCompanion({ onChange }: { onChange: () => void }) {
         <input type="checkbox" checked={pays} onChange={(e) => setPays(e.target.checked)} />
         Pedir que esta pessoa pague minhas corridas
       </label>
-      <ValidityField value={minutes} onChange={setMinutes} />
+      <p className="text-sm text-gray-600">
+        Antes de aceitar, a pessoa lê quem convida, os avisos escolhidos e, se for pagar, o valor máximo por corrida
+        definido pela operação.
+      </p>
+      <ValidityField value={minutes} onChange={setMinutes} options={ADHESION_VALIDITY} />
       <button
         type="button"
         className={primary}
@@ -181,7 +178,7 @@ function InviteCompanion({ onChange }: { onChange: () => void }) {
             if (!base) return NO_SITE;
             const issued = await parties.inviteCompanion(email.trim(), notices, pays, minutes, key);
             if (!issued.token) return SHOWN_ONCE;
-            setInvite({ link: base + '?tipo=acompanhante#adesao=' + issued.token, expires: issued.expires_at });
+            setInvite({ link: base + '#adesao=' + issued.token, expires: issued.expires_at });
             setEmail('');
             return 'Convite criado. Copie o link e envie para a pessoa.';
           })
@@ -190,13 +187,32 @@ function InviteCompanion({ onChange }: { onChange: () => void }) {
         Gerar convite de acompanhante
       </button>
       {invite && <InviteLink link={invite.link} expires={invite.expires} />}
+      {pending.length > 0 && (
+        <ul className="space-y-1 text-sm" aria-label="Convites de acompanhante aguardando resposta">
+          {pending.map((item) => (
+            <li key={item.id}>
+              Convite aguardando resposta · {item.pays ? 'com pagamento das corridas' : 'só avisos'} · válido até{' '}
+              {until(item.expires_at)}
+            </li>
+          ))}
+        </ul>
+      )}
       {action.message}
     </article>
   );
 }
 
 /** PAR-503: the person chooses a trusted companion, which notices they get and who pays. */
-export default function CompanionPanel({ companions, onChange }: { companions: Companion[]; onChange: () => void }) {
+export default function CompanionPanel({
+  companions,
+  invites = [],
+  onChange,
+}: {
+  companions: Companion[];
+  /** The caller's own invites, as `ride_my_companions()` lists them. */
+  invites?: CompanionInvite[];
+  onChange: () => void;
+}) {
   const mine = companions.filter((c) => c.mine);
   const accompanied = companions.filter((c) => !c.mine);
   return (
@@ -212,7 +228,7 @@ export default function CompanionPanel({ companions, onChange }: { companions: C
         <OwnCompanion key={companion.companion_id} companion={companion} onChange={onChange} />
       ))}
       {!mine.length && <p className="text-sm text-gray-600">Você ainda não tem acompanhante. Gere um convite abaixo.</p>}
-      <InviteCompanion onChange={onChange} />
+      <InviteCompanion pending={invites.filter((item) => item.status === 'pending')} onChange={onChange} />
       {accompanied.map((companion) => (
         <Accompanied key={companion.owner_id} companion={companion} onChange={onChange} />
       ))}

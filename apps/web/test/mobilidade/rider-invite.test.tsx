@@ -20,13 +20,14 @@ vi.mock('../../services/rideParties', async (importOriginal) => {
 
 const token = 'ab'.repeat(32);
 const view: RiderInviteView = {
+  id: 'convite-1',
   status: 'pending',
   legs: [{ seq: 1, origin: 'Saúde', destination: 'Jabaquara', pickup_at: '2090-12-01T15:00:00Z' }],
   scheduled_at: '2090-12-01T15:00:00Z',
   instructions: 'Espere na portaria.',
   expires_at: '2090-12-01T14:00:00Z',
   simulation: true,
-  support: { channel: 'email', address: 'plantao@exemplo.test', team: 'Plantão de ensaio' },
+  support: { channel: 'email', address: 'plantao@exemplo.test', team: 'Plantão de ensaio', on_duty: true },
 };
 const at = (route: string, node: ReactNode) => render(<MemoryRouter initialEntries={[route]}>{node}</MemoryRouter>);
 
@@ -80,8 +81,8 @@ describe('pedido de viagem para outro adulto', () => {
 
   it('lista os convites do pagador e revoga um pendente só depois da confirmação', async () => {
     vi.mocked(parties.riderInvites).mockResolvedValue([
-      { id: 'pendente', status: 'pending', ceiling_cents: 3000, expires_at: '2090-12-01T14:00:00Z', answered_at: null },
-      { id: 'aceito', status: 'accepted', ceiling_cents: 4100, expires_at: '2090-12-01T14:00:00Z', answered_at: '2090-12-01T13:00:00Z' },
+      { id: 'pendente', status: 'pending', ceiling_cents: 3000, scheduled_at: null, expires_at: '2090-12-01T14:00:00Z', answered_at: null, created_at: '2090-12-01T13:30:00Z', ride_id: null },
+      { id: 'aceito', status: 'accepted', ceiling_cents: 4100, scheduled_at: '2090-12-01T15:00:00Z', expires_at: '2090-12-01T14:00:00Z', answered_at: '2090-12-01T13:00:00Z', created_at: '2090-12-01T12:30:00Z', ride_id: 'viagem' },
     ]);
     vi.mocked(parties.revokeRiderInvite).mockResolvedValue(true);
     at('/corridas', <SentRiderInvites />);
@@ -105,7 +106,8 @@ describe('pedido de viagem para outro adulto', () => {
     expect(parties.riderInvite).toHaveBeenCalledWith(token);
     expect(screen.getByText(/Ambiente de ensaio/)).toBeVisible();
     expect(screen.getByText(/Espere na portaria\./)).toBeVisible();
-    expect(screen.getByText(/Plantão de ensaio.*plantao@exemplo\.test/)).toBeVisible();
+    expect(screen.getByText(/Plantão de ensaio por e-mail: plantao@exemplo\.test · plantão em atendimento agora/)).toBeVisible();
+    expect(screen.getByText(/O preço é conferido de novo no aceite/)).toBeVisible();
     expect(screen.getByText(/quem paga recebe o recibo e não vê o seu trajeto/)).toBeVisible();
     expectAccessibleScreen();
     fireEvent.click(screen.getByRole('button', { name: 'Aceitar e pedir a viagem' }));
@@ -128,7 +130,15 @@ describe('pedido de viagem para outro adulto', () => {
     expect(parties.answerRiderInvite).not.toHaveBeenCalled();
   });
 
-  it('recusa só depois de confirmar e explica um convite com preço acima do autorizado', async () => {
+  it('quando o token não é um convite de viagem, mostra a outra leitura do mesmo link em vez do aviso', async () => {
+    vi.mocked(parties.riderInvite).mockResolvedValue(null);
+    at('/corridas/convite', <RiderInvite token={token} fallback={<p>Convite de empresa</p>} />);
+    expect(await screen.findByText('Convite de empresa')).toBeVisible();
+    expect(screen.queryByText(/Convite indisponível para esta conta/)).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Convite de viagem' })).toBeNull();
+  });
+
+  it('recusa só depois de confirmar e explica um convite já encerrado', async () => {
     vi.mocked(parties.riderInvite).mockResolvedValue(view);
     vi.mocked(parties.answerRiderInvite).mockResolvedValue({ status: 'declined', quote_id: null, ride_id: null });
     const first = at('/corridas/convite', <RiderInvite token={token} />);
@@ -138,9 +148,10 @@ describe('pedido de viagem para outro adulto', () => {
     await waitFor(() => expect(parties.answerRiderInvite).toHaveBeenCalledWith(token, false, expect.any(String)));
     expect(await screen.findByText(/Nenhuma viagem foi pedida/)).toBeVisible();
     first.unmount();
-    vi.mocked(parties.riderInvite).mockResolvedValue({ ...view, status: 'reprice' });
+    // A closed invite comes without legs and without instructions
+    vi.mocked(parties.riderInvite).mockResolvedValue({ ...view, status: 'revoked', legs: [], instructions: null });
     at('/corridas/convite', <RiderInvite token={token} />);
-    expect(await screen.findByText(/O preço passou do valor autorizado/)).toBeVisible();
+    expect(await screen.findByText('Quem convidou revogou este convite.')).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Aceitar e pedir a viagem' })).toBeNull();
   });
 });
@@ -193,17 +204,46 @@ describe('convite de adesão', () => {
     expect(parties.joinAccount).not.toHaveBeenCalled();
   });
 
-  it('responde ao convite de acompanhante pela chamada própria e pede confirmação para recusar', async () => {
+  const companion = {
+    id: 'acompanhante',
+    owner_label: 'Dona Lia',
+    notices: ['arriving', 'completed'],
+    pays: true,
+    ceiling_cents: 15000,
+    expires_at: '2090-12-01T14:00:00Z',
+    simulation: true,
+  };
+
+  it('quando o token é um convite de acompanhante, mostra quem convida, os avisos e o teto antes do aceite', async () => {
+    vi.mocked(parties.accountInvite).mockResolvedValue(null);
+    vi.mocked(parties.companionInvite).mockResolvedValue(companion);
+    vi.mocked(parties.answerCompanion).mockResolvedValue('accepted');
+    at('/corridas/convite', <AccountInvite token={token} />);
+    expect(await screen.findByRole('heading', { name: 'Convite para acompanhar uma pessoa' })).toBeVisible();
+    expect(parties.companionInvite).toHaveBeenCalledWith(token);
+    expect(screen.getByText(/convidou você para acompanhar/)).toHaveTextContent('Dona Lia');
+    expect(screen.getByText('Você recebe estes avisos: motorista a caminho, chegada ao destino.')).toBeVisible();
+    expect(screen.getByText(/Você paga as corridas de Dona Lia, até R\$\s150,00 por corrida/)).toBeVisible();
+    expect(screen.getByText(/sem o trajeto e sem o código de embarque/)).toBeVisible();
+    expectAccessibleScreen();
+    expect(parties.answerCompanion).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Aceitar e pagar as corridas' }));
+    await waitFor(() => expect(parties.answerCompanion).toHaveBeenCalledWith(token, true));
+    expect(parties.joinAccount).not.toHaveBeenCalled();
+    expect(await screen.findByRole('link', { name: 'Abrir grupos e pessoas de confiança' })).toHaveAttribute('href', '/corridas/grupos');
+  });
+
+  it('um convite de acompanhante sem pagamento diz que nada é cobrado e pede confirmação para recusar', async () => {
+    vi.mocked(parties.accountInvite).mockResolvedValue(null);
+    vi.mocked(parties.companionInvite).mockResolvedValue({ ...companion, pays: false, ceiling_cents: null });
     vi.mocked(parties.answerCompanion).mockResolvedValue('declined');
-    at('/corridas/convite?tipo=acompanhante', <AccountInvite token={token} />);
-    expect(screen.getByRole('heading', { name: 'Convite para acompanhar uma pessoa' })).toBeVisible();
-    expect(screen.getByText(/sem ver o trajeto nem o código de embarque/)).toBeVisible();
+    at('/corridas/convite', <AccountInvite token={token} />);
+    expect(await screen.findByText(/Você não paga nada: Dona Lia continua pagando as próprias corridas/)).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Recusar convite' }));
     expect(parties.answerCompanion).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar recusa' }));
     await waitFor(() => expect(parties.answerCompanion).toHaveBeenCalledWith(token, false));
     expect(parties.joinAccount).not.toHaveBeenCalled();
-    expect(parties.accountInvite).not.toHaveBeenCalled();
     expect(await screen.findByText(/Nada mudou na sua conta/)).toBeVisible();
   });
 
@@ -211,5 +251,7 @@ describe('convite de adesão', () => {
     at('/corridas/convite', <AccountInvite token="" />);
     expect(screen.getByText(/Abra novamente o link recebido/)).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Aceitar convite' })).toBeNull();
+    expect(parties.accountInvite).not.toHaveBeenCalled();
+    expect(parties.companionInvite).not.toHaveBeenCalled();
   });
 });

@@ -2,9 +2,12 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import FleetPanel from '../../components/mobility/fleet/FleetPanel';
+import { AppError } from '../../lib/errors';
+import { todayInSaoPaulo } from '../../lib/timezone';
 import Frota from '../../pages/mobilidade/Frota';
 import {
   fleets,
+  type DriverCession,
   type FleetAccount,
   type FleetAssignment,
   type FleetOverview,
@@ -12,6 +15,7 @@ import {
   type FleetVehicle,
 } from '../../services/rideFleets';
 import { getRideDashboard, type RideDashboard } from '../../services/rides';
+import { expectAccessibleScreen } from '../a11y/contract';
 
 const session = vi.hoisted(() => ({ mode: 'backend' }));
 vi.mock('../../lib/supabase', () => ({ backendEnabled: true, supabase: null }));
@@ -30,6 +34,7 @@ vi.mock('../../services/rideFleets', () => ({
     assign: vi.fn(),
     endAssignment: vi.fn(),
     overview: vi.fn(),
+    myCessions: vi.fn(),
   },
 }));
 
@@ -65,7 +70,12 @@ function fleet(role: FleetRole, extra: Partial<FleetAccount> = {}): FleetAccount
     ...extra,
   };
 }
-// Validities far from today, so no test depends on the day it runs.
+// Validities years ahead of today, inside the ten years the database accepts, so no test depends on the day it runs.
+const YEAR = Number(todayInSaoPaulo().slice(0, 4));
+const DOC_UNTIL = `${YEAR + 5}-12-31`;
+const INSURANCE_UNTIL = `${YEAR + 5}-06-30`;
+const INSPECTION_UNTIL = `${YEAR + 5}-03-31`;
+const RENEWED_UNTIL = `${YEAR + 6}-01-31`;
 const vehicle: FleetVehicle = {
   id: 'v1',
   vehicle_identifier: 'ABC1D23',
@@ -73,10 +83,11 @@ const vehicle: FleetVehicle = {
   document_ref: 'DOC-1',
   insurance_ref: 'APOLICE-9',
   inspection_ref: 'VISTORIA-3',
-  vehicle_until: '2090-12-31',
-  insurance_until: '2090-06-30',
-  inspection_until: '2090-03-31',
+  vehicle_until: DOC_UNTIL,
+  insurance_until: INSURANCE_UNTIL,
+  inspection_until: INSPECTION_UNTIL,
   status: 'active',
+  expired: false,
 };
 const assignment: FleetAssignment = {
   id: 'cessao-1',
@@ -90,6 +101,8 @@ const assignment: FleetAssignment = {
   status: 'pending_review',
 };
 const overview = (extra: Partial<FleetOverview> = {}): FleetOverview => ({
+  account_id: 'frota',
+  month: todayInSaoPaulo().slice(0, 7) + '-01',
   vehicles: [vehicle],
   assignments: [],
   legs: [],
@@ -134,13 +147,31 @@ describe('Frota · página', () => {
     expect(calls[1]).toEqual(calls[0]);
   });
 
-  it('frota em análise explica o próximo passo, mostra o código da conta e não abre o painel', async () => {
+  it('frota em análise explica que já está na fila da operação e não abre o painel', async () => {
     vi.mocked(fleets.accounts).mockResolvedValue([fleet('admin', { verified: false, verified_until: null })]);
     inRouter(<Frota />);
-    expect(await screen.findByText(/Em análise pela operação WorkEasy/)).toBeVisible();
+    expect(await screen.findByText(/Em análise pela operação WorkEasy/)).toHaveTextContent(/já está na fila de conferência/);
     expect(screen.getByRole('heading', { name: 'Locadora Fictícia' })).toBeVisible();
-    expect(screen.getByText(/informe o código da conta/)).toHaveTextContent(/código da conta: frota$/);
+    // The operation lists the account by name: no code has to be copied and sent
+    expect(screen.queryByText(/código da conta/)).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Veículos' })).toBeNull();
+    expect(fleets.overview).not.toHaveBeenCalled();
+  });
+
+  it('frota com a conferência vencida avisa o bloqueio e mantém veículos e resumo à vista de quem gere', async () => {
+    vi.mocked(fleets.accounts).mockResolvedValue([fleet('manager', { verified: false, verified_until: '2026-10-31T15:00:00Z' })]);
+    inRouter(<Frota />);
+    expect(await screen.findByText(/A conferência desta frota deixou de valer em 31\/10\/2026/)).toBeVisible();
+    expect(await screen.findByRole('heading', { name: 'Veículos' }, { timeout: 5000 })).toBeVisible();
+    expect(fleets.overview).toHaveBeenCalled();
+  });
+
+  it('motorista de uma frota ainda em análise chega à própria participação e pode sair', async () => {
+    vi.mocked(fleets.accounts).mockResolvedValue([fleet('fleet_driver', { verified: false, verified_until: null, members: [], invites: [] })]);
+    vi.mocked(fleets.myCessions).mockResolvedValue([]);
+    inRouter(<Frota />);
+    expect(await screen.findByRole('heading', { name: 'Você dirige por esta frota' }, { timeout: 5000 })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Sair desta frota' })).toBeVisible();
     expect(fleets.overview).not.toHaveBeenCalled();
   });
 
@@ -175,11 +206,11 @@ describe('Frota · veículos e documentos', () => {
     type('Placa ou identificador do veículo', ' ABC1D23 ');
     type('Categoria', 'van');
     type('Referência do documento do veículo', 'DOC-1');
-    type('Documento válido até', '2090-12-31');
+    type('Documento válido até', DOC_UNTIL);
     type('Referência da apólice de seguro', 'APOLICE-9');
-    type('Seguro válido até', '2090-06-30');
+    type('Seguro válido até', INSURANCE_UNTIL);
     type('Referência da revisão ou vistoria', 'VISTORIA-3');
-    type('Revisão válida até', '2090-03-31');
+    type('Revisão válida até', INSPECTION_UNTIL);
     fireEvent.click(screen.getByRole('button', { name: 'Salvar veículo' }));
     expect(await screen.findByText(/Veículo salvo. Agora você pode cedê-lo/)).toBeVisible();
     expect(fleets.saveVehicle).toHaveBeenCalledWith('frota', {
@@ -188,9 +219,9 @@ describe('Frota · veículos e documentos', () => {
       document: 'DOC-1',
       insurance: 'APOLICE-9',
       inspection: 'VISTORIA-3',
-      vehicleUntil: '2090-12-31',
-      insuranceUntil: '2090-06-30',
-      inspectionUntil: '2090-03-31',
+      vehicleUntil: DOC_UNTIL,
+      insuranceUntil: INSURANCE_UNTIL,
+      inspectionUntil: INSPECTION_UNTIL,
     });
     expect(refresh).toHaveBeenCalled();
   });
@@ -201,17 +232,17 @@ describe('Frota · veículos e documentos', () => {
     panel(fleet('manager'));
     expect(await screen.findByRole('heading', { name: 'ABC1D23 · Sedã' })).toBeVisible();
     expect(screen.getByText(/Seguro · APOLICE-9 · válido até 31\/01\/2020/)).toHaveTextContent('Vencido');
-    expect(screen.getByText(/Documento do veículo · DOC-1 · válido até 31\/12\/2090/)).not.toHaveTextContent('Vencido');
+    expect(screen.getByText(new RegExp(`Documento do veículo · DOC-1 · válido até 31/12/${YEAR + 5}`))).not.toHaveTextContent('Vencido');
     expect(screen.getByText(/não recebe novas ofertas até você atualizar os documentos/)).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Ceder a um motorista' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Atualizar documentos' }));
     expect(screen.getByLabelText('Placa ou identificador do veículo')).toHaveAttribute('readonly');
-    type('Seguro válido até', '2091-01-31');
+    type('Seguro válido até', RENEWED_UNTIL);
     fireEvent.click(screen.getByRole('button', { name: 'Salvar documentos' }));
-    expect(await screen.findByText(/Documentos salvos/)).toBeVisible();
+    expect(await screen.findByText(/Documentos salvos\. Qualquer mudança de categoria, referência ou validade manda as cessões aprovadas/)).toBeVisible();
     expect(fleets.saveVehicle).toHaveBeenCalledWith(
       'frota',
-      expect.objectContaining({ identifier: 'ABC1D23', category: 'sedan', insuranceUntil: '2091-01-31', inspectionUntil: '2090-03-31' }),
+      expect.objectContaining({ identifier: 'ABC1D23', category: 'sedan', insuranceUntil: RENEWED_UNTIL, inspectionUntil: INSPECTION_UNTIL }),
     );
   });
 });
@@ -245,6 +276,34 @@ describe('Frota · cessão a motorista', () => {
     expect(calls[1]).toEqual(calls[0]);
   });
 
+  it('avisa no formulário os limites que o servidor aplica ao período da cessão', async () => {
+    panel(fleet('admin'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Ceder a um motorista' }));
+    type('Referência do contrato de cessão', 'CONTRATO-7');
+    type(/Início da cessão/, '2090-01-10T08:00');
+    type(/Fim da cessão/, '2091-07-10T08:00');
+    expect(screen.getByText(/durar até 13 meses/)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Enviar cessão para revisão' })).toBeDisabled();
+    type(/Início da cessão/, '2020-01-10T08:00');
+    type(/Fim da cessão/, '2020-07-10T08:00');
+    expect(screen.getByText(/A cessão precisa terminar no futuro/)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Enviar cessão para revisão' })).toBeDisabled();
+    expect(fleets.assign).not.toHaveBeenCalled();
+  });
+
+  it('explica a sobreposição de cessões com as palavras da frota, não como horário ocupado', async () => {
+    vi.mocked(fleets.assign).mockRejectedValue(new AppError('slot_unavailable'));
+    panel(fleet('admin'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Ceder a um motorista' }));
+    type('Referência do contrato de cessão', 'CONTRATO-7');
+    type(/Início da cessão/, '2090-01-10T08:00');
+    type(/Fim da cessão/, '2090-07-10T08:00');
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar cessão para revisão' }));
+    expect(await screen.findByText(/já tem uma cessão em revisão ou aprovada neste período/)).toBeVisible();
+    expect(screen.queryByText(/horário não está mais livre/)).toBeNull();
+    expect(screen.queryByText(/Cessão enviada para revisão/)).toBeNull();
+  });
+
   it('não envia a cessão com fim antes do início', async () => {
     panel(fleet('admin'));
     fireEvent.click(await screen.findByRole('button', { name: 'Ceder a um motorista' }));
@@ -262,13 +321,14 @@ describe('Frota · cessão a motorista', () => {
     expect(screen.getByText(/Nenhum motorista na frota ainda/)).toBeVisible();
   });
 
-  it('cessão em revisão mostra o bloqueio e o código, e só encerra depois da confirmação', async () => {
+  it('cessão em revisão mostra o bloqueio, sem pedir código, e só encerra depois da confirmação', async () => {
     vi.mocked(fleets.overview).mockResolvedValue(overview({ assignments: [assignment] }));
-    vi.mocked(fleets.endAssignment).mockRejectedValueOnce(new Error('rede')).mockResolvedValueOnce(undefined);
+    vi.mocked(fleets.endAssignment).mockRejectedValueOnce(new Error('rede')).mockResolvedValueOnce(true);
     panel(fleet('admin'));
     expect(await screen.findByText('Bruno · Em revisão pela operação')).toBeVisible();
     expect(screen.getByText(/Contrato CONTRATO-7 · Beneficiário contratado: Frota/)).toBeVisible();
-    expect(screen.getByText(/o motorista não recebe ofertas com este veículo/)).toHaveTextContent('cessao-1');
+    expect(screen.getByText(/o motorista não recebe ofertas com este veículo/)).toHaveTextContent(/já está na fila da\s+operação/);
+    expect(screen.queryByText(/cessao-1/)).toBeNull();
     expect(screen.queryByRole('button', { name: 'Ceder a um motorista' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Encerrar cessão de Bruno' }));
     expect(screen.getByText(/Encerrar a cessão de ABC1D23 a Bruno\?/)).toBeVisible();
@@ -406,8 +466,44 @@ describe('Frota · resumo do mês', () => {
 });
 
 describe('Frota · motorista da frota', () => {
+  const cession: DriverCession = {
+    id: 'cessao-1',
+    account_id: 'frota',
+    account_name: 'Locadora Fictícia',
+    vehicle_identifier: 'ABC1D23',
+    category: 'sedan',
+    cession_ref: 'CONTRATO-7',
+    beneficiary: 'driver',
+    from: '2026-11-01T03:00:00Z',
+    until: '2090-12-01T03:00:00Z',
+    status: 'pending_review',
+    created_at: '2026-10-30T12:00:00Z',
+  };
+
+  it('vê as próprias cessões nesta frota e por que não recebe ofertas', async () => {
+    vi.mocked(fleets.myCessions).mockResolvedValue([
+      cession,
+      { ...cession, id: 'antiga', status: 'ended' },
+      { ...cession, id: 'outra-frota', account_id: 'outra', vehicle_identifier: 'ZZZ9Z99', status: 'approved' },
+    ]);
+    panel(fleet('fleet_driver'));
+    expect(await screen.findByText('ABC1D23 · Sedã')).toBeVisible();
+    expect(screen.getByText(/Em revisão pela operação: você ainda não recebe ofertas com este veículo/)).toBeVisible();
+    expect(screen.getByText(/Contrato CONTRATO-7 · Beneficiário contratado: Motorista/)).toBeVisible();
+    expect(screen.getByText('Cessões encerradas, recusadas ou com período vencido: 1.')).toBeVisible();
+    expect(screen.queryByText(/ZZZ9Z99/)).toBeNull();
+    expectAccessibleScreen();
+  });
+
+  it('sem cessão em aberto, diz que não chegam ofertas e o que fazer', async () => {
+    vi.mocked(fleets.myCessions).mockResolvedValue([]);
+    panel(fleet('fleet_driver'));
+    expect(await screen.findByText(/Nenhuma cessão em aberto\. Sem ela você não recebe ofertas/)).toBeVisible();
+  });
+
   it('vê a própria participação, sem gestão, e sai só depois da confirmação', async () => {
     vi.mocked(fleets.removeMember).mockResolvedValue(true);
+    vi.mocked(fleets.myCessions).mockResolvedValue([]);
     panel(fleet('fleet_driver'));
     expect(screen.getByRole('heading', { name: 'Você dirige por esta frota' })).toBeVisible();
     expect(screen.getByRole('link', { name: 'Abrir a área do motorista' })).toHaveAttribute('href', '/corridas/motorista');

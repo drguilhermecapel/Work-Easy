@@ -27,11 +27,14 @@ function GrantFacts({ grant, account }: { grant: TripGrant; account: OrgAccount 
 
 function Queue({ account, refresh }: { account: OrgAccount; refresh: () => void }) {
   const action = useAction(refresh);
-  const pending = (account.grants ?? []).filter((grant) => grant.status === 'requested');
+  const pending = (account.grants ?? []).filter((grant) => grant.status === 'requested' && !grant.guest);
   const decide = (grant: TripGrant, approve: boolean) =>
     void action.run('decide:' + grant.id + ':' + approve, async () => {
-      await business.decideGrant(grant.id, approve);
-      return approve
+      // The database answers the state the request ended in, which may not be the one asked for
+      const state = await business.decideGrant(grant.id, approve);
+      if (state === 'expired') return 'O período pedido por ' + grant.beneficiary + ' terminou antes da decisão. Nada foi autorizado.';
+      if (state === 'used') return 'A autorização de ' + grant.beneficiary + ' já tinha sido aprovada e usada em uma viagem.';
+      return state === 'approved'
         ? 'Pedido de ' + grant.beneficiary + ' aprovado. A autorização vale para uma viagem.'
         : 'Pedido de ' + grant.beneficiary + ' recusado.';
     });
@@ -78,9 +81,10 @@ function Queue({ account, refresh }: { account: OrgAccount; refresh: () => void 
 
 function Request({ account, refresh }: { account: OrgAccount; refresh: () => void }) {
   const action = useAction(refresh);
+  // The database lists to a collaborator only the programs of their group; the other roles see all of them.
   const programs = (account.programs ?? []).filter((program) => program.enabled && program.requires_approval);
   const centers = (account.cost_centers ?? []).filter((center) => center.active);
-  const mine = (account.grants ?? []).filter((grant) => grant.mine);
+  const mine = (account.grants ?? []).filter((grant) => grant.mine && !grant.guest);
   const [program, setProgram] = useState('');
   const [center, setCenter] = useState('');
   const [purpose, setPurpose] = useState('');
@@ -91,8 +95,13 @@ function Request({ account, refresh }: { account: OrgAccount; refresh: () => voi
     event.preventDefault();
     const start = toInstant(from);
     const end = toInstant(until);
+    const day = 86_400_000;
     if (!start || !end || Date.parse(end) <= Date.parse(start) || Date.parse(end) <= Date.now()) {
       setProblem('Informe um período que termine no futuro, com o fim depois do início (horário de São Paulo).');
+      return;
+    }
+    if (Date.parse(end) - Date.parse(start) > 31 * day || Date.parse(end) > Date.now() + 90 * day) {
+      setProblem('A autorização vale por até 31 dias e precisa terminar nos próximos 90 dias.');
       return;
     }
     setProblem('');

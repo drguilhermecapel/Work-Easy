@@ -20,7 +20,10 @@ export const routeFromAppUrl = (url: string, siteUrl: string | null): string | n
   if (link.protocol !== 'https:' || link.host !== site.host) return null;
   // The website uses clean URLs; a link copied from the app itself carries the route after "#"
   const fromHash = link.hash.startsWith('#/') ? link.hash.slice(1) : null;
-  const shareFragment = link.pathname === '/corridas/convite' && /^#convite=[a-f0-9]{64}$/.test(link.hash) ? link.hash : '';
+  // One-time invite tokens travel in the fragment, never in the path or the query: a trusted-contact
+  // share (#convite=), a ride or guest invite (#viagem=) and an adhesion or companion invite (#adesao=).
+  const shareFragment =
+    link.pathname === '/corridas/convite' && /^#(convite|viagem|adesao)=[a-f0-9]{64}$/.test(link.hash) ? link.hash : '';
   const route = fromHash ?? `${link.pathname}${link.search}${shareFragment}`;
   if (!route.startsWith('/') || route.startsWith('//') || route.includes('\\')) return null;
   return route;

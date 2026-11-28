@@ -1,7 +1,7 @@
-import { db, nullable, unwrap, unwrapMaybe } from './client';
+import { db, unwrap, unwrapMaybe } from './client';
 
-// Fleet accounts of the ride module (O17 PAR-508) and the operator calls of stage 5
-// (account verification, dependent review, fleet review, invoice closing and disputes).
+// Fleet accounts of the ride module (O17 PAR-508). The operator calls of stage 5 are in
+// services/ridePartiesAdmin.ts.
 // Every rule (role, review, validity, isolation between fleets) is decided by the database;
 // this file only names the calls and the shapes the screens read.
 
@@ -62,7 +62,10 @@ export interface FleetVehicle {
   vehicle_until: string;
   insurance_until: string;
   inspection_until: string;
-  status: string;
+  /** A retired vehicle gives no offers; saving its documents again reactivates it. */
+  status: 'active' | 'retired';
+  /** One of the three dates is behind today (São Paulo). */
+  expired: boolean;
 }
 
 export interface FleetAssignment {
@@ -88,9 +91,28 @@ export interface FleetLeg {
 }
 
 export interface FleetOverview {
+  account_id: string;
+  month: string;
   vehicles: FleetVehicle[];
+  /** The 300 most recent cessions, newest first, whatever the month. */
   assignments: FleetAssignment[];
+  /** Legs of the month taken with a vehicle of the fleet. */
   legs: FleetLeg[];
+}
+
+/** A cession as the driver it names reads it. */
+export interface DriverCession {
+  id: string;
+  account_id: string;
+  account_name: string;
+  vehicle_identifier: string;
+  category: string;
+  cession_ref: string;
+  beneficiary: FleetBeneficiary;
+  from: string;
+  until: string;
+  status: AssignmentStatus;
+  created_at: string;
 }
 
 /** What the vehicle form sends. Saving an identifier the fleet already has renews its documents. */
@@ -165,59 +187,12 @@ export const fleets = {
         p_key: key,
       }),
     ),
-  /** Answers nothing the screen reads; a refusal arrives as an error. */
-  endAssignment: async (assignment: string, key: string) => {
-    unwrapMaybe<unknown>(await db().rpc('ride_fleet_end_assignment', { p_assignment: assignment, p_key: key }));
-  },
-  /** `month` is the first day of the month, "YYYY-MM-01". */
-  overview: async (account: string, month: string) => {
-    const data = unwrap<Partial<FleetOverview>>(
-      await db().rpc('ride_fleet_overview', { p_account: account, p_month: month }),
-    );
-    return { vehicles: data.vehicles ?? [], assignments: data.assignments ?? [], legs: data.legs ?? [] };
-  },
-};
-
-/**
- * Operator calls of stage 5. Each one is refused by the database for anyone who is not an
- * administrator of the operation, whatever this screen shows.
- */
-export const partiesAdmin = {
-  /** `until` null withdraws the verification. True while the account stays verified. */
-  verifyAccount: async (account: string, reference: string, until: string | null) =>
-    unwrap<boolean>(
-      await db().rpc('admin_verify_ride_account', {
-        p_account: account,
-        p_reference: reference,
-        p_until: nullable(until)!,
-      }),
-    ),
-  /** `until` is a plain date and goes only with an approval. The review is written to the access log. */
-  reviewDependent: async (dependent: string, approve: boolean, evidence: string, until: string | null) => {
-    unwrapMaybe<unknown>(
-      await db().rpc('admin_review_dependent', {
-        p_dependent: dependent,
-        p_approve: approve,
-        p_evidence: evidence,
-        p_until: nullable(until)!,
-      }),
-    );
-  },
-  reviewAssignment: async (assignment: string, approve: boolean, reference: string) => {
-    unwrapMaybe<unknown>(
-      await db().rpc('admin_review_fleet_assignment', {
-        p_assignment: assignment,
-        p_approve: approve,
-        p_reference: reference,
-      }),
-    );
-  },
-  /** `month` is "YYYY-MM-01". Closing the same month again answers the same invoice. */
-  closeInvoice: async (account: string, month: string, key: string) =>
-    unwrap<string>(await db().rpc('admin_close_ride_invoice', { p_account: account, p_month: month, p_key: key })),
-  /** Answers the status the dispute ended in. */
-  decideDispute: async (dispute: string, accept: boolean, reason: string) =>
-    unwrap<string>(
-      await db().rpc('admin_decide_invoice_dispute', { p_dispute: dispute, p_accept: accept, p_reason: reason }),
-    ),
+  /** True when the cession ended now (or on a replay of the same key); false when it was already over. */
+  endAssignment: async (assignment: string, key: string) =>
+    unwrap<boolean>(await db().rpc('ride_fleet_end_assignment', { p_assignment: assignment, p_key: key })),
+  /** `month` is the first day of the month, "YYYY-MM-01". For who manages the fleet; a driver is refused. */
+  overview: async (account: string, month: string) =>
+    unwrap<FleetOverview>(await db().rpc('ride_fleet_overview', { p_account: account, p_month: month })),
+  /** Every cession that names the caller as driver, in any fleet, oldest first. */
+  myCessions: async () => unwrapMaybe<DriverCession[]>(await db().rpc('ride_my_cessions')) ?? [],
 };

@@ -4,6 +4,7 @@ import type { RideLegInput } from '../../../services/rides';
 import { formatDateTime } from '../../admin/format';
 import { Field } from '../../admin/ui';
 import { useAction } from '../safety/state';
+import Confirm from './Confirm';
 import InviteLink from './InviteLink';
 import { card, cardTitle, field, hint, INVITE_MINUTES, NO_INVITE_PAGE, primary, SHOWN_ONCE, toInstant, useInvitePage } from './shared';
 
@@ -24,7 +25,8 @@ export default function GuestDesk({
 }) {
   const action = useAction(refresh);
   const page = useInvitePage();
-  const programs = (account.programs ?? []).filter((program) => program.enabled);
+  // A guest belongs to no group, so the desk only offers programs open to anyone.
+  const programs = (account.programs ?? []).filter((program) => program.enabled && !program.group_tag);
   const centers = (account.cost_centers ?? []).filter((center) => center.active);
   const [email, setEmail] = useState('');
   const [program, setProgram] = useState('');
@@ -35,7 +37,7 @@ export default function GuestDesk({
   const [departure, setDeparture] = useState('');
   const [minutes, setMinutes] = useState(60);
   const [problem, setProblem] = useState('');
-  const [issued, setIssued] = useState<{ link: string; until: string } | null>(null);
+  const [issued, setIssued] = useState<{ id: string; link: string; until: string } | null>(null);
   const places = areas.map((area) => (
     <option key={area} value={area}>
       {area}
@@ -64,7 +66,7 @@ export default function GuestDesk({
       if (!page) return NO_INVITE_PAGE;
       const invite = await business.inviteGuest(account.id, program, center, address, legs, pickup, minutes, key);
       if (!invite.token) return SHOWN_ONCE;
-      setIssued({ link: page + '#viagem=' + invite.token, until: invite.expires_at });
+      setIssued({ id: invite.id, link: page + '#viagem=' + invite.token, until: invite.expires_at });
       setEmail('');
       return 'Convite de viagem gerado. Envie o link ao convidado pelo seu canal de confiança.';
     });
@@ -76,10 +78,15 @@ export default function GuestDesk({
       </h2>
       <p className={hint}>
         Agende uma viagem paga pela empresa para uma pessoa de fora. O convidado entra na WorkEasy com o e-mail
-        informado e aceita o convite: a viagem é criada na conta dele e só ele acompanha o embarque.
+        informado, lê a empresa, as áreas e o horário e aceita o convite: a viagem é criada na conta dele e só ele
+        acompanha o embarque. O convidado nunca paga diferença: se a tarifa passar do valor do voucher, o aceite é
+        recusado e a central precisa escolher outro programa.
       </p>
       {!programs.length ? (
-        <p>Nenhum programa de voucher ativo. Sem programa, a central não consegue pagar a viagem do convidado.</p>
+        <p>
+          Nenhum programa de voucher ativo e aberto a todos. Sem um programa assim, a central não consegue pagar a viagem
+          do convidado.
+        </p>
       ) : !centers.length ? (
         <p>Falta um centro de custo ativo. Peça à administração da empresa para criar um.</p>
       ) : !areas.length ? (
@@ -203,15 +210,36 @@ export default function GuestDesk({
         </form>
       )}
       {issued && (
-        <InviteLink
-          id="convidado-link"
-          link={issued.link}
-          note={
-            'Válido até ' +
-            formatDateTime(issued.until) +
-            ' (São Paulo). O PIN de embarque e o acompanhamento da viagem ficam só com o convidado.'
-          }
-        />
+        <>
+          <InviteLink
+            id="convidado-link"
+            link={issued.link}
+            note={
+              'Válido até ' +
+              formatDateTime(issued.until) +
+              ' (São Paulo). O PIN de embarque e o acompanhamento da viagem ficam só com o convidado.'
+            }
+          />
+          <Confirm
+            label="Revogar este convite"
+            confirmLabel="Confirmar revogação"
+            busy={action.busy}
+            onConfirm={async () => {
+              let done = false;
+              await action.run('revoke:' + issued.id, async () => {
+                const revoked = await business.revokeGuestInvite(issued.id);
+                setIssued(null);
+                done = true;
+                return revoked
+                  ? 'Convite revogado. O link deixou de funcionar e o voucher não foi usado.'
+                  : 'Este convite já tinha sido respondido ou encerrado.';
+              });
+              return done;
+            }}
+          >
+            Revogar o convite desta viagem? O link deixa de funcionar. Para o convidado viajar, será preciso gerar outro.
+          </Confirm>
+        </>
       )}
       {action.message}
     </section>

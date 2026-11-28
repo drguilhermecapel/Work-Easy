@@ -8,7 +8,7 @@ import { centsToInput, parseReaisToCents } from '../../../services/proFormat';
 import { parties, type AccountMember, type PartyAccount, type PayMethod } from '../../../services/rideParties';
 import { useAction } from '../safety/state';
 import { ConfirmAction, InviteLink, ValidityField, card, field, primary, secondary } from './common';
-import { NO_SITE, SHOWN_ONCE, legStatus, until, useInvitePage, validEmail } from './state';
+import { ADHESION_VALIDITY, NO_SITE, SHOWN_ONCE, legStatus, until, useInvitePage, validEmail } from './state';
 
 const METHODS: Record<PayMethod, string> = { pix: 'Pix', card: 'Cartão' };
 const money = (cents: number | null | undefined) => (typeof cents === 'number' ? formatCents(cents) : 'Restrito ao pagador');
@@ -197,7 +197,7 @@ function AdminFamily({ account, userId, onChange }: { account: PartyAccount; use
   );
   const [method, setMethod] = useState<PayMethod>(account.default_method ?? 'pix');
   const [email, setEmail] = useState('');
-  const [minutes, setMinutes] = useState(60);
+  const [minutes, setMinutes] = useState(1440);
   const [invite, setInvite] = useState<{ id: string; link: string; expires: string } | null>(null);
   const action = useAction(onChange);
   const page = useInvitePage();
@@ -256,7 +256,7 @@ function AdminFamily({ account, userId, onChange }: { account: PartyAccount; use
         E-mail do participante
         <input className={field} type="email" autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} />
       </label>
-      <ValidityField value={minutes} onChange={setMinutes} />
+      <ValidityField value={minutes} onChange={setMinutes} options={ADHESION_VALIDITY} />
       <button
         type="button"
         className={primary}

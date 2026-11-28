@@ -1,7 +1,6 @@
 import { useId, useState, type ReactNode } from 'react';
 import { Copy } from 'lucide-react';
-import { INVITE_MINUTES } from '../../../services/rideParties';
-import { until } from './state';
+import { RIDE_VALIDITY, until, type Validity } from './state';
 
 // Shared pieces of the family, companion and dependent screens (PAR-501..504).
 
@@ -13,14 +12,23 @@ export const danger = 'rounded-xl border border-red-300 bg-white px-4 py-2 font-
 export const field = 'block w-full mt-1 rounded-xl border border-gray-300 bg-white p-2.5 text-gray-900';
 export const banner = 'rounded-xl bg-amber-50 p-3 font-semibold text-amber-900';
 
-export function ValidityField({ value, onChange }: { value: number; onChange: (minutes: number) => void }) {
+/** How long an invite stays open. A ride invite takes minutes; an adhesion or companion invite, up to 7 days. */
+export function ValidityField({
+  value,
+  onChange,
+  options = RIDE_VALIDITY,
+}: {
+  value: number;
+  onChange: (minutes: number) => void;
+  options?: Validity[];
+}) {
   return (
     <label className="block">
       Validade do convite
       <select className={field} value={value} onChange={(e) => onChange(Number(e.target.value))}>
-        {INVITE_MINUTES.map((n) => (
-          <option key={n} value={n}>
-            {n} minutos
+        {options.map((option) => (
+          <option key={option.minutes} value={option.minutes}>
+            {option.name}
           </option>
         ))}
       </select>

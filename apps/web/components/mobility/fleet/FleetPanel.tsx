@@ -3,12 +3,14 @@ import { Link } from 'react-router-dom';
 import ErrorAlert from '../../ErrorAlert';
 import { formatDateTime } from '../../admin/format';
 import { useAction } from '../safety/state';
+import { toAppError } from '../../../lib/errors';
 import { formatCents } from '../../../lib/money';
 import { formatDateBR, saoPauloDateTime, todayInSaoPaulo } from '../../../lib/timezone';
 import { useAsync } from '../../../lib/useAsync';
 import { VEHICLES } from '../../../pages/mobilidade/driverLabels';
 import {
   fleets,
+  type DriverCession,
   type FleetAccount,
   type FleetAssignment,
   type FleetBeneficiary,
@@ -153,7 +155,7 @@ function VehicleForm({
       await fleets.saveVehicle(account, input);
       onSaved(
         vehicle
-          ? 'Documentos salvos. Se havia documento vencido, a cessão volta a valer depois de nova revisão da operação.'
+          ? 'Documentos salvos. Qualquer mudança de categoria, referência ou validade manda as cessões aprovadas deste veículo de volta para a revisão da operação.'
           : 'Veículo salvo. Agora você pode cedê-lo a um motorista da frota.',
       );
       return '';
@@ -207,6 +209,7 @@ function VehicleForm({
                 type="date"
                 required
                 min={today}
+                max={String(Number(today.slice(0, 4)) + 10) + today.slice(4)}
                 value={dates[item.part]}
                 onChange={(event) => setDates({ ...dates, [item.part]: event.target.value })}
               />
@@ -215,8 +218,10 @@ function VehicleForm({
         ))}
       </div>
       <p className={hint}>
-        Use o mesmo identificador do cadastro do motorista na operação. Informe só a referência de cada documento
+        Use exatamente o mesmo identificador do cadastro do motorista na operação, com as mesmas letras maiúsculas e a
+        mesma pontuação: se for diferente, o motorista não recebe ofertas. Informe só a referência de cada documento
         (número do protocolo ou da apólice), sem anexos e sem dados pessoais.
+        {vehicle && ' Mudar qualquer dado manda as cessões aprovadas deste veículo de volta para a revisão.'}
       </p>
       <button type="submit" className={primary} disabled={action.busy || !complete}>
         {vehicle ? 'Salvar documentos' : 'Salvar veículo'}
@@ -229,11 +234,14 @@ function VehicleForm({
 function AssignForm({
   vehicle,
   drivers,
+  now,
   onAssigned,
   refresh,
 }: {
   vehicle: FleetVehicle;
   drivers: FleetMember[];
+  /** When the page was read: the bounds of the period are shown against it, the database decides. */
+  now: number;
   onAssigned: (notice: string) => void;
   refresh: () => void;
 }) {
@@ -246,14 +254,25 @@ function AssignForm({
   const start = toInstant(from);
   const end = toInstant(until);
   const ordered = !!start && !!end && start < end;
-  const valid = !!driver && !!cession.trim() && ordered;
+  // The same bounds the database applies: no start older than a day, an end in the future, 13 months at most.
+  const cap = start ? new Date(start) : null;
+  cap?.setUTCMonth(cap.getUTCMonth() + 13);
+  const bounded =
+    ordered && !!cap && Date.parse(end) > now && Date.parse(start) >= now - 86_400_000 && Date.parse(end) <= cap.getTime();
+  const valid = !!driver && !!cession.trim() && bounded;
   function submit(event: FormEvent) {
     event.preventDefault();
     if (!valid || !start || !end) return;
     const reference = cession.trim();
     // A retry of the same cession reuses the key, so a lost answer never creates a second assignment.
     void action.run(JSON.stringify(['assign', vehicle.id, driver, reference, beneficiary, start, end]), async (key) => {
-      await fleets.assign(vehicle.id, driver, reference, beneficiary, start, end, key);
+      try {
+        await fleets.assign(vehicle.id, driver, reference, beneficiary, start, end, key);
+      } catch (error) {
+        // An overlapping cession of the vehicle or of the driver (in this or another fleet) is not a matter of time slots.
+        if (toAppError(error).code !== 'slot_unavailable') throw error;
+        return 'Este veículo ou este motorista já tem uma cessão em revisão ou aprovada neste período. Encerre a anterior ou escolha outro período.';
+      }
       onAssigned(
         'Cessão enviada para revisão. O motorista só recebe ofertas com este veículo depois que a operação aprovar.',
       );
@@ -323,6 +342,11 @@ function AssignForm({
         Este campo só registra o que o contrato diz. O repasse das corridas continua sendo feito ao motorista.
       </p>
       {from && until && !ordered && <p className="text-sm text-red-700">O fim da cessão precisa ser depois do início.</p>}
+      {ordered && !bounded && (
+        <p className="text-sm text-red-700">
+          A cessão precisa terminar no futuro, começar no máximo um dia atrás e durar até 13 meses.
+        </p>
+      )}
       <button type="submit" className={primary} disabled={action.busy || !valid}>
         Enviar cessão para revisão
       </button>
@@ -365,6 +389,7 @@ function VehicleCard({
     <article className={card} aria-labelledby={title}>
       <h3 id={title} className="font-semibold text-gray-900">
         {vehicle.vehicle_identifier} · {categoryName(vehicle.category)}
+        {vehicle.status === 'retired' && ' · fora de uso'}
       </h3>
       <ul className="space-y-1 text-sm">
         {documents.map((item) => (
@@ -391,9 +416,12 @@ function VehicleCard({
           </p>
           {item.status === 'pending_review' && (
             <p className={hint}>
-              Enquanto a revisão não termina, o motorista não recebe ofertas com este veículo. Se a operação pedir, informe
-              o código da cessão: <span className="break-all font-mono">{item.id}</span>
+              Enquanto a revisão não termina, o motorista não recebe ofertas com este veículo. A cessão já está na fila da
+              operação: não é preciso avisar.
             </p>
+          )}
+          {item.status === 'approved' && Date.parse(item.from) > now && (
+            <p className={hint}>Aprovada. O motorista recebe ofertas a partir do início do período.</p>
           )}
           <Confirm
             label={`Encerrar cessão de ${personName(item.driver_name)}`}
@@ -440,6 +468,7 @@ function VehicleCard({
         <AssignForm
           vehicle={vehicle}
           drivers={drivers}
+          now={now}
           refresh={refresh}
           onAssigned={(text) => {
             setNotice(text);
@@ -527,8 +556,9 @@ function People({ account, userId, refresh }: { account: FleetAccount; userId: s
                   })
                 }
               >
-                Remover {personName(member.name)} desta frota? A pessoa deixa de dirigir os veículos da frota. As corridas
-                já feitas continuam registradas e, para voltar, será preciso um novo convite.
+                Remover {personName(member.name)} desta frota? As cessões em aberto dessa pessoa são encerradas e ela deixa
+                de dirigir os veículos da frota. As corridas já feitas continuam registradas e, para voltar, será preciso
+                um novo convite.
               </Confirm>
             )}
           </li>
@@ -794,6 +824,15 @@ function Management({ account, userId, refresh }: { account: FleetAccount; userI
   );
 }
 
+const cessionNote = (cession: DriverCession, now: number) =>
+  cession.status === 'pending_review'
+    ? 'Em revisão pela operação: você ainda não recebe ofertas com este veículo.'
+    : cession.status === 'approved'
+      ? Date.parse(cession.from) > now
+        ? 'Aprovada. As ofertas começam no início do período.'
+        : 'Aprovada. Você recebe ofertas com este veículo enquanto os documentos dele estiverem em dia.'
+      : assignmentName(cession.status);
+
 function DriverMembership({
   account,
   userId,
@@ -806,15 +845,50 @@ function DriverMembership({
   onLeft: (notice: string) => void;
 }) {
   const action = useAction(refresh);
+  const mine = useAsync(async () => ({ cessions: await fleets.myCessions(), loaded: Date.now() }), 'cessions:' + userId);
+  const now = mine.data?.loaded ?? 0;
+  const cessions = (mine.data?.cessions ?? []).filter((item) => item.account_id === account.id);
+  const open = cessions.filter(
+    (item) => (item.status === 'pending_review' || item.status === 'approved') && Date.parse(item.until) > now,
+  );
   return (
     <section className={card} aria-labelledby="frota-motorista">
       <h2 id="frota-motorista" className={cardTitle}>
         Você dirige por esta frota
       </h2>
       <p>
-        A frota cadastra o veículo e a cessão, e a operação WorkEasy revisa antes de liberar ofertas. Enquanto uma
-        cessão estiver em revisão ou um documento do veículo estiver vencido, você não recebe novas ofertas.
+        A frota cadastra o veículo e a cessão, e a operação WorkEasy revisa antes de liberar ofertas. Enquanto você fizer
+        parte da frota, só recebe ofertas com um veículo cedido e revisado; sem cessão aprovada, com cessão em revisão ou
+        com documento do veículo vencido, não chegam novas ofertas.
       </p>
+      <h3 className="font-semibold">Suas cessões nesta frota</h3>
+      {mine.loading && !mine.data && <p role="status">Consultando cessões…</p>}
+      <ErrorAlert error={mine.error} />
+      {mine.data &&
+        (open.length ? (
+          <ul className="space-y-3">
+            {open.map((item) => (
+              <li key={item.id} className="space-y-1 border-l-2 border-primary/30 pl-3">
+                <p className="font-medium">
+                  {item.vehicle_identifier} · {categoryName(item.category)}
+                </p>
+                <p className="text-sm">
+                  {formatDateTime(item.from)} a {formatDateTime(item.until)} (São Paulo) · Contrato {item.cession_ref} ·
+                  Beneficiário contratado: {beneficiaryName(item.beneficiary)}
+                </p>
+                <p className={hint}>{cessionNote(item, now)}</p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>
+            Nenhuma cessão em aberto. Sem ela você não recebe ofertas: peça à frota que envie a cessão de um veículo para
+            revisão, ou saia da frota para voltar a dirigir como independente.
+          </p>
+        ))}
+      {cessions.length > open.length && (
+        <p className={hint}>Cessões encerradas, recusadas ou com período vencido: {cessions.length - open.length}.</p>
+      )}
       <p>
         <Link className="text-primary underline" to="/corridas/motorista">
           Abrir a área do motorista
@@ -832,8 +906,8 @@ function DriverMembership({
           })
         }
       >
-        Sair de {account.name}? Você deixa de dirigir os veículos desta frota. Suas corridas anteriores continuam
-        registradas e, para voltar, será preciso um novo convite.
+        Sair de {account.name}? Suas cessões em aberto são encerradas e você deixa de dirigir os veículos desta frota.
+        Suas corridas anteriores continuam registradas e, para voltar, será preciso um novo convite.
       </Confirm>
       {action.message}
     </section>
@@ -841,9 +915,9 @@ function DriverMembership({
 }
 
 /**
- * The working area of a fleet that the operation has already checked: vehicles, people and the
- * month summary for who manages it, or the membership card for a driver of the fleet. What each
- * role may do is decided again by the database on every call.
+ * The working area of a fleet: vehicles, people and the month summary for who manages one the
+ * operation has checked, or the membership card (with the driver's own cessions) for a driver.
+ * What each role may do is decided again by the database on every call.
  */
 export default function FleetPanel({
   account,

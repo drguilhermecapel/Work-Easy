@@ -1,6 +1,5 @@
 import { useId } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../../../contexts/AuthContext';
 import { formatCents } from '../../../lib/money';
 import { useAsync } from '../../../lib/useAsync';
 import { SELF_FUNDING, parties, type Funding, type FundedProgram, type PayerMandate } from '../../../services/rideParties';
@@ -11,6 +10,10 @@ const detail = 'ml-6 space-y-2 rounded-xl bg-gray-50 p-3 text-sm';
 
 const payer = (mandate: PayerMandate) =>
   mandate.kind === 'family' ? `o grupo familiar ${mandate.payer_label} paga` : `${mandate.payer_label}, acompanhante, paga`;
+const excess = (program: FundedProgram) =>
+  program.excess_payer === 'rider'
+    ? `A empresa paga até ${formatCents(program.ride_value_cents)} por corrida. Se o preço passar disso, a diferença aparece na cotação e fica por sua conta, só depois do seu aceite.`
+    : `A empresa paga até ${formatCents(program.ride_value_cents)} por corrida. Acima desse valor a corrida não é cotada por este programa.`;
 const bounds = (mandate: PayerMandate) =>
   (typeof mandate.ceiling_cents === 'number' ? ` · até ${formatCents(mandate.ceiling_cents)} por corrida` : '') +
   (typeof mandate.limit_cents === 'number' ? ` · seu limite mensal é ${formatCents(mandate.limit_cents)}` : '');
@@ -69,10 +72,7 @@ function ProgramDetail({
             </Link>
           </p>
         ))}
-      <p>
-        A empresa paga até o valor do programa. Se o preço passar disso, a diferença aparece na cotação e fica por sua
-        conta. O gestor vê data, centro de custo e valor, sem o trajeto.
-      </p>
+      <p>{excess(program)} O gestor vê data, centro de custo e valor, sem o trajeto.</p>
     </div>
   );
 }
@@ -90,23 +90,17 @@ export default function FundingChoice({
   onChange: (value: Funding) => void;
   disabled?: boolean;
 }) {
-  const { authUser } = useAuth();
-  const result = useAsync(
-    async () => ({ overview: await parties.overview(), loaded: Date.now() }),
-    'funding:' + (authUser?.id ?? ''),
-  );
+  // The quote form is mounted again for each signed-in account, so one reading per mount is enough.
+  const result = useAsync(async () => ({ overview: await parties.overview(), loaded: Date.now() }), 'funding');
   const name = useId();
   if (result.error && !result.data)
     return <p role="status">Não foi possível consultar seus grupos agora. A cotação segue no seu nome.</p>;
   if (!result.data) return null;
   const { overview, loaded: now } = result.data;
-  const mandates = overview.mandates.filter(
-    (m) => m.kind !== 'sponsor' && (!m.valid_until || Date.parse(m.valid_until) > now),
-  );
+  const mandates = overview.mandates.filter((m) => !m.valid_until || Date.parse(m.valid_until) > now);
   const programs = overview.programs;
-  const dependents = overview.dependents.filter(
-    (d) => d.status === 'verified' && (!d.valid_until || Date.parse(d.valid_until) > now),
-  );
+  // The database already reads a record past its date as expired.
+  const dependents = overview.dependents.filter((d) => d.status === 'verified');
   if (!mandates.length && !programs.length && !dependents.length) return null;
   return (
     <fieldset disabled={disabled} className="space-y-2">
@@ -155,6 +149,7 @@ export default function FundingChoice({
                     program: program.program_id,
                     costCenter: program.cost_centers.length === 1 ? program.cost_centers[0].id : '',
                     grant: null,
+                    approval: program.requires_approval,
                   })
                 }
               />
@@ -196,7 +191,7 @@ export default function FundingChoice({
                 </label>
                 <p>
                   Só motoristas liberados pela operação para este tipo de viagem recebem o pedido. Você acompanha o
-                  trecho e chama o plantão em Grupos.
+                  trecho e chama o plantão no próprio trecho, em Corridas.
                 </p>
               </div>
             )}

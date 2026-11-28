@@ -12,6 +12,7 @@ import {
   type Companion,
   type Dependent,
   type Funding,
+  type GuardianWatch as Watch,
   type PartyAccount,
 } from '../../services/rideParties';
 import { expectAccessibleScreen } from '../a11y/contract';
@@ -50,6 +51,8 @@ const family: PartyAccount = {
   name: 'Família Teste',
   role: 'admin',
   owner: true,
+  verified: true,
+  group_tag: null,
   monthly_limit_cents: 10000,
   committed_cents: 0,
   member_limit_cents: null,
@@ -63,14 +66,33 @@ const teen: Dependent = {
   account_id: 'grupo',
   label: 'Teca',
   age_band: '16-17',
+  legal_basis: 'parental_authority',
   status: 'verified',
   valid_until: '2091-06-30',
   legs: [],
 };
-const companions = (list: Companion[]) =>
+// What the guardian reads of a leg: the passenger's own safety status plus the alerts kept for it
+const watch = (over: Partial<Watch>): Watch => ({
+  lost_checks: [],
+  role: 'passenger',
+  status: 'boarded',
+  simulation: true,
+  wellness: null,
+  notice_given: false,
+  recording_allowed: false,
+  media_enabled: false,
+  dial: null,
+  location: null,
+  vehicle: null,
+  policy: null,
+  cases: [],
+  alerts: [],
+  ...over,
+});
+const companions = (list: Companion[], invites: Parameters<typeof CompanionPanel>[0]['invites'] = []) =>
   render(
     <MemoryRouter>
-      <CompanionPanel companions={list} onChange={change} />
+      <CompanionPanel companions={list} invites={invites} onChange={change} />
     </MemoryRouter>,
   );
 const dependents = (accounts: PartyAccount[], list: Dependent[]) =>
@@ -87,8 +109,16 @@ describe('acompanhante de confiança', () => {
     vi.mocked(parties.inviteCompanion)
       .mockRejectedValueOnce(new Error('rede'))
       .mockResolvedValue({ id: 'convite', token, expires_at: '2090-12-01T14:00:00Z' });
-    companions([]);
+    companions([], [
+      { id: 'enviado', status: 'pending', notices: ['arriving'], pays: true, expires_at: '2090-12-01T14:00:00Z' },
+      { id: 'recusado', status: 'declined', notices: ['arriving'], pays: false, expires_at: '2090-12-01T14:00:00Z' },
+    ]);
     expect(screen.getByText(/Você ainda não tem acompanhante/)).toBeVisible();
+    // The invites the person already sent and that still wait for an answer are listed; closed ones are not
+    const waiting = screen.getByRole('list', { name: 'Convites de acompanhante aguardando resposta' });
+    expect(within(waiting).getAllByRole('listitem')).toHaveLength(1);
+    expect(within(waiting).getByText(/com pagamento das corridas/)).toBeVisible();
+    expect(screen.getByText(/Antes de aceitar, a pessoa lê quem convida/)).toBeVisible();
     expectAccessibleScreen();
     const choices = screen.getByRole('group', { name: 'Avisos que a pessoa recebe' });
     expect(within(choices).getByLabelText('Embarque')).toBeChecked();
@@ -100,10 +130,11 @@ describe('acompanhante de confiança', () => {
     expect(await screen.findByRole('alert')).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Gerar convite de acompanhante' }));
     const link = (await screen.findByLabelText('Link do convite')) as HTMLInputElement;
-    expect(link.value).toMatch(new RegExp('/corridas/convite\\?tipo=acompanhante#adesao=' + token + '$'));
+    // The server tells the recipient what the token is, so the link carries no marker beyond the fragment
+    expect(link.value).toMatch(new RegExp('/corridas/convite#adesao=' + token + '$'));
     const calls = vi.mocked(parties.inviteCompanion).mock.calls;
     expect(calls).toHaveLength(2);
-    expect(calls[1].slice(0, 4)).toEqual(['caio@exemplo.test', ['boarded', 'completed', 'cancelled'], true, 60]);
+    expect(calls[1].slice(0, 4)).toEqual(['caio@exemplo.test', ['boarded', 'completed', 'cancelled'], true, 1440]);
     expect(calls[1][4]).toBe(calls[0][4]);
   });
 
@@ -176,13 +207,13 @@ describe('adolescente com responsável', () => {
   });
 
   it('o responsável acompanha o trecho, vê o alerta de desvio e escala ao plantão com a mesma chave ao repetir', async () => {
-    vi.mocked(parties.guardianWatch).mockResolvedValue({
-      status: 'boarded',
-      simulation: true,
-      wellness: null,
-      location: { lat: -23.6, lng: -46.6, at: '2090-12-01T15:10:00Z' },
-      alerts: [{ kind: 'route_deviation', at: '2090-12-01T15:12:00Z', escalated_protocol: null }],
-    });
+    vi.mocked(parties.guardianWatch).mockResolvedValue(
+      watch({
+        wellness: 'route_deviation',
+        location: { lat: -23.6, lng: -46.6, at: '2090-12-01T15:10:00Z' },
+        alerts: [{ kind: 'route_deviation', at: '2090-12-01T15:12:00Z', seen_at: '2090-12-01T15:13:00Z', escalated_protocol: null }],
+      }),
+    );
     vi.mocked(parties.guardianEscalate).mockRejectedValueOnce(new Error('rede')).mockResolvedValue('PROTOCOLO-ENSAIO');
     dependents([family], [{ ...teen, legs: [{ leg_id: 'trecho', status: 'boarded', pickup_at: '2090-12-01T15:00:00Z' }] }]);
     fireEvent.click(screen.getByRole('button', { name: 'Acompanhar a viagem de Teca' }));
@@ -203,7 +234,7 @@ describe('adolescente com responsável', () => {
   });
 
   it('o acompanhamento pode ser montado direto em um trecho e informa quando não há alertas', async () => {
-    vi.mocked(parties.guardianWatch).mockResolvedValue({ status: 'arriving', simulation: false, wellness: null, location: null, alerts: [] });
+    vi.mocked(parties.guardianWatch).mockResolvedValue(watch({ status: 'arriving', simulation: false }));
     render(<GuardianWatch leg="trecho-2" />);
     fireEvent.click(screen.getByRole('button', { name: 'Acompanhar a viagem do dependente' }));
     expect(await screen.findByText(/Nenhum alerta de desvio ou de sinal ausente/)).toBeVisible();
@@ -215,8 +246,10 @@ describe('adolescente com responsável', () => {
       accounts: [family],
       mandates: [],
       companions: [],
+      companionInvites: [],
       programs: [],
-      dependents: [teen, { ...teen, id: 'pendente', label: 'Rui', status: 'pending' }],
+      // The database already reads a record past its date as expired
+      dependents: [teen, { ...teen, id: 'pendente', label: 'Rui', status: 'pending' }, { ...teen, id: 'vencido', label: 'Davi', status: 'expired' }],
     });
     const seen = vi.fn();
     function Harness() {
@@ -236,6 +269,7 @@ describe('adolescente com responsável', () => {
     render(<Harness />);
     fireEvent.click(await screen.findByLabelText(/Teca viaja \(16-17 anos\) · eu respondo pela viagem e pago/));
     expect(screen.queryByLabelText(/Rui viaja/)).toBeNull();
+    expect(screen.queryByLabelText(/Davi viaja/)).toBeNull();
     expect(seen).toHaveBeenLastCalledWith({ kind: 'dependent', dependent: 'dep', consent: false });
     expect(fundingProblem(seen.mock.lastCall![0])).toMatch(/aceite do responsável/);
     fireEvent.click(screen.getByLabelText(/Sou responsável legal por Teca, autorizo esta viagem/));

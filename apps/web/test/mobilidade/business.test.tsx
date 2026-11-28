@@ -9,16 +9,21 @@ import Members from '../../components/mobility/business/Members';
 import Programs from '../../components/mobility/business/Programs';
 import UseVoucher from '../../components/mobility/business/UseVoucher';
 import { downloadJson } from '../../lib/download';
+import { lastBookableDayInSaoPaulo, saoPauloDateTime } from '../../lib/timezone';
 import Empresa from '../../pages/mobilidade/Empresa';
 import {
   answerGuestInvite,
   business,
+  guestInvite,
   redeemVoucher,
+  type GuestInviteView,
   type OrgAccount,
+  type OrgReport,
   type OrgRole,
   type VoucherProgram,
 } from '../../services/rideBusiness';
 import { getRideDashboard, type RideDashboard } from '../../services/rides';
+import { expectAccessibleScreen } from '../a11y/contract';
 
 const session = vi.hoisted(() => ({ mode: 'backend' }));
 vi.mock('../../lib/supabase', () => ({ backendEnabled: true, supabase: null }));
@@ -39,13 +44,14 @@ vi.mock('../../services/rideBusiness', () => ({
     requestGrant: vi.fn(),
     decideGrant: vi.fn(),
     inviteGuest: vi.fn(),
+    revokeGuestInvite: vi.fn(),
     report: vi.fn(),
     invoice: vi.fn(),
     exportInvoice: vi.fn(),
     dispute: vi.fn(),
   },
-  quoteFunded: vi.fn(),
   redeemVoucher: vi.fn(),
+  guestInvite: vi.fn(),
   answerGuestInvite: vi.fn(),
 }));
 
@@ -74,8 +80,8 @@ const program: VoucherProgram = {
   areas: ['Saúde'],
   classes: [],
   group_tag: null,
-  valid_from: '2026-11-01',
-  valid_until: '2090-12-31',
+  valid_from: '2026-11-01T03:00:00Z',
+  valid_until: '2090-12-31T03:00:00Z',
   excess_payer: 'rider',
   requires_approval: true,
 };
@@ -99,6 +105,17 @@ function org(role: OrgRole, extra: Partial<OrgAccount> = {}): OrgAccount {
     ...extra,
   };
 }
+/** A month with no movement, as the database answers it. */
+const noReport: OrgReport = {
+  account_id: 'org',
+  month: '2026-11-01',
+  rows: [],
+  by_cost_center: [],
+  voucher_cents: 0,
+  refunded_cents: 0,
+  reserved_cents: 0,
+  invoice: null,
+};
 const inRouter = (ui: React.ReactElement) => render(<MemoryRouter>{ui}</MemoryRouter>);
 const type = (label: string | RegExp, value: string) =>
   fireEvent.change(screen.getByLabelText(label), { target: { value } });
@@ -144,6 +161,16 @@ describe('Empresa · página', () => {
     expect(screen.queryByRole('heading', { name: 'Pessoas e papéis' })).toBeNull();
   });
 
+  it('empresa com a conferência vencida para de operar, mas quem gere continua lendo relatório e faturas', async () => {
+    vi.mocked(business.accounts).mockResolvedValue([org('manager', { verified: false, verified_until: '2026-10-31T15:00:00Z' })]);
+    vi.mocked(business.report).mockResolvedValue(noReport);
+    inRouter(<Empresa />);
+    expect(await screen.findByText(/A conferência desta empresa deixou de valer em 31\/10\/2026/)).toBeVisible();
+    expect(await screen.findByRole('heading', { name: 'Relatório mensal' }, { timeout: 5000 })).toBeVisible();
+    expect(screen.queryByRole('heading', { name: 'Programas de voucher' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Convidar pessoa' })).toBeNull();
+  });
+
   it.each<[OrgRole, string[], string[]]>([
     ['member', [], ['Pedidos aguardando decisão', 'Central de viagens para convidados', 'Pessoas e papéis', 'Relatório mensal']],
     ['operator', ['Central de viagens para convidados'], ['Pedidos aguardando decisão', 'Pessoas e papéis', 'Relatório mensal']],
@@ -152,7 +179,7 @@ describe('Empresa · página', () => {
     ['admin', ['Pessoas e papéis', 'Centros de custo', 'Central de viagens para convidados', 'Relatório mensal'], []],
   ])('papel %s vê só os painéis que pode usar, com o aviso de ensaio', async (role, shown, hidden) => {
     vi.mocked(business.accounts).mockResolvedValue([org(role)]);
-    vi.mocked(business.report).mockResolvedValue({ rows: [], invoice: null });
+    vi.mocked(business.report).mockResolvedValue(noReport);
     inRouter(<Empresa />);
     expect(await screen.findByRole('heading', { name: 'Programas de voucher' }, { timeout: 5000 })).toBeVisible();
     expect(screen.getByText(/Ambiente de ensaio. Empresas, vouchers e faturas usam dados fictícios/)).toBeVisible();
@@ -181,7 +208,7 @@ describe('Empresa · página', () => {
 
   it('quem abriu a empresa não recebe a opção de sair', async () => {
     vi.mocked(business.accounts).mockResolvedValue([org('admin')]);
-    vi.mocked(business.report).mockResolvedValue({ rows: [], invoice: null });
+    vi.mocked(business.report).mockResolvedValue(noReport);
     inRouter(<Empresa />);
     expect(await screen.findByRole('heading', { name: 'Ateliê Fictício Ltda.' })).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Sair desta empresa' })).toBeNull();
@@ -333,6 +360,23 @@ describe('Empresa · central de viagens', () => {
       expect.any(String),
     ]);
     expect(calls[1][7]).toBe(calls[0][7]);
+    // The desk can take back the invite it has just issued, after confirming
+    vi.mocked(business.revokeGuestInvite).mockResolvedValue(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Revogar este convite' }));
+    expect(business.revokeGuestInvite).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar revogação' }));
+    await waitFor(() => expect(business.revokeGuestInvite).toHaveBeenCalledWith('g1'));
+    expect(await screen.findByText(/Convite revogado/)).toBeVisible();
+    expect(screen.queryByLabelText('Link para copiar')).toBeNull();
+  });
+
+  it('só oferece ao convidado programas abertos a todos, porque um convidado não tem grupo', () => {
+    const programs = [program, { ...program, id: 'restrito', label: 'Só diretoria', group_tag: 'diretoria' }];
+    inRouter(<GuestDesk account={org('operator', { programs })} areas={dashboard.areas} refresh={refresh} />);
+    const choice = screen.getByLabelText('Programa que paga a viagem');
+    expect(within(choice).getByRole('option', { name: 'Visitas a clientes' })).toBeInTheDocument();
+    expect(within(choice).queryByRole('option', { name: 'Só diretoria' })).toBeNull();
+    expect(screen.getByText(/O convidado nunca paga diferença/)).toBeVisible();
   });
 
   it('recusa no formulário origem igual ao destino e data fora dos próximos 30 dias', async () => {
@@ -366,6 +410,7 @@ describe('Empresa · autorizações de viagem', () => {
       status: 'requested',
       valid_from: '2026-12-01T12:00:00Z',
       valid_until: '2026-12-02T12:00:00Z',
+      guest: false,
       mine: true,
     },
     {
@@ -377,6 +422,7 @@ describe('Empresa · autorizações de viagem', () => {
       status: 'requested',
       valid_from: '2026-12-01T12:00:00Z',
       valid_until: '2026-12-02T12:00:00Z',
+      guest: false,
       mine: false,
     },
   ];
@@ -390,8 +436,11 @@ describe('Empresa · autorizações de viagem', () => {
     fireEvent.click(queue.getByRole('button', { name: 'Aprovar pedido de Bruno' }));
     await waitFor(() => expect(business.decideGrant).toHaveBeenCalledWith('g2', true));
     expect(await queue.findByText(/Pedido de Bruno aprovado/)).toBeVisible();
+    // A request whose period ended answers 'expired' whatever was asked: the screen says so
+    vi.mocked(business.decideGrant).mockResolvedValue('expired');
     fireEvent.click(queue.getByRole('button', { name: 'Recusar pedido de Bruno' }));
     await waitFor(() => expect(business.decideGrant).toHaveBeenLastCalledWith('g2', false));
+    expect(await queue.findByText(/terminou antes da decisão\. Nada foi autorizado/)).toBeVisible();
   });
 
   it('colaborador pede autorização com período no horário de São Paulo e acompanha os próprios pedidos', async () => {
@@ -403,12 +452,22 @@ describe('Empresa · autorizações de viagem', () => {
     type('Programa', 'prog');
     type('Centro de custo', 'cc1');
     type('Motivo da viagem', 'Reunião com fornecedor');
-    type('Válida a partir de (São Paulo)', '2090-03-10T09:00');
-    type('Válida até (São Paulo)', '2090-03-10T08:00');
+    // A day inside the window the database accepts (it ends within 90 days and lasts up to 31)
+    const day = lastBookableDayInSaoPaulo(new Date(), 3);
+    type('Válida a partir de (São Paulo)', day + 'T09:00');
+    type('Válida até (São Paulo)', day + 'T08:00');
     fireEvent.click(screen.getByRole('button', { name: 'Enviar pedido' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('fim depois do início');
-    expect(business.requestGrant).not.toHaveBeenCalled();
+    type('Válida até (São Paulo)', lastBookableDayInSaoPaulo(new Date(), 60) + 'T18:00');
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar pedido' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('até 31 dias');
+    type('Válida a partir de (São Paulo)', '2090-03-10T09:00');
     type('Válida até (São Paulo)', '2090-03-10T18:00');
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar pedido' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('próximos 90 dias');
+    expect(business.requestGrant).not.toHaveBeenCalled();
+    type('Válida a partir de (São Paulo)', day + 'T09:00');
+    type('Válida até (São Paulo)', day + 'T18:00');
     fireEvent.click(screen.getByRole('button', { name: 'Enviar pedido' }));
     await waitFor(() =>
       expect(business.requestGrant).toHaveBeenCalledWith(
@@ -416,8 +475,8 @@ describe('Empresa · autorizações de viagem', () => {
         'prog',
         'cc1',
         'Reunião com fornecedor',
-        '2090-03-10T12:00:00.000Z',
-        '2090-03-10T21:00:00.000Z',
+        saoPauloDateTime(day, '09:00')!.toISOString(),
+        saoPauloDateTime(day, '18:00')!.toISOString(),
         expect.any(String),
       ),
     );
@@ -433,42 +492,66 @@ describe('Empresa · autorizações de viagem', () => {
 });
 
 describe('Empresa · relatório e fatura', () => {
-  const rows = [
-    { date: '2026-11-03', cost_center: 'CC-1 Comercial', member: 'Ana', ride_class: 'Conforto', voucher_cents: 3000, refunded_cents: 500 },
-    { date: '2026-11-09', cost_center: 'CC-2 Eventos', member: 'Bruno', ride_class: null, voucher_cents: 2000, refunded_cents: 0 },
-  ];
-  const summary = { id: 'fat', status: 'closed', total_cents: 4500, closed_at: '2026-12-01T12:00:00Z' };
+  // As the database answers: cents by the month the money moved, totals and the cost centers already summed
+  const report: OrgReport = {
+    account_id: 'org',
+    month: '2026-11-01',
+    rows: [
+      { date: '2026-11-03', cost_center: 'CC-1', cost_center_label: 'Comercial', member: 'Ana', ride_class: 'Conforto', voucher_cents: 3000, refunded_cents: 500, reserved_cents: 0 },
+      { date: '2026-11-09', cost_center: 'CC-2', cost_center_label: 'Eventos', member: 'Bruno', ride_class: null, voucher_cents: 2000, refunded_cents: 0, reserved_cents: 0 },
+      { date: '2026-11-21', cost_center: 'CC-2', cost_center_label: 'Eventos', member: 'Bruno', ride_class: null, voucher_cents: 0, refunded_cents: 0, reserved_cents: 4000 },
+    ],
+    by_cost_center: [
+      { cost_center: 'CC-1', cost_center_label: 'Comercial', voucher_cents: 3000, refunded_cents: 500, net_cents: 2500 },
+      { cost_center: 'CC-2', cost_center_label: 'Eventos', voucher_cents: 2000, refunded_cents: 0, net_cents: 2000 },
+    ],
+    voucher_cents: 5000,
+    refunded_cents: 500,
+    reserved_cents: 4000,
+    invoice: { id: 'fat', status: 'closed', total_cents: 4500, closed_at: '2026-12-01T12:00:00Z' },
+  };
+  const line = { billable: true, date: '2026-11-03', cost_center: 'CC-1', cost_center_label: 'Comercial', member: 'Ana', dispute: null };
 
-  it('fecha os totais por centro de custo, contesta um item com chave reutilizada e exporta a fatura', async () => {
-    vi.mocked(business.report).mockResolvedValue({ rows, invoice: summary });
+  it('mostra os totais do servidor, contesta só a linha de voucher com chave reutilizada e exporta a fatura', async () => {
+    vi.mocked(business.report).mockResolvedValue(report);
     vi.mocked(business.invoice).mockResolvedValue({
       id: 'fat',
+      account_id: 'org',
       month: '2026-11-01',
       status: 'closed',
-      closed_at: summary.closed_at,
+      closed_at: '2026-12-01T12:00:00Z',
       total_cents: 4500,
+      by_cost_center: [],
       lines: [
-        { id: 'l1', kind: 'voucher', billable: true, cost_center: 'CC-1 Comercial', member: 'Ana', cents: 3000, occurred_at: '2026-11-03T15:00:00Z', dispute: null },
-        { id: 'l2', kind: 'refund', billable: true, cost_center: 'CC-1 Comercial', member: 'Ana', cents: -500, occurred_at: '2026-11-20T15:00:00Z', dispute: { status: 'open', decision: null } },
-        { id: 'l3', kind: 'personal_topup', billable: false, cost_center: 'CC-1 Comercial', member: 'Ana', cents: 700, occurred_at: '2026-11-03T15:00:00Z', dispute: null },
+        { ...line, id: 'l1', kind: 'voucher', cents: 3000, occurred_at: '2026-11-03T15:00:00Z' },
+        { ...line, id: 'l2', kind: 'refund', cents: -500, occurred_at: '2026-11-20T15:00:00Z' },
+        { ...line, id: 'l3', kind: 'personal_topup', billable: false, cents: 700, occurred_at: '2026-11-03T15:00:00Z' },
+        { ...line, id: 'l4', kind: 'voucher', cents: 2000, occurred_at: '2026-11-09T15:00:00Z', dispute: { id: 'd0', status: 'open', decision: null } },
+        { ...line, id: 'l5', kind: 'adjustment', cents: -300, occurred_at: '2026-11-10T15:00:00Z' },
       ],
     });
     vi.mocked(business.dispute).mockRejectedValueOnce(new Error('rede')).mockResolvedValueOnce('d1');
     const exported = { invoice: 'fat', lines: [] };
     vi.mocked(business.exportInvoice).mockResolvedValue(exported);
     render(<Invoices account={org('manager')} />);
-    expect(await screen.findByText(/^Voucher R\$/)).toHaveTextContent(/Voucher R\$\s50,00 · Estornos R\$\s5,00 · Líquido R\$\s45,00/);
+    expect(await screen.findByText(/^Voucher R\$/)).toHaveTextContent(
+      /Voucher R\$\s50,00 · Estornos R\$\s5,00 · Líquido R\$\s45,00 · Reservado e ainda não usado R\$\s40,00/,
+    );
     expect(business.report).toHaveBeenCalledWith('org', expect.stringMatching(/^\d{4}-\d{2}-01$/));
-    expect(screen.getByText(/CC-1 Comercial: R\$\s25,00/)).toBeVisible();
-    expect(screen.getByText(/CC-2 Eventos: R\$\s20,00/)).toBeVisible();
-    expect(screen.getAllByRole('row')).toHaveLength(3);
+    expect(screen.getByText(/CC-1 · Comercial: R\$\s25,00/)).toBeVisible();
+    expect(screen.getByText(/CC-2 · Eventos: R\$\s20,00/)).toBeVisible();
+    expect(screen.getAllByRole('row')).toHaveLength(4);
+    expect(screen.getByRole('columnheader', { name: 'Reservado' })).toBeVisible();
+    expect(screen.getByText(/O reservado é o voucher de uma viagem deste mês que\s+ainda não foi usado/)).toBeVisible();
     expect(screen.getByText(/Fechada em/)).toHaveTextContent(/Total R\$\s45,00/);
 
     fireEvent.click(screen.getByRole('button', { name: 'Ver composição da fatura' }));
     expect(await screen.findByText('Contestação em análise')).toBeVisible();
     expect(business.invoice).toHaveBeenCalledWith('fat');
     expect(screen.getByText(/informativo, fora do total/)).toBeVisible();
-    // Only the billable line without a dispute can be contested.
+    // The database accepts a contestation only of a voucher line that has none yet: a refund, an adjustment
+    // and the rider's own complement offer no such action.
+    expect(screen.getAllByRole('button', { name: 'Contestar este item' })).toHaveLength(1);
     fireEvent.click(screen.getByRole('button', { name: 'Contestar este item' }));
     type('Motivo da contestação de Voucher de viagem', 'Valor em duplicidade');
     fireEvent.click(screen.getByRole('button', { name: 'Enviar contestação' }));
@@ -485,15 +568,16 @@ describe('Empresa · relatório e fatura', () => {
     expect(business.exportInvoice).toHaveBeenCalledWith('fat');
   });
 
-  it('competência aberta avisa que a fatura ainda não fechou e consulta o mês escolhido', async () => {
-    vi.mocked(business.report).mockResolvedValue({ rows: [], invoice: null });
+  it('o mês corrente explica que só fecha depois de terminar; um mês encerrado e aberto aguarda o financeiro', async () => {
+    vi.mocked(business.report).mockResolvedValue(noReport);
     render(<Invoices account={org('manager')} />);
-    expect(await screen.findByText(/ainda não foi fechada pelo financeiro WorkEasy/)).toBeVisible();
-    expect(screen.getByText(/Nenhum valor pago pela empresa em/)).toBeVisible();
+    expect(await screen.findByText(/A fatura de um mês só é fechada depois que ele termina/)).toBeVisible();
+    expect(screen.getByText(/Nenhum valor pago ou reservado pela empresa em/)).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Exportar fatura' })).toBeNull();
     type('Competência', '2026-10');
     await waitFor(() => expect(business.report).toHaveBeenLastCalledWith('org', '2026-10-01'));
     expect(await screen.findByRole('heading', { name: 'Fatura de outubro de 2026' })).toBeVisible();
+    expect(await screen.findByText(/ainda não foi fechada pelo financeiro WorkEasy/)).toBeVisible();
   });
 });
 
@@ -509,11 +593,29 @@ describe('Empresa · voucher e convite do convidado', () => {
     expect(screen.queryByRole('button', { name: 'Usar voucher' })).toBeNull();
   });
 
-  it('convidado aceita com a mesma chave na nova tentativa; recusar pede confirmação', async () => {
+  const guest: GuestInviteView = {
+    id: 'g1',
+    status: 'pending',
+    account_name: 'Ateliê Fictício Ltda.',
+    legs: [{ seq: 1, origin: 'Saúde', destination: 'Jabaquara', pickup_at: null }],
+    scheduled_at: null,
+    expires_at: '2090-12-01T14:00:00Z',
+    simulation: true,
+  };
+
+  it('convidado lê a empresa e o trajeto antes de responder e aceita com a mesma chave na nova tentativa', async () => {
+    vi.mocked(guestInvite).mockResolvedValue(guest);
     vi.mocked(answerGuestInvite)
       .mockRejectedValueOnce(new Error('rede'))
-      .mockResolvedValueOnce({ status: 'accepted', ride_id: 'viagem' });
+      .mockResolvedValueOnce({ status: 'accepted', quote_id: 'cotacao', ride_id: 'viagem' });
     inRouter(<GuestInvite token={TOKEN} />);
+    expect(await screen.findByText('Saúde → Jabaquara')).toBeVisible();
+    expect(guestInvite).toHaveBeenCalledWith(TOKEN);
+    expect(screen.getByText(/convidou você para uma viagem paga com voucher/)).toHaveTextContent('Ateliê Fictício Ltda.');
+    expect(screen.getByText('Saída quando você aceitar')).toBeVisible();
+    expect(screen.getByText(/Você não paga nada por esta viagem/)).toBeVisible();
+    expect(screen.getByText(/Ambiente de ensaio/)).toBeVisible();
+    expectAccessibleScreen();
     fireEvent.click(screen.getByRole('button', { name: 'Recusar convite' }));
     expect(screen.getByText(/Recusar encerra este convite/)).toBeVisible();
     expect(answerGuestInvite).not.toHaveBeenCalled();
@@ -527,5 +629,18 @@ describe('Empresa · voucher e convite do convidado', () => {
     expect(calls[0].slice(0, 2)).toEqual([TOKEN, true]);
     expect(calls[1][2]).toBe(calls[0][2]);
     expect(screen.getByRole('link', { name: 'Acompanhar em Corridas' })).toHaveAttribute('href', '/corridas');
+  });
+
+  it('sem convite para esta conta, ou com o convite encerrado, não oferece resposta', async () => {
+    vi.mocked(guestInvite).mockResolvedValue(null);
+    const first = inRouter(<GuestInvite token={TOKEN} />);
+    expect(await screen.findByText(/Convite indisponível para esta conta/)).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Aceitar viagem' })).toBeNull();
+    first.unmount();
+    vi.mocked(guestInvite).mockResolvedValue({ ...guest, status: 'revoked', legs: [] });
+    inRouter(<GuestInvite token={TOKEN} />);
+    expect(await screen.findByText('A empresa revogou este convite.')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Aceitar viagem' })).toBeNull();
+    expect(answerGuestInvite).not.toHaveBeenCalled();
   });
 });

@@ -9,6 +9,24 @@ describe('routeFromAppUrl', () => {
     expect(routeFromAppUrl(SITE+'/corridas/convite#convite='+token,SITE)).toBe('/corridas/convite#convite='+token);
     expect(routeFromAppUrl(SITE+'/pedidos#convite='+token,SITE)).toBe('/pedidos');
   });
+  it('preserves the ride invite and the adhesion invite fragments on the invite route only', () => {
+    const token = 'b'.repeat(64);
+    for (const kind of ['viagem', 'adesao']) {
+      expect(routeFromAppUrl(`${SITE}/corridas/convite#${kind}=${token}`, SITE)).toBe(`/corridas/convite#${kind}=${token}`);
+      expect(routeFromAppUrl(`${SITE}/corridas#${kind}=${token}`, SITE)).toBe('/corridas');
+      expect(routeFromAppUrl(`${SITE}/corridas/grupos#${kind}=${token}`, SITE)).toBe('/corridas/grupos');
+    }
+    // An older companion link carried a marker in the query; it still lands on the same view
+    expect(routeFromAppUrl(`${SITE}/corridas/convite?tipo=acompanhante#adesao=${token}`, SITE)).toBe(
+      `/corridas/convite?tipo=acompanhante#adesao=${token}`,
+    );
+  });
+  it('drops a fragment that is not a well-formed invite token', () => {
+    expect(routeFromAppUrl(`${SITE}/corridas/convite#viagem=${'b'.repeat(63)}`, SITE)).toBe('/corridas/convite');
+    expect(routeFromAppUrl(`${SITE}/corridas/convite#adesao=${'B'.repeat(64)}`, SITE)).toBe('/corridas/convite');
+    expect(routeFromAppUrl(`${SITE}/corridas/convite#outro=${'b'.repeat(64)}`, SITE)).toBe('/corridas/convite');
+    expect(routeFromAppUrl(`${SITE}/corridas/convite#viagem=${'b'.repeat(64)}&x=1`, SITE)).toBe('/corridas/convite');
+  });
   it('turns a link to the site into the route of the app, with its query', () => {
     expect(routeFromAppUrl('https://workeasy.example/pedidos/8f3c', SITE)).toBe('/pedidos/8f3c');
     expect(routeFromAppUrl('https://workeasy.example/entrar?next=%2Fconta', SITE)).toBe('/entrar?next=%2Fconta');

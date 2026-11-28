@@ -102,6 +102,12 @@ function AccountStatus({
           Empresa conferida pela operação
           {account.verified_until && ' · conferência válida até ' + formatDateBR(account.verified_until)}.
         </p>
+      ) : account.verified_until ? (
+        <p role="status" className="rounded-xl bg-amber-50 p-3 text-amber-900">
+          A conferência desta empresa deixou de valer em {formatDateBR(account.verified_until)}. Novas viagens, convites e
+          vouchers ficam parados até a operação WorkEasy conferir de novo; o relatório e as faturas continuam disponíveis
+          para quem administra ou gere a conta.
+        </p>
       ) : (
         <p role="status" className="rounded-xl bg-amber-50 p-3 text-amber-900">
           Em análise pela operação WorkEasy. Você não precisa fazer nada agora: quando a conferência do contrato e dos
@@ -174,6 +180,8 @@ function Workspace({ userId }: { userId: string }) {
     reload();
   };
   const usable = account?.verified;
+  // A company whose check lapsed keeps reading what it already owes: the report and the invoices.
+  const lapsed = !!account && !account.verified && !!account.verified_until;
   return (
     <section className="mx-auto max-w-3xl space-y-5 px-4 py-8 text-gray-800">
       <Link to="/corridas" className="text-primary underline">
@@ -230,6 +238,11 @@ function Workspace({ userId }: { userId: string }) {
               )}
               {may(account, 'people') && <Members key={'pessoas:' + account.id} account={account} userId={userId} refresh={reload} />}
               {may(account, 'finance') && <Invoices key={'faturas:' + account.id} account={account} />}
+            </Suspense>
+          )}
+          {lapsed && may(account, 'finance') && (
+            <Suspense fallback={<p role="status">Carregando painéis…</p>}>
+              <Invoices key={'faturas:' + account.id} account={account} />
             </Suspense>
           )}
           <details className="rounded-2xl border border-gray-200 bg-white p-5">
