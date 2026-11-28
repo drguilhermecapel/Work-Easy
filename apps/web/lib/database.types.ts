@@ -1527,6 +1527,9 @@ isOneToOne: true
 "admin_resolve_ride_issuer":
 { Args: { "p_amount": number,"p_extras": number,"p_lost": boolean,"p_order": string,"p_reference": string }; Returns: string
                            },
+"admin_resolve_ride_voucher_hold":
+{ Args: { "p_action": string,"p_key": string,"p_leg": string,"p_reference": string }; Returns: Json
+                           },
 "admin_review_dependent":
 { Args: { "p_approve": boolean,"p_dependent": string,"p_evidence": string,"p_until": string }; Returns: boolean
                            },
@@ -2044,6 +2047,9 @@ isOneToOne: true
 "ride_enroll":
 { Args: { "p_market": string,"p_reference": string,"p_stratum": string }; Returns: string
                            },
+"ride_erasure_account_plan":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
 "ride_export_before_modes":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
@@ -2389,6 +2395,9 @@ isOneToOne: true
 "ride_set_access":
 { Args: { "p_assistance": string,"p_cue": string,"p_leg": string,"p_share": boolean }; Returns: Json
                            },
+"ride_set_account_admin":
+{ Args: { "p_account": string,"p_admin": boolean,"p_member": string }; Returns: boolean
+                           },
 "ride_set_account_limit":
 { Args: { "p_account": string,"p_cents": number,"p_method": string }; Returns: boolean
                            },
@@ -2428,6 +2437,9 @@ isOneToOne: true
 "ride_support_contact":
 { Args: { "p_leg": string }; Returns: Json
                            },
+"ride_transfer_account":
+{ Args: { "p_account": string,"p_key": string,"p_new_owner": string }; Returns: Json
+                           },
 "ride_transition":
 { Args: { "p_key": string,"p_leg": string,"p_to": string }; Returns: Json
                            },
@@ -2451,6 +2463,9 @@ isOneToOne: true
                            },
 "ride_verify_route":
 { Args: { "p_meters": number,"p_minutes": number,"p_reference": string,"p_route": string }; Returns: Json
+                           },
+"ride_voucher_hold":
+{ Args: { "p_leg": string }; Returns: Json
                            },
 "ride_wellness_ack":
 { Args: { "p_leg": string }; Returns: boolean

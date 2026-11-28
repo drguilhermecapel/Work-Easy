@@ -1,10 +1,14 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Link } from 'react-router-dom';
 import { Trash2 } from 'lucide-react';
 import { company } from '../../config/legal';
+import { useAuth } from '../../contexts/AuthContext';
 import { backendEnabled } from '../../lib/supabase';
 import { formatPhoneBR } from '../../lib/phone';
 import { useDocumentTitle } from '../../lib/useDocumentTitle';
+
+// Read only with a session: what happens to the family, company or fleet accounts the person holds.
+const ErasureGroups = lazy(() => import('../../components/mobility/parties/ErasureGroups'));
 
 /**
  * Public page that explains how to delete the account and what happens to the data.
@@ -15,6 +19,8 @@ import { useDocumentTitle } from '../../lib/useDocumentTitle';
 const ExcluirConta: React.FC = () => {
   useDocumentTitle('Excluir conta: WorkEasy');
   const { sacEmail, sacWhatsapp } = company();
+  const auth = useAuth();
+  const userId = backendEnabled && auth.mode === 'backend' ? auth.authUser?.id : undefined;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">
@@ -86,6 +92,20 @@ const ExcluirConta: React.FC = () => {
           Excluir a conta não elimina todos os registros nem os cadastros mantidos por fornecedores externos, como o provedor de pagamentos.
           Se o processo apresentar erro, procure o SAC para conferir o que foi concluído.
         </p>
+      </section>
+
+      <section aria-labelledby="excluir-grupos" className="mt-8">
+        <h2 id="excluir-grupos" className="font-bold text-gray-800 mb-2">Grupos de corridas de que você é titular</h2>
+        <p className="text-sm text-gray-700">
+          Se você é titular de um grupo familiar, de uma empresa ou de uma frota de corridas, a titularidade passa para a
+          pessoa da administração que entrou primeiro no grupo. Se ninguém mais administra, a conta do grupo é encerrada. Corridas, cobranças
+          e faturas anteriores continuam registradas. Antes de excluir, você pode transferir a titularidade na página do grupo.
+        </p>
+        {userId && (
+          <Suspense fallback={null}>
+            <ErasureGroups userId={userId} />
+          </Suspense>
+        )}
       </section>
 
       <section aria-labelledby="excluir-ajuda" className="mt-8">

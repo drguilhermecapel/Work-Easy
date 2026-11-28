@@ -46,12 +46,42 @@ export interface QueueInvoice {
   /** Ended months a closing would bill now, oldest first ("YYYY-MM-01"). Months close in order. */
   months: string[];
 }
+/**
+ * A completed leg whose company voucher cannot be applied (DD124). Nothing is charged to the payer
+ * while it stays here: the operation applies the voucher once the release is open again, or returns
+ * it to the program and the payer then pays the ordinary way.
+ */
+export interface QueueVoucher {
+  leg_id: string;
+  account_name: string;
+  program_label: string;
+  cents: number;
+  /** When the order started to wait: the end of the trip, or later the end of the release or of the window. */
+  since: string;
+  reason: 'release_closed' | 'monetization_off' | 'benefit_expired';
+  /** The benefit release of the corridor is open now, so the voucher can be applied. */
+  ready: boolean;
+  expires_at: string;
+}
+export type VoucherHoldAction = 'apply' | 'return';
+export interface VoucherHoldResult {
+  leg_id: string;
+  action: VoucherHoldAction;
+  reason: QueueVoucher['reason'];
+  cents: number;
+  applied_cents: number | null;
+  order_id: string | null;
+  /** 'apply' lifted the hold without opening an order: the payer chooses the method of the difference. */
+  payer_choice: boolean;
+  reference: string;
+}
 export interface PartyQueue {
   accounts: QueueAccount[];
   dependents: QueueDependent[];
   cessions: QueueCession[];
   disputes: QueueDispute[];
   invoices: QueueInvoice[];
+  vouchers: QueueVoucher[];
 }
 
 export interface AdminProgram {
@@ -187,6 +217,11 @@ export const partiesAdmin = {
   /** `month` is "YYYY-MM-01" of an ended month. Closing the same month again answers the same invoice. */
   closeInvoice: async (account: string, month: string, key: string) =>
     unwrap<string>(await db().rpc('admin_close_ride_invoice', { p_account: account, p_month: month, p_key: key })),
+  /** Applies or returns a held voucher. A retry with the same key answers the first result. */
+  resolveVoucherHold: async (leg: string, action: VoucherHoldAction, reference: string, key: string) =>
+    unwrap<VoucherHoldResult>(
+      await db().rpc('admin_resolve_ride_voucher_hold', { p_leg: leg, p_action: action, p_reference: reference, p_key: key }),
+    ),
   /** Answers the status the contestation ended in. */
   decideDispute: async (dispute: string, accept: boolean, reason: string) =>
     unwrap<'accepted' | 'rejected'>(

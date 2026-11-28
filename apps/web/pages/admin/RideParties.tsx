@@ -22,6 +22,7 @@ import {
 import { getRideDashboard, type RideDashboard } from '../../services/rides';
 import { attempt, evidenceProblem, EVIDENCE, monthName, type Action } from './ridePartyFormat';
 import { Confirm, VerifyAccount } from './ridePartyUi';
+import VoucherRow from './ridePartyVoucherRow';
 
 // Operator console of stage 5 (O17 PAR-502..508). One reading lists what awaits the operation:
 // accounts to check, dependents and fleet cessions to review, months to close and contestations
@@ -388,6 +389,16 @@ function Waiting({ dashboard }: { dashboard: RideDashboard }) {
             reload={reload}
           >
             {(item, action) => <CessionRow key={item.id} item={item} action={action} />}
+          </Queue>
+          <Queue
+            id="contas-vouchers"
+            title="Vouchers retidos"
+            intro="Trechos concluídos cujo voucher da empresa não pôde ser aplicado: liberação do benefício fechada, cobrança desligada ou janela vencida. O pedido fica parado e nada é cobrado de quem viaja até a decisão."
+            empty="Nenhum voucher retido aguardando a operação."
+            items={data.vouchers ?? []}
+            reload={reload}
+          >
+            {(item, action) => <VoucherRow key={item.leg_id} item={item} action={action} />}
           </Queue>
           <Queue
             id="contas-faturas"

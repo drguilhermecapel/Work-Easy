@@ -2,6 +2,7 @@ import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'reac
 import { Link } from 'react-router-dom';
 import ErrorAlert from '../../ErrorAlert';
 import { formatDateTime } from '../../admin/format';
+import Ownership from '../parties/Ownership';
 import { useAction } from '../safety/state';
 import { toAppError } from '../../../lib/errors';
 import { formatCents } from '../../../lib/money';
@@ -819,6 +820,7 @@ function Management({ account, userId, refresh }: { account: FleetAccount; userI
         {notice && <p role="status">{notice}</p>}
       </section>
       <People account={account} userId={userId} refresh={reload} />
+      <Ownership account={account} userId={userId} onChange={reload} />
       <MonthSummary account={account.id} currentMonth={currentMonth} current={overview} />
     </>
   );

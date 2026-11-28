@@ -303,6 +303,19 @@ export const business = {
 export const redeemVoucher = async (leg: string, method: VoucherMethod) =>
   unwrap<VoucherRedemption>(await db().rpc('ride_redeem_voucher', { p_leg: leg, p_method: method }));
 
+/** The company voucher of the payer's own leg while it holds the fare order, or once returned (DD124); null otherwise. */
+export interface VoucherHold {
+  /**
+   * `on_hold`: the benefit cannot be applied now and the operation decides; nothing is charged meanwhile.
+   * `returned`: the operation gave the voucher back to the program; the fare is paid the ordinary way.
+   */
+  state: 'ready' | 'on_hold' | 'returned';
+  reason: 'release_closed' | 'monetization_off' | 'benefit_expired' | null;
+  cents: number;
+}
+export const voucherHold = async (leg: string) =>
+  unwrapMaybe<VoucherHold>(await db().rpc('ride_voucher_hold', { p_leg: leg }));
+
 /** The guest invite of a token, for the confirmed recipient only; null for anyone else. */
 export const guestInvite = async (token: string) =>
   unwrapMaybe<GuestInviteView>(await db().rpc('ride_guest_invite', { p_token: token }));

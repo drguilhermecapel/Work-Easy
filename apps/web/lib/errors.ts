@@ -109,6 +109,10 @@ export const DATABASE_ERROR_CODES = [
   'ride_invoice_closed',
   'ride_minor_unavailable',
   'ride_fleet_review_required',
+  // O17 follow-up (DD118): account ownership transfer
+  'ride_account_owner_required',
+  'ride_transfer_target_invalid',
+  'ride_transfer_dependents_open',
   // O17 stage 6: modalities (market catalog, assistance, reserve, shuttle seats, hourly blocks, intercity)
   'ride_modality_unavailable',
   'ride_assistance_unavailable',
@@ -123,9 +127,13 @@ export const DATABASE_ERROR_CODES = [
   'route_measurement_locked',
   'ride_mode_frozen',
   'ride_seat_frozen',
+  'ride_rebook_limit',
   'driver_unavailable',
   'ride_voucher_pending',
   'ride_dependent_in_trip',
+  // O17 voucher release hold (DD124)
+  'ride_voucher_on_hold',
+  'ride_voucher_returned',
   // O17 operations registry (DD125)
   'ride_registry_evidence_required',
   'ride_registry_frozen',
@@ -258,6 +266,12 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
     'A viagem de adolescente não está liberada para este trajeto: confira se o cadastro do dependente foi conferido e está na validade e se a origem e o destino aceitam a faixa etária. Se estiver tudo certo, escolha outro horário ou fale com o plantão.',
   ride_fleet_review_required:
     'Você dirige por uma frota e a cessão do veículo ainda não foi aprovada pela operação, ou os documentos venceram. Confira a situação em Frota e peça à frota que regularize a cessão.',
+  ride_account_owner_required:
+    'Só quem é titular desta conta pode fazer isso. Peça a quem é titular para transferir a conta ou para mudar a administração.',
+  ride_transfer_target_invalid:
+    'A conta só pode ir para outra pessoa que esteja na administração e com o perfil ativo. Nomeie a pessoa para a administração e tente de novo.',
+  ride_transfer_dependents_open:
+    'Você é responsável por dependentes cadastrados neste grupo familiar, e essa responsabilidade não passa para outra pessoa. Retire os dependentes do grupo e tente transferir de novo.',
   ride_modality_unavailable:
     'Esta modalidade não está liberada para este trajeto e horário. Nada foi solicitado. Veja em Modalidades o que está aberto agora ou escolha outro horário.',
   ride_assistance_unavailable:
@@ -281,9 +295,15 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
     'Este trajeto já tem uma cotação em andamento com outra classe. Decida essa cotação ou espere ela vencer antes de trocar a classe.',
   ride_mode_frozen: 'A modalidade desta cotação já foi registrada e não muda. Peça uma nova cotação para outra modalidade.',
   ride_seat_frozen: 'Esta partida já tem assentos reservados e não pode ser alterada assim. Cancele a partida ou atualize a lista.',
+  ride_rebook_limit:
+    'Esta reserva já chegou ao limite de remarcações da área. Você pode cancelar a reserva, sem manter o preço combinado, ou pedir uma nova cotação para outro horário.',
   driver_unavailable: 'Este trecho não cabe na sua agenda agora. Atualize as ofertas e escolha outro trecho.',
   ride_voucher_pending:
     'Este trecho tem um voucher da empresa que ainda não foi usado. Confira o trecho em Corridas e use “Usar voucher”: a empresa paga a parte dela e só a diferença que você aceitou fica para pagar.',
+  ride_voucher_on_hold:
+    'O voucher da empresa deste trecho está aguardando a operação. Nada será cobrado de você enquanto isso; confira o trecho em Corridas mais tarde.',
+  ride_voucher_returned:
+    'O voucher deste trecho voltou para o programa da empresa. A tarifa agora é paga pelo caminho comum, em "Formas de pagamento do trecho".',
   ride_dependent_in_trip:
     'O dependente está em uma viagem que ainda não terminou. Confira a viagem em Corridas e retire o cadastro depois que ela terminar ou for cancelada.',
   ride_registry_evidence_required:

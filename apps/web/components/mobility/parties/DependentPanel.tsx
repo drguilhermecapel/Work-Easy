@@ -195,7 +195,8 @@ export default function DependentPanel({
   dependents: Dependent[];
   onChange: () => void;
 }) {
-  const families = accounts.filter((a) => a.kind === 'family' && a.role === 'admin');
+  // DD116: only the holder of the family registers a dependent and acts as guardian.
+  const families = accounts.filter((a) => a.kind === 'family' && a.owner);
   return (
     <section aria-labelledby="dependentes" className="space-y-3">
       <h2 id="dependentes" className="text-lg font-semibold">
@@ -241,8 +242,8 @@ export default function DependentPanel({
         <Register accounts={families} onChange={onChange} />
       ) : (
         <p className="text-sm text-gray-600">
-          Para cadastrar um dependente, crie antes um grupo familiar nesta página: o cadastro fica ligado ao grupo que
-          você administra, e só quem administra o grupo pede e acompanha as viagens do dependente.
+          Para cadastrar um dependente, crie antes um grupo familiar nesta página: o cadastro fica ligado ao grupo de
+          que você é titular, e só quem é titular do grupo pede e acompanha as viagens do dependente.
         </p>
       )}
     </section>
