@@ -22,7 +22,7 @@ create function pg_temp.line(p_statement jsonb,p_leg uuid) returns jsonb languag
 grant execute on function pg_temp.g(text),pg_temp.u(text),pg_temp.n(text),pg_temp.trip(),pg_temp.point(numeric,numeric,text),
  pg_temp.dash_leg(uuid),pg_temp.dash_quote(uuid),pg_temp.line(jsonb,uuid) to authenticated,anon;
 insert into public.ride_drivers(id,environment,vehicle,status,valid_until,reviewed_by,online)
- values(tests.uid('provider_c'),'simulation','sedan','approved',current_date+30,tests.uid('admin'),true);
+ values(tests.uid('provider_c'),'simulation','sedan','approved',private.sp_date(now())+30,tests.uid('admin'),true);
 insert into private.ride_method_releases(environment,origin,destination,method,evidence_ref,validity,card_brands,acquirer_profile_ref)
  select 'simulation','Saúde','Jabaquara',m,'ensaio 205b',tstzrange(now()-interval '1 day',now()+interval '1 day'),
   case when m='card' then array['VISA'] else '{}'::text[] end,case when m='card' then 'conta hospedada TESTE' end from unnest(array['card','pix','benefit']) m;
@@ -357,13 +357,20 @@ select throws_ok($$select private.ride_requote_legs(pg_temp.u('plain'),(select l
  'P0001','invalid_input','quem viaja continua obrigado a aceitar');
 select is((private.ride_requote_legs(pg_temp.u('plain'),(select legs from private.ride_quotes where id=pg_temp.u('plain')),array[tests.uid('provider_b')])).total_cents,
  pg_temp.n('x'),'reescrita sem mudança recalcula o mesmo total');
-select is((private.ride_fund_voucher_quote(pg_temp.u('plain'),pg_temp.u('org'),null,null,null,
+-- A declaração corporativa sempre nomeia o programa (restrição de 20261127110507): a organização volta a ficar
+-- conferida e ganha um programa fictício que cobre R$ 10,00 por trecho, com o excedente por conta de quem viaja.
+update private.ride_accounts set verification_ref='CONTRATO-205B',verified_until=now()+interval '30 days' where id=pg_temp.u('org');
+insert into t values('prog',md5('prog-205b')::uuid::text);
+insert into private.ride_voucher_programs(id,account_id,environment,label,budget_cents,ride_value_cents,validity,excess_payer,funding_ref,evidence_ref,enabled,created_by)
+ values(pg_temp.u('prog'),pg_temp.u('org'),'simulation','Programa de ensaio 205b',100000,1000,tstzrange(now()-interval '1 hour',now()+interval '1 day'),'rider',
+  'ficticio-o17-e5','ficticio-o17-e5',true,tests.uid('admin'));
+select is((private.ride_fund_voucher_quote(pg_temp.u('plain'),pg_temp.u('org'),pg_temp.u('prog'),null,null,
   jsonb_build_object('1',jsonb_build_object('voucher_cents',1000,'excess_cents',pg_temp.n('x')-1000)))).payer_id,tests.uid('provider_b'),
  'no financiamento corporativo quem viaja continua sendo o pagador');
-select is((private.ride_fund_voucher_quote(pg_temp.u('plain'),pg_temp.u('org'),null,null,null,
+select is((private.ride_fund_voucher_quote(pg_temp.u('plain'),pg_temp.u('org'),pg_temp.u('prog'),null,null,
   jsonb_build_object('1',jsonb_build_object('voucher_cents',1000,'excess_cents',pg_temp.n('x')-1000)))).quote_id,pg_temp.u('plain'),
  'repetir a declaração de financiamento devolve a mesma linha');
-select throws_ok($$select private.ride_fund_voucher_quote(pg_temp.u('plain'),pg_temp.u('org'),null,null,null,'{"1":{"voucher_cents":1}}')$$,
+select throws_ok($$select private.ride_fund_voucher_quote(pg_temp.u('plain'),pg_temp.u('org'),pg_temp.u('prog'),null,null,'{"1":{"voucher_cents":1}}')$$,
  'P0001','idempotency_conflict','financiamento diferente para a mesma cotação é conflito');
 select throws_ok($$select private.ride_fund_voucher_quote(pg_temp.u('q1'),pg_temp.u('org'),null,null,null,'{}')$$,
  'P0001','idempotency_conflict','cotação com mandato não vira voucher');
@@ -374,6 +381,8 @@ select is((pg_temp.dash_quote(pg_temp.u('plain'))->>'total_cents')::int,pg_temp.
 insert into t select 'r_plain',public.ride_consent(pg_temp.u('plain'),true)->>'ride_id';
 select tests.clear_authentication();
 insert into t select 'leg_plain',id::text from public.ride_legs where ride_id=pg_temp.u('r_plain');
+select is((select count(*) from private.ride_voucher_grants where leg_id=pg_temp.u('leg_plain') and program_id=pg_temp.u('prog') and granted_cents=1000),1::bigint,
+ 'o aceite reserva o voucher do programa declarado, uma única vez');
 select is((select planned from private.ride_leg_funding where leg_id=pg_temp.u('leg_plain')),
  jsonb_build_object('voucher_cents',1000,'excess_cents',pg_temp.n('x')-1000),'o trecho congela o planejado do próprio trecho');
 select tests.authenticate_as('provider_b');
