@@ -1,3 +1,4 @@
+import { RideOrderPayments } from '../../components/mobility/RideOrderPayments';
 import { DriverCue, OfferAssistance } from '../../components/mobility/safety/PickupCue';
 import { RideSafety } from '../../components/mobility/safety/RideSafety';
 import { BoardingPin } from '../../components/mobility/safety/RideCommunication';
@@ -209,6 +210,7 @@ function DriverPanel(actions: ConsoleActions) {
                         </button>
                       </div>
                     )}
+                    <RideOrderPayments mode="driver-leg" legId={leg.id} completed={leg.status==='completed'} />
                     <RideSafety status={leg.status} leg={leg.id} onChange={reload}/>
                     <RideAmendmentPanel legId={leg.id} legStatus={leg.status} onChanged={reload} />
                     <RideAftercare legId={leg.id} completed={leg.status === 'completed'} />
@@ -230,6 +232,7 @@ export default function Motorista() {
       <div className="max-w-3xl mx-auto px-4 py-6">
         <RideDisplayMode/>
         <DriverConsole title="Painel do motorista" content={DriverPanel} />
+        <RideOrderPayments mode="driver" />
       </div>
     </RequireSession>
   );

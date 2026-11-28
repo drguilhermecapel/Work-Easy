@@ -281,7 +281,7 @@ jobs:
         run: |
           list="$RUNNER_TEMP/functions.txt"
           : > "$list"
-          for fn in asaas-webhook notify-dispatch background-check-purge ride-alerts ride-dossier-purge ride-live-webhook; do
+          for fn in asaas-webhook notify-dispatch background-check-purge ride-alerts ride-dossier-purge ride-live-webhook ride-order-webhook ride-wallet-webhook; do
             if [ ! -d "supabase/functions/$fn" ]; then
               # An older commit (rollback) may predate a function: nothing to publish.
               echo "::warning::$fn não existe neste commit; nada a publicar."
@@ -292,7 +292,7 @@ jobs:
           for dir in supabase/functions/*/; do
             fn="$(basename "$dir")"
             case "$fn" in
-              _*|asaas-webhook|notify-dispatch|background-check-purge|ride-alerts|ride-dossier-purge|ride-live-webhook|ride-sandbox-checkout|ride-sandbox-webhook) continue ;;
+              _*|asaas-webhook|notify-dispatch|background-check-purge|ride-alerts|ride-dossier-purge|ride-live-webhook|ride-order-webhook|ride-wallet-webhook|ride-sandbox-checkout|ride-sandbox-webhook) continue ;;
             esac
             echo "$fn jwt" >> "$list"
           done

@@ -1491,6 +1491,12 @@ isOneToOne: true
 "admin_publish_service_commission":
 { Args: { "p_occupation": string,"p_starts_at": string,"p_terms_url": string,"p_version": string }; Returns: undefined
                            },
+"admin_record_issuer_split_return":
+{ Args: { "p_cents": number,"p_key": string,"p_order": string,"p_reference": string }; Returns: string
+                           },
+"admin_record_order_funding_payout":
+{ Args: { "p_cents": number,"p_key": string,"p_order": string,"p_reference": string }; Returns: string
+                           },
 "admin_record_ride_cost_disbursement":
 { Args: { "p_amount_cents": number,"p_leg": string,"p_operation": string,"p_reference": string }; Returns: Json
                            },
@@ -1499,6 +1505,9 @@ isOneToOne: true
                            },
 "admin_resolve_report":
 { Args: { "p_note"?: string,"p_report": string,"p_status": string }; Returns: undefined
+                           },
+"admin_resolve_ride_issuer":
+{ Args: { "p_amount": number,"p_extras": number,"p_lost": boolean,"p_order": string,"p_reference": string }; Returns: string
                            },
 "admin_review_document":
 { Args: { "p_accept": boolean,"p_document": string,"p_reason"?: string }; Returns: Database["public"]['Enums']["document_status"]
@@ -1542,8 +1551,14 @@ isOneToOne: true
 "admin_set_setting":
 { Args: { "p_key": string,"p_value": Json }; Returns: Json
                            },
+"admin_settle_ride_cash_commission":
+{ Args: { "p_cents": number,"p_key": string,"p_leg": string,"p_reference": string }; Returns: string
+                           },
 "admin_simulate_ride_payment_event":
 { Args: { "p_amount_cents": number,"p_extras_cents"?: number,"p_kind": string,"p_leg": string,"p_operation": string }; Returns: Json
+                           },
+"admin_void_ride_cash_report":
+{ Args: { "p_receipt": string,"p_reference": string }; Returns: string
                            },
 "admin_waitlist_summary":
 { Args: Record<PropertyKey, never>; Returns: {
@@ -1739,17 +1754,26 @@ isOneToOne: true
 "ride_accept_offer":
 { Args: { "p_key": string,"p_leg": string }; Returns: Json
                            },
+"ride_add_order_component":
+{ Args: { "p_cents": number,"p_component": string,"p_key": string,"p_leg": string,"p_method": string }; Returns: string
+                           },
 "ride_aftercare":
 { Args: { "p_leg": string }; Returns: Json
                            },
 "ride_amendment_state":
 { Args: { "p_leg": string }; Returns: Json
                            },
+"ride_answer_fare_share":
+{ Args: { "p_accept": boolean,"p_invite": string }; Returns: string
+                           },
 "ride_appeal":
 { Args: { "p_id": string,"p_reason": string }; Returns: boolean
                            },
 "ride_apply_driver":
 { Args: { "p_vehicle": string }; Returns: Json
+                           },
+"ride_apply_order_benefit":
+{ Args: { "p_benefit": string,"p_cents": number,"p_order": string }; Returns: number
                            },
 "ride_attach_incident":
 { Args: { "p_content": string,"p_key": string,"p_mime": string,"p_protocol": string }; Returns: string
@@ -1766,14 +1790,32 @@ isOneToOne: true
 "ride_case_update":
 { Args: { "p_code": string,"p_key": string,"p_protocol": string,"p_reference": string }; Returns: string
                            },
+"ride_cash_balance_pix":
+{ Args: { "p_order": string }; Returns: number
+                           },
+"ride_cash_confirm":
+{ Args: { "p_agree": boolean,"p_receipt": string }; Returns: string
+                           },
+"ride_cash_report":
+{ Args: { "p_change": number,"p_key": string,"p_order": string,"p_tendered": number }; Returns: string
+                           },
 "ride_chat_send":
 { Args: { "p_key": string,"p_leg": string,"p_text": string }; Returns: string
                            },
 "ride_choose_class":
 { Args: { "p_code": string,"p_departure"?: string,"p_route": string }; Returns: undefined
                            },
+"ride_claim_order_refund":
+{ Args: { "p_case": string,"p_environment": string }; Returns: boolean
+                           },
+"ride_claim_order_send":
+{ Args: { "p_environment": string,"p_order": string }; Returns: boolean
+                           },
 "ride_claim_route":
 { Args: { "p_route": string }; Returns: Json
+                           },
+"ride_claim_withdrawal_send":
+{ Args: { "p_environment": string,"p_key": string }; Returns: boolean
                            },
 "ride_class_options":
 { Args: { "p_departure"?: string,"p_route": string }; Returns: Json
@@ -1804,6 +1846,9 @@ isOneToOne: true
                            },
 "ride_decide_dossier":
 { Args: { "p_approve": boolean,"p_dossier": string,"p_driver_until": string,"p_insurance_until": string,"p_reason": string,"p_vehicle_until": string }; Returns: boolean
+                           },
+"ride_decide_order_review":
+{ Args: { "p_approve": boolean,"p_case": string,"p_reason": string }; Returns: string
                            },
 "ride_decline_offer":
 { Args: { "p_key": string,"p_leg": string }; Returns: Json
@@ -1849,8 +1894,17 @@ isOneToOne: true
 "ride_incident_file":
 { Args: { "p_id": string }; Returns: Json
                            },
+"ride_invite_fare_code":
+{ Args: { "p_cents": number,"p_code": string,"p_key": string,"p_order": string }; Returns: string
+                           },
+"ride_invite_fare_share":
+{ Args: { "p_cents": number,"p_key": string,"p_order": string,"p_recipient": string }; Returns: string
+                           },
 "ride_issue_pin":
 { Args: { "p_leg": string }; Returns: Json
+                           },
+"ride_issuer_status":
+{ Args: { "p_order": string }; Returns: Json
                            },
 "ride_leg_points":
 { Args: { "p_leg": string }; Returns: Json
@@ -1870,6 +1924,9 @@ isOneToOne: true
 "ride_live_prepare_charge":
 { Args: { "p_leg": string,"p_user": string }; Returns: Json
                            },
+"ride_make_share_code":
+{ Args: Record<PropertyKey, never>; Returns: string
+                           },
 "ride_mark_at_pickup":
 { Args: { "p_leg": string }; Returns: string
                            },
@@ -1882,14 +1939,35 @@ isOneToOne: true
 "ride_my_places":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
+"ride_my_withdrawal_terms":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
 "ride_navigation_data":
 { Args: { "p_leg": string }; Returns: Json
+                           },
+"ride_observe_order_payment":
+{ Args: { "p_environment": string,"p_fact": Json,"p_order": string }; Returns: string
                            },
 "ride_offer_assistance":
 { Args: { "p_leg": string }; Returns: string
                            },
 "ride_open_help":
 { Args: { "p_leg": string,"p_reason": string }; Returns: string
+                           },
+"ride_open_payment_order":
+{ Args: { "p_leg": string,"p_method": string }; Returns: string
+                           },
+"ride_order_desk":
+{ Args: { "p_leg"?: string }; Returns: Json
+                           },
+"ride_order_provider_intent":
+{ Args: { "p_environment": string,"p_order": string }; Returns: Json
+                           },
+"ride_order_receipt":
+{ Args: { "p_order": string }; Returns: Json
+                           },
+"ride_order_statement":
+{ Args: { "p_leg": string }; Returns: Json
                            },
 "ride_passenger_updates":
 { Args: { "p_forward"?: boolean }; Returns: Json
@@ -1899,6 +1977,12 @@ isOneToOne: true
                            },
 "ride_pilot_report":
 { Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"ride_prepare_order_payment":
+{ Args: { "p_environment": string,"p_order": string,"p_payer": string }; Returns: Json
+                           },
+"ride_prepare_order_refund":
+{ Args: { "p_actor": string,"p_case": string,"p_environment": string,"p_evidence": string,"p_extras": number }; Returns: Json
                            },
 "ride_prepare_route":
 { Args: { "p_booking": string,"p_destination": Json,"p_destination_area": string,"p_key": string,"p_origin": Json,"p_origin_area": string,"p_service_endpoint": string }; Returns: Json
@@ -1918,6 +2002,9 @@ isOneToOne: true
 "ride_quote":
 { Args: { "p_booking": string,"p_key": string,"p_legs": Json,"p_scheduled_at": string }; Returns: Json
                            },
+"ride_quote_payment_terms":
+{ Args: { "p_quote": string }; Returns: Json
+                           },
 "ride_quote_with_access":
 { Args: { "p_assistance": string,"p_booking": string,"p_key": string,"p_legs": Json,"p_scheduled_at": string }; Returns: Json
                            },
@@ -1930,11 +2017,17 @@ isOneToOne: true
 "ride_read_cue":
 { Args: { "p_leg": string }; Returns: Json
                            },
+"ride_record_withdrawal":
+{ Args: { "p_environment": string,"p_key": string,"p_net": number,"p_reference": string,"p_status": string,"p_wallet": string }; Returns: string
+                           },
 "ride_recording_notice":
 { Args: { "p_agree": boolean,"p_leg": string }; Returns: boolean
                            },
 "ride_recover_pin":
 { Args: { "p_leg": string,"p_proof": string,"p_protocol": string }; Returns: Json
+                           },
+"ride_refund_order_source":
+{ Args: { "p_case": string,"p_extras": number,"p_origin": string,"p_reference": string }; Returns: string
                            },
 "ride_register_interest":
 { Args: { "p_leg": string }; Returns: undefined
@@ -1944,6 +2037,12 @@ isOneToOne: true
                            },
 "ride_report_eta":
 { Args: { "p_leg": string,"p_minutes": number }; Returns: undefined
+                           },
+"ride_request_order_review":
+{ Args: { "p_cents": number,"p_key": string,"p_order": string,"p_reason": string }; Returns: string
+                           },
+"ride_request_withdrawal":
+{ Args: { "p_cents": number,"p_fee": number,"p_key": string }; Returns: string
                            },
 "ride_resolve":
 { Args: { "p_key": string,"p_leg": string,"p_to": string }; Returns: Json
@@ -2034,6 +2133,9 @@ isOneToOne: true
                            },
 "ride_wellness_ack":
 { Args: { "p_leg": string }; Returns: boolean
+                           },
+"ride_withdrawal_provider_view":
+{ Args: { "p_actor"?: string,"p_environment": string,"p_key": string }; Returns: Json
                            },
 "run_retention_purge":
 { Args: Record<PropertyKey, never>; Returns: Json

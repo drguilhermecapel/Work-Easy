@@ -1,3 +1,4 @@
+import { RideOrderPayments } from '../../components/mobility/RideOrderPayments';
 import { RideSafetyAdmin } from '../../components/mobility/safety/RideSafetyAdmin';
 import { releaseReservation } from '../../services/driverJourney';
 import {DriverCapacityReview} from '../../components/mobility/DriverCapacityReview';
@@ -259,7 +260,7 @@ function OperationsPanel({ dashboard, userId, busy, run, reload }: ConsoleAction
                           >
                             {ledgerLeg === leg.id ? 'Fechar conciliação' : 'Conciliar trecho'}
                           </button>
-                          {ledgerLeg === leg.id && <RideLedgerPanel key={leg.id} legId={leg.id} />}
+                          {ledgerLeg === leg.id && <><RideLedgerPanel key={leg.id} legId={leg.id} /><RideOrderPayments legId={leg.id} mode="admin" /></>}
                         </>
                       )}
                       {!dashboard.simulation && <RidePspReviews legId={leg.id} />}

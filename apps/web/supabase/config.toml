@@ -473,3 +473,9 @@ verify_jwt = false
 # Dedicated live Asaas token; deployment alone does not enable the integration.
 [functions.ride-live-webhook]
 verify_jwt = false
+
+# Canonical PSP re-read and deployment-specific webhook secret; no user JWT.
+[functions.ride-order-webhook]
+verify_jwt = false
+[functions.ride-wallet-webhook]
+verify_jwt = false
