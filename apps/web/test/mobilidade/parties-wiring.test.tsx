@@ -414,6 +414,8 @@ describe('frases de erro da etapa de famílias, empresas e frotas', () => {
     'ride_invoice_closed',
     'ride_minor_unavailable',
     'ride_fleet_review_required',
+    'ride_voucher_pending',
+    'ride_dependent_in_trip',
   ] as const;
 
   it.each(codes)('%s vira uma frase em português que diz o que fazer e não mostra o código', (code) => {

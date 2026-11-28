@@ -109,6 +109,8 @@ export const DATABASE_ERROR_CODES = [
   'ride_invoice_closed',
   'ride_minor_unavailable',
   'ride_fleet_review_required',
+  'ride_voucher_pending',
+  'ride_dependent_in_trip',
 ] as const;
 
 export type DatabaseErrorCode = (typeof DATABASE_ERROR_CODES)[number];
@@ -236,6 +238,10 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
     'A viagem de adolescente não está liberada para este trajeto: confira se o cadastro do dependente foi conferido e está na validade e se a origem e o destino aceitam a faixa etária. Se estiver tudo certo, escolha outro horário ou fale com o plantão.',
   ride_fleet_review_required:
     'Você dirige por uma frota e a cessão do veículo ainda não foi aprovada pela operação, ou os documentos venceram. Confira a situação em Frota e peça à frota que regularize a cessão.',
+  ride_voucher_pending:
+    'Este trecho tem um voucher da empresa que ainda não foi usado. Confira o trecho em Corridas e use “Usar voucher”: a empresa paga a parte dela e só a diferença que você aceitou fica para pagar.',
+  ride_dependent_in_trip:
+    'O dependente está em uma viagem que ainda não terminou. Confira a viagem em Corridas e retire o cadastro depois que ela terminar ou for cancelada.',
   invalid_ride_transition: 'Esta ação não se aplica ao estado atual do trecho. Atualize as corridas.',
   outside_waiting_area: 'A posição informada está fora da área autorizada de espera do terminal.',
   offer_unavailable: 'A oferta de viagem já foi atendida ou está indisponível. Atualize as ofertas.',

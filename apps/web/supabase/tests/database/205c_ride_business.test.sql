@@ -20,6 +20,15 @@ create function pg_temp.dash_quote(p uuid) returns jsonb language sql as $$
  select q from jsonb_array_elements(public.ride_dashboard()->'quotes') q where q->>'id'=p::text$$;
 grant execute on function pg_temp.g(text),pg_temp.u(text),pg_temp.n(text),pg_temp.trip(),pg_temp.org(uuid),pg_temp.program(uuid,uuid),
  pg_temp.dash_leg(uuid),pg_temp.dash_quote(uuid) to authenticated,anon;
+-- Runs one expression and answers its value, or {"error": code} when it raises, so a refused call is a failed assertion and not an aborted file.
+create function pg_temp.attempt(p_sql text) returns jsonb language plpgsql as $f$
+declare r jsonb;
+begin
+ execute 'select to_jsonb(('||p_sql||'))' into r;
+ return r;
+exception when others then return jsonb_build_object('error',sqlerrm);
+end $f$;
+grant execute on function pg_temp.attempt(text) to authenticated,anon,service_role;
 -- Atalhos do roteiro, executados como dono do teste: registrar um programa (pela operação financeira),
 -- concluir um trecho e guardar o trecho de uma corrida.
 create function pg_temp.save_program(p_key text,p_account text,p_label text,p_budget int,p_value int,p_member int,p_areas text[],p_classes text[],p_group text,
@@ -40,6 +49,12 @@ insert into public.ride_drivers(id,environment,vehicle,status,valid_until,review
 insert into private.ride_method_releases(environment,origin,destination,method,evidence_ref,validity,card_brands,acquirer_profile_ref)
  select 'simulation','Saúde','Jabaquara',m,'ensaio 205c',tstzrange(now()-interval '1 day',now()+interval '1 day'),
   case when m='card' then array['VISA'] else '{}'::text[] end,case when m='card' then 'conta hospedada TESTE' end from unnest(array['card','pix','benefit']) m;
+-- A volta e outra praça habilitada também têm benefício; Saúde → Vila Mariana só tem cartão e Pix.
+insert into private.ride_method_releases(environment,origin,destination,method,evidence_ref,validity,card_brands,acquirer_profile_ref)
+ select 'simulation',c.o,c.d,m,'ensaio 205c',tstzrange(now()-interval '1 day',now()+interval '1 day'),
+  case when m='card' then array['VISA'] else '{}'::text[] end,case when m='card' then 'conta hospedada TESTE' end
+ from (values ('Jabaquara','Saúde'),('Vila Mariana','Saúde'),('Saúde','Vila Mariana')) c(o,d) cross join unnest(array['card','pix','benefit']) m
+ where not (c.o='Saúde' and c.d='Vila Mariana' and m='benefit');
 
 -- Tarifa de referência do trecho, lida de uma cotação comum.
 select tests.authenticate_as('provider_c');
@@ -219,7 +234,8 @@ insert into t select 'redeem',public.ride_redeem_voucher(pg_temp.u('l_work'),'pi
 select is(public.ride_redeem_voucher(pg_temp.u('l_work'),'pix')::text,pg_temp.g('redeem'),'repetir o uso do voucher devolve o mesmo resultado');
 select is((pg_temp.g('redeem')::jsonb->>'applied_cents')::int,pg_temp.n('x'),'o voucher aplicado é a tarifa inteira');
 select is((pg_temp.g('redeem')::jsonb->>'remainder_cents')::int,0,'nada fica a cargo de quem viaja');
-select throws_ok($$select public.ride_redeem_voucher(pg_temp.u('l_work'),'card')$$,'P0001','ride_operation_conflict','repetir com outra forma de pagamento é conflito');
+select is(pg_temp.attempt($$public.ride_redeem_voucher(pg_temp.u('l_work'),'card')$$),pg_temp.g('redeem')::jsonb,'o pedido já quitado pelo voucher responde igual em qualquer forma de pagamento');
+select is(pg_temp.g('redeem')::jsonb->>'method','pix','o resultado informa a forma do pedido');
 insert into t select 'o_work',pg_temp.g('redeem')::jsonb->>'order_id';
 insert into t select 'o_personal',public.ride_open_payment_order(pg_temp.u('l_personal'),'pix')::text;
 select tests.clear_authentication();
@@ -446,8 +462,10 @@ insert into t select 'gi',public.ride_invite_guest(pg_temp.u('org'),pg_temp.u('p
 select ok(pg_temp.g('gi') ~ '^[a-f0-9]{64}$','o convite de viagem devolve o código uma única vez');
 select is(public.ride_invite_guest(pg_temp.u('org'),pg_temp.u('p_guest'),pg_temp.u('cc2'),'Provider_E@test.local',pg_temp.trip(),null,30,pg_temp.u('gi_key'))->>'token',null,
  'repetir o convite não devolve o código de novo');
-select throws_ok($$select public.ride_invite_guest(pg_temp.u('org'),pg_temp.u('p_guest'),pg_temp.u('cc2'),'client_b@test.local',pg_temp.trip(),null,30,pg_temp.u('gi_key'))$$,
- 'P0001','idempotency_conflict','mesma chave para outra pessoa é conflito');
+select is(pg_temp.attempt($$public.ride_invite_guest(pg_temp.u('org'),pg_temp.u('p_guest'),pg_temp.u('cc2'),'client_b@test.local',pg_temp.trip(),null,30,pg_temp.u('gi_key'))->>'token'$$),null::jsonb,
+ 'mesma chave para outra pessoa devolve o convite já emitido, sem código');
+select throws_ok($$select public.ride_invite_guest(pg_temp.u('org'),pg_temp.u('p_guest'),pg_temp.u('cc2'),'Provider_E@test.local',pg_temp.trip(),null,15,pg_temp.u('gi_key'))$$,
+ 'P0001','idempotency_conflict','mesma chave com outra validade é conflito');
 select throws_ok($$select public.ride_invite_guest(pg_temp.u('org'),pg_temp.u('p_guest'),pg_temp.u('cc2'),'provider_b@test.local',pg_temp.trip(),null,30,gen_random_uuid())$$,
  'P0001','invalid_input','o operador não convida a si mesmo');
 select throws_ok($$select public.ride_invite_guest(pg_temp.u('org'),pg_temp.u('p_guest'),pg_temp.u('cc2'),'provider_e@test.local','[{"origin":"Saúde","destination":"Jabaquara","payer":"passenger","route_id":"00000000-0000-0000-0000-000000000001"}]',null,30,gen_random_uuid())$$,
@@ -570,6 +588,81 @@ select is((select count(*) from jsonb_array_elements(pg_temp.g('report')::jsonb-
  1::bigint,'a viagem da pessoa convidada aparece como reserva no centro de custo dos visitantes');
 select ok(pg_temp.g('report') !~ 'Saúde|Jabaquara|origin|destination|lat|lng|points|excess|fare','o relatório não traz praça, ponto, tarifa nem complemento pessoal');
 select is((select count(*) from jsonb_array_elements(pg_temp.g('report')::jsonb->'rows') r where (r->>'voucher_cents')::int=500),0::bigint,'o complemento pago por quem viajou não entra no relatório');
+
+-- B8.8 · O voucher reservado paga o trecho no fluxo comum de pagamento, sem cobrança pessoal da parte da empresa.
+select tests.authenticate_as('client_b');
+select throws_ok($$select public.ride_quote_funded(gen_random_uuid(),null,'[{"origin":"Saúde","destination":"Vila Mariana","payer":"passenger"}]',pg_temp.u('p_guest'),pg_temp.u('cc1'))$$,
+ 'P0001','ride_voucher_unavailable','trajeto sem liberação do benefício não recebe cotação com voucher');
+insert into t select 'q_desk',public.ride_quote_funded(gen_random_uuid(),null,pg_temp.trip(),pg_temp.u('p_part'),pg_temp.u('cc1'))->>'id';
+insert into t select 'r_desk',public.ride_consent(pg_temp.u('q_desk'),true)->>'ride_id';
+insert into t select 'q_full',public.ride_quote_funded(gen_random_uuid(),null,pg_temp.trip(),pg_temp.u('p_guest'),pg_temp.u('cc1'))->>'id';
+insert into t select 'r_full',public.ride_consent(pg_temp.u('q_full'),true)->>'ride_id';
+insert into t select 'q_move',public.ride_quote_funded(gen_random_uuid(),null,pg_temp.trip(),pg_temp.u('p_guest'),pg_temp.u('cc1'))->>'id';
+insert into t select 'r_move',public.ride_consent(pg_temp.u('q_move'),true)->>'ride_id';
+insert into t select 'q_late',public.ride_quote_funded(gen_random_uuid(),null,pg_temp.trip(),pg_temp.u('p_guest'),pg_temp.u('cc1'))->>'id';
+select tests.clear_authentication();
+select pg_temp.keep_leg('l_desk','r_desk');
+select pg_temp.keep_leg('l_full','r_full');
+select pg_temp.keep_leg('l_move','r_move');
+select tests.authenticate_as('client_b');
+select throws_ok($$select public.ride_open_payment_order(pg_temp.u('l_full'),'cash')$$,'P0001','ride_voucher_pending','dinheiro não é aceito enquanto o voucher do trecho está sem uso');
+insert into t select 'o_desk',public.ride_open_payment_order(pg_temp.u('l_desk'),'pix')::text;
+select tests.clear_authentication();
+update private.ride_method_releases set validity=tstzrange(lower(validity),now()) where environment='simulation' and origin='Saúde' and destination='Jabaquara' and method='benefit';
+select tests.authenticate_as('client_b');
+select throws_ok($$select public.ride_consent(pg_temp.u('q_late'),true)$$,'P0001','ride_voucher_unavailable','sem liberação do benefício até o fim do trecho a reserva é recusada');
+select tests.clear_authentication();
+select pg_temp.finish_leg('l_desk');
+select is((select received_cents from private.ride_payment_orders where id=pg_temp.u('o_desk')),0,'sem liberação do benefício o voucher não é aplicado ao pedido aberto');
+-- Runs one statement and undoes it, answering the error it raised or 'ok'.
+create function pg_temp.refusal(p_sql text) returns text language plpgsql as $f$
+begin
+ begin execute p_sql; raise exception 'pg_temp_undo'; exception when others then
+   if sqlerrm='pg_temp_undo' then return 'ok'; end if; return sqlerrm; end;
+end $f$;
+grant execute on function pg_temp.refusal(text) to service_role;
+grant select on t to service_role;
+select tests.authenticate_service();
+select isnt(pg_temp.refusal($$select public.ride_prepare_order_payment(pg_temp.u('o_desk'),tests.uid('client_b'),'simulation')$$),'ride_voucher_pending',
+ 'voucher que não pode ser aplicado agora não trava a cobrança comum do pedido');
+select tests.clear_authentication();
+select ok(not private.ride_voucher_waiting(pg_temp.u('l_desk'),tests.uid('client_b')),'sem liberação do benefício o voucher não segura o pedido');
+update private.ride_method_releases set validity=tstzrange(lower(validity),now()+interval '1 day') where environment='simulation' and origin='Saúde' and destination='Jabaquara' and method='benefit';
+select tests.authenticate_service();
+select throws_ok($$select public.ride_prepare_order_payment(pg_temp.u('o_desk'),tests.uid('client_b'),'simulation')$$,'P0001','ride_voucher_pending',
+ 'com o benefício liberado, a cobrança pessoal não é preparada enquanto o voucher do trecho está sem uso');
+select tests.clear_authentication();
+select tests.authenticate_as('client_b');
+select is(public.ride_open_payment_order(pg_temp.u('l_desk'),'pix'),pg_temp.u('o_desk'),'abrir de novo o pagamento devolve o mesmo pedido');
+select tests.clear_authentication();
+select results_eq($$select o.received_cents,o.amount_cents-o.received_cents,o.status from private.ride_payment_orders o where o.id=pg_temp.u('o_desk')$$,
+ $$select pg_temp.n('part'),500,'open'::text$$,'abrir o pagamento aplica o voucher reservado e deixa só o excedente aceito');
+select is((select count(*) from private.ride_benefit_uses u join private.ride_voucher_grants g on g.benefit_id=u.benefit_id where g.leg_id=pg_temp.u('l_desk')),1::bigint,
+ 'o voucher do trecho é usado uma única vez');
+select pg_temp.finish_leg('l_full');
+select results_eq($$select o.status,o.method,o.received_cents=o.amount_cents from private.ride_payment_orders o where o.leg_id=pg_temp.u('l_full') and o.component='fare'$$,
+ $$values ('paid'::text,'pix'::text,true)$$,'o voucher que cobre a tarifa inteira quita o trecho ao fim da viagem, sem ação de quem viajou');
+select is((select count(*) from private.ride_financial_events where leg_id=pg_temp.u('l_full') and kind='benefit'),1::bigint,'o livro registra o voucher aplicado ao fim da viagem');
+select is((select sum(cash_delta::bigint+receivable_delta+processing_expense_delta+benefit_delta-driver_delta-fee_delta) from private.ride_financial_events),0::numeric,
+ 'o livro fecha com os vouchers aplicados pelo fluxo comum');
+select tests.authenticate_as('client_b');
+select is((public.ride_redeem_voucher(pg_temp.u('l_full'),'card')->>'remainder_cents')::int,0,'usar o voucher depois devolve o pedido já quitado');
+select tests.clear_authentication();
+-- B8.9 · Mudança de horário ou de lugar de um trecho com voucher passa de novo pelas regras do programa.
+select throws_ok($$update public.ride_legs set pickup_at=pickup_at+interval '20 days',slot=tstzrange(lower(slot)+interval '20 days',upper(slot)+interval '20 days')
+  where id=pg_temp.u('l_move')$$,'P0001','ride_voucher_unavailable','o trecho com voucher não é levado para depois da validade do programa');
+select throws_ok($$update public.ride_legs set destination='Vila Mariana' where id=pg_temp.u('l_move')$$,'P0001','ride_voucher_unavailable',
+ 'o trecho com voucher não vai para um trajeto sem liberação do benefício');
+select throws_ok($$update public.ride_legs set pickup_at=pickup_at+interval '1 hour',slot=tstzrange(lower(slot)+interval '1 hour',upper(slot)+interval '1 hour'),
+  fare_cents=fare_cents+5000,driver_cents=driver_cents+5000 where id=pg_temp.u('l_move')$$,'P0001','ride_voucher_unavailable',
+ 'a mudança que encarece o trecho além do voucher é recusada quando o programa não deixa excedente a quem viaja');
+select throws_ok($$update public.ride_legs set fare_cents=fare_cents+5000,driver_cents=driver_cents+5000 where id=pg_temp.u('l_move')$$,'P0001','ride_voucher_unavailable',
+ 'nem só a tarifa sobe acima do voucher num programa sem excedente');
+select is((select l.fare_cents-g.granted_cents from public.ride_legs l join private.ride_voucher_grants g on g.leg_id=l.id where l.id=pg_temp.u('l_move')),0,
+ 'o convidado continua sem nada a pagar no trecho');
+update public.ride_legs set pickup_at=pickup_at+interval '1 hour',slot=tstzrange(lower(slot)+interval '1 hour',upper(slot)+interval '1 hour') where id=pg_temp.u('l_move');
+select is((select b.valid_until from private.ride_benefits b join private.ride_voucher_grants g on g.benefit_id=b.id where g.leg_id=pg_temp.u('l_move')),
+ (select upper(slot)+interval '30 days' from public.ride_legs where id=pg_temp.u('l_move')),'o prazo de uso do voucher acompanha o novo horário do trecho');
 
 select * from finish();
 rollback;

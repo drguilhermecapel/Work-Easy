@@ -23,6 +23,15 @@ create function pg_temp.link(p_owner uuid,p_companion uuid) returns jsonb langua
  select c from jsonb_array_elements(public.ride_my_companions()->'companions') c where c->>'owner_id'=p_owner::text and c->>'companion_id'=p_companion::text$$;
 grant execute on function pg_temp.g(text),pg_temp.u(text),pg_temp.n(text),pg_temp.trip(),pg_temp.point(numeric,numeric,text),
  pg_temp.dash_leg(uuid),pg_temp.sent(uuid),pg_temp.link(uuid,uuid) to authenticated,anon;
+-- Runs one expression and answers its value, or {"error": code} when it raises, so a refused call is a failed assertion and not an aborted file.
+create function pg_temp.attempt(p_sql text) returns jsonb language plpgsql as $f$
+declare r jsonb;
+begin
+ execute 'select to_jsonb(('||p_sql||'))' into r;
+ return r;
+exception when others then return jsonb_build_object('error',sqlerrm);
+end $f$;
+grant execute on function pg_temp.attempt(text) to authenticated,anon,service_role;
 -- Lido só pela sessão do teste (sem papel de API): os avisos que uma pessoa tem de um trecho.
 create function pg_temp.events(p_owner uuid,p_leg uuid) returns text[] language sql as $$
  select coalesce(array_agg(event order by event),'{}') from private.ride_passenger_notices where owner_id=p_owner and leg_id=p_leg$$;
@@ -51,7 +60,9 @@ insert into t select 'tok1',public.ride_invite_rider(pg_temp.u('q0'),'Client_B@t
 select ok(pg_temp.g('tok1') ~ '^[a-f0-9]{64}$','o convite devolve o código uma única vez');
 select is(public.ride_invite_rider(pg_temp.u('q0'),'Client_B@test.local',30,'Leve um documento. Portão azul.',pg_temp.u('ik1'))->>'token',null,'repetir o convite não devolve o código de novo');
 select is((public.ride_invite_rider(pg_temp.u('q0'),'client_b@test.local',30,'Leve um documento. Portão azul.',pg_temp.u('ik1'))->>'id')::uuid,pg_temp.u('ik1'),'a repetição devolve o mesmo convite');
-select throws_ok($$select public.ride_invite_rider(pg_temp.u('q0'),'provider_b@test.local',30,'Leve um documento. Portão azul.',pg_temp.u('ik1'))$$,'P0001','idempotency_conflict','mesma chave para outro destinatário é conflito');
+select is(pg_temp.attempt($$public.ride_invite_rider(pg_temp.u('q0'),'provider_b@test.local',30,'Leve um documento. Portão azul.',pg_temp.u('ik1'))->>'token'$$),null::jsonb,
+ 'mesma chave para outro destinatário devolve o convite já emitido, sem código');
+select throws_ok($$select public.ride_invite_rider(pg_temp.u('q0'),'client_b@test.local',15,'Leve um documento. Portão azul.',pg_temp.u('ik1'))$$,'P0001','idempotency_conflict','mesma chave com outra validade é conflito');
 select throws_ok($$select public.ride_invite_rider(pg_temp.u('q0'),'client_b@test.local',30,null,gen_random_uuid())$$,'P0001','quote_unavailable','a mesma cotação não vira dois convites');
 select throws_ok($$select public.ride_consent(pg_temp.u('q0'),true)$$,'P0001','quote_unavailable','a cotação de quem pede deixa de valer para ele mesmo');
 select is(pg_temp.sent(pg_temp.u('ik1'))->>'status','pending','quem pede vê o convite aguardando resposta');
@@ -61,6 +72,9 @@ insert into t select 'q_other',public.ride_quote(gen_random_uuid(),null,null,pg_
 select tests.clear_authentication();
 select is((select status from private.ride_quotes where id=pg_temp.u('q0')),'superseded','a cotação original é substituída pelo convite');
 select is((select token_hash from private.ride_rider_invites where id=pg_temp.u('ik1')),sha256(convert_to(pg_temp.g('tok1'),'UTF8')),'só o resumo do código é guardado');
+select is((select count(*) from private.ride_rider_invites i cross join (values ('client_b@test.local'),('provider_b@test.local'),('client_a@test.local')) e(m)
+  where i.id=pg_temp.u('ik1') and i.request_hash=private.ride_party_hash(i.id::text,i.source_quote::text,'30',e.m,coalesce(i.instructions,''))),0::bigint,
+ 'a linha do convite não permite achar o e-mail convidado por tentativa');
 select is((select instructions from private.ride_rider_invites where id=pg_temp.u('ik1')),'Leve um documento. Portão azul.','as instruções ficam aparadas');
 select is((select count(*) from information_schema.columns where table_schema='private'
   and table_name in ('ride_rider_invites','ride_companions','ride_companion_invites') and column_name ~ 'mail'),0::bigint,'convites e vínculos não guardam e-mail');
@@ -103,17 +117,27 @@ select throws_ok($$select * from private.ride_rider_invites$$,'42501',null,'os c
 select throws_ok($$select * from private.ride_companions$$,'42501',null,'os vínculos de acompanhante não são lidos direto pelo cliente');
 select throws_ok($$select public.ride_answer_rider_invite(pg_temp.g('tok1'),null,gen_random_uuid())$$,'P0001','invalid_input','resposta sem decisão é recusada');
 
--- B3.9 · Preço acima do teto: nada é pedido e não nasce aceite de quem paga.
+-- B3.9 · Preço acima do teto: nada é pedido, não nasce aceite de quem paga e o convite fica como reprecificação.
+select tests.authenticate_as('client_a');
+insert into t values('ik9',gen_random_uuid()::text);
+insert into t select 'q9',public.ride_quote(gen_random_uuid(),null,null,pg_temp.trip())->>'id';
+insert into t select 'tok9',public.ride_invite_rider(pg_temp.u('q9'),'client_b@test.local',30,null,pg_temp.u('ik9'))->>'token';
 select tests.clear_authentication();
-update private.ride_rider_invites set ceiling_cents=pg_temp.n('x')-1 where id=pg_temp.u('ik1');
+update private.ride_rider_invites set ceiling_cents=pg_temp.n('x')-1 where id=pg_temp.u('ik9');
 select tests.authenticate_as('client_b');
-select throws_ok($$select public.ride_answer_rider_invite(pg_temp.g('tok1'),true,gen_random_uuid())$$,'P0001','ride_invite_reprice','preço acima do teto recusa o aceite');
+select is(pg_temp.attempt($$public.ride_answer_rider_invite(pg_temp.g('tok9'),true,gen_random_uuid())->>'status'$$),to_jsonb('reprice'::text),'preço acima do teto encerra o convite como reprecificação');
+select is(pg_temp.attempt($$public.ride_answer_rider_invite(pg_temp.g('tok9'),true,gen_random_uuid())->>'status'$$),to_jsonb('reprice'::text),'repetir o aceite reprecificado devolve a mesma resposta, sem corrida');
+select throws_ok($$select public.ride_answer_rider_invite(pg_temp.g('tok9'),false,gen_random_uuid())$$,'P0001','ride_invite_unavailable','convite reprecificado não muda de resposta');
+select is(public.ride_rider_invite(pg_temp.g('tok9'))->>'status','reprice','quem foi convidado vê o convite encerrado por preço');
+select is(jsonb_array_length(public.ride_rider_invite(pg_temp.g('tok9'))->'legs'),0,'convite reprecificado não mostra mais o trajeto');
 select tests.clear_authentication();
 select is((select count(*) from private.ride_consents where actor_id=tests.uid('client_a')),0::bigint,'o preço acima do teto não registra aceite de quem paga');
 select is((select count(*) from private.ride_quotes where actor_id=tests.uid('client_b')),0::bigint,'o preço acima do teto não deixa cotação para trás');
 select is((select count(*) from private.ride_payer_mandates where rider_id=tests.uid('client_b')),0::bigint,'o preço acima do teto não deixa mandato para trás');
-select is((select status from private.ride_rider_invites where id=pg_temp.u('ik1')),'pending','o convite segue pendente depois da recusa por preço');
-update private.ride_rider_invites set ceiling_cents=pg_temp.n('x') where id=pg_temp.u('ik1');
+select is((select status from private.ride_rider_invites where id=pg_temp.u('ik9')),'reprice','o convite fica registrado como reprecificação');
+select tests.authenticate_as('client_a');
+select is(pg_temp.sent(pg_temp.u('ik9'))->>'status','reprice','quem pediu vê que o preço mudou e que é preciso um novo convite');
+select tests.clear_authentication();
 update private.ride_party_rules set enabled=false where environment='simulation' and capability='delegated_ride' and area='Jabaquara';
 select tests.authenticate_as('client_b');
 select throws_ok($$select public.ride_answer_rider_invite(pg_temp.g('tok1'),true,gen_random_uuid())$$,'P0001','ride_feature_disabled','praça sem habilitação fecha o aceite');

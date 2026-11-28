@@ -83,10 +83,12 @@ describe('pedido de viagem para outro adulto', () => {
     vi.mocked(parties.riderInvites).mockResolvedValue([
       { id: 'pendente', status: 'pending', ceiling_cents: 3000, scheduled_at: null, expires_at: '2090-12-01T14:00:00Z', answered_at: null, created_at: '2090-12-01T13:30:00Z', ride_id: null },
       { id: 'aceito', status: 'accepted', ceiling_cents: 4100, scheduled_at: '2090-12-01T15:00:00Z', expires_at: '2090-12-01T14:00:00Z', answered_at: '2090-12-01T13:00:00Z', created_at: '2090-12-01T12:30:00Z', ride_id: 'viagem' },
+      { id: 'caro', status: 'reprice', ceiling_cents: 2500, scheduled_at: null, expires_at: '2090-12-01T14:00:00Z', answered_at: '2090-12-01T13:10:00Z', created_at: '2090-12-01T12:00:00Z', ride_id: null },
     ]);
     vi.mocked(parties.revokeRiderInvite).mockResolvedValue(true);
     at('/corridas', <SentRiderInvites />);
     expect(await screen.findByText(/Aguardando resposta · você paga até R\$\s30,00/)).toBeVisible();
+    expect(screen.getByText(/o preço passou do valor autorizado; cote de novo e envie outro convite/)).toBeVisible();
     expect(screen.getByText(/Para cancelar depois do aceite, use o trecho em Corridas/)).toBeVisible();
     expect(screen.getAllByRole('button', { name: 'Revogar convite' })).toHaveLength(1);
     fireEvent.click(screen.getByRole('button', { name: 'Revogar convite' }));
@@ -119,6 +121,17 @@ describe('pedido de viagem para outro adulto', () => {
     expect(calls).toHaveLength(2);
     expect(calls[1].slice(0, 2)).toEqual([token, true]);
     expect(calls[1][2]).toBe(calls[0][2]);
+    expect(screen.queryByRole('button', { name: 'Aceitar e pedir a viagem' })).toBeNull();
+  });
+
+  it('preço acima do autorizado: avisa que nada foi pedido nem cobrado e encerra o convite', async () => {
+    vi.mocked(parties.riderInvite).mockResolvedValue(view);
+    vi.mocked(parties.answerRiderInvite).mockResolvedValue({ status: 'reprice', quote_id: null, ride_id: null });
+    at('/corridas/convite', <RiderInvite token={token} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Aceitar e pedir a viagem' }));
+    expect(await screen.findByText(/passou do valor que quem convidou autorizou/)).toBeVisible();
+    expect(screen.getByText(/Nada foi cobrado e a viagem não foi pedida/)).toBeVisible();
+    expect(screen.queryByRole('link', { name: 'Abrir minhas corridas' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Aceitar e pedir a viagem' })).toBeNull();
   });
 

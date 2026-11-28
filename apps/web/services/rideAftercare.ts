@@ -39,6 +39,8 @@ export interface RideReceipt {
   role: 'passenger' | 'payer' | 'driver';
   journey?: ReceiptJourney;
   money: ReceiptMoney | null;
+  /** The passenger of a leg somebody else pays (sponsor, family, companion): no value is sent. */
+  paid_by_other?: boolean;
 }
 
 export interface AftercareResult {

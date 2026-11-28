@@ -197,6 +197,19 @@ describe('adolescente com responsável', () => {
     expect(calls[1][4]).toBe(calls[0][4]);
   });
 
+  it('o responsável retira o cadastro do dependente só depois de confirmar, e não durante uma viagem', async () => {
+    vi.mocked(parties.withdrawDependent).mockResolvedValue(true);
+    dependents([family], [teen, { ...teen, id: 'dep2', label: 'Rui', legs: [{ leg_id: 'trecho', status: 'boarded', pickup_at: null }] }]);
+    expect(screen.queryByRole('button', { name: 'Retirar o cadastro de Rui' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Retirar o cadastro de Teca' }));
+    expect(screen.getByText(/são apagados agora/)).toBeVisible();
+    expect(parties.withdrawDependent).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar retirada do cadastro' }));
+    await waitFor(() => expect(parties.withdrawDependent).toHaveBeenCalledWith(teen.id));
+    expect(await screen.findByText(/Cadastro retirado/)).toBeVisible();
+    expect(change).toHaveBeenCalled();
+  });
+
   it('mostra a situação da conferência e exige um grupo familiar para cadastrar', () => {
     dependents([], [{ ...teen, status: 'pending', valid_until: null }, { ...teen, id: 'dep2', label: 'Rui', age_band: '13-15' }]);
     expect(screen.getByText(/Em conferência pela operação/)).toBeVisible();

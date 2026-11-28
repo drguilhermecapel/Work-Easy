@@ -2323,6 +2323,9 @@ isOneToOne: true
 "ride_wellness_ack":
 { Args: { "p_leg": string }; Returns: boolean
                            },
+"ride_withdraw_dependent":
+{ Args: { "p_dependent": string }; Returns: boolean
+                           },
 "ride_withdrawal_provider_view":
 { Args: { "p_actor"?: string,"p_environment": string,"p_key": string }; Returns: Json
                            },

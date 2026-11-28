@@ -28,6 +28,10 @@ create function pg_temp.keys(p_prefix text) returns void language sql as $$
 select pg_temp.keys('k');
 insert into public.ride_drivers(id,environment,vehicle,status,valid_until,reviewed_by,online)
  values(tests.uid('provider_c'),'simulation','sedan','approved',private.sp_date(now())+30,tests.uid('admin'),true);
+-- O voucher da empresa precisa de benefício e de Pix ou cartão liberados no trajeto.
+insert into private.ride_method_releases(environment,origin,destination,method,evidence_ref,validity,card_brands,acquirer_profile_ref)
+ select 'simulation','Saúde','Jabaquara',m,'ensaio 205e',tstzrange(now()-interval '1 day',now()+interval '1 day'),
+  case when m='card' then array['VISA'] else '{}'::text[] end,case when m='card' then 'conta hospedada TESTE' end from unnest(array['card','pix','benefit']) m;
 
 select tests.authenticate_as('e_outsider');
 insert into t select 'q_x',public.ride_quote(gen_random_uuid(),null,null,pg_temp.trip())->>'id';
@@ -458,14 +462,16 @@ insert into rpc select unnest(array['admin_close_ride_invoice','admin_decide_inv
  'ride_invoice_export','ride_join_account','ride_my_accounts','ride_my_companions','ride_my_rider_invites','ride_org_report','ride_quote_for_dependent','ride_quote_funded',
  'ride_quote_sponsored','ride_redeem_voucher','ride_register_dependent','ride_remove_member','ride_request_trip_grant','ride_revoke_account_invite','ride_revoke_companion',
  'ride_revoke_guest_invite','ride_revoke_rider_invite','ride_rider_invite','ride_save_cost_center','ride_set_account_limit','ride_set_companion','ride_set_member_limit',
- 'ride_set_member_role','ride_companion_invite','ride_guest_invite','ride_my_cessions']);
+ 'ride_set_member_role','ride_companion_invite','ride_guest_invite','ride_my_cessions','ride_withdraw_dependent',
+ -- Chamadas anteriores que passaram a ler objetos da etapa: o pedido de pagamento aplica o voucher e o recibo esconde o valor de quem não paga.
+ 'ride_open_payment_order','ride_aftercare']);
 create temp table party_table(name text primary key);
 insert into party_table select unnest(array['ride_party_rules','ride_accounts','ride_account_members','ride_account_invites','ride_payer_mandates','ride_quote_funding',
  'ride_leg_funding','ride_rider_invites','ride_companion_terms','ride_companions','ride_companion_invites','ride_minor_policies','ride_dependents',
  'ride_minor_driver_clearances','ride_quote_dependents','ride_leg_dependents','ride_minor_alerts','ride_minor_access_log','ride_cost_centers','ride_voucher_programs',
  'ride_trip_grants','ride_guest_invites','ride_voucher_grants','ride_invoices','ride_invoice_lines','ride_invoice_marks','ride_invoice_disputes','ride_fleet_vehicles',
  'ride_fleet_assignments','ride_leg_vehicles']);
-select is((select count(*) from rpc),61::bigint,'a lista de chamadas públicas da etapa tem 61 nomes');
+select is((select count(*) from rpc),64::bigint,'a lista de chamadas públicas da etapa tem 64 nomes');
 select is((select array_agg(r.name order by r.name) from rpc r where (select count(*) from pg_proc p where p.pronamespace='public'::regnamespace and p.proname=r.name)<>1),
  null::text[],'cada chamada pública da etapa existe uma única vez');
 select is((select array_agg(p.proname::text order by p.proname) from pg_proc p join rpc r on r.name=p.proname where p.pronamespace='public'::regnamespace

@@ -174,6 +174,8 @@ export interface VoucherRedemption {
   applied_cents: number;
   /** What is left on the same order for the rider's own method. */
   remainder_cents: number;
+  /** Method of that order. A voucher covering the whole fare is applied when the leg ends, on Pix when released. */
+  method: VoucherMethod;
 }
 
 /** What a company's guest reads before answering: who invites, areas and time. Never a price. */
