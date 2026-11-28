@@ -18,6 +18,8 @@ vi.mock('../../components/mobility/DriverSignals', () => ({
   default: () => <span>Localização do trecho</span>,
   DriverAlerts: () => <span>Ativar alertas do motorista</span>,
 }));
+// The stage 6 inbox has its own tests (reserva-shuttle); here it would add a second alert.
+vi.mock('../../components/mobility/modes/DriverModeTasks', () => ({ default: () => null }));
 vi.mock('../../services/rides', () => ({
   getRideDashboard: vi.fn(),
   applyDriver: vi.fn(),

@@ -64,11 +64,15 @@ describe('check-bundle-size', () => {
   it('keeps the per-page limit on optional mobility routes and adds their combined cost', () => {
     const dist = makeDist(Buffer.from('0'));
     const chunk = (name: string, bytes = 14_000) => writeFileSync(join(dist, 'assets', name + '-AbC123xY.js'), randomBytes(bytes));
-    // Six rider, driver and operation chunks at 14 kB: 84 kB, inside the 150 kB of the group
+    // Six rider, driver and operation chunks at 14 kB: 84 kB, inside the 185 kB of the group
     for (const name of ['Corridas', 'Motorista', 'Operacao', 'RideDriverIdentity', 'RideAftercare', 'RideCheckout']) chunk(name);
     expect(runGate(dist).status).toBe(0);
     // The pages of groups, company and fleet, the invite views and the operator console belong to the same group
     for (const name of ['Grupos', 'Empresa', 'Frota', 'FleetPanel', 'RideParties', 'AccountInvite']) chunk(name);
+    // Twelve chunks at 14 kB: about 164 kB, still inside the group
+    expect(runGate(dist).stdout).not.toMatch(/ACIMA jornadas opcionais/);
+    // The stage 6 modalities (catalog page and its panels) belong to it too, and push it over
+    for (const name of ['Modalidades', 'ShuttleSeats']) chunk(name);
     const over = runGate(dist);
     expect(over.stdout).toMatch(/ACIMA jornadas opcionais/);
     expect(over.stdout).not.toMatch(/ACIMA JavaScript do app/);

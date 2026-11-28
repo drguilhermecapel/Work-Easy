@@ -22,10 +22,20 @@ export interface ReserveTerms {
   state: ReserveState;
   /** A driver must confirm the reservation until this instant. */
   confirm_by: string;
+  pickup_at?: string | null;
+  /** Pickup the shift limit is measured from (the booked one, or the last rebooked one). */
+  original_pickup?: string | null;
+  /** Airport of the reserve; null for a reserve that is not an airport trip. */
+  airport?: string | null;
   terminal: string | null;
+  /** Only the passenger reads the flight reference; null for anybody else. */
   flight_ref: string | null;
-  /** Largest change of pickup time the policy of the area accepts; null when not published. */
+  /** Largest change of pickup time, from the original pickup, the policy of the area accepts. */
   max_shift_minutes: number | null;
+  /** The caller is the passenger and the leg still accepts a new pickup time. */
+  can_shift?: boolean;
+  /** The caller is the passenger and the reserve waits for a contingency choice. */
+  can_decide?: boolean;
   /** The latest request to move the pickup, if any. */
   shift: ReserveShift | null;
 }
@@ -33,8 +43,11 @@ export interface ShiftResult {
   id: string;
   /** "applied" when no driver was assigned; "proposed" when the assigned driver has to answer. */
   state: 'applied' | 'proposed';
+  /** State now (a replay may find the proposal already decided). */
+  current?: ReserveShift['state'];
   new_pickup: string;
   expires_at: string | null;
+  replayed?: boolean;
 }
 
 export const rideReserve = {
@@ -50,13 +63,18 @@ export const rideReserve = {
       }),
     ),
   contingency: async (leg: string, choice: ContingencyChoice, newPickup: string | null, key: string) =>
-    unwrap<{ state: ReserveState }>(
+    unwrap<{ state: ReserveState; choice: ContingencyChoice; pickup_at: string; replayed?: boolean }>(
       await db().rpc('ride_reserve_contingency', {
         p_leg: leg,
         p_choice: choice,
         p_new_pickup: nullable(newPickup)!,
         p_key: key,
       }),
+    ),
+  /** Passenger only, airport reserves only; an empty reference clears it. */
+  flight: async (leg: string, flightRef: string) =>
+    unwrap<{ flight_ref: string | null; terminal: string | null }>(
+      await db().rpc('ride_reserve_flight', { p_leg: leg, p_flight_ref: flightRef }),
     ),
   /** Answers the state of the shift after the decision: "applied" keeps the driver on the leg. */
   decideShift: async (shift: string, accept: boolean) =>

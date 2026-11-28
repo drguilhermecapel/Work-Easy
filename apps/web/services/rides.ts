@@ -49,6 +49,12 @@ export interface PricedLeg extends Omit<RideLegInput, 'payer'> {
   /** Company share and rider share of a voucher-funded leg, for who sees the price. */
   voucher_cents?: number;
   excess_cents?: number;
+  /** Stage 6, on quote legs only: the hourly block of the quote (code and minutes). */
+  block?: string;
+  block_minutes?: number;
+  /** Stage 6, on quote legs only: a trip between municipalities, with the driver's empty return inside the fare. */
+  intercity?: boolean;
+  empty_return_cents?: number | null;
 }
 
 export interface RideLeg extends PricedLeg {

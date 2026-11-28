@@ -4,7 +4,7 @@ import { RideSafety } from '../../components/mobility/safety/RideSafety';
 import { BoardingPin } from '../../components/mobility/safety/RideCommunication';
 import { RideDisplayMode } from '../../components/mobility/safety/common';
 import { RideAmendmentPanel } from '../../components/mobility/RideAmendmentPanel';
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Link } from 'react-router-dom';
 import DriverWorkspace from './DriverWorkspace';
 import DriverEconomics from './DriverEconomics';
@@ -24,7 +24,12 @@ import { markAtPickup } from '../../services/driverDossier';
 import DriverDossier from './DriverDossier';
 import DriverShifts from './DriverShifts';
 import DriverConsole, { type ConsoleActions } from './DriverConsole';
-import { mobilityLabel, VEHICLES, type Vehicle } from './driverLabels';
+import { DRIVER_VEHICLES, mobilityLabel, type Vehicle } from './driverLabels';
+
+// Stage 6 panels load only when a driver has something of these modes to see.
+const DriverModeTasks = lazy(() => import('../../components/mobility/modes/DriverModeTasks'));
+const ExtensionPanel = lazy(() => import('../../components/mobility/modes/ExtensionPanel'));
+const BLOCK_ACTIVE = ['accepted', 'arriving', 'boarded'];
 
 const NEXT_STEP = {
   accepted: { to: 'arriving', label: 'Indicar saída para o embarque' },
@@ -43,6 +48,7 @@ function DriverPanel(actions: ConsoleActions) {
       <nav aria-label="Alternar modo" className="flex gap-4 text-sm">
         <strong>Modo motorista</strong><Link className="underline" to="/corridas">Passageiro</Link>
         <Link className="underline" to="/pro">Prestador</Link>
+        <Link className="underline" to="/corridas/frota">Frota</Link>
       </nav>
       <Card className="space-y-3">
         <h2 className="font-semibold text-gray-900">Cadastro de motorista</h2>
@@ -62,7 +68,7 @@ function DriverPanel(actions: ConsoleActions) {
           >
             <Field id="tipo-veiculo" label="Categoria do veículo">
               <select id="tipo-veiculo" className={inputClass} value={vehicle} onChange={(e) => setVehicle(e.target.value as Vehicle)}>
-                {Object.entries(VEHICLES).map(([value, label]) => (
+                {Object.entries(DRIVER_VEHICLES).map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
                   </option>
@@ -143,6 +149,11 @@ function DriverPanel(actions: ConsoleActions) {
           </ul>
         </section>
       )}
+      {valid && driver && (
+        <Suspense fallback={null}>
+          <DriverModeTasks onChanged={reload} />
+        </Suspense>
+      )}
       {assigned.length > 0 && (
         <section aria-label="Seus trechos" className="space-y-2">
           <h2 className="text-lg font-semibold">Seus trechos</h2>
@@ -213,6 +224,11 @@ function DriverPanel(actions: ConsoleActions) {
                     <RideOrderPayments mode="driver-leg" legId={leg.id} completed={leg.status==='completed'} />
                     <RideSafety status={leg.status} leg={leg.id} onChange={reload}/>
                     <RideAmendmentPanel legId={leg.id} legStatus={leg.status} onChanged={reload} />
+                    {BLOCK_ACTIVE.includes(leg.status) && (
+                      <Suspense fallback={null}>
+                        <ExtensionPanel legId={leg.id} legStatus={leg.status} onChanged={reload} />
+                      </Suspense>
+                    )}
                     <RideAftercare legId={leg.id} completed={leg.status === 'completed'} />
                   </Card>
                 </li>

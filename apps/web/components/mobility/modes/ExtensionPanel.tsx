@@ -4,6 +4,8 @@ import { rideBlocks } from '../../../services/rideModes';
 import { failureAlert, field, hours, inset, primary, secondary, useModeAction, usePoll, whenSP } from './modeState';
 
 const ACTIVE = ['accepted', 'arriving', 'boarded'];
+// A requested block is read once so its leg is labelled; only an active one is polled and extended.
+const READABLE = ['requested', ...ACTIVE];
 const STEPS = [15, 30, 45, 60, 90, 120];
 
 /**
@@ -20,9 +22,10 @@ export function ExtensionPanel({
   onChanged?: () => void;
 }) {
   const active = ACTIVE.includes(legStatus);
+  const readable = READABLE.includes(legStatus);
   const state = usePoll(
-    async () => (active ? rideBlocks.state(legId) : null),
-    JSON.stringify([legId, active]),
+    async () => (readable ? rideBlocks.state(legId) : null),
+    JSON.stringify([legId, legStatus]),
     20_000,
     (read, failed) => active && (!!read || failed),
   );
@@ -37,7 +40,7 @@ export function ExtensionPanel({
   if (!data) {
     return (
       <>
-        {active && failureAlert(state.error)}
+        {readable && failureAlert(state.error)}
         {action.message}
       </>
     );
@@ -87,18 +90,19 @@ export function ExtensionPanel({
                 </button>
               )}
               <button type="button" className={secondary} disabled={action.busy} onClick={() => void decide(e.id, false)}>
-                {e.accepted_by_me ? 'Retirar meu aceite' : 'Recusar extensão'}
+                {e.accepted_by_me ? 'Desistir e recusar a extensão' : 'Recusar extensão'}
               </button>
             </div>
           )}
         </article>
       ))}
-      {data.can_propose && pending.length === 0 && !open && (
+      {!active && <p className="text-sm text-gray-700">Extensões podem ser propostas depois que o motorista aceitar.</p>}
+      {active && data.can_propose && pending.length === 0 && !open && (
         <button type="button" className={secondary} disabled={action.busy} onClick={() => setOpen(true)}>
           Propor mais tempo ou distância
         </button>
       )}
-      {data.can_propose && open && (
+      {active && data.can_propose && open && (
         <form onSubmit={propose} className="space-y-2">
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block">

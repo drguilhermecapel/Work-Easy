@@ -67,6 +67,7 @@ export function ReservePanel({
   const [form, setForm] = useState<'' | 'shift' | 'rebook' | 'cancel'>('');
   const [time, setTime] = useState('');
   const [validation, setValidation] = useState('');
+  const [flight, setFlight] = useState<string | null>(null);
   const data = terms.data;
   if (!data) {
     return (
@@ -77,7 +78,12 @@ export function ReservePanel({
     );
   }
 
-  const airport = !!(data.flight_ref || data.terminal);
+  // Only an airport reserve takes a flight delay; the server refuses it on any other leg.
+  const airport = !!(data.airport ?? (data.flight_ref || data.terminal));
+  // The server says what the caller may do; the passenger prop only narrows it.
+  const canShift = passenger && (data.can_shift ?? (data.state === 'awaiting_driver' || data.state === 'confirmed'));
+  const canDecide = passenger && (data.can_decide ?? data.state === 'contingency');
+  const base = data.original_pickup ?? leg.pickup_at;
   const reason: ShiftReason = airport ? 'flight_delay' : 'passenger';
   const pending = data.shift?.state === 'proposed' ? data.shift : null;
   const close = () => {
@@ -100,8 +106,8 @@ export function ReservePanel({
     const instant = chosen();
     if (!instant) return;
     const limit = data?.max_shift_minutes;
-    if (limit != null && leg.pickup_at && Math.abs(Date.parse(instant) - Date.parse(leg.pickup_at)) > limit * 60_000) {
-      setValidation(`Esta reserva aceita mudança de até ${limit} min em relação ao horário atual.`);
+    if (limit != null && base && Math.abs(Date.parse(instant) - Date.parse(base)) > limit * 60_000) {
+      setValidation(`Esta reserva aceita mudança de até ${limit} min em relação ao horário reservado.`);
       return;
     }
     const done = await action.run(`shift:${instant}:${reason}`, async (key) => {
@@ -135,11 +141,59 @@ export function ReservePanel({
       {data.state === 'confirmed' && <p className="text-sm text-gray-700">Um motorista confirmou esta reserva.</p>}
       {airport && (
         <p className="text-sm text-gray-700">
-          {[data.terminal && 'Terminal ' + data.terminal, data.flight_ref && 'Voo ' + data.flight_ref]
+          {[
+            data.airport && 'Aeroporto ' + data.airport,
+            data.terminal && 'Terminal ' + data.terminal,
+            data.flight_ref && 'Voo ' + data.flight_ref,
+          ]
             .filter(Boolean)
             .join(' · ')}
           . A referência do voo é apagada 24 horas após o fim do trecho.
         </p>
+      )}
+      {airport && passenger && data.state !== 'released' && flight === null && form === '' && (
+        <button
+          type="button"
+          className="text-sm underline"
+          disabled={action.busy}
+          onClick={() => setFlight(data.flight_ref ?? '')}
+        >
+          {data.flight_ref ? 'Alterar o número do voo' : 'Informar o número do voo'}
+        </button>
+      )}
+      {flight !== null && (
+        <form
+          className="space-y-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const value = flight.trim();
+            void action
+              .run(`flight:${value}`, async () => {
+                await rideReserve.flight(leg.id, value);
+                return value ? 'Número do voo registrado.' : 'Número do voo removido.';
+              })
+              .then((done) => done && setFlight(null));
+          }}
+        >
+          <label className="block">
+            Número do voo (opcional)
+            <input
+              className={field}
+              value={flight}
+              maxLength={16}
+              autoComplete="off"
+              onChange={(e) => setFlight(e.target.value)}
+            />
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <button type="submit" className={primary} disabled={action.busy}>
+              Salvar voo
+            </button>
+            <button type="button" className="underline" disabled={action.busy} onClick={() => setFlight(null)}>
+              Voltar
+            </button>
+          </div>
+        </form>
       )}
       {pending && (
         <p role="status" className="text-sm">
@@ -154,7 +208,7 @@ export function ReservePanel({
         </p>
       )}
 
-      {passenger && (data.state === 'awaiting_driver' || data.state === 'confirmed') && !pending && form === '' && (
+      {canShift && !pending && form === '' && flight === null && (
         <button type="button" className={secondary} disabled={action.busy} onClick={() => setForm('shift')}>
           {airport ? 'Meu voo atrasou' : 'Mudar o horário da reserva'}
         </button>
@@ -191,9 +245,9 @@ export function ReservePanel({
         <div className="space-y-2">
           <p role="status" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
             Nenhum motorista confirmou até {whenSP(data.confirm_by)}.{' '}
-            {passenger ? 'Escolha como seguir.' : 'O passageiro escolhe entre continuar a busca, remarcar ou cancelar.'}
+            {canDecide ? 'Escolha como seguir.' : 'O passageiro escolhe entre continuar a busca, remarcar ou cancelar.'}
           </p>
-          {passenger && form === '' && (
+          {canDecide && form === '' && (
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"

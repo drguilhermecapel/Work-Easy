@@ -5,12 +5,15 @@ import ErrorAlert from '../../components/ErrorAlert';
 import { formatCents } from '../../lib/money';
 import { saoPauloDateTime } from '../../lib/timezone';
 import { fundingProblem, quoteRideFor, SELF_FUNDING, type Funding } from '../../services/rideParties';
-import { quoteRideWithAccess } from '../../services/rideSafety';
+import { isRideRefusal, rideMarket, type Assistance } from '../../services/rideMarket';
 import { quoteRide, type RideLegInput, type RidePayer } from '../../services/rides';
 
 // "Quem viaja e quem paga" (O17 stage 5): loaded apart, and it draws nothing for an account that
 // has no group, companion, company program or dependent.
 const FundingChoice = lazy(() => import('../../components/mobility/parties/FundingChoice'));
+// Assistance on a measured route (O17 stage 6, PAR-602): what is available in the window, from the server.
+const AccessOptions = lazy(() => import('../../components/mobility/modes/AccessOptions').then(m => ({ default: m.AccessOptions })));
+const NO_VEHICLE = 'Não há veículo e motorista compatíveis com esta assistência neste trajeto e horário. Nenhuma cotação foi criada.';
 
 const field = 'block w-full mt-1 rounded-xl border border-gray-300 bg-white p-2.5 text-gray-900';
 
@@ -52,7 +55,10 @@ function toInstant(value: string): string | null {
 }
 
 export default function QuoteForm({ areas, bookingId, passengerCanRequestAccess = !bookingId, replaces, routes = [], nextBookings = [], extras = [], requiresRoute = false, onQuoted }: Props) {
-  const [assistance,setAssistance]=useState('none');
+  const [assistance,setAssistance]=useState<'none' | Assistance>('none');
+  const [companion, setCompanion] = useState(false);
+  // The server refused the assistance for lack of a compatible vehicle: say so, never promise one.
+  const [refused, setRefused] = useState(false);
   // Another payer, a company program or a dependent only apply to a standalone ride of the caller.
   const fundable = !bookingId && !replaces;
   const [funding, setFunding] = useState<Funding>(SELF_FUNDING);
@@ -129,25 +135,32 @@ export default function QuoteForm({ areas, bookingId, passengerCanRequestAccess 
       legs.push(second);
     }
     if (nextBooking && nextBookings.some(b => b.id === nextBooking)) legs[legs.length - 1].next_booking_id = nextBooking;
-    const payload = JSON.stringify([bookingId, first, legs, assistance, classes[routeId], classes[nextRouteId], funded ? funding : null]);
+    const assisted = passengerCanRequestAccess && !funded && assistance !== 'none' ? assistance : null;
+    const payload = JSON.stringify([bookingId, first, legs, assisted, assisted && companion, classes[routeId], classes[nextRouteId], funded ? funding : null]);
     if (request.current?.payload !== payload) request.current = { payload, key: crypto.randomUUID() };
     sending.current = true;
     setBusy(true);
     setValidation('');
+    setRefused(false);
     try {
       for (const [route,instant] of [[routeId, first],[nextRouteId,next]] as const) {
         if(route && classes[route]) await chooseRideClass(route,classes[route],instant);
       }
       // The funded wrappers take neither a booking nor an assistance request, so they are offered only without them.
+      // An assistance goes through the server door, which refuses without an equipped vehicle and keeps no quote.
       const quote = funded
         ? await quoteRideFor(funding, request.current.key, first, legs)
-        : passengerCanRequestAccess && assistance !== 'none'
-          ? await quoteRideWithAccess(request.current.key, bookingId, first, legs, assistance)
+        : assisted
+          ? await rideMarket.quoteAccessible(request.current.key, bookingId, first, legs, assisted, companion)
           : await quoteRide(request.current.key, bookingId, first, legs);
       request.current = null;
       onQuoted(quote.id);
     } catch (error) {
-      setFailure(error);
+      if (isRideRefusal(error, 'ride_assistance_unavailable')) {
+        // Nothing was created: a new attempt is a new request.
+        request.current = null;
+        setRefused(true);
+      } else setFailure(error);
     } finally {
       sending.current = false;
       setBusy(false);
@@ -158,9 +171,17 @@ export default function QuoteForm({ areas, bookingId, passengerCanRequestAccess 
   const payers = <><option value="client">Cliente</option><option value="provider">Profissional</option></>;
   return (
     <form onSubmit={submit} className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5">
-      {passengerCanRequestAccess && !funded && <label className="block">Assistência no transporte <select className={field} value={assistance} onChange={e=>setAssistance(e.target.value)}>
-        <option value="none">Sem assistência especial</option><option value="boarding">Ajuda para embarcar</option><option value="folding_equipment">Equipamento portátil ou dobrável</option>
-        <option value="wheelchair_vehicle">Veículo adaptado para viajar na cadeira</option></select> Sem adicional. Se faltar capacidade, o plantão pode combinar outra janela.</label>}
+      {passengerCanRequestAccess && !funded && (routeId
+        ? <Suspense fallback={<p role="status">Consultando a assistência disponível…</p>}>
+            <AccessOptions routeId={routeId} departure={scheduled && departure ? toInstant(departure) : null} value={assistance} companion={companion} refused={refused}
+              onChange={(a, c) => { setAssistance(a); setCompanion(c); setRefused(false); }} />
+          </Suspense>
+        : <>
+            <label className="block">Assistência no transporte <select className={field} value={assistance} onChange={e => { setAssistance(e.target.value as 'none' | Assistance); setCompanion(false); setRefused(false); }}>
+              <option value="none">Sem assistência especial</option><option value="boarding">Ajuda para embarcar</option><option value="folding_equipment">Equipamento portátil ou dobrável</option>
+              <option value="wheelchair_vehicle">Veículo adaptado para viajar na cadeira</option></select> Sem adicional. A cotação só sai com veículo e motorista compatíveis.</label>
+            {refused && <p role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-3">{NO_VEHICLE} Para combinar outra janela, fale com o plantão da WorkEasy. Com um trajeto medido, esta tela mostra o canal do plantão.</p>}
+          </>)}
 
       <h2 className="text-lg font-semibold">{bookingId ? 'Trajeto do profissional' : 'Cotar corrida'}</h2>
       {fundable && <Suspense fallback={null}><FundingChoice value={funding} onChange={setFunding} disabled={busy} /></Suspense>}

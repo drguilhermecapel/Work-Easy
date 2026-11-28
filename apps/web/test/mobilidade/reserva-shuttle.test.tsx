@@ -18,7 +18,7 @@ vi.mock('../../contexts/AuthContext', () => ({
   useAuth: () => ({ mode: 'backend', authUser: { id: 'passageira' }, loading: false, isAuthenticated: true }),
 }));
 vi.mock('../../services/rideModes', () => ({
-  rideReserve: { state: vi.fn(), shift: vi.fn(), contingency: vi.fn(), decideShift: vi.fn() },
+  rideReserve: { state: vi.fn(), shift: vi.fn(), contingency: vi.fn(), decideShift: vi.fn(), flight: vi.fn() },
   rideShuttle: { board: vi.fn(), book: vi.fn(), cancel: vi.fn(), rebook: vi.fn(), manifest: vi.fn() },
   rideBlocks: { decide: vi.fn() },
   driverModes: { tasks: vi.fn() },
@@ -125,7 +125,11 @@ describe('reserva agendada', () => {
 
   it('na contingência continua a busca, remarca com novo horário e só cancela após confirmação', async () => {
     vi.mocked(rideReserve.state).mockResolvedValue(terms({ state: 'contingency' }));
-    vi.mocked(rideReserve.contingency).mockResolvedValue({ state: 'awaiting_driver' });
+    vi.mocked(rideReserve.contingency).mockResolvedValue({
+      state: 'awaiting_driver',
+      choice: 'keep_searching',
+      pickup_at: '2090-01-10T12:00:00Z',
+    });
     render(<ReservePanel leg={leg} />);
     expect(await screen.findByText(/Nenhum motorista confirmou até 10\/01\/2090 08:00/)).toBeVisible();
 

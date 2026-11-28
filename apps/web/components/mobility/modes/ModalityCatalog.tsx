@@ -55,6 +55,7 @@ const REASONS: Record<string, string> = {
   area_not_authorized: 'Origem ou destino sem liberação para cotação.',
   network_disabled: 'As cotações de corrida estão desligadas neste ambiente.',
   unknown_modality: 'Modalidade não reconhecida neste ambiente.',
+  corridor_unavailable: 'Não há corredor entre municípios autorizado para este trajeto e horário.',
 };
 const STATUS: Record<string, string> = {
   inventory: 'Registro de mercado, sem autorização para operar',

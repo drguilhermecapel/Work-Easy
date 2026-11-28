@@ -4,7 +4,19 @@ import { Bus } from 'lucide-react';
 import ErrorAlert from '../../ErrorAlert';
 import { formatCents } from '../../../lib/money';
 import { rideShuttle, type ShuttleBoard, type ShuttleSeat } from '../../../services/rideModes';
-import { SIMULATION, banner, card, danger, field, primary, secondary, useModeAction, usePoll, whenSP } from './modeState';
+import {
+  SIMULATION,
+  banner,
+  card,
+  danger,
+  field,
+  isFuture,
+  primary,
+  secondary,
+  useModeAction,
+  usePoll,
+  whenSP,
+} from './modeState';
 
 const SEAT_STATES: Record<ShuttleSeat['state'], string> = {
   confirmed: 'Reservado',
@@ -30,7 +42,8 @@ function MySeat({
   const others = (board.lines.find((line) => line.id === seat.line_id)?.departures ?? []).filter(
     (d) => d.state === 'open' && d.id !== seat.departure_id && d.seats_left >= seat.seats,
   );
-  const live = seat.state === 'confirmed' || seat.state === 'released';
+  // A confirmed seat of a departure already gone can no longer move; the server would refuse it.
+  const live = seat.state === 'released' || (seat.state === 'confirmed' && isFuture(seat.departs_at));
   const targetId = `troca-${seat.id}`;
   return (
     <li className="space-y-2 border-l-2 border-primary/30 pl-3">

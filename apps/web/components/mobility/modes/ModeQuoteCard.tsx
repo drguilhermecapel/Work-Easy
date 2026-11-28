@@ -28,6 +28,8 @@ export function ModeQuoteCard({
   const [error, setError] = useState<unknown>(null);
   const [outcome, setOutcome] = useState<'' | 'requested' | 'waiting' | 'declined'>('');
   const sending = useRef(false);
+  // Null for a rider whose ride somebody else pays (the server hides the price then).
+  const total = quote.total_cents;
   async function decide(accept: boolean) {
     if (sending.current) return;
     sending.current = true;
@@ -46,10 +48,13 @@ export function ModeQuoteCard({
   return (
     <article className={card}>
       <h3 className="font-semibold">
-        {title} · {formatCents(quote.total_cents)}
+        {title}
+        {total !== null && ' · ' + formatCents(total)}
       </h3>
       <div className="space-y-1">{children}</div>
-      <p className="font-medium">Total: {formatCents(quote.total_cents)}</p>
+      <p className="font-medium">
+        {total !== null ? 'Total: ' + formatCents(total) : 'O valor fica com quem paga a corrida.'}
+      </p>
       <p className="text-sm text-gray-700">Proposta válida até {whenSP(quote.expires_at)}. Nada é solicitado antes do seu aceite.</p>
       {outcome === '' && (
         <div className="flex flex-wrap gap-3">

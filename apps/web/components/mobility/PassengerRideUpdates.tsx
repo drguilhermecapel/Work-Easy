@@ -12,6 +12,8 @@ const labels: Record<string, string> = {
   unknown: 'O plantão está confirmando a situação do trecho.',
   no_supply:
     'O prazo para encontrar motorista acabou. Escolha outro horário ou combine outra forma de deslocamento.',
+  reserve_unconfirmed:
+    'Nenhum motorista confirmou a reserva no prazo. Abra a reserva para continuar a busca, remarcar ou cancelar.',
 };
 export function PassengerRideUpdates({ revision }: { revision: number }) {
   const [data, setData] = useState<PassengerUpdates | null>(null);
