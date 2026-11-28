@@ -87,7 +87,7 @@ declare c private.ride_order_cases; o private.ride_payment_orders; s private.rid
 begin
  if not private.ride_active_user(p_actor) or not exists(select from public.admins where user_id=p_actor)
    or p_environment is distinct from private.ride_env() or length(trim(coalesce(p_evidence,''))) not between 1 and 160 then raise exception 'not_allowed'; end if;
- select * into c from private.ride_order_cases where id=p_case;
+ select * into c from private.ride_order_cases where id=p_case for update;
  select * into o from private.ride_payment_orders where id=c.order_id for update;
  select * into s from private.ride_order_psp where order_id=o.id and environment=p_environment for update;
  if not found or not s.captured or s.payment_id is null then raise exception 'ride_financial_state'; end if;
@@ -116,6 +116,27 @@ begin
  where r.case_id=p_case and not r.sent and s.order_id=r.order_id and s.environment=private.ride_env() and s.environment=p_environment
    and c.id=r.case_id and c.status='approved' and s.reversed_cents+r.amount_cents=r.target_cents;
  return found;
+end $$;
+create or replace function public.ride_refund_order_source(p_case uuid,p_origin text,p_extras int,p_reference text) returns text
+language plpgsql security definer set search_path='' as $$
+declare c private.ride_order_cases; o private.ride_payment_orders; l public.ride_legs;
+begin
+  perform private.require_ride_finance_admin();
+  select * into c from private.ride_order_cases where id=p_case for update;
+  select po.* into o from private.ride_payment_orders po join private.ride_order_plans pl on pl.leg_id=po.leg_id and pl.environment=private.ride_env() where po.id=c.order_id for update of po;
+  if not found or c.status not in ('approved','settled') or p_origin is null or p_origin not in ('benefit','cash')
+    or length(trim(coalesce(p_reference,''))) not between 1 and 160 then raise exception 'ride_financial_state'; end if;
+  if exists(select from private.ride_order_refunds where case_id=c.id) then raise exception 'ride_operation_conflict'; end if;
+  if c.status='settled' then
+    if not exists(select from private.ride_order_events where order_id=o.id and operation_id=c.id and action='refund_evidence'
+      and data=jsonb_build_object('origin',p_origin,'reference',trim(p_reference),'extras',p_extras)) then raise exception 'ride_operation_conflict'; end if;
+    return c.status;
+  end if;
+  perform private.ride_order_reverse(o.id,c.requested_cents,p_extras,p_origin,c.id);
+  insert into private.ride_order_events(order_id,action,operation_id,actor,data) values(o.id,'refund_evidence',c.id,auth.uid(),
+    jsonb_build_object('origin',p_origin,'reference',trim(p_reference),'extras',p_extras));
+  update private.ride_order_cases set status='settled' where id=c.id;
+  return 'settled';
 end $$;
 
 -- A dedicated driver-wallet credential and pre-reviewed destination are required.
