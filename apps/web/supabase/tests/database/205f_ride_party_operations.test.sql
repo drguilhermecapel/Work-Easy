@@ -73,7 +73,7 @@ select throws_ok($$select private.ride_invoice_open_months(gen_random_uuid())$$,
 select is(public.ride_companion_invite(repeat('a',64)),null,'código desconhecido de acompanhante não devolve nada');
 select is(public.ride_guest_invite('não é um código'),null,'código malformado de convidado não devolve nada');
 select tests.authenticate_as('admin');
-select is(pg_temp.keys(public.admin_ride_party_queue()),array['accounts','cessions','dependents','disputes','invoices'],'a fila tem as cinco seções');
+select is(pg_temp.keys(public.admin_ride_party_queue()),array['accounts','cessions','dependents','disputes','invoices','vouchers'],'a fila tem as seis seções (vouchers retidos desde DD124)');
 select tests.clear_authentication();
 
 -- ─── Contas sem conferência ou perto de perdê-la ───────────────────────────────────────────

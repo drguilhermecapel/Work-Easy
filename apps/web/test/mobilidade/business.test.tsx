@@ -16,6 +16,7 @@ import {
   business,
   guestInvite,
   redeemVoucher,
+  voucherHold,
   type GuestInviteView,
   type OrgAccount,
   type OrgReport,
@@ -51,6 +52,7 @@ vi.mock('../../services/rideBusiness', () => ({
     dispute: vi.fn(),
   },
   redeemVoucher: vi.fn(),
+  voucherHold: vi.fn(),
   guestInvite: vi.fn(),
   answerGuestInvite: vi.fn(),
 }));
@@ -600,6 +602,34 @@ describe('Empresa · voucher e convite do convidado', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Usar voucher' }));
     expect(await screen.findByText(/Voucher aplicado/)).toHaveTextContent(/R\$\s32,00.*Nada a pagar por você neste trecho/);
     expect(redeemVoucher).toHaveBeenCalledWith('quitado', 'pix');
+  });
+
+  it('o voucher que aguarda a operação avisa que nada será cobrado e não oferece o uso', async () => {
+    vi.mocked(voucherHold).mockResolvedValue({ state: 'on_hold', reason: 'release_closed', cents: 2500 });
+    render(<UseVoucher legId="retido" onChange={refresh} />);
+    expect(await screen.findByText('O voucher da empresa está aguardando a operação. Nada será cobrado de você enquanto isso.')).toBeVisible();
+    expect(voucherHold).toHaveBeenCalledWith('retido');
+    expect(screen.queryByRole('button', { name: 'Usar voucher' })).toBeNull();
+    expect(redeemVoucher).not.toHaveBeenCalled();
+    expectAccessibleScreen();
+  });
+
+  it('o voucher devolvido ao programa avisa que a tarifa segue o caminho comum e não oferece o uso', async () => {
+    vi.mocked(voucherHold).mockResolvedValue({ state: 'returned', reason: null, cents: 2500 });
+    render(<UseVoucher legId="devolvido" onChange={refresh} />);
+    expect(await screen.findByText(/O voucher voltou para o programa da empresa\. A tarifa deste trecho agora é paga pelo caminho comum/)).toBeVisible();
+    expect(screen.queryByText(/O voucher paga a parte da empresa/)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Usar voucher' })).toBeNull();
+    expect(redeemVoucher).not.toHaveBeenCalled();
+    expectAccessibleScreen();
+  });
+
+  it('com o voucher pronto para uso, mantém a escolha da forma da diferença', async () => {
+    vi.mocked(voucherHold).mockResolvedValue({ state: 'ready', reason: null, cents: 2500 });
+    render(<UseVoucher legId="pronto" onChange={refresh} />);
+    await waitFor(() => expect(voucherHold).toHaveBeenCalledWith('pronto'));
+    expect(screen.getByRole('button', { name: 'Usar voucher' })).toBeVisible();
+    expect(screen.queryByText(/aguardando a operação/)).toBeNull();
   });
 
   const guest: GuestInviteView = {

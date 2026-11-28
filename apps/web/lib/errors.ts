@@ -127,9 +127,13 @@ export const DATABASE_ERROR_CODES = [
   'route_measurement_locked',
   'ride_mode_frozen',
   'ride_seat_frozen',
+  'ride_rebook_limit',
   'driver_unavailable',
   'ride_voucher_pending',
   'ride_dependent_in_trip',
+  // O17 voucher release hold (DD124)
+  'ride_voucher_on_hold',
+  'ride_voucher_returned',
 ] as const;
 
 export type DatabaseErrorCode = (typeof DATABASE_ERROR_CODES)[number];
@@ -286,9 +290,15 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
     'Este trajeto já tem uma cotação em andamento com outra classe. Decida essa cotação ou espere ela vencer antes de trocar a classe.',
   ride_mode_frozen: 'A modalidade desta cotação já foi registrada e não muda. Peça uma nova cotação para outra modalidade.',
   ride_seat_frozen: 'Esta partida já tem assentos reservados e não pode ser alterada assim. Cancele a partida ou atualize a lista.',
+  ride_rebook_limit:
+    'Esta reserva já chegou ao limite de remarcações da área. Você pode cancelar a reserva, sem manter o preço combinado, ou pedir uma nova cotação para outro horário.',
   driver_unavailable: 'Este trecho não cabe na sua agenda agora. Atualize as ofertas e escolha outro trecho.',
   ride_voucher_pending:
     'Este trecho tem um voucher da empresa que ainda não foi usado. Confira o trecho em Corridas e use “Usar voucher”: a empresa paga a parte dela e só a diferença que você aceitou fica para pagar.',
+  ride_voucher_on_hold:
+    'O voucher da empresa deste trecho está aguardando a operação. Nada será cobrado de você enquanto isso; confira o trecho em Corridas mais tarde.',
+  ride_voucher_returned:
+    'O voucher deste trecho voltou para o programa da empresa. A tarifa agora é paga pelo caminho comum, em "Formas de pagamento do trecho".',
   ride_dependent_in_trip:
     'O dependente está em uma viagem que ainda não terminou. Confira a viagem em Corridas e retire o cadastro depois que ela terminar ou for cancelada.',
   invalid_ride_transition: 'Esta ação não se aplica ao estado atual do trecho. Atualize as corridas.',

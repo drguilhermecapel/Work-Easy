@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { formatCents } from '../../../lib/money';
-import { redeemVoucher, type VoucherMethod, type VoucherRedemption } from '../../../services/rideBusiness';
+import { useAsync } from '../../../lib/useAsync';
+import { redeemVoucher, voucherHold, type VoucherMethod, type VoucherRedemption } from '../../../services/rideBusiness';
 import { useAction } from '../safety/state';
 import { field, primary } from './shared';
 
@@ -10,17 +11,32 @@ const METHODS: Record<VoucherMethod, string> = { pix: 'Pix', card: 'cartão' };
  * "Usar voucher" of a completed leg funded by a company. A voucher that covers the whole fare is
  * already applied when the leg ends, and opening the leg's payment applies it too; here the payer
  * reads the result or chooses the method of what the voucher does not cover. A personal charge is
- * never prepared while the voucher is unused.
+ * never prepared while the voucher is unused. When the benefit cannot be applied (release closed,
+ * charging off or window lapsed) the voucher waits for the operation (DD124) and nothing is charged.
  */
 export default function UseVoucher({ legId, onChange }: { legId: string; onChange?: () => void }) {
-  const action = useAction(onChange);
+  // Started inside a promise so a failure of this reading never hides the voucher itself.
+  const hold = useAsync(() => Promise.resolve().then(() => voucherHold(legId)), 'hold:' + legId);
+  const action = useAction(() => {
+    hold.reload();
+    onChange?.();
+  });
   const [method, setMethod] = useState<VoucherMethod>('pix');
   const [result, setResult] = useState<VoucherRedemption | null>(null);
   const id = 'voucher-forma-' + legId;
   return (
     <div className="space-y-2 rounded-xl border border-gray-200 p-3">
       <h4 className="font-semibold">Voucher da empresa</h4>
-      {result ? (
+      {hold.data?.state === 'on_hold' && !result ? (
+        <p role="status">
+          O voucher da empresa está aguardando a operação. Nada será cobrado de você enquanto isso.
+        </p>
+      ) : hold.data?.state === 'returned' && !result ? (
+        <p role="status">
+          O voucher voltou para o programa da empresa. A tarifa deste trecho agora é paga pelo caminho comum, em
+          "Formas de pagamento do trecho".
+        </p>
+      ) : result ? (
         <p role="status">
           Voucher aplicado: {formatCents(result.applied_cents)}.{' '}
           {result.remainder_cents > 0
