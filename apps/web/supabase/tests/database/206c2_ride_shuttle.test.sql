@@ -354,8 +354,8 @@ select is((select count(*)::int from private.ride_shuttle_events where operation
 
 -- Motorista designado e lista de embarque: só contagens.
 insert into public.ride_drivers(id,environment,vehicle,status,valid_until,reviewed_by)
- values(tests.uid('provider_c'),'simulation','van','approved',current_date+60,tests.uid('admin')),
- (tests.uid('provider_d'),'simulation','sedan','approved',current_date+60,tests.uid('admin'));
+ values(tests.uid('provider_c'),'simulation','van','approved',(now() at time zone 'America/Sao_Paulo')::date+60,tests.uid('admin')),
+ (tests.uid('provider_d'),'simulation','sedan','approved',(now() at time zone 'America/Sao_Paulo')::date+60,tests.uid('admin'));
 insert into private.ride_vehicle_capacity(driver_id,vehicle,document_ref,seats,valid_until)
  values(tests.uid('provider_c'),'van','TEST-206c2',12,now()+interval '30 days'),(tests.uid('provider_d'),'sedan','TEST-206c2',4,now()+interval '30 days');
 select throws_ok(format($$update private.ride_shuttle_departures set driver_id=%L where id=%L$$,tests.uid('provider_d'),pg_temp.id('d3')),'P0001','driver_ineligible',

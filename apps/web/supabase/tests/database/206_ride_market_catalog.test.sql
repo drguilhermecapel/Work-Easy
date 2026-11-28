@@ -103,7 +103,7 @@ insert into private.ride_method_releases(environment,origin,destination,method,e
  ('simulation','Jabaquara','Saúde','cash','TEST-206',tstzrange(now()-interval '1 hour',now()+interval '1 day')),
  ('simulation','Saúde','Jabaquara','tips','TEST-206',tstzrange(now()-interval '1 hour',now()+interval '1 day'));
 insert into public.ride_drivers(id,environment,vehicle,status,valid_until,reviewed_by,online)
- values(tests.uid('provider_c'),'simulation','sedan','approved',current_date+5,tests.uid('admin'),true);
+ values(tests.uid('provider_c'),'simulation','sedan','approved',(now() at time zone 'America/Sao_Paulo')::date+5,tests.uid('admin'),true);
 insert into private.ride_vehicle_capacity(driver_id,vehicle,document_ref,seats,valid_until) values(tests.uid('provider_c'),'sedan','TEST-206',4,now()+interval '1 day');
 create temp table counts206 as select
  (select count(*) from private.ride_markets)+(select count(*) from private.ride_market_areas)+(select count(*) from private.ride_modalities)

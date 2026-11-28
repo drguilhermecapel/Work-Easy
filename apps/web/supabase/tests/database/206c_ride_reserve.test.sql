@@ -22,7 +22,7 @@ create function pg_temp.legs() returns void language sql as $$
 insert into w values('a',now()+interval '3 hours'),('b',now()+interval '5 hours'),('c',now()+interval '8 hours'),('d',now()+interval '7 hours'),
  ('t',now()+interval '10 hours'),('g',now()+interval '2 hours');
 insert into public.ride_drivers(id,environment,vehicle,status,valid_until,reviewed_by,online)
- select tests.uid(u),'simulation','sedan','approved',current_date+3,tests.uid('admin'),true from unnest(array['provider_b','provider_d']) u;
+ select tests.uid(u),'simulation','sedan','approved',(now() at time zone 'America/Sao_Paulo')::date+3,tests.uid('admin'),true from unnest(array['provider_b','provider_d']) u;
 
 -- Sementes: só o ensaio recebe política; nenhum job novo; a verificação do O16 continua embaixo.
 select is((select count(*)::int from private.ride_reserve_policies where environment='live'),0,'ao vivo não há política de reserva');

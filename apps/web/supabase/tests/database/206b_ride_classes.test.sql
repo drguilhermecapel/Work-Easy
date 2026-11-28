@@ -51,12 +51,12 @@ select is(public.ride_apply_driver('minivan')->>'vehicle','minivan','minivan pas
 select throws_ok($$select public.ride_apply_driver('moto')$$,'P0001','invalid_vehicle','moto não é categoria de veículo desta rede');
 select tests.clear_authentication();
 select lives_ok($$insert into private.ride_driver_credentials(driver_id,vehicle_identifier,vehicle_category,driver_document_ref,vehicle_document_ref,insurance_ref,driver_until,vehicle_until,insurance_until,inspected_by)
- values(tests.uid('provider_c'),'ENS-206B','suv','DOC-206B','VEI-206B','SEG-206B',current_date+2,current_date+2,current_date+2,tests.uid('admin'))$$,
+ values(tests.uid('provider_c'),'ENS-206B','suv','DOC-206B','VEI-206B','SEG-206B',(now() at time zone 'America/Sao_Paulo')::date+2,(now() at time zone 'America/Sao_Paulo')::date+2,(now() at time zone 'America/Sao_Paulo')::date+2,tests.uid('admin'))$$,
  'a credencial privada do veículo aceita a categoria SUV');
 select throws_ok($$update private.ride_driver_credentials set vehicle_category='moto' where driver_id=tests.uid('provider_c')$$,'23514',null,
  'a credencial continua recusando categoria fora da lista');
 select tests.authenticate_as('admin');
-select public.ride_review_driver(tests.uid(u),true,current_date+3) from unnest(array['client_b','provider_c','provider_d']) u;
+select public.ride_review_driver(tests.uid(u),true,(now() at time zone 'America/Sao_Paulo')::date+3) from unnest(array['client_b','provider_c','provider_d']) u;
 select public.ride_validate_capacity(tests.uid('client_b'),4,false,false,now()+interval '1 day','ensaio/206b-d1');
 select public.ride_validate_capacity(tests.uid('provider_c'),4,false,false,now()+interval '1 day','ensaio/206b-d2');
 select public.ride_validate_capacity(tests.uid('provider_d'),8,false,false,now()+interval '1 day','ensaio/206b-d3');
