@@ -41,7 +41,7 @@ function run(db, sql, program = 'psql', options = null) {
   });
 }
 const fixture = await readFile(
-  new URL('../supabase/tests/concurrency/204_ride_payments.sql', import.meta.url),
+  new URL('./fixtures/204_ride_payments.sql', import.meta.url),
   'utf8',
 );
 const as = (role, sql) =>
