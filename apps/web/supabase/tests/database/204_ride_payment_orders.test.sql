@@ -200,5 +200,276 @@ select results_eq($$select amount_cents,commission_cents from private.ride_payme
  $$select 700,70$$,'Twelve measured minutes less five included minutes generates one accepted R$7 service component');
 update private.ride_method_releases set acquirer_profile_ref=null where method='card';
 select is((select private.ride_method(l,'card') from public.ride_legs l where l.id=pg_temp.ref('leg2')),null::uuid,'A missing hosted acquiring profile prevents a new card emission');
+-- Refund exclusivity: one approved case leaves through exactly one path (provider, benefit or issuer).
+update private.ride_method_releases set acquirer_profile_ref='hosted account TEST' where method='card';
+create function pg_temp.more_legs(first int) returns void language sql as $$
+ with q as (
+  insert into private.ride_quotes(environment,actor_id,request_key,passenger_id,request_legs,legs,required_users,tariff_id,expires_at,status,total_cents)
+  select 'simulation',tests.uid('client_a'),gen_random_uuid(),tests.uid('client_a'),'[]','[]',array[tests.uid('client_a')],id,now()+interval '10 min','requested',3309
+  from private.ride_tariffs where environment='simulation' limit 1 returning id,tariff_id
+ ), r as (
+  insert into public.rides(quote_id,environment,passenger_id) select id,'simulation',tests.uid('client_a') from q returning id,quote_id
+ ), l as (
+  insert into public.ride_legs(ride_id,seq,origin,destination,pickup_at,duration_minutes,slot,fare_cents,fee_cents,extras_cents,driver_cents,
+  payer_id,driver_id,tariff_id,status,environment)
+  select r.id,i,'Saúde','Jabaquara',now()+make_interval(hours=>i+first-1),18,tstzrange(now()+make_interval(hours=>i+first-1),now()+make_interval(hours=>i+first-1,mins=>18)),
+  3309,300,300,3009,tests.uid('client_a'),tests.uid('provider_c'),q.tariff_id,'accepted','simulation'
+  from q join r on q.id=r.quote_id cross join generate_series(1,3) i returning id,seq
+ ) insert into refs select 'leg'||seq+first-1,id from l;
+$$;
+select pg_temp.more_legs(4);
+select pg_temp.more_legs(7);
+create function pg_temp.paid(payment text,amount int,split int,fee int,reversed int) returns jsonb language sql as $$
+ select jsonb_build_object('status','paid','payment',payment,'customer','cus_204a','amount',amount,'splitCents',split,'pspFee',fee,
+   'paidToDriver',split,'returnedByDriver',0,'refunded',reversed);
+$$;
+create function pg_temp.chargeback(payment text) returns jsonb language sql as $$
+ select jsonb_build_object('payment',payment,'reason','card_chargeback','customer','cus_204a','amount',3309);
+$$;
+create function pg_temp.refund_events(leg text) returns bigint language sql stable as $$
+ select count(*) from private.ride_financial_events where leg_id=pg_temp.ref(leg) and kind='refund';
+$$;
+-- Books of one order: refund events, refunded to the payer, counter shared with the issuer, case status.
+create function pg_temp.books(leg text,ord text,c text) returns table(refunds bigint,refunded int,reversed int,settled text) language sql stable as $$
+ select pg_temp.refund_events(leg),o.refunded_cents,s.reversed_cents,(select status from private.ride_order_cases where id=pg_temp.ref(c))
+ from private.ride_payment_orders o join private.ride_order_psp s on s.order_id=o.id where o.id=pg_temp.ref(ord);
+$$;
+grant execute on function pg_temp.paid(text,int,int,int,int),pg_temp.chargeback(text) to authenticated,service_role;
+select tests.authenticate_as('client_a');
+insert into refs values('mix',public.ride_open_payment_order(pg_temp.ref('leg4'),'pix')),('sent',public.ride_open_payment_order(pg_temp.ref('leg5'),'card')),
+ ('unsent',public.ride_open_payment_order(pg_temp.ref('leg6'),'card')),('late',public.ride_open_payment_order(pg_temp.ref('leg7'),'card')),
+ ('direct',public.ride_open_payment_order(pg_temp.ref('leg8'),'card')),('retry',public.ride_open_payment_order(pg_temp.ref('leg9'),'card'));
+select tests.clear_authentication();
+update public.ride_legs set status='completed' where id in(select id from refs where k in('leg4','leg5','leg6','leg7','leg8','leg9'));
+select tests.authenticate_as('client_a');
+select is(public.ride_apply_order_benefit(pg_temp.ref('mix'),pg_temp.ref('benefit'),700),700,'Mixed order: the benefit funds part of the fare');
+select tests.authenticate_service();
+select is((public.ride_prepare_order_payment(pg_temp.ref('mix'),tests.uid('client_a'),'simulation')->>'amount_cents')::int,2609,'Mixed order: Pix collects only the balance');
+select is(public.ride_observe_order_payment(pg_temp.ref('mix'),'simulation',pg_temp.paid('pay_mix',2609,2372,20,0)),'paid','Mixed order: Pix balance is captured');
+select tests.authenticate_as('client_a');
+insert into refs values('same',public.ride_request_order_review(pg_temp.ref('mix'),500,'Cobrada a mais',gen_random_uuid()));
+select tests.authenticate_as('admin');
+select is(public.ride_decide_order_review(pg_temp.ref('same'),true,'Conferido'),'approved','Request of R$5 approved before any refund');
+select tests.authenticate_service();
+select is(public.ride_observe_order_payment(pg_temp.ref('mix'),'simulation',pg_temp.paid('pay_mix',2609,2372,20,500)),'review','A provider refund nobody reserved and sent parks the order');
+select tests.clear_authentication();
+select results_eq($$select refunds,refunded,reversed from pg_temp.books('leg4','mix','same')$$,$$select 0::bigint,0,0$$,'An unrequested provider refund posts nothing');
+select is((select string_agg(reason,',') from private.ride_order_provider_reviews where order_id=pg_temp.ref('mix')),'unrequested_refund','The review names the unrequested refund');
+select tests.authenticate_as('client_a');
+select throws_ok($$select public.admin_accept_provider_refund(pg_temp.ref('mix'),500,0,'PSP statement 1')$$,'P0001',null,'A payer cannot accept a provider refund');
+select throws_ok($$select public.admin_void_order_refund(gen_random_uuid(),'x')$$,'P0001',null,'A payer cannot void a refund attempt');
+select tests.authenticate_as('admin');
+select throws_ok($$select public.ride_refund_order_source(pg_temp.ref('same'),'benefit',0,'TEST-MIX-S')$$,'P0001','ride_operation_conflict','A parked provider refund blocks the benefit path of the same order');
+select tests.clear_authentication();
+select is((select available_cents from private.ride_benefits where id=pg_temp.ref('benefit')),300,'The benefit is not restored on top of the parked provider refund');
+select tests.authenticate_as('admin');
+select throws_ok($$select public.admin_accept_provider_refund(pg_temp.ref('mix'),400,0,'PSP statement 1')$$,'P0001','ride_financial_state','Only the observed cumulative refund can be accepted');
+select is(public.admin_accept_provider_refund(pg_temp.ref('mix'),500,0,'PSP statement 1'),pg_temp.ref('same'),'The refund is bound to the approved request of the same amount, not to a second case');
+select is(public.admin_accept_provider_refund(pg_temp.ref('mix'),500,0,'PSP statement 1'),pg_temp.ref('same'),'Accepting again keeps the same case');
+select throws_ok($$select public.admin_accept_provider_refund(pg_temp.ref('mix'),500,1,'PSP statement 1')$$,'P0001','ride_operation_conflict','Accepted terms cannot change on replay');
+select tests.authenticate_service();
+select is(public.ride_prepare_order_refund(pg_temp.ref('same'),tests.uid('admin'),'simulation',0,'PSP statement 1')->>'create','false','The accepted terms re-query the charge and never send a refund');
+select is(public.ride_claim_order_refund(pg_temp.ref('same'),'simulation'),false,'An accepted provider refund is never sent again');
+select is(public.ride_observe_order_payment(pg_temp.ref('mix'),'simulation',pg_temp.paid('pay_mix',2609,2372,20,500)),'paid','The same observation books the accepted refund');
+select is(public.ride_observe_order_payment(pg_temp.ref('mix'),'simulation',pg_temp.paid('pay_mix',2609,2372,20,500)),'paid','Replaying it books nothing more');
+select tests.clear_authentication();
+select results_eq($$select refunds,refunded,settled,(select count(*) from private.ride_order_cases where order_id=pg_temp.ref('mix')) from pg_temp.books('leg4','mix','same')$$,
+ $$select 1::bigint,500,'settled',1::bigint$$,'Exactly one refund event settles the accepted case by id');
+select tests.authenticate_as('client_a');
+insert into refs values('benefitonly',public.ride_request_order_review(pg_temp.ref('mix'),100,'Devolver parte do benefício',gen_random_uuid()));
+select tests.authenticate_as('admin');
+select is(public.ride_decide_order_review(pg_temp.ref('benefitonly'),true,'Conferido'),'approved','Benefit-only case approved');
+select is(public.ride_refund_order_source(pg_temp.ref('benefitonly'),'benefit',0,'TEST-MIX-B'),'settled','Benefit-only case settles at its source');
+select tests.authenticate_service();
+select throws_ok($$select public.ride_prepare_order_refund(pg_temp.ref('benefitonly'),tests.uid('admin'),'simulation',0,'provider evidence')$$,
+ 'P0001','ride_financial_state','A benefit-settled case cannot reserve a provider refund');
+select tests.authenticate_as('client_a');
+insert into refs values('both',public.ride_request_order_review(pg_temp.ref('mix'),600,'Corrida cobrada a mais',gen_random_uuid()));
+select tests.authenticate_as('admin');
+select is(public.ride_decide_order_review(pg_temp.ref('both'),true,'Conferido'),'approved','Case that either source could refund is approved');
+select tests.authenticate_service();
+select is((public.ride_prepare_order_refund(pg_temp.ref('both'),tests.uid('admin'),'simulation',0,'provider evidence')->>'target')::int,1100,'Provider refund reserved on top of the booked one');
+select tests.authenticate_as('admin');
+select throws_ok($$select public.ride_refund_order_source(pg_temp.ref('both'),'benefit',0,'TEST-MIX-A')$$,'P0001','ride_operation_conflict','A reserved provider refund blocks the benefit path');
+select tests.clear_authentication();
+select is((select available_cents from private.ride_benefits where id=pg_temp.ref('benefit')),400,'Blocked benefit path leaves the balance unchanged');
+select tests.authenticate_as('admin');
+select is(public.admin_void_order_refund(pg_temp.ref('both'),'provider refused the refund'),'voided','Operator voids the provider attempt');
+select is(public.admin_void_order_refund(pg_temp.ref('both'),'provider refused the refund'),'voided','Void replay is idempotent');
+select throws_ok($$select public.admin_void_order_refund(pg_temp.ref('both'),'another reason')$$,'P0001','ride_operation_conflict','A void cannot be rewritten');
+select tests.authenticate_service();
+select is(public.ride_claim_order_refund(pg_temp.ref('both'),'simulation'),false,'A voided attempt can no longer be sent');
+select is(public.ride_prepare_order_refund(pg_temp.ref('both'),tests.uid('admin'),'simulation',0,'second evidence')->>'create','true','A voided attempt that never left can be reserved again');
+select tests.authenticate_as('admin');
+select throws_ok($$select public.ride_refund_order_source(pg_temp.ref('both'),'benefit',0,'TEST-MIX-A')$$,'P0001','ride_operation_conflict','The attempt reserved again owns the case again');
+select is(public.admin_void_order_refund(pg_temp.ref('both'),'provider refused it again'),'voided','The second attempt is voided too');
+select is(public.ride_refund_order_source(pg_temp.ref('both'),'benefit',0,'TEST-MIX-A'),'settled','After the void the benefit path settles the case');
+select is(public.ride_refund_order_source(pg_temp.ref('both'),'benefit',0,'TEST-MIX-A'),'settled','Benefit settlement replay');
+select tests.authenticate_service();
+select throws_ok($$select public.ride_prepare_order_refund(pg_temp.ref('both'),tests.uid('admin'),'simulation',0,'third evidence')$$,
+ 'P0001','ride_financial_state','A case settled by benefit cannot reserve a provider refund after its void');
+select tests.clear_authentication();
+select results_eq($$select b.available_cents,u.restored_cents,(select count(*) from private.ride_order_events where operation_id=pg_temp.ref('both') and action='benefit_refund')
+  from private.ride_benefits b join private.ride_benefit_uses u on u.benefit_id=b.id and u.order_id=pg_temp.ref('mix') where b.id=pg_temp.ref('benefit')$$,
+ $$select 1000,700,1::bigint$$,'Benefit balance is restored exactly once');
+select tests.authenticate_service();
+select is(public.ride_observe_order_payment(pg_temp.ref('mix'),'simulation',pg_temp.paid('pay_mix',2609,2372,20,1100)),'review','A late provider refund for the voided target is parked');
+select tests.clear_authentication();
+select results_eq($$select refunds,refunded,reversed from pg_temp.books('leg4','mix','both')$$,$$select 1::bigint,1200,500$$,'The late refund posts nothing over the benefit settlement');
+-- Issuer debit against a sent and against an unsent refund.
+select tests.authenticate_service();
+select is((public.ride_prepare_order_payment(pg_temp.ref('sent'),tests.uid('client_a'),'simulation')->>'driver_cents')::int,3009,'Card order with a sent refund');
+select is((public.ride_prepare_order_payment(pg_temp.ref('unsent'),tests.uid('client_a'),'simulation')->>'driver_cents')::int,3009,'Card order with an unsent refund');
+select is(public.ride_observe_order_payment(pg_temp.ref('sent'),'simulation',pg_temp.paid('pay_sent',3309,3009,45,0)),'paid','First card order captured');
+select is(public.ride_observe_order_payment(pg_temp.ref('unsent'),'simulation',pg_temp.paid('pay_unsent',3309,3009,45,0)),'paid','Second card order captured');
+select tests.authenticate_as('client_a');
+insert into refs values('sentcase',public.ride_request_order_review(pg_temp.ref('sent'),500,'Cobrança a mais',gen_random_uuid())),
+ ('unsentcase',public.ride_request_order_review(pg_temp.ref('unsent'),400,'Cobrança a mais',gen_random_uuid()));
+select tests.authenticate_as('admin');
+select is(public.ride_decide_order_review(pg_temp.ref('sentcase'),true,'Conferido'),'approved','Case with a sent refund approved');
+select is(public.ride_decide_order_review(pg_temp.ref('unsentcase'),true,'Conferido'),'approved','Case with an unsent refund approved');
+select tests.authenticate_service();
+select is((public.ride_prepare_order_refund(pg_temp.ref('sentcase'),tests.uid('admin'),'simulation',0,'provider evidence')->>'target')::int,500,'Refund reserved for the first card order');
+select is((public.ride_prepare_order_refund(pg_temp.ref('unsentcase'),tests.uid('admin'),'simulation',0,'provider evidence')->>'target')::int,400,'Refund reserved for the second card order');
+select is(public.ride_claim_order_refund(pg_temp.ref('sentcase'),'simulation'),true,'Only the first refund is sent');
+select is(public.ride_observe_order_payment(pg_temp.ref('sent'),'simulation',pg_temp.chargeback('pay_sent')),'review','Issuer signal on the order with a sent refund');
+select is(public.ride_observe_order_payment(pg_temp.ref('unsent'),'simulation',pg_temp.chargeback('pay_unsent')),'review','Issuer signal on the order with an unsent refund');
+select tests.authenticate_as('admin');
+select throws_ok($$select public.admin_resolve_ride_issuer(pg_temp.ref('sent'),true,2000,200,'issuer debit sent')$$,'P0001','ride_operation_conflict','Issuer loss waits while a sent refund is unbooked');
+select is(public.admin_void_order_refund(pg_temp.ref('sentcase'),'provider cancelled the refund'),'voided','A sent attempt the provider cancelled can be voided');
+select is(public.admin_resolve_ride_issuer(pg_temp.ref('sent'),true,500,0,'issuer debit sent'),'debited','Issuer loss proceeds after the void');
+select is(public.admin_resolve_ride_issuer(pg_temp.ref('unsent'),true,2000,200,'issuer debit unsent'),'debited','Issuer loss with an unsent refund');
+select tests.clear_authentication();
+select is((select status from private.ride_order_cases where id=pg_temp.ref('sentcase')),'settled','The debit of the exact approved amount closes that case');
+select results_eq($$select r.void_ref,r.sent,c.status,(select count(*) from private.ride_order_refund_allocation a where a.order_id=r.order_id)
+  from private.ride_order_refunds r join private.ride_order_cases c on c.id=r.case_id where r.case_id=pg_temp.ref('unsentcase')$$,
+ $$select 'issuer:issuer debit unsent',false,'approved',0::bigint$$,'Issuer loss voids the unsent refund and a case of another amount stays open');
+select tests.authenticate_service();
+select is(public.ride_claim_order_refund(pg_temp.ref('unsentcase'),'simulation'),false,'The refund voided by the issuer decision is never sent');
+-- The provider reports only its own refunds: the issuer debit must not hide one of them.
+select is(public.ride_observe_order_payment(pg_temp.ref('sent'),'simulation',pg_temp.paid('pay_sent',3309,3009,45,500)),'review','A voided refund the provider executes after the issuer debit is parked');
+select tests.clear_authentication();
+select results_eq($$select b.refunds,b.refunded,b.reversed,(select string_agg(reason,',' order by reason) from private.ride_order_provider_reviews where order_id=pg_temp.ref('sent'))
+  from pg_temp.books('leg5','sent','sentcase') b$$,$$select 0::bigint,500,500,'card_chargeback,unrequested_refund'$$,'The late refund is named in review and posts nothing beside the issuer debit');
+select tests.authenticate_as('admin');
+insert into refs values('sentlate',public.admin_accept_provider_refund(pg_temp.ref('sent'),500,0,'PSP statement sent'));
+select tests.authenticate_service();
+select is(public.ride_observe_order_payment(pg_temp.ref('sent'),'simulation',pg_temp.paid('pay_sent',3309,3009,45,500)),'paid','The accepted late refund is booked beside the issuer debit');
+select is(public.ride_observe_order_payment(pg_temp.ref('sent'),'simulation',pg_temp.paid('pay_sent',3309,3009,45,500)),'paid','Its replay books nothing more');
+select is((public.ride_prepare_order_refund(pg_temp.ref('unsentcase'),tests.uid('admin'),'simulation',0,'provider evidence 2')->>'target')::int,400,
+ 'After the issuer debit the never-sent attempt is reserved again on the provider total');
+select is(public.ride_claim_order_refund(pg_temp.ref('unsentcase'),'simulation'),true,'The fresh attempt can be sent');
+select is(public.ride_observe_order_payment(pg_temp.ref('unsent'),'simulation',pg_temp.paid('pay_unsent',3309,3009,45,400)),'paid','The provider refund sent after the issuer debit is booked');
+select tests.clear_authentication();
+select results_eq($$select * from pg_temp.books('leg5','sent','sentlate') union all select * from pg_temp.books('leg6','unsent','unsentcase')$$,
+ $$values (1::bigint,1000,1000,'settled'),(1::bigint,2400,2400,'settled')$$,'Issuer debit and provider refund are each booked once on both card orders');
+-- A provider refund parked before the issuer decision stays in review, and recovered split does not hide it.
+select tests.authenticate_service();
+select is((public.ride_prepare_order_payment(pg_temp.ref('late'),tests.uid('client_a'),'simulation')->>'driver_cents')::int,3009,'Card order refunded at the provider before the issuer decision');
+select is(public.ride_observe_order_payment(pg_temp.ref('late'),'simulation',pg_temp.paid('pay_late',3309,3009,45,0)),'paid','Third card order captured');
+select is(public.ride_observe_order_payment(pg_temp.ref('late'),'simulation',pg_temp.paid('pay_late',3309,3009,45,1000)),'review','Direct provider refund parked before the issuer signal');
+select is(public.ride_observe_order_payment(pg_temp.ref('late'),'simulation',pg_temp.chargeback('pay_late')),'review','Issuer signal on the parked order');
+select tests.authenticate_as('admin');
+select is(public.admin_resolve_ride_issuer(pg_temp.ref('late'),true,2000,200,'issuer debit late'),'debited','Issuer loss on the parked order');
+select is(public.admin_record_issuer_split_return(pg_temp.ref('late'),900,'bank proof late',md5('late issuer return')::uuid),md5('late issuer return')::uuid,'Part of the split is recovered from the driver');
+select tests.clear_authentication();
+select is((select status from private.ride_payment_orders where id=pg_temp.ref('late')),'review','The issuer decision does not release an order with a parked provider refund');
+select tests.authenticate_service();
+select is(public.ride_observe_order_payment(pg_temp.ref('late'),'simulation',pg_temp.paid('pay_late',3309,3009,45,1000)),'review','The same refund is still parked after the debit');
+select tests.authenticate_as('admin');
+insert into refs values('lateaccept',public.admin_accept_provider_refund(pg_temp.ref('late'),1000,0,'PSP statement late'));
+select tests.authenticate_service();
+select is(public.ride_observe_order_payment(pg_temp.ref('late'),'simulation',pg_temp.paid('pay_late',3309,3009,45,1000)),'paid','The accepted refund is booked after the debit and the recovered split');
+select tests.clear_authentication();
+select results_eq($$select b.*,s.refunded_split_cents,o.driver_returned from pg_temp.books('leg7','late','lateaccept') b,private.ride_order_psp s
+  join private.ride_payment_orders o on o.id=s.order_id where s.order_id=pg_temp.ref('late')$$,
+ $$select 1::bigint,3000,3000,'settled',900,900$$,'Debit, recovered split and provider refund keep separate bases on shared counters');
+-- A direct provider refund of another amount than the pending request, then a provider total that moves.
+select tests.authenticate_service();
+select is((public.ride_prepare_order_payment(pg_temp.ref('direct'),tests.uid('client_a'),'simulation')->>'driver_cents')::int,3009,'Card order refunded directly for another amount');
+select is(public.ride_observe_order_payment(pg_temp.ref('direct'),'simulation',pg_temp.paid('pay_direct',3309,3009,45,0)),'paid','Fourth card order captured');
+select tests.authenticate_as('client_a');
+insert into refs values('directcase',public.ride_request_order_review(pg_temp.ref('direct'),300,'Cobrança a mais',gen_random_uuid()));
+select tests.authenticate_as('admin');
+select is(public.ride_decide_order_review(pg_temp.ref('directcase'),true,'Conferido'),'approved','Request of R$3 approved');
+select tests.authenticate_service();
+select is(public.ride_observe_order_payment(pg_temp.ref('direct'),'simulation',pg_temp.paid('pay_direct',3309,3009,45,500)),'review','The provider reports R$5 refunded directly');
+select tests.authenticate_as('admin');
+select throws_ok($$select public.admin_accept_provider_refund(pg_temp.ref('direct'),500,0,'PSP statement 500')$$,'P0001','ride_operation_conflict','A pending request of another amount is never replaced silently');
+select is(public.ride_decide_order_review(pg_temp.ref('directcase'),false,'Devolvida por outro valor direto no provedor'),'declined','An approval nothing was sent for can be withdrawn');
+select is(public.ride_decide_order_review(pg_temp.ref('directcase'),false,'Devolvida por outro valor direto no provedor'),'declined','Withdrawal replay');
+insert into refs values('p500',public.admin_accept_provider_refund(pg_temp.ref('direct'),500,0,'PSP statement 500'));
+select tests.authenticate_service();
+select is(public.ride_observe_order_payment(pg_temp.ref('direct'),'simulation',pg_temp.paid('pay_direct',3309,3009,45,500)),'paid','The direct refund is booked under its own case');
+select tests.clear_authentication();
+select results_eq($$select b.*,(select status from private.ride_order_cases where id=pg_temp.ref('directcase')) from pg_temp.books('leg8','direct','p500') b$$,
+ $$select 1::bigint,500,500,'settled','declined'$$,'The order leaves review with the real outflow posted once');
+select tests.authenticate_service();
+select is(public.ride_observe_order_payment(pg_temp.ref('direct'),'simulation',pg_temp.paid('pay_direct',3309,3009,45,700)),'review','A second direct refund is parked');
+select tests.authenticate_as('admin');
+insert into refs values('p700',public.admin_accept_provider_refund(pg_temp.ref('direct'),700,0,'PSP statement 700'));
+select tests.authenticate_service();
+select is(public.ride_observe_order_payment(pg_temp.ref('direct'),'simulation',pg_temp.paid('pay_direct',3309,3009,45,900)),'review','The provider total moves before the accepted one is booked');
+select tests.authenticate_as('admin');
+select throws_ok($$select public.admin_accept_provider_refund(pg_temp.ref('direct'),800,0,'PSP statement 800')$$,'P0001','ride_financial_state','Only the latest parked provider total is accepted');
+insert into refs values('p900',public.admin_accept_provider_refund(pg_temp.ref('direct'),900,0,'PSP statement 900'));
+select tests.authenticate_service();
+select is(public.ride_observe_order_payment(pg_temp.ref('direct'),'simulation',pg_temp.paid('pay_direct',3309,3009,45,900)),'paid','The moved total is booked under the case that replaced the stale one');
+select tests.clear_authentication();
+select results_eq($$select b.*,c.status,r.void_ref from pg_temp.books('leg8','direct','p900') b,private.ride_order_cases c join private.ride_order_refunds r on r.case_id=c.id
+  where c.id=pg_temp.ref('p700')$$,$$select 2::bigint,900,900,'settled','declined','superseded:PSP statement 900'$$,'The stale provider case is declined and its attempt voided');
+-- A sent attempt voided by the operator that the provider executes anyway is reinstated on its own case.
+select tests.authenticate_as('client_a');
+insert into refs values('reinstated',public.ride_request_order_review(pg_temp.ref('direct'),200,'Cobrança a mais',gen_random_uuid()));
+select tests.authenticate_as('admin');
+select is(public.ride_decide_order_review(pg_temp.ref('reinstated'),true,'Conferido'),'approved','A later request on the same order is approved');
+select tests.authenticate_service();
+select is((public.ride_prepare_order_refund(pg_temp.ref('reinstated'),tests.uid('admin'),'simulation',0,'provider evidence')->>'target')::int,1100,'Its refund is reserved on the booked provider total');
+select is(public.ride_claim_order_refund(pg_temp.ref('reinstated'),'simulation'),true,'And sent');
+select tests.authenticate_as('admin');
+select is(public.admin_void_order_refund(pg_temp.ref('reinstated'),'provider reported a failure'),'voided','The operator voids it on a provider failure notice');
+select tests.authenticate_service();
+select is(public.ride_observe_order_payment(pg_temp.ref('direct'),'simulation',pg_temp.paid('pay_direct',3309,3009,45,1100)),'review','The provider executes the voided refund after all');
+select tests.authenticate_as('admin');
+select is(public.admin_accept_provider_refund(pg_temp.ref('direct'),1100,0,'PSP statement 1100'),pg_temp.ref('reinstated'),'Accepting reinstates the voided attempt on its own case');
+select tests.authenticate_service();
+select is(public.ride_observe_order_payment(pg_temp.ref('direct'),'simulation',pg_temp.paid('pay_direct',3309,3009,45,1100)),'paid','The reinstated refund is booked');
+select tests.clear_authentication();
+select results_eq($$select * from pg_temp.books('leg8','direct','reinstated')$$,$$select 3::bigint,1100,1100,'settled'$$,'Three provider refunds, each booked once under its own case');
+-- Card-only order: a failed provider refund has an exit, and a refund made before the send is adopted.
+select tests.authenticate_service();
+select is((public.ride_prepare_order_payment(pg_temp.ref('retry'),tests.uid('client_a'),'simulation')->>'driver_cents')::int,3009,'Card order with no other refund source');
+select is(public.ride_observe_order_payment(pg_temp.ref('retry'),'simulation',pg_temp.paid('pay_retry',3309,3009,45,0)),'paid','Fifth card order captured');
+select tests.authenticate_as('client_a');
+insert into refs values('failed',public.ride_request_order_review(pg_temp.ref('retry'),500,'Cobrança a mais',gen_random_uuid()));
+select tests.authenticate_as('admin');
+select is(public.ride_decide_order_review(pg_temp.ref('failed'),true,'Conferido'),'approved','Request approved on the card-only order');
+select tests.authenticate_service();
+select is(public.ride_prepare_order_refund(pg_temp.ref('failed'),tests.uid('admin'),'simulation',0,'provider evidence')->>'create','true','Refund reserved on the card-only order');
+select is(public.ride_claim_order_refund(pg_temp.ref('failed'),'simulation'),true,'The refund is sent');
+select tests.authenticate_as('admin');
+select throws_ok($$select public.ride_decide_order_review(pg_temp.ref('failed'),false,'Sem fonte')$$,'P0001','ride_operation_conflict','An approval whose refund reached the provider cannot be withdrawn');
+select is(public.admin_void_order_refund(pg_temp.ref('failed'),'provider failed the refund'),'voided','The failed attempt is voided');
+select throws_ok($$select public.ride_refund_order_source(pg_temp.ref('failed'),'benefit',0,'TEST-RETRY')$$,'P0001','ride_financial_mismatch','A card-only order has no benefit to restore');
+select tests.authenticate_service();
+select throws_ok($$select public.ride_prepare_order_refund(pg_temp.ref('failed'),tests.uid('admin'),'simulation',0,'provider evidence')$$,
+ 'P0001','ride_financial_state','A voided attempt that reached the provider is final');
+select tests.authenticate_as('admin');
+select is(public.ride_decide_order_review(pg_temp.ref('failed'),false,'Estorno falhou e a ordem não tem outra fonte'),'declined','With no source left the approval is withdrawn');
+select tests.authenticate_as('client_a');
+insert into refs values('adopted',public.ride_request_order_review(pg_temp.ref('retry'),300,'Cobrança a mais',gen_random_uuid()));
+select tests.authenticate_as('admin');
+select is(public.ride_decide_order_review(pg_temp.ref('adopted'),true,'Conferido'),'approved','The payer can open a new request after the withdrawal');
+select tests.authenticate_service();
+select is(public.ride_prepare_order_refund(pg_temp.ref('adopted'),tests.uid('admin'),'simulation',0,'operator evidence')->>'create','true','The operator reserves a refund the provider already made by hand');
+select is(public.ride_observe_order_payment(pg_temp.ref('retry'),'simulation',pg_temp.paid('pay_retry',3309,3009,45,300)),'review','An unsent reservation does not book the provider refund');
+select tests.authenticate_as('admin');
+select is(public.admin_accept_provider_refund(pg_temp.ref('retry'),300,0,'PSP statement retry'),pg_temp.ref('adopted'),'Accepting adopts the reserved attempt of the same case');
+select tests.authenticate_service();
+select is(public.ride_observe_order_payment(pg_temp.ref('retry'),'simulation',pg_temp.paid('pay_retry',3309,3009,45,300)),'paid','The adopted refund is booked');
+select tests.clear_authentication();
+select results_eq($$select b.*,(select status from private.ride_order_cases where id=pg_temp.ref('failed')) from pg_temp.books('leg9','retry','adopted') b$$,
+ $$select 1::bigint,300,300,'settled','declined'$$,'One refund event settles the adopted case and nothing was posted for the failed one');
+select is((select sum(cash_delta::bigint+receivable_delta+processing_expense_delta+benefit_delta-driver_delta-fee_delta) from private.ride_financial_events),0::numeric,'Ledger still balances after every refund path');
 select * from finish();
 rollback;

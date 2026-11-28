@@ -90,6 +90,14 @@ jobs:
         run: supabase start -x studio,imgproxy,logflare,vector,supavisor,realtime,edge-runtime
       - name: pgTAP
         run: supabase test db
+      # Two real concurrent sessions per race, on a disposable database cloned inside the database
+      # container (its own psql and pg_dump, port 5432). After pgTAP: 00_helpers left the tests schema.
+      - name: Corridas concorrentes das ordens de pagamento (banco descartável)
+        env:
+          RIDE_TEST_DB_CONTAINER: supabase_db_workeasy
+          PGHOST: 127.0.0.1
+          PGPORT: '5432'
+        run: npm run test:races
       - name: Integração (fluxo do produto contra a stack real)
         run: |
           eval "$(supabase status -o env | grep -E '^(API_URL|PUBLISHABLE_KEY|SERVICE_ROLE_KEY)=')"
