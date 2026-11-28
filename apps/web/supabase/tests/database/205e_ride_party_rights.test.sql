@@ -454,7 +454,8 @@ select is((select count(*) from private.ride_accounts where owner_id in (select 
 
 -- ─── Invariantes de permissão ──────────────────────────────────────────────────────────────
 create temp table rpc(name text primary key);
-insert into rpc select unnest(array['admin_close_ride_invoice','admin_decide_invoice_dispute','admin_review_dependent','admin_review_fleet_assignment','admin_ride_dependents',
+-- DD124 (20261128100101) adds admin_resolve_ride_voucher_hold and ride_voucher_hold.
+insert into rpc select unnest(array['admin_close_ride_invoice','admin_resolve_ride_voucher_hold','ride_voucher_hold','admin_decide_invoice_dispute','admin_review_dependent','admin_review_fleet_assignment','admin_ride_dependents',
  'admin_ride_fleet_assignments','admin_ride_organizations','admin_ride_party_queue','admin_save_ride_voucher_program','admin_set_minor_driver_clearance','admin_verify_ride_account','ride_account_invite','ride_account_statement',
  'ride_answer_companion','ride_answer_guest_invite','ride_answer_rider_invite','ride_companion_progress','ride_create_family','ride_create_fleet','ride_create_organization',
  'ride_dashboard','ride_decide_trip_grant','ride_dispute_invoice_line','ride_export_my_data','ride_fleet_assign','ride_fleet_end_assignment','ride_fleet_overview',
@@ -471,7 +472,7 @@ insert into party_table select unnest(array['ride_party_rules','ride_accounts','
  'ride_minor_driver_clearances','ride_quote_dependents','ride_leg_dependents','ride_minor_alerts','ride_minor_access_log','ride_cost_centers','ride_voucher_programs',
  'ride_trip_grants','ride_guest_invites','ride_voucher_grants','ride_invoices','ride_invoice_lines','ride_invoice_marks','ride_invoice_disputes','ride_fleet_vehicles',
  'ride_fleet_assignments','ride_leg_vehicles']);
-select is((select count(*) from rpc),64::bigint,'a lista de chamadas públicas da etapa tem 64 nomes');
+select is((select count(*) from rpc),66::bigint,'a lista de chamadas públicas da etapa tem 66 nomes (64 da etapa e 2 de DD124)');
 select is((select array_agg(r.name order by r.name) from rpc r where (select count(*) from pg_proc p where p.pronamespace='public'::regnamespace and p.proname=r.name)<>1),
  null::text[],'cada chamada pública da etapa existe uma única vez');
 select is((select array_agg(p.proname::text order by p.proname) from pg_proc p join rpc r on r.name=p.proname where p.pronamespace='public'::regnamespace

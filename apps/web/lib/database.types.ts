@@ -1521,6 +1521,9 @@ isOneToOne: true
 "admin_resolve_ride_issuer":
 { Args: { "p_amount": number,"p_extras": number,"p_lost": boolean,"p_order": string,"p_reference": string }; Returns: string
                            },
+"admin_resolve_ride_voucher_hold":
+{ Args: { "p_action": string,"p_key": string,"p_leg": string,"p_reference": string }; Returns: Json
+                           },
 "admin_review_dependent":
 { Args: { "p_approve": boolean,"p_dependent": string,"p_evidence": string,"p_until": string }; Returns: boolean
                            },
@@ -2403,6 +2406,9 @@ isOneToOne: true
                            },
 "ride_verify_route":
 { Args: { "p_meters": number,"p_minutes": number,"p_reference": string,"p_route": string }; Returns: Json
+                           },
+"ride_voucher_hold":
+{ Args: { "p_leg": string }; Returns: Json
                            },
 "ride_wellness_ack":
 { Args: { "p_leg": string }; Returns: boolean

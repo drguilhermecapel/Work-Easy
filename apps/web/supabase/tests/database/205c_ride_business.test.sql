@@ -623,10 +623,10 @@ end $f$;
 grant execute on function pg_temp.refusal(text) to service_role;
 grant select on t to service_role;
 select tests.authenticate_service();
-select isnt(pg_temp.refusal($$select public.ride_prepare_order_payment(pg_temp.u('o_desk'),tests.uid('client_b'),'simulation')$$),'ride_voucher_pending',
- 'voucher que não pode ser aplicado agora não trava a cobrança comum do pedido');
+select is(pg_temp.refusal($$select public.ride_prepare_order_payment(pg_temp.u('o_desk'),tests.uid('client_b'),'simulation')$$),'ride_voucher_on_hold',
+ 'voucher que não pode ser aplicado agora segura a cobrança pessoal e aguarda a operação (DD124)');
 select tests.clear_authentication();
-select ok(not private.ride_voucher_waiting(pg_temp.u('l_desk'),tests.uid('client_b')),'sem liberação do benefício o voucher não segura o pedido');
+select ok(private.ride_voucher_waiting(pg_temp.u('l_desk'),tests.uid('client_b')),'sem liberação do benefício o voucher continua segurando o pedido (DD124)');
 update private.ride_method_releases set validity=tstzrange(lower(validity),now()+interval '1 day') where environment='simulation' and origin='Saúde' and destination='Jabaquara' and method='benefit';
 select tests.authenticate_service();
 select throws_ok($$select public.ride_prepare_order_payment(pg_temp.u('o_desk'),tests.uid('client_b'),'simulation')$$,'P0001','ride_voucher_pending',
