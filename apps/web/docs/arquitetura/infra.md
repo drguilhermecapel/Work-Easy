@@ -208,6 +208,36 @@ Ordem sugerida para a primeira publicação. Nenhum passo é automático.
     (CODEOWNERS), exigir os checks do `web-ci`, bloquear force-push.
 13. Confirmar que o Dependabot está ativo em Settings, Code security.
 
+## Recuperar o endereço www
+
+O domínio canônico é `https://workeasy.ia.br`. O alias `www.workeasy.ia.br`
+precisa de associação no projeto Pages e de um CNAME para o subdomínio
+`pages.dev` retornado pela API do projeto. A ausência do registro causa
+`NXDOMAIN`, mesmo com o aplicativo funcionando no domínio canônico.
+
+O workflow manual **Reparar domínio www (Cloudflare)** (`repair-web-domain.yml`)
+executa somente em `main`, no ambiente `production`, e compartilha a fila dos
+deploys. Primeiro use o modo `check`; para criar a configuração ausente, use
+`apply` com a confirmação `REPAIR_WWW`. O script confere o projeto, a conta,
+o domínio canônico ativo, a zona e os registros existentes antes das escritas.
+Um registro conflitante interrompe a execução. Não há alteração ou exclusão
+de registros existentes, build, publicação de bundle ou mudança no Supabase.
+
+Além de Pages Edit, a criação do CNAME exige DNS Edit na zona `workeasy.ia.br`
+e acesso de leitura à zona. Se o token atual não tiver esse escopo, o workflow
+interrompe a correção; ele não cria credenciais nem amplia permissões.
+Nesse caso, a mesma associação e o CNAME podem ser concluídos pelo painel
+Cloudflare com uma conta já autorizada.
+
+Depois de aplicar, o workflow verifica HTTPS e compara o marcador
+`/.well-known/workeasy-release.json` nos dois endereços com o SHA observado
+antes da correção. A ativação do domínio/certificado e o cache negativo de DNS
+podem levar alguns minutos; uma falha nessa etapa exige conferir a resposta
+pública antes de declarar a recuperação concluída.
+
+Referências: [domínios Pages](https://developers.cloudflare.com/pages/configuration/custom-domains/)
+e [API de domínios Pages](https://developers.cloudflare.com/api/resources/pages/subresources/projects/subresources/domains/methods/create/).
+
 ## Riscos e limites
 
 - Nenhum workflow novo foi executado: não há runner do GitHub Actions nesta sessão. Os YAML foram validados com `yaml.safe_load`. O `actionlint`
