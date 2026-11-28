@@ -355,5 +355,9 @@ select is(public.ride_market_catalog()->'gates','{"module":true,"quote":false,"d
 select is((select count(*)::int from jsonb_array_elements(public.ride_market_catalog()->'modalities') m where (m->>'available')::boolean),0,'com a cotação desligada nada fica disponível');
 select tests.clear_authentication();
 
+-- Each journey cites its own reference: only the shuttle seat cites the airport shuttle page.
+select is((select count(*)::int from private.ride_market_modalities where source_url like '%/airports/jfk/shuttle/' and modality<>'shuttle_seat'),0,'só o assento de linha cita a página de shuttle de aeroporto');
+select ok((select bool_and(source_url like '%/airports/cgh/%') from private.ride_market_modalities where modality='airport'),'o aeroporto cita a referência de Congonhas');
+
 select * from finish();
 rollback;

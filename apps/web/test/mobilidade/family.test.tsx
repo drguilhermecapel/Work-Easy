@@ -80,6 +80,14 @@ beforeEach(() => {
 });
 
 describe('grupo familiar', () => {
+  it('numera os participantes sem nome no perfil para o titular distinguir cada um', () => {
+    const unnamed = (id: string) => ({ member_id: id, name: null, role: 'member' as const, status: 'active' as const, member_limit_cents: null, group_tag: null });
+    panel([{ ...family, members: [family.members[0], unnamed('m1'), unnamed('m2')] }]);
+    expect(screen.getByRole('button', { name: 'Salvar limite de Participante 1 (sem nome no perfil)' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Salvar limite de Participante 2 (sem nome no perfil)' })).toBeVisible();
+    expect(screen.queryByText(/Participante sem nome/)).toBeNull();
+  });
+
   it('sem grupo, explica o próximo passo e cria o grupo com limite em centavos, repetindo a chave após falha', async () => {
     vi.mocked(parties.createFamily).mockRejectedValueOnce(new Error('rede')).mockResolvedValue('grupo');
     panel([]);
