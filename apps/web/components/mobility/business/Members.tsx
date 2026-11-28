@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { business, type CostCenter, type OrgAccount, type OrgMember, type OrgRole } from '../../../services/rideBusiness';
 import { formatDateTime } from '../../admin/format';
 import { Field } from '../../admin/ui';
+import Ownership from '../parties/Ownership';
 import { useAction } from '../safety/state';
 import Confirm from './Confirm';
 import InviteLink from './InviteLink';
@@ -329,6 +330,7 @@ export default function Members({ account, userId, refresh }: PanelProps & { use
       <People account={account} userId={userId} refresh={refresh} />
       <Invite account={account} refresh={refresh} />
       {account.role === 'admin' && <CostCenters account={account} refresh={refresh} />}
+      <Ownership account={account} userId={userId} onChange={refresh} />
     </>
   );
 }
