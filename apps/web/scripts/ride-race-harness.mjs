@@ -1,4 +1,5 @@
-/** Shared by the ride race scripts (test-ride-payment-races.mjs, test-ride-party-races.mjs).
+/** Shared by the ride race scripts (test-ride-payment-races.mjs, test-ride-party-races.mjs,
+ * test-ride-mode-races.mjs).
  * Local PostgreSQL only. Each script creates and drops its own database; a busy source database
  * is left alone. Against the local Supabase stack psql and pg_dump run inside its database container:
  *   RIDE_TEST_DB_CONTAINER=supabase_db_workeasy PGHOST=127.0.0.1 PGPORT=5432 npm run test:races
@@ -15,19 +16,24 @@ if (!/^[a-zA-Z0-9_]+$/.test(source)) throw new Error('Nome de banco inválido.')
 const docker = process.env.RIDE_TEST_DB_CONTAINER;
 const server = ['-h', host, '-p', process.env.PGPORT ?? '54322', '-U', process.env.PGUSER ?? 'postgres'];
 
-/** One psql (or pg_dump) process fed through stdin. Resolves with its trimmed output; any SQL error rejects. */
+/** One psql (or pg_dump) process fed through stdin. Resolves with its trimmed output; any SQL error
+ * rejects with psql's message, and the output printed before the error as `output`. */
 export function run(db, sql, program = 'psql', options = null) {
   const args = options ?? ['-XAtq', '-v', 'ON_ERROR_STOP=1', ...server, '-d', db];
   return new Promise((resolve, reject) => {
     const child = spawn(docker ? 'docker' : program, docker ? ['exec', '-i', docker, program, ...args] : args, {
       stdio: ['pipe', 'pipe', 'pipe'],
     });
+    // psql stops reading after the first error: the rest of the input is dropped and the exit code tells.
+    child.stdin.on('error', () => {});
     let out = '',
       err = '';
     child.stdout.on('data', (chunk) => (out += chunk));
     child.stderr.on('data', (chunk) => (err += chunk));
     child.on('error', reject);
-    child.on('close', (code) => (code === 0 ? resolve(out.trim()) : reject(new Error(err.trim()))));
+    child.on('close', (code) =>
+      code === 0 ? resolve(out.trim()) : reject(Object.assign(new Error(err.trim()), { output: out.trim() })),
+    );
     child.stdin.end(sql);
   });
 }
@@ -64,12 +70,14 @@ export async function withRaceDatabase({ prefix, fixture, referenceTables = [] }
   }
 }
 
-/** One transaction of a signed-in role ('service' for the service role): the call and, before the
- * commit, whatever keeps the transaction open so that another session meets its locks. */
+/** One transaction of a signed-in role ('service' for the service role, null for the database owner,
+ * as pg_cron runs a job): the call and, before the commit, whatever keeps the transaction open so
+ * that another session meets its locks. */
 const transaction = (role, sql, hold) =>
-  'begin; select tests.authenticate_' +
-  (role === 'service' ? 'service()' : "as('" + role + "')") +
-  '; ' +
+  'begin; ' +
+  (role === null
+    ? ''
+    : 'select tests.authenticate_' + (role === 'service' ? 'service()' : "as('" + role + "')") + '; ') +
   sql +
   '; ' +
   hold +
@@ -94,12 +102,14 @@ const until = (condition, then, failure) =>
   failure +
   "'; end $$;\n";
 
-/** Two or more [role, sql] sessions released at the same instant. Each one queues on an advisory
- * lock held by a starter session, which lets go only once all of them are waiting there; a session
- * that never arrives fails the race instead of turning it into a sequential run. Every session
- * keeps its transaction open for a moment after its call. Resolves with one settled result per
+/** Two or more [role, sql, behind] sessions released at the same instant. Each one queues on an
+ * advisory lock held by a starter session, which lets go only once all of them are waiting there; a
+ * session that never arrives fails the race instead of turning it into a sequential run. A session
+ * with `behind` seconds waits that long after the gate, inside its transaction, before its call, so
+ * that the side that usually starts first can be made to start second. Every session keeps its
+ * transaction open for `hold` seconds after its call. Resolves with one settled result per
  * session, in order. */
-export async function race(database, sessions) {
+export async function race(database, sessions, { hold = 0.2 } = {}) {
   const gate = advisory(517);
   const starter =
     'select pg_advisory_lock(' +
@@ -117,7 +127,9 @@ export async function race(database, sessions) {
   );
   const [started, ...settled] = await Promise.allSettled([
     run(database, starter),
-    ...sessions.map(([role, sql]) => run(database, queued + transaction(role, sql, pause(0.2)))),
+    ...sessions.map(([role, sql, behind = 0]) =>
+      run(database, queued + transaction(role, (behind ? pause(behind) + ' ' : '') + sql, pause(hold))),
+    ),
   ]);
   if (started.status === 'rejected') throw new Error('As sessões não largaram juntas: ' + started.reason.message);
   return settled;

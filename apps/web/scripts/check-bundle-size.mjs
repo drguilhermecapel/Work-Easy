@@ -67,6 +67,19 @@
 // Nothing heavy arrived: it is screen code, loaded only by who opens those pages. Budget for the group:
 // 128.1 kB plus about 15%, 150 kB. The per-page limit of 15 kB and every other budget stay as they were.
 //
+// Revision of 2026-11-28 (O17 stage 6: modalities). The group gained the catalog page of modalities, its
+// three panels (seat in a line van, hourly block, intercity trip) and their shared quote card and state, the
+// reserve and extension panels mounted on a leg, the assistance options of the quote form, the driver inbox
+// of the modes and the operator page of van departures: 12 new lazy chunks, the largest (Modalidades) with
+// 5.8 kB, 26.5 kB together. Corridas grew to 11.7 kB (mode labels and the two lazy panels) and Motorista to
+// 10.1 kB. Measured on the production configuration, with the same list of names on both builds:
+//   mobility  157.7 kB on the production build (133.3 kB on the demo build that CI measures), over 150
+//   route      13.2 kB (RideDriverIdentity, unchanged; every new chunk is far below 15 kB)
+//   initial   179.0 kB (eight new error sentences and two route entries; budget unchanged)
+//   total     553.3 kB (budget unchanged)
+// Screen code only, loaded by who opens those pages. Budget for the group: 157.7 kB plus about 15%,
+// rounded up to 185 kB. The per-page limit of 15 kB and every other budget stay as they were.
+//
 // No dependencies. Exit code 0 = within budget, 1 = over budget, 2 = no build to read.
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
@@ -82,7 +95,7 @@ export const BUDGETS_KB = {
   policies: 10,
   css: 16,
   maps: 415,
-  mobility: 150,
+  mobility: 185,
   total: 600,
 };
 
@@ -133,8 +146,8 @@ export const summarize = ({ files, initial }) => {
   )));
   // Independently loaded rider, driver and operations screens in the authenticated build.
   // All these chunks still face the 15 kB page limit; an eager import is charged to the shell.
-  // O17 E4 measured 60.4 kB together, with a 72 kB ceiling; E5 measured 128.1 kB, with a 150 kB ceiling
-  // (revision of 2026-11-28 in the header).
+  // O17 E4 measured 60.4 kB together, with a 72 kB ceiling; E5 measured 128.1 kB, with a 150 kB ceiling;
+  // E6 measured 157.7 kB, with a 185 kB ceiling (revisions of 2026-11-28 in the header).
   const mobilityNames = new Set(['Corridas', 'Motorista', 'Operacao', 'RideDriverIdentity', 'RideAftercare',
     'driverLabels', 'rideSafety', 'RideCheckout', 'RidePilot',
     // O17 E5, who rides and who pays: the invite page and its views, groups, companies, fleets and their console
@@ -147,7 +160,11 @@ export const summarize = ({ files, initial }) => {
     // `common` and `shared` are plain names: a module of another area that the bundler turns into a chunk with one
     // of them would be counted here, so give such a module a name of its own.
     'Ensaio', 'DriverConsole', 'rides', 'rideParties', 'rideBusiness', 'rideFleets', 'ridePartiesAdmin',
-    'ridePartyUi', 'ridePartyFormat', 'state', 'common', 'shared']);
+    'ridePartyUi', 'ridePartyFormat', 'state', 'common', 'shared',
+    // O17 E6, modalities: the catalog page, its panels (seat van, hourly block, intercity), the reserve and
+    // extension panels of a leg, the assistance options of the quote form, the driver inbox and the operator page
+    'Modalidades', 'ShuttleSeats', 'HourlyBlock', 'Intercity', 'ModeQuoteCard', 'ReservePanel', 'ExtensionPanel',
+    'AccessOptions', 'DriverModeTasks', 'RideModes', 'modeState', 'rideMarket', 'rideModes']);
   const mobilityAssets = new Set([...files.keys()].filter(file =>
     !initial.has(file) && file.endsWith('.js') && mobilityNames.has(chunkName(file))));
   const lazy = [...files.keys()].filter(file => file.endsWith('.js') && !initial.has(file) && !isData(file) && !mapAssets.has(file));

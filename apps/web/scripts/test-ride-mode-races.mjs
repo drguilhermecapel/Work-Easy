@@ -1,139 +1,43 @@
 /** Local PostgreSQL only. Creates and drops its own database; a busy source database is left alone.
- * In the test container use RIDE_TEST_DB_CONTAINER=supabase_db_workeasy PGHOST=127.0.0.1 PGPORT=5432.
+ * Against the local Supabase stack (psql and pg_dump run inside its database container):
+ *   RIDE_TEST_DB_CONTAINER=supabase_db_workeasy PGHOST=127.0.0.1 PGPORT=5432 npm run test:races
  * The source has the project's migrations and 00_helpers.test.sql installed. No provider requests.
- * Every race is a pair of real sessions released by one advisory-lock gate and asserted on the final state. */
-import { randomUUID } from 'node:crypto';
-import { spawn } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
-import { setTimeout as sleep } from 'node:timers/promises';
+ * Every race is a pair of real sessions released by the harness gate and asserted on the final state. */
 import assert from 'node:assert/strict';
+import { race as release, run, withRaceDatabase } from './ride-race-harness.mjs';
 
-const host = process.env.PGHOST ?? '/tmp';
-if (!['/tmp', '/var/run/postgresql', 'localhost', '127.0.0.1'].includes(host))
-  throw new Error('Use um PostgreSQL local de ensaio.');
-const source = process.env.PGDATABASE ?? 'postgres';
-if (!/^[a-zA-Z0-9_]+$/.test(source)) throw new Error('Nome de banco inválido.');
-const database = 'ride_mode_test_' + randomUUID().replaceAll('-', '');
-const docker = process.env.RIDE_TEST_DB_CONTAINER;
-const connection = (db) =>
-  `-h ${host} -p ${process.env.PGPORT ?? '54322'} -U ${process.env.PGUSER ?? 'postgres'} -d ${db}`.split(' ');
-const psql = (db) => ['-XAtq', '-v', 'ON_ERROR_STOP=1', ...connection(db)];
-function start(program, args) {
-  const child = spawn(docker ? 'docker' : program, docker ? ['exec', '-i', docker, program, ...args] : args, {
-    stdio: ['pipe', 'pipe', 'pipe'],
-  });
-  // psql stops reading after the first error: the rest of the input is dropped and the exit code tells.
-  child.stdin.on('error', () => {});
-  return child;
-}
-/** Never rejects for a failed statement: a refused racer is an outcome, not a crash. */
-function exec(db, sql, program = 'psql', args = psql(db)) {
-  return new Promise((resolve, reject) => {
-    const child = start(program, args);
-    let out = '',
-      err = '';
-    child.stdout.on('data', (chunk) => (out += chunk));
-    child.stderr.on('data', (chunk) => (err += chunk));
-    child.on('error', reject);
-    child.on('close', (code) => resolve({ code, out, err }));
-    child.stdin.end(sql);
-  });
-}
-async function run(db, sql, program, args) {
-  const result = await exec(db, sql, program, args);
-  if (result.code !== 0)
-    throw new Error(result.err.trim() || `${program ?? 'psql'} terminou com código ${result.code}`);
-  return result.out.trim();
-}
-/** One open session: every statement sent must print exactly one line. It holds the starting gate. */
-function openControl(db) {
-  const child = start('psql', psql(db));
-  const pending = [];
-  let buffer = '',
-    err = '',
-    closed = false;
-  child.stdout.on('data', (chunk) => {
-    buffer += chunk;
-    for (let end = buffer.indexOf('\n'); end >= 0; end = buffer.indexOf('\n')) {
-      pending.shift()?.resolve(buffer.slice(0, end));
-      buffer = buffer.slice(end + 1);
-    }
-  });
-  child.stderr.on('data', (chunk) => (err += chunk));
-  const done = new Promise((resolve) =>
-    child.on('close', () => {
-      closed = true;
-      for (const waiting of pending.splice(0)) waiting.reject(new Error(err.trim() || 'Sessão de controle encerrada.'));
-      resolve();
-    }),
-  );
-  return {
-    ask: (sql) =>
-      new Promise((resolve, reject) => {
-        if (closed) return reject(new Error(err.trim() || 'Sessão de controle encerrada.'));
-        pending.push({ resolve, reject });
-        child.stdin.write(sql + '\n');
-      }),
-    close: () => {
-      child.stdin.end();
-      return done;
-    },
-  };
-}
-
-const GATE = 7206; // advisory lock class of the starting gate, in the disposable database only
 const HOLD = 0.3; // seconds each racer keeps its transaction open after its call
 const BEHIND = 0.1; // seconds a racer may be sent after the other, still inside the other's transaction
 const key = (name) => `md5('206-race-${name}')::uuid`;
-// A null role is the database owner, as pg_cron runs the minute job.
-const enter = (role) => (role ? `select tests.authenticate_as('${role}');` : '');
-let control;
+let database;
 let gates = 0;
-/** Runs [role, expression, seconds behind] in concurrent sessions. Each session authenticates and waits at
- * the gate; the gate opens only when all of them are waiting, so the calls start together (or BEHIND apart,
- * so that the side that usually loses the start also arrives first). Each then keeps its transaction open
- * for HOLD seconds: starts closer than HOLD prove the transactions overlapped. No assertion depends on who
- * arrives first. */
+/** Runs [role, expression, seconds behind] in concurrent sessions (a null role is the database owner, as
+ * pg_cron runs the minute job). The harness gate releases them together (or BEHIND apart, so that the side
+ * that usually loses the start also arrives first). Each then keeps its transaction open for HOLD seconds:
+ * starts closer than HOLD prove the transactions overlapped. No assertion depends on who arrives first. */
 async function race(...sessions) {
-  const gate = ++gates;
-  const early = [];
-  await control.ask(`select pg_advisory_lock(${GATE},${gate});`);
-  const running = sessions.map(async ([role, expression, behind = 0]) => {
-    const result = await exec(
-      database,
-      `begin;
-       ${enter(role)}
-       select pg_advisory_xact_lock_shared(${GATE},${gate});
-       select pg_sleep(${behind});
-       select 't0='||extract(epoch from clock_timestamp());
-       select 'r='||coalesce((${expression})::text,'');
-       select pg_sleep(${HOLD});
-       commit;`,
-    );
-    early.push(result);
-    return result;
+  gates++;
+  const settled = await release(
+    database,
+    sessions.map(([role, expression, behind]) => [
+      role,
+      `select 't0='||extract(epoch from clock_timestamp()); select 'r='||coalesce((${expression})::text,'')`,
+      behind,
+    ]),
+    { hold: HOLD },
+  );
+  const results = settled.map((result, i) => {
+    const ok = result.status === 'fulfilled';
+    const out = ok ? result.value : (result.reason.output ?? '');
+    const message = ok ? '' : result.reason.message;
+    return {
+      role: sessions[i][0],
+      ok,
+      value: /^r=(.*)$/m.exec(out)?.[1],
+      error: ok ? null : (/ERROR:\s+(.*)/.exec(message)?.[1] ?? message),
+      t0: Number(/^t0=(.*)$/m.exec(out)?.[1]),
+    };
   });
-  try {
-    for (const deadline = Date.now() + 60000; ; await sleep(15)) {
-      const waiting = await control.ask(
-        `select count(*) from pg_locks where locktype='advisory' and classid=${GATE} and objid=${gate} and not granted
-           and database=(select oid from pg_database where datname=current_database());`.replace(/\s+/g, ' '),
-      );
-      if (Number(waiting) === sessions.length) break;
-      if (early.length || Date.now() > deadline)
-        throw new Error('Uma sessão concorrente não chegou à largada. ' + (early[0]?.err.trim() ?? ''));
-    }
-  } finally {
-    await control.ask(`select pg_advisory_unlock(${GATE},${gate});`);
-    await Promise.allSettled(running);
-  }
-  const results = (await Promise.all(running)).map((result, i) => ({
-    role: sessions[i][0],
-    ok: result.code === 0,
-    value: /^r=(.*)$/m.exec(result.out)?.[1],
-    error: result.code === 0 ? null : (/ERROR:\s+(.*)/.exec(result.err)?.[1] ?? result.err.trim()),
-    t0: Number(/^t0=(.*)$/m.exec(result.out)?.[1]),
-  }));
   for (const result of results) assert.ok(Number.isFinite(result.t0), 'sessão parou antes da largada: ' + result.error);
   const starts = results.map((result) => result.t0);
   assert.ok(Math.max(...starts) - Math.min(...starts) < HOLD, 'as sessões não ficaram abertas ao mesmo tempo');
@@ -187,22 +91,8 @@ const shifts = (legId) =>
       order by s.created_at),'[]')
     from private.ride_reserve_shifts s where s.leg_id='${legId}';`);
 
-const fixture = await readFile(new URL('./fixtures/206_ride_modes.sql', import.meta.url), 'utf8');
-const schema = await run(source, '', 'pg_dump', [
-  ...'--schema-only --no-comments --no-owner -n public -n private -n auth -n storage -n tests'.split(' '),
-  ...connection(source),
-]);
-await run('template1', `create database ${database} template template0;`);
-try {
-  // pg_trgm: the cloned schema has trigram indexes, so the extension has to exist before the dump is loaded.
-  await run(
-    database,
-    'drop schema public; create schema extensions; create extension btree_gist with schema extensions; create extension pgcrypto with schema extensions; create extension "uuid-ossp" with schema extensions; create extension pg_trgm with schema extensions;',
-  );
-  // Supabase owns cluster-wide defaults for roles such as auth_admin. All cloned objects carry their explicit grants.
-  await run(database, schema.replace(/^ALTER DEFAULT PRIVILEGES[^;]+;/gm, ''));
-  await run(database, 'begin;\n' + fixture + '\ncommit;');
-  control = openControl(database);
+await withRaceDatabase({ prefix: 'ride_mode_test_', fixture: './fixtures/206_ride_modes.sql' }, async (name) => {
+  database = name;
   const [clientA, clientB, providerA, providerB, providerC, providerE] = await Promise.all(
     ['client_a', 'client_b', 'provider_a', 'provider_b', 'provider_c', 'provider_e'].map(uid),
   );
@@ -238,7 +128,11 @@ try {
     const b = await departure(name);
     const released = lastSeat.ok ? 2 : 1;
     assert.deepEqual([b.state, b.confirmed, b.released], ['cancelled', 0, released]);
-    assert.deepEqual(b.events, { booked: released, released, departure_cancelled: 1 });
+    assert.deepEqual(b.events, {
+      booked: released,
+      released,
+      departure_cancelled: 1,
+    });
     assert.equal(JSON.parse(cancellation.value).released_seats, released);
     assert.equal(
       await query(
@@ -438,7 +332,4 @@ try {
     `${gates} corridas concorrentes de modalidades verificadas: últimos assentos, cancelamento da partida, remarcação, ` +
       `extensão de bloco, mudança de horário da reserva, última van da classe. Quem chegou primeiro: ${JSON.stringify(first)}`,
   );
-} finally {
-  await control?.close();
-  await run('template1', `drop database ${database};`);
-}
+});
