@@ -1542,6 +1542,12 @@ isOneToOne: true
 "admin_ride_fleet_assignments":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
+"admin_ride_organizations":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"admin_ride_party_queue":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
 "admin_ride_psp_reviews":
 { Args: { "p_leg": string }; Returns: Json
                            },
@@ -1874,6 +1880,9 @@ isOneToOne: true
 "ride_communication":
 { Args: { "p_leg": string }; Returns: Json
                            },
+"ride_companion_invite":
+{ Args: { "p_token": string }; Returns: Json
+                           },
 "ride_companion_progress":
 { Args: { "p_owner": string }; Returns: Json
                            },
@@ -1981,6 +1990,9 @@ isOneToOne: true
 "ride_guardian_watch":
 { Args: { "p_leg": string }; Returns: Json
                            },
+"ride_guest_invite":
+{ Args: { "p_token": string }; Returns: Json
+                           },
 "ride_incident_file":
 { Args: { "p_id": string }; Returns: Json
                            },
@@ -2048,6 +2060,9 @@ isOneToOne: true
 { Args: { "p_route": string,"p_user": string }; Returns: Json
                            },
 "ride_my_accounts":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"ride_my_cessions":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
 "ride_my_companions":

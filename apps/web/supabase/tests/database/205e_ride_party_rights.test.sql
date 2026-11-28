@@ -451,21 +451,21 @@ select is((select count(*) from private.ride_accounts where owner_id in (select 
 -- ─── Invariantes de permissão ──────────────────────────────────────────────────────────────
 create temp table rpc(name text primary key);
 insert into rpc select unnest(array['admin_close_ride_invoice','admin_decide_invoice_dispute','admin_review_dependent','admin_review_fleet_assignment','admin_ride_dependents',
- 'admin_ride_fleet_assignments','admin_save_ride_voucher_program','admin_set_minor_driver_clearance','admin_verify_ride_account','ride_account_invite','ride_account_statement',
+ 'admin_ride_fleet_assignments','admin_ride_organizations','admin_ride_party_queue','admin_save_ride_voucher_program','admin_set_minor_driver_clearance','admin_verify_ride_account','ride_account_invite','ride_account_statement',
  'ride_answer_companion','ride_answer_guest_invite','ride_answer_rider_invite','ride_companion_progress','ride_create_family','ride_create_fleet','ride_create_organization',
  'ride_dashboard','ride_decide_trip_grant','ride_dispute_invoice_line','ride_export_my_data','ride_fleet_assign','ride_fleet_end_assignment','ride_fleet_overview',
  'ride_fleet_save_vehicle','ride_guardian_escalate','ride_guardian_watch','ride_invite_companion','ride_invite_guest','ride_invite_member','ride_invite_rider','ride_invoice',
  'ride_invoice_export','ride_join_account','ride_my_accounts','ride_my_companions','ride_my_rider_invites','ride_org_report','ride_quote_for_dependent','ride_quote_funded',
  'ride_quote_sponsored','ride_redeem_voucher','ride_register_dependent','ride_remove_member','ride_request_trip_grant','ride_revoke_account_invite','ride_revoke_companion',
  'ride_revoke_guest_invite','ride_revoke_rider_invite','ride_rider_invite','ride_save_cost_center','ride_set_account_limit','ride_set_companion','ride_set_member_limit',
- 'ride_set_member_role']);
+ 'ride_set_member_role','ride_companion_invite','ride_guest_invite','ride_my_cessions']);
 create temp table party_table(name text primary key);
 insert into party_table select unnest(array['ride_party_rules','ride_accounts','ride_account_members','ride_account_invites','ride_payer_mandates','ride_quote_funding',
  'ride_leg_funding','ride_rider_invites','ride_companion_terms','ride_companions','ride_companion_invites','ride_minor_policies','ride_dependents',
  'ride_minor_driver_clearances','ride_quote_dependents','ride_leg_dependents','ride_minor_alerts','ride_minor_access_log','ride_cost_centers','ride_voucher_programs',
  'ride_trip_grants','ride_guest_invites','ride_voucher_grants','ride_invoices','ride_invoice_lines','ride_invoice_marks','ride_invoice_disputes','ride_fleet_vehicles',
  'ride_fleet_assignments','ride_leg_vehicles']);
-select is((select count(*) from rpc),56::bigint,'a lista de chamadas públicas da etapa tem 56 nomes');
+select is((select count(*) from rpc),61::bigint,'a lista de chamadas públicas da etapa tem 61 nomes');
 select is((select array_agg(r.name order by r.name) from rpc r where (select count(*) from pg_proc p where p.pronamespace='public'::regnamespace and p.proname=r.name)<>1),
  null::text[],'cada chamada pública da etapa existe uma única vez');
 select is((select array_agg(p.proname::text order by p.proname) from pg_proc p join rpc r on r.name=p.proname where p.pronamespace='public'::regnamespace
