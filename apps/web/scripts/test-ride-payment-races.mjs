@@ -3,86 +3,16 @@
  *   RIDE_TEST_DB_CONTAINER=supabase_db_workeasy PGHOST=127.0.0.1 PGPORT=5432 npm run test:races
  * The source has the project's migrations and 00_helpers.test.sql installed. No provider requests. */
 import { randomUUID } from 'node:crypto';
-import { spawn } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
+import { run, withRaceDatabase } from './ride-race-harness.mjs';
 
-const host = process.env.PGHOST ?? '/tmp';
-if (!['/tmp', '/var/run/postgresql', 'localhost', '127.0.0.1'].includes(host))
-  throw new Error('Use um PostgreSQL local de ensaio.');
-const source = process.env.PGDATABASE ?? 'postgres';
-if (!/^[a-zA-Z0-9_]+$/.test(source)) throw new Error('Nome de banco inválido.');
-const database = 'ride_order_test_' + randomUUID().replaceAll('-', '');
-const docker = process.env.RIDE_TEST_DB_CONTAINER;
-function run(db, sql, program = 'psql', options = null) {
-  const args = options ?? [
-    '-XAtq',
-    '-v',
-    'ON_ERROR_STOP=1',
-    '-h',
-    host,
-    '-p',
-    process.env.PGPORT ?? '54322',
-    '-U',
-    process.env.PGUSER ?? 'postgres',
-    '-d',
-    db,
-  ];
-  return new Promise((resolve, reject) => {
-    const child = spawn(docker ? 'docker' : program, docker ? ['exec', '-i', docker, program, ...args] : args, {
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
-    let out = '',
-      err = '';
-    child.stdout.on('data', (chunk) => (out += chunk));
-    child.stderr.on('data', (chunk) => (err += chunk));
-    child.on('error', reject);
-    child.on('close', (code) => (code === 0 ? resolve(out.trim()) : reject(new Error(err.trim()))));
-    child.stdin.end(sql);
-  });
-}
-const fixture = await readFile(
-  new URL('./fixtures/204_ride_payments.sql', import.meta.url),
-  'utf8',
-);
 const as = (role, sql) =>
   'begin; select tests.authenticate_' +
   (role === 'service' ? 'service()' : "as('" + role + "')") +
   '; ' +
   sql +
   '; select pg_sleep(.15); commit;';
-const schema = await run(source, '', 'pg_dump', [
-  '--schema-only',
-  '--no-comments',
-  '--no-owner',
-  '-n',
-  'public',
-  '-n',
-  'private',
-  '-n',
-  'auth',
-  '-n',
-  'storage',
-  '-n',
-  'tests',
-  '-h',
-  host,
-  '-p',
-  process.env.PGPORT ?? '54322',
-  '-U',
-  process.env.PGUSER ?? 'postgres',
-  '-d',
-  source,
-]);
-await run('template1', 'create database ' + database + ' template template0;');
-try {
-  await run(
-    database,
-    'drop schema public; create schema extensions; create extension btree_gist with schema extensions; create extension pgcrypto with schema extensions; create extension "uuid-ossp" with schema extensions; create extension pg_trgm with schema extensions;',
-  );
-  // Supabase owns cluster-wide defaults for roles such as auth_admin. All cloned objects carry their explicit grants.
-  await run(database, schema.replace(/^ALTER DEFAULT PRIVILEGES[^;]+;/gm, ''));
-  await run(database, 'begin;\n' + fixture + '\ncommit;');
+await withRaceDatabase({ prefix: 'ride_order_test_', fixture: './fixtures/204_ride_payments.sql' }, async (database) => {
   const ids = (
     await run(
       database,
@@ -192,6 +122,4 @@ try {
       (benefit.status === 'fulfilled' ? 'benefício' : 'provedor') +
       ' venceu).',
   );
-} finally {
-  await run('template1', 'drop database ' + database + ';');
-}
+});

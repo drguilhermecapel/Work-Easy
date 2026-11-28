@@ -98,6 +98,19 @@ export const DATABASE_ERROR_CODES = [
   'dispatch_unavailable',
   'quote_unavailable',
   'requote_required',
+  // O17 stage 5: who rides and who pays (invites, family, companies, vouchers, invoices, fleets)
+  'ride_invite_unavailable',
+  'ride_invite_reprice',
+  'ride_limit_exceeded',
+  'ride_mandate_revoked',
+  'ride_account_role_required',
+  'ride_voucher_unavailable',
+  'ride_approval_required',
+  'ride_invoice_closed',
+  'ride_minor_unavailable',
+  'ride_fleet_review_required',
+  'ride_voucher_pending',
+  'ride_dependent_in_trip',
 ] as const;
 
 export type DatabaseErrorCode = (typeof DATABASE_ERROR_CODES)[number];
@@ -205,6 +218,30 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   dispatch_unavailable: 'A operação não está recebendo reservas para este trajeto.',
   quote_unavailable: 'Esta cotação perdeu a validade ou já foi decidida. Atualize suas cotações.',
   requote_required: 'As condições desta cotação mudaram. Solicite um novo preço antes de aceitar.',
+  ride_invite_unavailable:
+    'Este convite não está disponível para a sua conta: pode ter expirado, sido revogado ou respondido, ou ser de outro e-mail. Confira com qual e-mail você entrou ou peça um novo convite a quem enviou.',
+  ride_invite_reprice:
+    'O preço desta viagem passou do valor que quem convidou autorizou. Nada foi cobrado e a viagem não foi pedida. Peça a quem convidou uma nova cotação e um novo convite.',
+  ride_limit_exceeded:
+    'Esta corrida passa do limite combinado com quem paga: o limite do mês, o seu limite individual ou o valor máximo por corrida. Peça a quem paga para aumentar o limite ou cote no seu nome, em “Eu viajo e eu pago”.',
+  ride_mandate_revoked:
+    'Quem pagava suas corridas retirou a autorização, ou você saiu do grupo. Atualize a página e cote de novo no seu nome ou com outro pagador.',
+  ride_account_role_required:
+    'Seu papel nesta conta não permite esta ação, ou a conta não é sua. Peça a quem administra a conta para fazer isso ou para ajustar o seu papel.',
+  ride_voucher_unavailable:
+    'O voucher da empresa não cobre esta viagem: o programa pode estar pausado, fora da validade, sem saldo, ou não aceitar esta área, esta categoria ou este valor. Fale com quem gere o programa na empresa ou cote no seu nome.',
+  ride_approval_required:
+    'Esta viagem pela empresa precisa de uma autorização aprovada para este programa, este centro de custo e este horário. Peça a autorização em Empresa e cote de novo depois da aprovação.',
+  ride_invoice_closed:
+    'Esta fatura já foi fechada e não pode ser alterada. Para corrigir um valor, conteste o item: se aceito, o crédito entra na fatura seguinte.',
+  ride_minor_unavailable:
+    'A viagem de adolescente não está liberada para este trajeto: confira se o cadastro do dependente foi conferido e está na validade e se a origem e o destino aceitam a faixa etária. Se estiver tudo certo, escolha outro horário ou fale com o plantão.',
+  ride_fleet_review_required:
+    'Você dirige por uma frota e a cessão do veículo ainda não foi aprovada pela operação, ou os documentos venceram. Confira a situação em Frota e peça à frota que regularize a cessão.',
+  ride_voucher_pending:
+    'Este trecho tem um voucher da empresa que ainda não foi usado. Confira o trecho em Corridas e use “Usar voucher”: a empresa paga a parte dela e só a diferença que você aceitou fica para pagar.',
+  ride_dependent_in_trip:
+    'O dependente está em uma viagem que ainda não terminou. Confira a viagem em Corridas e retire o cadastro depois que ela terminar ou for cancelada.',
   invalid_ride_transition: 'Esta ação não se aplica ao estado atual do trecho. Atualize as corridas.',
   outside_waiting_area: 'A posição informada está fora da área autorizada de espera do terminal.',
   offer_unavailable: 'A oferta de viagem já foi atendida ou está indisponível. Atualize as ofertas.',
@@ -463,6 +500,13 @@ const databaseCode = (message: unknown): DatabaseErrorCode | undefined => {
   return (DATABASE_ERROR_CODES as readonly string[]).includes(head ?? '') ? (head as DatabaseErrorCode) : undefined;
 };
 
+/**
+ * Generic refusals that functions of the database raise with exactly the meaning the client code
+ * already has ("confira os dados", "aguarde", "não encontrado"). Only for P0001 and only when the
+ * whole message is the code, so a sentence that merely starts with one of these words is not read as it.
+ */
+const GENERIC_DATABASE_CODES = ['invalid_input', 'rate_limited', 'not_found'] as const;
+
 const NETWORK_MESSAGE = /failed to fetch|networkerror|network request failed|load failed|fetch failed|err_network|err_internet_disconnected/i;
 
 const isOffline = (): boolean => typeof navigator !== 'undefined' && navigator.onLine === false;
@@ -490,6 +534,11 @@ const codeOf = (err: unknown): ErrorCode => {
   // Rules raised by the database: errcode P0001 (raise exception) with the code as message
   const rule = databaseCode(e.message);
   if (rule) return rule;
+  // The database also raises a few generic codes that the app already has a sentence for
+  if (e.code === 'P0001' && typeof e.message === 'string') {
+    const head = e.message.trim().match(/^[a-z_]+$/)?.[0];
+    if (head && (GENERIC_DATABASE_CODES as readonly string[]).includes(head)) return head as ErrorCode;
+  }
 
   if (typeof e.code === 'string') {
     if (SQLSTATE_CODES[e.code]) return SQLSTATE_CODES[e.code];

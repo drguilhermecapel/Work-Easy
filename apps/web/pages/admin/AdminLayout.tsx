@@ -7,6 +7,7 @@ const LINKS = [
   { to: '/admin/prestadores', label: 'Prestadores', end: false },
   { to: '/admin/corridas', label: 'Corridas', end: true },
   { to: '/admin/corridas/piloto', label: 'Piloto de corridas', end: false },
+  { to: '/admin/corridas/contas', label: 'Contas de corridas', end: false },
   { to: '/admin/disputas', label: 'Disputas', end: false },
   { to: '/admin/denuncias', label: 'Denúncias', end: false },
   { to: '/admin/pagamentos', label: 'Pagamentos', end: false },

@@ -67,7 +67,7 @@ function ReceiptBody({ receipt }: { receipt: RideReceipt }) {
       {m.disputed_cents !== undefined && m.disputed_cents > 0 && <><dt>Em disputa</dt><dd>{formatCents(m.disputed_cents)}</dd></>}
       {m.commission_cents !== undefined && <><dt>Comissão do transporte</dt><dd>{formatCents(m.commission_cents)}</dd></>}
       {m.driver_cents !== undefined && <><dt>Remuneração líquida do motorista</dt><dd>{formatCents(m.driver_cents)}</dd></>}
-    </dl> : <p>Valores em conciliação.</p>}
+    </dl> : receipt.paid_by_other ? <p>Outra pessoa paga este trecho: os valores e o recibo de pagamento ficam com ela.</p> : <p>Valores em conciliação.</p>}
     {m?.pending && <p>Há uma operação de pagamento aguardando confirmação.</p>}
   </article>;
 }

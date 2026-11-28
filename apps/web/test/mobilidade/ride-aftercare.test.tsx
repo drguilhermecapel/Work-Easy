@@ -46,6 +46,18 @@ describe('pós-viagem', () => {
     rerender(<RideAftercare legId="outro" completed={false} />);
     expect(screen.queryByText('Demonstrativo financeiro do trecho')).not.toBeInTheDocument();
   });
+  it('quem viaja por conta de outra pessoa recebe o trajeto sem nenhum valor', async () => {
+    vi.mocked(getRideAftercare).mockResolvedValue({ can_rate: true, stars: null, document: { ...receipt, money: null, paid_by_other: true } });
+    render(<RideAftercare legId="familia" completed />);
+    fireEvent.click(screen.getByText('Consultar recibo e avaliação'));
+    expect(await screen.findByText(/Outra pessoa paga este trecho/)).toBeInTheDocument();
+    expect(screen.getByText('Recibo do trecho')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /Mapa dos pontos/ })).toBeInTheDocument();
+    expect(screen.queryByText('Pagamento confirmado líquido')).not.toBeInTheDocument();
+    expect(screen.queryByText(/R\$/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Valores em conciliação.')).not.toBeInTheDocument();
+    expect(screen.getByText('Salvar avaliação do trecho')).toBeInTheDocument();
+  });
   it('permite pedir ajuda durante uma corrida e apresenta o protocolo retornado', async () => {
     vi.mocked(openRideHelp).mockResolvedValue('ABC-42');
     render(<RideAftercare legId="ativo" completed={false} />);

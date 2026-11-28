@@ -54,6 +54,19 @@
 // 371 kB gzip together. Their separate 415 kB ceiling includes about 12% headroom.
 // The shell keeps its original budgets. A map asset loaded by index.html counts there.
 //
+// Revision of 2026-11-28 (O17 stage 5: family, third parties, companies and fleets). The optional
+// mobility journeys gained the pages of groups, company and fleet, the views of the invite page, the
+// pieces mounted in the quote form and on a leg, and the operator console of ride accounts: 23 new
+// lazy chunks, the largest (FleetPanel) with 6.8 kB, and six small shared ones, most of them cut out of
+// the stage 4 chunks once the new screens began to share them. Measured on the production configuration
+// (VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY set), with the same list of names on both builds:
+//   mobility   62.2 kB before -> 128.1 kB after (110.1 kB on the demo build that CI measures)
+//   route      13.6 kB before ->  13.2 kB after (RideDriverIdentity; every new chunk is far below 15 kB)
+//   initial   177.0 kB before -> 178.2 kB after (ten error sentences and four route entries; budget unchanged)
+//   total     550.6 kB before -> 552.3 kB after (budget unchanged)
+// Nothing heavy arrived: it is screen code, loaded only by who opens those pages. Budget for the group:
+// 128.1 kB plus about 15%, 150 kB. The per-page limit of 15 kB and every other budget stay as they were.
+//
 // No dependencies. Exit code 0 = within budget, 1 = over budget, 2 = no build to read.
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
@@ -69,7 +82,7 @@ export const BUDGETS_KB = {
   policies: 10,
   css: 16,
   maps: 415,
-  mobility: 72,
+  mobility: 150,
   total: 600,
 };
 
@@ -120,9 +133,21 @@ export const summarize = ({ files, initial }) => {
   )));
   // Independently loaded rider, driver and operations screens in the authenticated build.
   // All these chunks still face the 15 kB page limit; an eager import is charged to the shell.
-  // O17 E4 measured 60.4 kB together, with a 72 kB ceiling.
+  // O17 E4 measured 60.4 kB together, with a 72 kB ceiling; E5 measured 128.1 kB, with a 150 kB ceiling
+  // (revision of 2026-11-28 in the header).
   const mobilityNames = new Set(['Corridas', 'Motorista', 'Operacao', 'RideDriverIdentity', 'RideAftercare',
-    'driverLabels', 'rideSafety', 'RideCheckout', 'RidePilot']);
+    'driverLabels', 'rideSafety', 'RideCheckout', 'RidePilot',
+    // O17 E5, who rides and who pays: the invite page and its views, groups, companies, fleets and their console
+    'Convite', 'RiderInvite', 'GuestInvite', 'AccountInvite', 'InviteRider', 'FundingChoice', 'UseVoucher',
+    'Grupos', 'FamilyPanel', 'CompanionPanel', 'DependentPanel',
+    'Empresa', 'Members', 'Programs', 'Approvals', 'GuestDesk', 'Invoices', 'InviteLink',
+    'Frota', 'FleetPanel', 'RideParties', 'RidePartyPrograms', 'RidePartyManual',
+    // Shared pieces the bundler cuts out of those screens. `Ensaio`, `DriverConsole`, `rides`, `state` and `common`
+    // were inside the E4 chunks and became chunks of their own once the E5 screens started to share them. `state`,
+    // `common` and `shared` are plain names: a module of another area that the bundler turns into a chunk with one
+    // of them would be counted here, so give such a module a name of its own.
+    'Ensaio', 'DriverConsole', 'rides', 'rideParties', 'rideBusiness', 'rideFleets', 'ridePartiesAdmin',
+    'ridePartyUi', 'ridePartyFormat', 'state', 'common', 'shared']);
   const mobilityAssets = new Set([...files.keys()].filter(file =>
     !initial.has(file) && file.endsWith('.js') && mobilityNames.has(chunkName(file))));
   const lazy = [...files.keys()].filter(file => file.endsWith('.js') && !initial.has(file) && !isData(file) && !mapAssets.has(file));
