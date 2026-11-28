@@ -335,7 +335,7 @@ select tests.authenticate_as('provider_c');
 select is(public.ride_offer_assistance(pg_temp.id('leg1')),null,'quem não pode atender não vê o pedido');
 select throws_ok($$select public.ride_accept_offer(pg_temp.id('leg1'),pg_temp.key('aceite-c'))$$,'P0001','offer_unavailable','motorista sem equipamento não aceita o trecho');
 
--- A porta antiga (etapa 3) não soma embarque nem modalidade, mas o equipamento vale para o trecho.
+-- A porta antiga (etapa 3) segue as mesmas regras (110608): soma o embarque, carrega a modalidade e o equipamento vale para o trecho.
 select tests.authenticate_as('client_a');
 insert into t602(k,id) values('q3',(public.ride_quote_with_access(pg_temp.key('q3'),null,null,pg_temp.trecho('r3'),'wheelchair_vehicle')->>'id')::uuid);
 insert into t602(k,id) values('ride3',(public.ride_consent(pg_temp.id('q3'),true)->>'ride_id')::uuid);
@@ -349,8 +349,8 @@ select ok(pg_temp.eligible('client_b','leg3') and not pg_temp.eligible('provider
 select ok((select not private.ride_leg_access_covers(tests.uid('provider_c'),l,upper(l.slot)) and private.ride_leg_access_covers(tests.uid('client_b'),l,upper(l.slot))
    from public.ride_legs l where l.id=pg_temp.id('leg3')),'a regra usada na atribuição recusa o veículo sem equipamento e aceita o equipado');
 select is((select jsonb_build_array(l.duration_minutes,(select count(*) from private.ride_leg_modes m where m.leg_id=l.id),p.boarding_minutes,p.companion)
-   from public.ride_legs l join private.ride_access_preferences p on p.leg=l.id where l.id=pg_temp.id('leg3')),'[12,0,0,false]'::jsonb,
- 'o trecho da porta antiga não tem tempo de embarque, modalidade nem acompanhante');
+   from public.ride_legs l join private.ride_access_preferences p on p.leg=l.id where l.id=pg_temp.id('leg3')),'[22,1,10,false]'::jsonb,
+ 'PAR-602: o trecho da porta antiga também soma o embarque e carrega a modalidade, sem acompanhante');
 delete from private.ride_assist_capabilities where driver_id=tests.uid('provider_c') and capability='wheelchair_vehicle';
 select tests.authenticate_as('client_a');
 select is(public.ride_transition(pg_temp.id('leg3'),'cancelled',pg_temp.key('cancela3'))->>'status','cancelled','a passageira cancela o trecho da porta antiga');

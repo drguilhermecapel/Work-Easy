@@ -61,6 +61,17 @@ insert into private.ride_area_authorizations(area,legal_ref,privacy_ref,ops_ref,
  select a,'TEST-206','TEST-206','TEST-206',now()+interval '2 days',true,true,true from unnest(array['Saúde','Jabaquara']) a;
 select tests.authenticate_as('client_a');
 insert into t206(k,data) values('live',public.ride_market_catalog('Saúde','Jabaquara',null));
+-- Achado 17 (revisão): cada portão é informado por si. Uma área sem despacho nem monetização fecha só esses dois.
+select tests.clear_authentication();
+update private.ride_area_authorizations set dispatch_enabled=false,monetization_enabled=false where area='Jabaquara';
+select tests.authenticate_as('client_a');
+select is(public.ride_market_catalog('Saúde','Jabaquara',null)->'gates','{"module":true,"quote":true,"dispatch":false,"monetization":false}'::jsonb,
+ 'ao vivo, a área sem despacho nem monetização fecha só esses dois portões');
+select is(public.ride_market_catalog('Saúde',null,null)->'gates','{"module":true,"quote":true,"dispatch":true,"monetization":true}'::jsonb,
+ 'ao vivo, a área liberada abre os quatro portões, monetização incluída');
+select tests.clear_authentication();
+update private.ride_area_authorizations set dispatch_enabled=true,monetization_enabled=true where area='Jabaquara';
+select tests.authenticate_as('client_a');
 -- C1.2 · Ao vivo, toda modalidade da etapa 6 fica indisponível.
 select is((select data->>'environment' from t206 where k='live'),'live','o catálogo identifica o ambiente ao vivo');
 select is((select array_agg(m->>'code' order by ord) from t206,jsonb_array_elements(data->'modalities') with ordinality e(m,ord) where k='live' and (m->>'available')::boolean),
@@ -130,8 +141,13 @@ select is((select data->'roles' from t206 where k='sim'),'["passenger"]'::jsonb,
 select is((select count(*)::int from t206,jsonb_array_elements(data->'modalities') m where k='sim'
    and m ?& array['code','par','status','available','reason','source','consulted_on'] and m->>'source' ~ '^https://' and m->>'consulted_on'='2026-11-27'),20,
  'cada modalidade traz código, PAR, estado, disponibilidade, motivo, fonte e data de consulta');
+-- 110609: entre municípios o portão confere o corredor (C1), e Saúde → Jabaquara não é corredor.
 select is((select array_agg(m->>'code' order by ord) from t206,jsonb_array_elements(data->'modalities') with ordinality e(m,ord) where k='sim' and (m->>'available')::boolean),
- array['car','assist','wav','reserve','airport','van','shuttle_seat','hourly','intercity'],'no ensaio as nove modalidades operacionais ficam disponíveis');
+ array['car','assist','wav','reserve','airport','van','shuttle_seat','hourly'],'no ensaio as modalidades operacionais ficam disponíveis; entre municípios só no corredor');
+select is((select m->>'reason' from t206,jsonb_array_elements(data->'modalities') m where k='sim' and m->>'code'='intercity'),'corridor_unavailable',
+ 'sem corredor o catálogo diz o motivo de entre municípios');
+select is((select m->>'available' from jsonb_array_elements(public.ride_market_catalog('Saúde','Cidade vizinha de ensaio',null)->'modalities') m where m->>'code'='intercity'),
+ 'true','no corredor de ensaio entre municípios fica disponível');
 select is((select count(*)::int from t206,jsonb_array_elements(data->'modalities') m where k='sim' and m->>'code'=any(pg_temp.nonop())
    and not (m->>'available')::boolean and m->>'status'='inventory'),11,'no ensaio as onze modalidades só de catálogo ficam indisponíveis');
 select ok((select data::text !~ 'infinity' from t206 where k='sim'),'validade sem fim não vaza como texto "infinity"');
@@ -157,7 +173,8 @@ select is(pg_get_function_identity_arguments('public.ride_market_catalog(text,te
 select tests.authenticate_as('client_a');
 select throws_ok(format($$select public.ride_request_modality(%L,'Saúde','Jabaquara')$$,c),'P0001','ride_modality_unavailable',
  'ensaio: a porta recusa '||c) from unnest(pg_temp.nonop()) c;
-select is((select jsonb_object_agg(c,public.ride_request_modality(c,'Saúde','Jabaquara')->>'flow') from unnest(array['car']||pg_temp.stage6()) c),
+select is((select jsonb_object_agg(c,public.ride_request_modality(c,'Saúde',case when c='intercity' then 'Cidade vizinha de ensaio' else 'Jabaquara' end)->>'flow')
+   from unnest(array['car']||pg_temp.stage6()) c),
  '{"car":"quote","assist":"access","wav":"access","reserve":"reserve","airport":"airport","van":"class","shuttle_seat":"shuttle","hourly":"block","intercity":"intercity"}'::jsonb,
  'ensaio: a porta devolve o fluxo de cada modalidade operacional');
 select is(public.ride_request_modality('reserve','Saúde','Jabaquara'),public.ride_request_modality('reserve','Saúde','Jabaquara'),'repetir o pedido à porta devolve a mesma resposta');
@@ -165,8 +182,10 @@ select throws_ok($$select public.ride_request_modality('helicoptero','Saúde','J
 select throws_ok($$select public.ride_request_modality(null,'Saúde','Jabaquara')$$,'P0001','invalid_input','modalidade nula é entrada inválida');
 select throws_ok($$select public.ride_request_modality('reserve','Saúde',null)$$,'P0001','ride_modality_unavailable','sem corredor completo não há modalidade');
 select throws_ok($$select public.ride_request_modality('reserve','Saúde','Bairro fora da praça')$$,'P0001','ride_modality_unavailable','destino fora da praça é recusado');
-select is(public.ride_request_modality('intercity','Saúde','Município vizinho (ensaio)')->>'flow','intercity',
- 'entre municípios o destino fica fora da praça: o corredor é conferido pelo fluxo próprio');
+select throws_ok($$select public.ride_request_modality('intercity','Saúde','Município vizinho (ensaio)')$$,'P0001','ride_modality_unavailable',
+ 'entre municípios o destino fica fora da praça, mas sem corredor cadastrado a porta recusa (C1: o corredor substitui a praça)');
+select throws_ok($$select public.ride_request_modality('intercity','Saúde','Jabaquara')$$,'P0001','ride_modality_unavailable',
+ 'um par da praça que não é corredor também não é entre municípios');
 select throws_ok($$select public.ride_request_modality('intercity','Município vizinho (ensaio)','Saúde')$$,'P0001','ride_modality_unavailable','a origem precisa estar na praça');
 select tests.clear_authentication();
 update public.profiles set deleted_at=now() where id=tests.uid('provider_e');

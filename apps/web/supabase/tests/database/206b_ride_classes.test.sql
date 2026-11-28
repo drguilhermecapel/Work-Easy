@@ -409,6 +409,18 @@ select is((select jsonb_build_array(o->'available',o->'approach_minutes',o->'pri
    where o->>'code'='prioridade'),'[true,5,5,1630]'::jsonb,'com a chegada dentro do limite a prioridade fica disponível e informa o limite');
 select is(pg_temp.flags(public.ride_class_options(pg_temp.id('r7'),now()+interval '1 hour'))->'prioridade','true'::jsonb,
  'em horário agendado o limite vale para o deslocamento estimado até o embarque');
+-- O limite também conta da partida pedida (revisão, achado 20): com os turnos começando só
+-- daqui a 4 minutos, o deslocamento de 5 cabe no limite de 5, mas a chegada fica em 9.
+select tests.clear_authentication();
+create temp table shifts206b as select id,period from private.ride_driver_shifts;
+update private.ride_driver_shifts set period=tstzrange(now()+interval '4 minutes',upper(period));
+select tests.authenticate_as('client_a');
+select is((select jsonb_build_array(f->'prioridade',f->'padrao') from (select pg_temp.flags(public.ride_class_options(pg_temp.id('r7'),null)) f) x),'[false,true]'::jsonb,
+ 'achado 20: chegada fora do limite contado da partida tira a prioridade, e a classe comum do mesmo veículo segue disponível');
+select throws_ok($$select public.ride_choose_class(pg_temp.id('r7'),'prioridade',null)$$,'P0001','offer_unavailable','achado 20: e a escolha da prioridade é recusada');
+select tests.clear_authentication();
+update private.ride_driver_shifts s set period=x.period from shifts206b x where x.id=s.id;
+select tests.authenticate_as('client_a');
 select public.ride_choose_class(pg_temp.id('r7'),'prioridade',null);
 insert into t206b(k,id) values('q7',(public.ride_quote(pg_temp.key('q7'),null,null,jsonb_build_array(jsonb_build_object('route_id',pg_temp.id('r7'),
  'origin','Saúde','destination','Jabaquara','payer','passenger')))->>'id')::uuid);

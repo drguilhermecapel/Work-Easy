@@ -278,7 +278,9 @@ select tests.clear_authentication();
 select is((select state||':'||outcome from private.ride_reserve_shifts where id=pg_temp.key('c2')),'expired:leg_changed','a proposta expira quando a designação muda');
 select is((select pickup_at from public.ride_legs where id=pg_temp.id('c')),pg_temp.at('c1'),'sem aceite o horário não muda');
 select is((select state from private.ride_reserve_terms where leg_id=pg_temp.id('c')),'awaiting_driver','a reserva liberada volta a aguardar motorista');
-select is((select count(*)::int from private.ride_reserve_events where leg_id=pg_temp.id('c') and action='driver_released' and actor_role='system'),1,'a liberação fica na trilha');
+-- 110609 (C4.8): a liberação leva o motorista e a chave da operação que a causou, não mais o sistema.
+select is((select count(*)::int from private.ride_reserve_events where leg_id=pg_temp.id('c') and action='driver_released' and actor_role='driver'
+ and actor_id=tests.uid('provider_d') and operation_key=pg_temp.key('c-release')),1,'a liberação fica na trilha');
 
 -- O novo horário deixa de poder ser vendido entre o pedido e a resposta: nada muda e o desfecho fica registrado.
 insert into w values('e',now()+interval '16 hours');
@@ -317,12 +319,15 @@ select tests.clear_authentication();
 select pg_temp.legs();
 select is((select airport||' / '||terminal from private.ride_reserve_terms where leg_id=pg_temp.id('t')),'Aeroporto de ensaio / Terminal de ensaio',
  'desembarque em terminal também congela aeroporto e terminal');
+-- O Terminal 2 é um terminal cadastrado (tem linha de regra), mas ainda sem regra própria utilizável:
+-- desabilitada e sem aeroporto. Uma área comum, sem linha de regra, é destino livre (206h).
+insert into private.ride_airport_rules(environment,name,pickup_area,pickup_instruction,wait_lat,wait_lng,radius_m,authority_reference,valid_until,enabled,airport)
+ values('simulation','Terminal 2 de ensaio','Terminal 2 de ensaio','Embarque no ponto T2 do terminal fictício.',-23.62,-46.636,180,'ficticio-t2-v1','infinity',false,null);
 select tests.authenticate_as('client_a');
 select throws_ok($$select public.ride_propose_amendment(pg_temp.id('t'),pg_temp.id('route2'),pg_temp.key('amend-1'))$$,'P0001','ride_terminal_unavailable',
  'troca para terminal sem regra própria é recusada');
 select tests.clear_authentication();
-insert into private.ride_airport_rules(environment,name,pickup_area,pickup_instruction,wait_lat,wait_lng,radius_m,authority_reference,valid_until,enabled,airport)
- values('simulation','Terminal 2 de ensaio','Terminal 2 de ensaio','Embarque no ponto T2 do terminal fictício.',-23.62,-46.636,180,'ficticio-t2-v1','infinity',true,'Outro aeroporto de ensaio');
+update private.ride_airport_rules set enabled=true,airport='Outro aeroporto de ensaio' where environment='simulation' and pickup_area='Terminal 2 de ensaio';
 select tests.authenticate_as('client_a');
 select throws_ok($$select public.ride_propose_amendment(pg_temp.id('t'),pg_temp.id('route2'),pg_temp.key('amend-2'))$$,'P0001','ride_terminal_unavailable',
  'regra de outro aeroporto não serve à troca de terminal');

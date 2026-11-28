@@ -556,8 +556,9 @@ select tests.clear_authentication();
 
 -- C5.7 · Corredor que vence antes do fim do trecho bloqueia a designação.
 update private.ride_intercity_corridors set valid_until=pg_temp.at('i')+interval '54 minutes' where environment='simulation';
-select is((select private.ride_offer_eligible(tests.uid('provider_d'),l)||':'||private.ride_before_blocks_eligible(tests.uid('provider_d'),l)
- from public.ride_legs l where l.id=pg_temp.id('i')),'false:true','C5.7 com o corredor vencendo antes do fim o motorista deixa de ser elegível');
+-- 110609: o portão da modalidade também confere o corredor, então a camada anterior recusa junto; a regra do bloco segue provada pelo próprio motivo.
+select is((select private.ride_offer_eligible(tests.uid('provider_d'),l)||':'||coalesce(private.ride_block_issue(l,tests.uid('provider_d')),'none')
+ from public.ride_legs l where l.id=pg_temp.id('i')),'false:ride_corridor_unavailable','C5.7 com o corredor vencendo antes do fim o motorista deixa de ser elegível');
 select tests.authenticate_as('provider_d');
 select throws_ok($$select public.ride_accept_offer(pg_temp.id('i'),pg_temp.key('i-accept-cedo'))$$,'P0001','offer_unavailable','C5.7 o aceite é recusado');
 select tests.clear_authentication();

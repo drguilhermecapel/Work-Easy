@@ -64,7 +64,13 @@ create temp table private_fns as select unnest(array[
  'ride_pre_dispatch_eligible','ride_quote_before_corridors','ride_quote_has_mode','ride_reprice_mode_quote','ride_reservation_check',
  'ride_reservation_check_before_reserve','ride_reserve_event','ride_reserve_move','ride_reserve_move_issue','ride_reserve_release','ride_reserve_settle',
  'ride_reserve_terminal','ride_shuttle_event','ride_shuttle_issue','ride_shuttle_lock_departures','ride_shuttle_replay','ride_shuttle_taken',
- 'ride_terminal_change_issue','ride_terminal_closed_at','ride_vehicle_meets','sync_ride_reserve_terms']) as name;
+ 'ride_terminal_change_issue','ride_terminal_closed_at','ride_vehicle_meets','sync_ride_reserve_terms',
+ -- 110608 (porta única de assistência) e 110609 (correções da revisão).
+ 'ride_quote_with_access_before_door','ride_set_access_before_door','ride_quote_access_door','ride_quote_access_door_before_wait',
+ 'ride_person_restricted','ride_pair_allowed','ride_plain_label','ride_names_animal','ride_names_assistance','ride_modality_issue_before_corridor',
+ 'guard_ride_shuttle_seat_pairing','guard_ride_shuttle_driver_pairing','ride_lock_live_profile','ride_shift_reservation_before_erasure_lock',
+ 'ride_propose_extension_before_erasure_lock','ride_block_tariff_holds','rearm_ride_reserve_notice','ride_reserve_actor_role',
+ 'complete_ride_reserve_actor','ride_quote_settled','purge_ride_safety_before_access_quotes','ride_export_before_access_quotes']) as name;
 create temp table public_fns as select unnest(array[
  'ride_market_catalog(text,text,timestamptz)','ride_request_modality(text,text,text,timestamptz)','ride_class_menu(uuid,timestamptz,jsonb)',
  'ride_validate_vehicle_features(uuid,integer,text,text,boolean,text)','ride_access_options(uuid,timestamptz)',
@@ -74,7 +80,8 @@ create temp table public_fns as select unnest(array[
  'ride_book_shuttle_seat(uuid,integer,integer,uuid)','ride_cancel_shuttle_seat(uuid,uuid)','ride_rebook_shuttle_seat(uuid,uuid,uuid)',
  'admin_cancel_shuttle_departure(uuid,text,uuid)','admin_shuttle_departures()','driver_shuttle_manifest(uuid)','ride_block_options(text,timestamptz)',
  'ride_quote_block(uuid,timestamptz,text,text,text,uuid)','ride_intercity_options()','ride_quote_intercity(uuid,timestamptz,jsonb)',
- 'ride_propose_extension(uuid,integer,integer,uuid)','ride_decide_extension(uuid,boolean)','ride_block_state(uuid)','ride_export_my_data()']) as sig;
+ 'ride_propose_extension(uuid,integer,integer,uuid)','ride_decide_extension(uuid,boolean)','ride_block_state(uuid)','ride_export_my_data()',
+ 'ride_quote_with_access(uuid,uuid,timestamptz,jsonb,text)','ride_set_access(uuid,text,text,boolean)']) as sig;
 select is((select array_agg(n.name order by n.name) from private_fns n where not exists(select from pg_proc p where p.pronamespace='private'::regnamespace and p.proname=n.name)),
  null,'toda função privada da etapa 6 existe com o nome esperado');
 select is((select array_agg(p.oid::regprocedure::text order by 1) from pg_proc p join private_fns n on n.name=p.proname
@@ -170,16 +177,30 @@ select is(public.ride_shift_reservation(pg_temp.id('a'),now()+interval '3 hours 
 insert into t select 'h:quote',(public.ride_quote_block(pg_temp.key('h'),now()+interval '9 hours','Saúde','Jabaquara','3h')->>'id')::uuid;
 insert into t select 'h:ride',(public.ride_consent(pg_temp.id('h:quote'),true)->>'ride_id')::uuid;
 -- Assistência: a escolha fica com a cotação e é congelada no trecho X (imediato, sem motorista).
+-- Fixture (PAR-602, 110608): um motorista em turno capacitado para ajudar no embarque torna o
+-- pedido legítimo; ele sai do turno depois do aceite.
+select tests.clear_authentication();
+select tests.create_user('assist_206e');
+insert into public.ride_drivers(id,environment,vehicle,status,valid_until,reviewed_by,online)
+ values(tests.uid('assist_206e'),'simulation','sedan','approved',private.sp_date(now())+3,tests.uid('admin'),true);
+insert into private.ride_driver_credentials(driver_id,vehicle_identifier,vehicle_category,driver_document_ref,vehicle_document_ref,insurance_ref,driver_until,vehicle_until,insurance_until,inspected_by)
+ values(tests.uid('assist_206e'),'ASSIST-206E','sedan','DOC-206EA','ASSIST-206E','POLICY-206EA',private.sp_date(now())+3,private.sp_date(now())+3,private.sp_date(now())+3,tests.uid('admin'));
+insert into private.ride_assist_capabilities values(tests.uid('assist_206e'),'ASSIST-206E','boarding','TRAIN-206EA','VEH-206EA',now()+interval '1 day');
+insert into private.ride_driver_shifts(driver_id,area,period) values(tests.uid('assist_206e'),'Saúde',tstzrange(now()-interval '5 minutes',now()+interval '3 hours'));
+select tests.authenticate_as('client_a');
 insert into t select 'x:quote',(public.ride_quote_with_access(pg_temp.key('x'),null,null,'[{"origin":"Saúde","destination":"Vila Mariana","payer":"passenger"}]','boarding')->>'id')::uuid;
 select tests.clear_authentication();
 update private.ride_access_quotes set companion=true,boarding='{"1":5}' where quote_id=pg_temp.id('x:quote');
 select tests.authenticate_as('client_a');
 insert into t select 'x:ride',(public.ride_consent(pg_temp.id('x:quote'),true)->>'ride_id')::uuid;
 select tests.clear_authentication();
+update public.ride_drivers set online=false where id=tests.uid('assist_206e');
+delete from private.ride_driver_shifts where driver_id=tests.uid('assist_206e');
 select pg_temp.legs();
-insert into private.ride_quote_modes(quote_id,seq,modality,environment,market,authorization_ref) values(pg_temp.id('x:quote'),1,'assist','simulation','sao-paulo','ficticio-o17-e6');
+insert into private.ride_quote_modes(quote_id,seq,modality,environment,market,authorization_ref) values(pg_temp.id('x:quote'),1,'assist','simulation','sao-paulo','ficticio-o17-e6')
+ on conflict do nothing;
 insert into private.ride_leg_modes(leg_id,modality,environment,market,authorization_ref)
- select pg_temp.id(l),'assist','simulation','sao-paulo','ficticio-o17-e6' from unnest(array['x','c']) l;
+ select pg_temp.id(l),'assist','simulation','sao-paulo','ficticio-o17-e6' from unnest(array['x','c']) l on conflict do nothing;
 insert into private.ride_access_equipment(driver_id,vehicle_ref,kind,inspected_ref,trained_ref,valid_until)
  values(tests.uid('provider_d'),'VEI-206E','ramp','VISTORIA-206E','TREINO-206E',now()+interval '30 days');
 select tests.authenticate_as('provider_d');
