@@ -148,7 +148,7 @@ select is((select seq from public.ride_legs where replaces_id=(select v from rid
 select is((select extras_cents from public.ride_legs where replaces_id=(select v from ride_case where k='leg2')),400,'server-priced baggage only after new consent');
 select is((select fee_cents from public.ride_legs where replaces_id=(select v from ride_case where k='leg2')),294,'10% excludes pass-through baggage');
 select is((select status from public.ride_legs where id=(select v from ride_case where k='leg2')),'cancelled','original leg retained for reconciliation');
-update public.ride_drivers set valid_until=current_date-1 where id=tests.uid('provider_b');
+update public.ride_drivers set valid_until(now() at time zone 'America/Sao_Paulo')::date-1 where id=tests.uid('provider_b');
 select tests.authenticate_as('provider_b');
 select throws_ok($$select public.ride_set_online(true)$$,'P0001','driver_ineligible','expired review blocks online status');
 select is((select jsonb_array_length(public.ride_dashboard()->'offers')),0,'expired driver cannot receive offers');
