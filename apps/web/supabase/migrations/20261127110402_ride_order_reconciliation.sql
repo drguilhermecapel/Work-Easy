@@ -112,7 +112,8 @@ begin
 end $$;
 create function public.ride_claim_order_refund(p_case uuid,p_environment text) returns boolean language plpgsql security definer set search_path='' as $$
 begin
- update private.ride_order_refunds r set sent=true from private.ride_order_psp s,private.ride_order_cases c
+  perform 1 from private.ride_order_cases where id=p_case and status='approved' for update; if not found then return false; end if;
+update private.ride_order_refunds r set sent=true from private.ride_order_psp s,private.ride_order_cases c
  where r.case_id=p_case and not r.sent and s.order_id=r.order_id and s.environment=private.ride_env() and s.environment=p_environment
    and c.id=r.case_id and c.status='approved' and s.reversed_cents+r.amount_cents=r.target_cents;
  return found;
