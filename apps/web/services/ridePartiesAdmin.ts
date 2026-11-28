@@ -228,3 +228,50 @@ export const partiesAdmin = {
       await db().rpc('admin_decide_invoice_dispute', { p_dispute: dispute, p_accept: accept, p_reason: reason }),
     ),
 };
+
+// Listings the console lacked (DD125): drivers cleared for trips with a dependent, the guest invites the
+// companies issued (never the recipient: only its hash is stored) and the closed invoices.
+
+export interface MinorClearance {
+  driver_id: string;
+  driver_label: string | null;
+  vehicle: string;
+  driver_status: string;
+  evidence_ref: string;
+  valid_until: string;
+  granted_at: string;
+  active: boolean;
+}
+export interface IssuedGuestInvite {
+  id: string;
+  account_id: string;
+  account_name: string;
+  status: 'pending' | 'accepted' | 'declined' | 'expired' | 'revoked';
+  legs: { origin: string; destination: string }[];
+  scheduled_at: string | null;
+  expires_at: string;
+  answered_at: string | null;
+  created_at: string;
+}
+export interface ClosedInvoice {
+  id: string;
+  account_id: string;
+  account_name: string;
+  /** "YYYY-MM-01". */
+  month: string;
+  total_cents: number;
+  closed_at: string;
+  lines: number;
+  open_disputes: number;
+}
+
+export const partiesRegistry = {
+  clearances: async () => unwrap<MinorClearance[]>(await db().rpc('admin_ride_minor_clearances')),
+  guestInvites: async () => unwrap<IssuedGuestInvite[]>(await db().rpc('admin_ride_guest_invites')),
+  /** A replay on a revoked invite answers the same; an answered or expired one is refused. */
+  revokeGuestInvite: async (invite: string, reason: string) =>
+    unwrap<{ id: string; status: 'revoked' }>(
+      await db().rpc('admin_revoke_ride_guest_invite', { p_id: invite, p_reason: reason }),
+    ),
+  closedInvoices: async () => unwrap<ClosedInvoice[]>(await db().rpc('admin_ride_closed_invoices')),
+};

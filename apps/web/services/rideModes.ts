@@ -311,3 +311,189 @@ export interface DriverModeInbox {
 export const driverModes = {
   tasks: async () => unwrap<DriverModeInbox>(await db().rpc('driver_mode_tasks')),
 };
+
+// --- Operations registry (DD125): what the operation provisions for these modes ---
+// Finance administrators only. A save takes the row's id (the client key of a new row) or its natural
+// key, so a retry with the same input answers the same row. In live nothing is enabled without a real
+// evidence reference and a validity date at most 24 months ahead; `valid_until` null means open-ended (rehearsal only).
+
+export interface RegistryList {
+  simulation: boolean;
+  /** Areas of the market of this environment, for the forms. */
+  areas: string[];
+}
+export interface RegistryLine {
+  id: string;
+  origin_area: string;
+  destination_area: string;
+  operator_ref: string;
+  seat_cents: number;
+  minutes: number;
+  evidence_ref: string;
+  valid_until: string | null;
+  enabled: boolean;
+  open_departures: number;
+  next_departure: string | null;
+}
+export interface LineInput {
+  id: string;
+  origin: string;
+  destination: string;
+  operatorRef: string;
+  seatCents: number;
+  minutes: number;
+  evidenceRef: string;
+  validUntil: string;
+  enabled: boolean;
+}
+export interface RegistryDeparture {
+  id: string;
+  line_id: string;
+  departs_at: string;
+  seats_total: number;
+  seats_confirmed: number;
+  state: ShuttleDeparture['state'];
+  closed_at: string | null;
+  driver_id: string | null;
+  driver_label: string | null;
+  /** The designated registration holds on the day of the departure. */
+  driver_valid: boolean;
+}
+/** Approved drivers valid today with an inspected capacity; the server checks the day and the seats again. */
+export interface RegistryDriver {
+  id: string;
+  label: string | null;
+  vehicle: string;
+  seats: number;
+  capacity_until: string;
+  valid_until: string;
+}
+export interface LineDepartures {
+  line_id: string;
+  minutes: number;
+  departures: RegistryDeparture[];
+  drivers: RegistryDriver[];
+}
+export interface RegistryTariff {
+  id: string;
+  area: string;
+  code: string;
+  minutes: number;
+  included_km: number;
+  block_cents: number;
+  extra_15min_cents: number;
+  extra_km_cents: number;
+  evidence_ref: string;
+  valid_until: string | null;
+  /** Legs already sold with this block: its area and code no longer change. */
+  legs: number;
+}
+export type TariffInput = Omit<RegistryTariff, 'valid_until' | 'legs'> & { valid_until: string };
+export interface RegistryCorridor {
+  origin: string;
+  destination: string;
+  origin_jurisdiction: string;
+  destination_jurisdiction: string;
+  authority_ref: string;
+  coverage_ref: string;
+  empty_return_cents: number;
+  return_minutes: number;
+  valid_until: string | null;
+  enabled: boolean;
+}
+export type CorridorInput = Omit<RegistryCorridor, 'valid_until'> & { valid_until: string };
+export interface RegistryPolicy {
+  area: string;
+  min_lead_minutes: number;
+  confirm_lead_minutes: number;
+  max_shift_minutes: number;
+  evidence_ref: string;
+  valid_until: string | null;
+  enabled: boolean;
+}
+export type PolicyInput = Omit<RegistryPolicy, 'valid_until'> & { valid_until: string };
+
+export const rideRegistry = {
+  lines: async () => unwrap<RegistryList & { lines: RegistryLine[] }>(await db().rpc('admin_ride_shuttle_lines')),
+  saveLine: async (line: LineInput) =>
+    unwrap<RegistryLine>(
+      await db().rpc('admin_save_ride_shuttle_line', {
+        p_id: line.id,
+        p_origin: line.origin,
+        p_destination: line.destination,
+        p_operator_ref: line.operatorRef,
+        p_seat_cents: line.seatCents,
+        p_minutes: line.minutes,
+        p_evidence_ref: line.evidenceRef,
+        p_valid_until: line.validUntil,
+        p_enabled: line.enabled,
+      }),
+    ),
+  departures: async (line: string) =>
+    unwrap<LineDepartures>(await db().rpc('admin_ride_shuttle_line_departures', { p_line: line })),
+  /** `id` is the client key of a new departure or the id of the one being changed. */
+  saveDeparture: async (id: string, line: string, departsAt: string, seats: number) =>
+    unwrap<RegistryDeparture>(
+      await db().rpc('admin_save_ride_shuttle_departure', {
+        p_id: id,
+        p_line: line,
+        p_departs_at: departsAt,
+        p_seats_total: seats,
+      }),
+    ),
+  /** `driver` null withdraws the designation. */
+  designate: async (departure: string, driver: string | null) =>
+    unwrap<RegistryDeparture>(
+      await db().rpc('admin_designate_shuttle_driver', { p_departure: departure, p_driver: nullable(driver)! }),
+    ),
+  markDeparted: async (departure: string) =>
+    unwrap<RegistryDeparture>(await db().rpc('admin_mark_shuttle_departed', { p_departure: departure })),
+  tariffs: async () => unwrap<RegistryList & { tariffs: RegistryTariff[] }>(await db().rpc('admin_ride_block_tariffs')),
+  saveTariff: async (tariff: TariffInput) =>
+    unwrap<RegistryTariff>(
+      await db().rpc('admin_save_ride_block_tariff', {
+        p_id: tariff.id,
+        p_area: tariff.area,
+        p_code: tariff.code,
+        p_minutes: tariff.minutes,
+        p_included_km: tariff.included_km,
+        p_block_cents: tariff.block_cents,
+        p_extra_15min_cents: tariff.extra_15min_cents,
+        p_extra_km_cents: tariff.extra_km_cents,
+        p_evidence_ref: tariff.evidence_ref,
+        p_valid_until: tariff.valid_until,
+      }),
+    ),
+  corridors: async () =>
+    unwrap<RegistryList & { corridors: RegistryCorridor[] }>(await db().rpc('admin_ride_intercity_corridors')),
+  /** One corridor per direction, keyed by origin and destination. */
+  saveCorridor: async (corridor: CorridorInput) =>
+    unwrap<RegistryCorridor>(
+      await db().rpc('admin_save_ride_intercity_corridor', {
+        p_origin: corridor.origin,
+        p_destination: corridor.destination,
+        p_origin_jurisdiction: corridor.origin_jurisdiction,
+        p_destination_jurisdiction: corridor.destination_jurisdiction,
+        p_authority_ref: corridor.authority_ref,
+        p_coverage_ref: corridor.coverage_ref,
+        p_empty_return_cents: corridor.empty_return_cents,
+        p_return_minutes: corridor.return_minutes,
+        p_valid_until: corridor.valid_until,
+        p_enabled: corridor.enabled,
+      }),
+    ),
+  policies: async () => unwrap<RegistryList & { policies: RegistryPolicy[] }>(await db().rpc('admin_ride_reserve_policies')),
+  /** One policy per area. */
+  savePolicy: async (policy: PolicyInput) =>
+    unwrap<RegistryPolicy>(
+      await db().rpc('admin_save_ride_reserve_policy', {
+        p_area: policy.area,
+        p_min_lead_minutes: policy.min_lead_minutes,
+        p_confirm_lead_minutes: policy.confirm_lead_minutes,
+        p_max_shift_minutes: policy.max_shift_minutes,
+        p_evidence_ref: policy.evidence_ref,
+        p_valid_until: policy.valid_until,
+        p_enabled: policy.enabled,
+      }),
+    ),
+};

@@ -467,14 +467,16 @@ insert into rpc select unnest(array['admin_close_ride_invoice','admin_resolve_ri
  -- Chamadas anteriores que passaram a ler objetos da etapa: o pedido de pagamento aplica o voucher e o recibo esconde o valor de quem não paga.
  'ride_open_payment_order','ride_aftercare',
  -- Titularidade (20261128100301, DD118 de 28/11/2026): nomear administração, transferir e ler o plano da exclusão.
- 'ride_set_account_admin','ride_transfer_account','ride_erasure_account_plan']);
+ 'ride_set_account_admin','ride_transfer_account','ride_erasure_account_plan',
+ -- Listas da operação que leem objetos da etapa (20261128100401, DD125).
+ 'admin_ride_minor_clearances','admin_ride_guest_invites','admin_revoke_ride_guest_invite','admin_ride_closed_invoices']);
 create temp table party_table(name text primary key);
 insert into party_table select unnest(array['ride_party_rules','ride_accounts','ride_account_members','ride_account_invites','ride_payer_mandates','ride_quote_funding',
  'ride_leg_funding','ride_rider_invites','ride_companion_terms','ride_companions','ride_companion_invites','ride_minor_policies','ride_dependents',
  'ride_minor_driver_clearances','ride_quote_dependents','ride_leg_dependents','ride_minor_alerts','ride_minor_access_log','ride_cost_centers','ride_voucher_programs',
  'ride_trip_grants','ride_guest_invites','ride_voucher_grants','ride_invoices','ride_invoice_lines','ride_invoice_marks','ride_invoice_disputes','ride_fleet_vehicles',
  'ride_fleet_assignments','ride_leg_vehicles']);
-select is((select count(*) from rpc),69::bigint,'a lista de chamadas públicas da etapa tem 69 nomes (64 da etapa 5, 2 de DD124 e 3 da titularidade)');
+select is((select count(*) from rpc),73::bigint,'a lista de chamadas públicas da etapa tem 73 nomes (64 da etapa 5, 2 de DD124, 3 da titularidade e 4 de DD125)');
 select is((select array_agg(r.name order by r.name) from rpc r where (select count(*) from pg_proc p where p.pronamespace='public'::regnamespace and p.proname=r.name)<>1),
  null::text[],'cada chamada pública da etapa existe uma única vez');
 select is((select array_agg(p.proname::text order by p.proname) from pg_proc p join rpc r on r.name=p.proname where p.pronamespace='public'::regnamespace

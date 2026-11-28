@@ -31,6 +31,7 @@ import VoucherRow from './ridePartyVoucherRow';
 
 const Programs = lazy(() => import('./RidePartyPrograms'));
 const Manual = lazy(() => import('./RidePartyManual'));
+const Registry = lazy(() => import('./RidePartyRegistry'));
 
 const KINDS = { organization: 'Empresa', fleet: 'Frota' };
 const BANDS = { '13-15': '13 a 15 anos', '16-17': '16 ou 17 anos' };
@@ -427,6 +428,7 @@ function Waiting({ dashboard }: { dashboard: RideDashboard }) {
       <Suspense fallback={<p role="status">Carregando…</p>}>
         <Programs areas={dashboard.areas} />
         <Manual drivers={dashboard.reviews} />
+        <Registry />
       </Suspense>
     </>
   );

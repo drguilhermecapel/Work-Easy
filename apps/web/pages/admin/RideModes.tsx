@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import ErrorAlert from '../../components/ErrorAlert';
 import { dangerButton, inputClass, secondaryButton } from '../../components/admin/styles';
 import { Card, EmptyState, Field } from '../../components/admin/ui';
@@ -83,7 +83,51 @@ function Departure({
   );
 }
 
-/** /admin/corridas/modalidades: operation of the stage 6 modes. Today, the line van departures. */
+// The registry of what these modes sell (DD125). Each panel is its own chunk, read only when opened.
+const PANELS = [
+  { id: 'linhas', label: 'Linhas e partidas', Panel: lazy(() => import('./RideModeLines')) },
+  { id: 'blocos', label: 'Blocos por hora', Panel: lazy(() => import('./RideModeBlocks')) },
+  { id: 'corredores', label: 'Corredores entre municípios', Panel: lazy(() => import('./RideModeCorridors')) },
+  { id: 'reservas', label: 'Políticas de reserva', Panel: lazy(() => import('./RideModePolicies')) },
+];
+
+function Registry() {
+  const [open, setOpen] = useState<string | null>(null);
+  const chosen = PANELS.find((panel) => panel.id === open);
+  return (
+    <section aria-labelledby="cadastros-modalidades" className="space-y-3">
+      <h2 id="cadastros-modalidades" className="text-lg font-semibold text-gray-900">
+        Cadastros da operação
+      </h2>
+      <p className="text-sm text-gray-700">
+        Linhas, partidas, blocos, corredores e políticas de reserva são cadastrados aqui, com a referência da evidência
+        conferida e a validade. Cada alteração fica na auditoria.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {PANELS.map((panel) => (
+          <button
+            key={panel.id}
+            type="button"
+            className={secondaryButton}
+            aria-pressed={open === panel.id}
+            onClick={() => setOpen(open === panel.id ? null : panel.id)}
+          >
+            {panel.label}
+          </button>
+        ))}
+      </div>
+      {chosen && (
+        <Card>
+          <Suspense fallback={<p role="status">Carregando…</p>}>
+            <chosen.Panel />
+          </Suspense>
+        </Card>
+      )}
+    </section>
+  );
+}
+
+/** /admin/corridas/modalidades: operation of the stage 6 modes: the van departures and the registry. */
 export default function RideModes() {
   const result = usePoll(rideShuttle.adminDepartures, 'admin-shuttle-departures');
   const action = useModeAction(result.reload);
@@ -135,6 +179,7 @@ export default function RideModes() {
         )}
         {action.message}
       </Card>
+      <Registry />
     </main>
   );
 }
