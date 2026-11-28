@@ -1,0 +1,95 @@
+name: Reparar domínio www (Cloudflare)
+
+# Infrastructure-only recovery: keeps the currently published application intact.
+# Uses the same production environment and write serialization as the deploy jobs.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Conferir a configuração ou criar somente o vínculo e CNAME ausentes de www'
+        type: choice
+        options: [check, apply]
+        default: check
+      confirm:
+        description: 'Para aplicar, digite REPAIR_WWW'
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-supabase-production
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    name: Conferir e reparar www
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: https://workeasy.ia.br
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Validar escopo e confirmação
+        env:
+          MODE: ${{ inputs.mode }}
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          test "$GITHUB_REF" = refs/heads/main || { echo '::error::Execute somente na branch main.'; exit 1; }
+          case "$MODE" in check|apply) ;; *) echo '::error::Modo inválido.'; exit 1;; esac
+          if [ "$MODE" = apply ] && [ "$CONFIRM" != REPAIR_WWW ]; then
+            echo '::error::Digite REPAIR_WWW para aplicar a correção de www.'
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Registrar a versão atualmente publicada
+        run: |
+          curl --fail --silent --show-error --connect-timeout 10 --max-time 30 \
+            https://workeasy.ia.br/.well-known/workeasy-release.json > "$RUNNER_TEMP/workeasy-release-before.json"
+          node -e 'const fs = require("node:fs"); const v = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + "/workeasy-release-before.json", "utf8")); if (!/^[a-f0-9]{40}$/.test(v.commit)) process.exit(1); console.log("Versão preservada: " + v.commit);'
+
+      - name: Conferir ou criar somente a configuração ausente de www
+        env:
+          MODE: ${{ inputs.mode }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
+          VITE_SITE_URL: ${{ vars.VITE_SITE_URL || 'https://workeasy.ia.br' }}
+        run: node apps/web/scripts/cloudflare-pages-domains.mjs "$MODE"
+
+      - name: Verificar HTTPS e a mesma versão nos dois endereços
+        if: inputs.mode == 'apply'
+        run: |
+          curl --fail --silent --show-error --location --retry 20 --retry-delay 15 --retry-all-errors \
+            --connect-timeout 10 --max-time 20 \
+            https://www.workeasy.ia.br/.well-known/workeasy-release.json > "$RUNNER_TEMP/workeasy-release-www.json"
+          curl --fail --silent --show-error --connect-timeout 10 --max-time 30 \
+            https://workeasy.ia.br/.well-known/workeasy-release.json > "$RUNNER_TEMP/workeasy-release-after.json"
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const read = suffix => JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/workeasy-release-${suffix}.json`, 'utf8')).commit;
+          const before = read('before');
+          if (read('www') !== before || read('after') !== before) throw new Error('A versão publicada mudou durante a verificação.');
+          console.log(`HTTPS confirmado nos dois endereços; versão preservada: ${before}.`);
+          NODE
+
+      - name: Registrar resultado
+        if: always()
+        env:
+          MODE: ${{ inputs.mode }}
+          RESULT: ${{ job.status }}
+        run: |
+          {
+            echo '## Correção de www.workeasy.ia.br'
+            echo "Modo: $MODE · Resultado: $RESULT"
+            echo 'Escopo: associação Pages e CNAME ausentes; nenhum build, upload, exclusão ou atualização de registros existentes.'
+          } >> "$GITHUB_STEP_SUMMARY"
