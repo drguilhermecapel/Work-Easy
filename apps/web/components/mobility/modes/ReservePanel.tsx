@@ -83,6 +83,10 @@ export function ReservePanel({
   // The server says what the caller may do; the passenger prop only narrows it.
   const canShift = passenger && (data.can_shift ?? (data.state === 'awaiting_driver' || data.state === 'confirmed'));
   const canDecide = passenger && (data.can_decide ?? data.state === 'contingency');
+  // At the area cap the server no longer offers rebook; an older server sends no list and keeps it.
+  const rebookOffered = data.choices ? data.choices.includes('rebook') : data.rebooks_left !== 0;
+  const canRebook = canDecide && rebookOffered;
+  const left = data.rebooks_left;
   const base = data.original_pickup ?? leg.pickup_at;
   const reason: ShiftReason = airport ? 'flight_delay' : 'passenger';
   const pending = data.shift?.state === 'proposed' ? data.shift : null;
@@ -245,8 +249,19 @@ export function ReservePanel({
         <div className="space-y-2">
           <p role="status" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
             Nenhum motorista confirmou até {whenSP(data.confirm_by)}.{' '}
-            {canDecide ? 'Escolha como seguir.' : 'O passageiro escolhe entre continuar a busca, remarcar ou cancelar.'}
+            {canDecide
+              ? 'Escolha como seguir.'
+              : rebookOffered
+                ? 'O passageiro escolhe entre continuar a busca, remarcar ou cancelar.'
+                : 'O passageiro escolhe entre continuar a busca ou cancelar.'}
           </p>
+          {canDecide && left != null && (
+            <p className="text-sm text-gray-700">
+              {left > 0
+                ? `Você ainda pode remarcar esta reserva ${left === 1 ? '1 vez' : `${left} vezes`} pelo mesmo preço.`
+                : 'Esta reserva chegou ao limite de remarcações. Você pode continuar a busca, cancelar sem manter o preço combinado ou pedir uma nova cotação.'}
+            </p>
+          )}
           {canDecide && form === '' && (
             <div className="flex flex-wrap gap-2">
               <button
@@ -257,15 +272,19 @@ export function ReservePanel({
                   void contingency(
                     'keep_searching',
                     null,
-                    'A busca por motorista continua. Você ainda pode remarcar ou cancelar por aqui.',
+                    canRebook
+                      ? 'A busca por motorista continua. Você ainda pode remarcar ou cancelar por aqui.'
+                      : 'A busca por motorista continua. Você ainda pode cancelar por aqui.',
                   )
                 }
               >
                 Continuar buscando motorista
               </button>
-              <button type="button" className={secondary} disabled={action.busy} onClick={() => setForm('rebook')}>
-                Remarcar para outro horário
-              </button>
+              {canRebook && (
+                <button type="button" className={secondary} disabled={action.busy} onClick={() => setForm('rebook')}>
+                  Remarcar para outro horário
+                </button>
+              )}
               <button type="button" className={danger} disabled={action.busy} onClick={() => setForm('cancel')}>
                 Cancelar reserva
               </button>
