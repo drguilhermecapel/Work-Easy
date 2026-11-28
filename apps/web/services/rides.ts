@@ -1,7 +1,25 @@
 import type { Json } from '../lib/database.types';
 import { db, unwrap } from './client';
 
+/** Who a request may name as payer of a leg. */
 export type RidePayer = 'passenger' | 'client' | 'provider';
+/** A leg paid under a mandate reads the mandate kind instead: who asked the ride, the family group or the companion. */
+export type RideMandateKind = 'sponsor' | 'family' | 'companion';
+export type RidePayerLabel = RidePayer | RideMandateKind;
+/**
+ * Who a funded quote or leg is to the viewer (O17 stage 5). `payer`: another person pays under a
+ * mandate; `voucher`: a company funds part of it and the rider stays the payer. The planned
+ * cents come only to who sees the price.
+ */
+export interface RideFunding {
+  kind: 'payer' | 'voucher';
+  mandate_kind: RideMandateKind | null;
+  role: 'rider' | 'payer' | 'operator';
+  account_id: string | null;
+  account_name: string | null;
+  voucher_cents?: number;
+  excess_cents?: number;
+}
 export type DriverAction = 'arriving' | 'boarded' | 'completed' | 'cancelled' | 'unknown';
 
 export interface RideLegInput {
@@ -15,7 +33,8 @@ export interface RideLegInput {
   extras?: string[];
 }
 
-export interface PricedLeg extends RideLegInput {
+export interface PricedLeg extends Omit<RideLegInput, 'payer'> {
+  payer: RidePayerLabel;
   seq: number;
   duration_minutes?: number;
   approach_minutes?: number;
@@ -27,6 +46,9 @@ export interface PricedLeg extends RideLegInput {
   driver_cents: number | null;
   extras_cents: number | null;
   limit_cents: number | null;
+  /** Company share and rider share of a voucher-funded leg, for who sees the price. */
+  voucher_cents?: number;
+  excess_cents?: number;
 }
 
 export interface RideLeg extends PricedLeg {
@@ -39,17 +61,20 @@ export interface RideLeg extends PricedLeg {
   pickup_estimate?: string | null;
   can_requote?: boolean;
   can_view_driver_identity?: boolean;
+  funding?: RideFunding;
 }
 
 export interface RideQuote {
   id: string;
   booking_id: string | null;
   expires_at: string;
-  total_cents: number;
+  /** Null for a rider whose ride somebody else pays: the price stays with the payer. */
+  total_cents: number | null;
   status: string;
   legs: PricedLeg[];
   accepted_by_me: boolean;
   required_from_me: boolean;
+  funding?: RideFunding | null;
 }
 
 export interface Ride {

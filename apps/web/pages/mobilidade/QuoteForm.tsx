@@ -1,11 +1,16 @@
 import {RideClassChoices} from '../../components/mobility/RideClassChoices';
 import {chooseRideClass} from '../../services/rideLocalMap';
-import { useRef, useState, type FormEvent } from 'react';
+import { lazy, Suspense, useRef, useState, type FormEvent } from 'react';
 import ErrorAlert from '../../components/ErrorAlert';
 import { formatCents } from '../../lib/money';
 import { saoPauloDateTime } from '../../lib/timezone';
+import { fundingProblem, quoteRideFor, SELF_FUNDING, type Funding } from '../../services/rideParties';
 import { quoteRideWithAccess } from '../../services/rideSafety';
 import { quoteRide, type RideLegInput, type RidePayer } from '../../services/rides';
+
+// "Quem viaja e quem paga" (O17 stage 5): loaded apart, and it draws nothing for an account that
+// has no group, companion, company program or dependent.
+const FundingChoice = lazy(() => import('../../components/mobility/parties/FundingChoice'));
 
 const field = 'block w-full mt-1 rounded-xl border border-gray-300 bg-white p-2.5 text-gray-900';
 
@@ -48,6 +53,10 @@ function toInstant(value: string): string | null {
 
 export default function QuoteForm({ areas, bookingId, passengerCanRequestAccess = !bookingId, replaces, routes = [], nextBookings = [], extras = [], requiresRoute = false, onQuoted }: Props) {
   const [assistance,setAssistance]=useState('none');
+  // Another payer, a company program or a dependent only apply to a standalone ride of the caller.
+  const fundable = !bookingId && !replaces;
+  const [funding, setFunding] = useState<Funding>(SELF_FUNDING);
+  const funded = fundable && funding.kind !== 'self';
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
   const [scheduled, setScheduled] = useState(Boolean(bookingId));
@@ -103,6 +112,11 @@ export default function QuoteForm({ areas, bookingId, passengerCanRequestAccess 
       setValidation('Para seguir a outro atendimento, selecione a medição que parte do endereço do atendimento atual.');
       return;
     }
+    const blocked = funded ? fundingProblem(funding) : null;
+    if (blocked) {
+      setValidation(blocked);
+      return;
+    }
     const legs: RideLegInput[] = [{ origin: from, destination: to, payer: firstPayer }];
     if (measured) legs[0].route_id = measured.id;
     if (firstExtras.length) legs[0].extras = firstExtras;
@@ -115,7 +129,7 @@ export default function QuoteForm({ areas, bookingId, passengerCanRequestAccess 
       legs.push(second);
     }
     if (nextBooking && nextBookings.some(b => b.id === nextBooking)) legs[legs.length - 1].next_booking_id = nextBooking;
-    const payload = JSON.stringify([bookingId, first, legs, assistance, classes[routeId], classes[nextRouteId]]);
+    const payload = JSON.stringify([bookingId, first, legs, assistance, classes[routeId], classes[nextRouteId], funded ? funding : null]);
     if (request.current?.payload !== payload) request.current = { payload, key: crypto.randomUUID() };
     sending.current = true;
     setBusy(true);
@@ -124,9 +138,12 @@ export default function QuoteForm({ areas, bookingId, passengerCanRequestAccess 
       for (const [route,instant] of [[routeId, first],[nextRouteId,next]] as const) {
         if(route && classes[route]) await chooseRideClass(route,classes[route],instant);
       }
-      const quote = passengerCanRequestAccess && assistance !== 'none'
-        ? await quoteRideWithAccess(request.current.key, bookingId, first, legs, assistance)
-        : await quoteRide(request.current.key, bookingId, first, legs);
+      // The funded wrappers take neither a booking nor an assistance request, so they are offered only without them.
+      const quote = funded
+        ? await quoteRideFor(funding, request.current.key, first, legs)
+        : passengerCanRequestAccess && assistance !== 'none'
+          ? await quoteRideWithAccess(request.current.key, bookingId, first, legs, assistance)
+          : await quoteRide(request.current.key, bookingId, first, legs);
       request.current = null;
       onQuoted(quote.id);
     } catch (error) {
@@ -141,11 +158,13 @@ export default function QuoteForm({ areas, bookingId, passengerCanRequestAccess 
   const payers = <><option value="client">Cliente</option><option value="provider">Profissional</option></>;
   return (
     <form onSubmit={submit} className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5">
-      {passengerCanRequestAccess && <label className="block">Assistência no transporte <select className={field} value={assistance} onChange={e=>setAssistance(e.target.value)}>
+      {passengerCanRequestAccess && !funded && <label className="block">Assistência no transporte <select className={field} value={assistance} onChange={e=>setAssistance(e.target.value)}>
         <option value="none">Sem assistência especial</option><option value="boarding">Ajuda para embarcar</option><option value="folding_equipment">Equipamento portátil ou dobrável</option>
         <option value="wheelchair_vehicle">Veículo adaptado para viajar na cadeira</option></select> Sem adicional. Se faltar capacidade, o plantão pode combinar outra janela.</label>}
 
       <h2 className="text-lg font-semibold">{bookingId ? 'Trajeto do profissional' : 'Cotar corrida'}</h2>
+      {fundable && <Suspense fallback={null}><FundingChoice value={funding} onChange={setFunding} disabled={busy} /></Suspense>}
+      {funded && passengerCanRequestAccess && <p className="text-sm">A assistência no transporte ainda não acompanha corridas pagas por outra pessoa, pela empresa ou de um dependente. Se você precisa dela, cote no seu nome, em “Eu viajo e eu pago”.</p>}
       <fieldset disabled={busy} className="space-y-4">
         <label className="block">Saída
           <select className={field} value={scheduled ? 'scheduled' : 'now'} onChange={e => setScheduled(e.target.value === 'scheduled')}>

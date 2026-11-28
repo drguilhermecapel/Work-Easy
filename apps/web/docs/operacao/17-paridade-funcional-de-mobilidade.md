@@ -86,6 +86,8 @@ A [D14](../DECISOES.md) define 10% sobre o componente remuneratório de cada tre
 
 ### 5. Família, terceiros, empresas e frotistas
 
+A implementação da etapa 5 registra o convite de viagem para outro adulto, o grupo familiar com limite, o acompanhante, o dependente sob a conta do responsável, a organização com vouchers e fatura e a frota com cessão revisada. Os aceites em campo e contratos de ativação continuam separados da entrega de código. [Implementação e evidências da etapa 5](../arquitetura/familia-empresas-e-frotas-de-corridas.md)
+
 A rede atual identifica um passageiro cadastrado e um pagador por trecho. As linhas abaixo ampliam esses papéis. Em São Paulo, cada oferta proposta depende de consentimentos, contrato, meio de pagamento, suporte e autorização de operação próprios. O16 fornece o ensaio técnico de uma corrida com um passageiro cadastrado.
 
 | ID e jornada | Referência e mercado | Base e incremento WorkEasy | Responsável, dependências e porte | Aceite e prova para ativar |
