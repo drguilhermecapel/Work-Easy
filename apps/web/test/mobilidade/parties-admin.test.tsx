@@ -24,6 +24,7 @@ vi.mock('../../services/ridePartiesAdmin', () => ({
     saveProgram: vi.fn(),
     closeInvoice: vi.fn(),
     decideDispute: vi.fn(),
+    resolveVoucherHold: vi.fn(),
   },
 }));
 
@@ -45,7 +46,7 @@ const dashboard = {
     { driver_id: 'e5f6a7b8-0000-4000-8000-000000000002', vehicle: 'van', status: 'pending', valid_until: null },
   ],
 } satisfies RideDashboard;
-const emptyQueue: PartyQueue = { accounts: [], dependents: [], cessions: [], disputes: [], invoices: [] };
+const emptyQueue: PartyQueue = { accounts: [], dependents: [], cessions: [], disputes: [], invoices: [], vouchers: [] };
 // What the operation reads of each thing that waits: no place, no e-mail, and of a minor only label and age band
 const queue: PartyQueue = {
   accounts: [
@@ -60,6 +61,12 @@ const queue: PartyQueue = {
     { id: 'disputa', account_name: 'Ateliê Fictício', month: '2026-10-01', kind: 'voucher', cents: 3000, reason: 'Valor em duplicidade', raised_at: '2026-11-05T12:00:00Z' },
   ],
   invoices: [{ account_id: 'org-antiga', account_name: 'Gráfica Fictícia', months: ['2026-09-01', '2026-10-01'] }],
+  vouchers: [
+    { leg_id: 'trecho-pronto', account_name: 'Gráfica Fictícia', program_label: 'Visitas', cents: 3500, since: '2026-11-26T15:00:00Z',
+      reason: 'release_closed', ready: true, expires_at: '2026-12-26T15:00:00Z' },
+    { leg_id: 'trecho-fechado', account_name: 'Ateliê Fictício', program_label: 'Equipe', cents: 2000, since: '2026-11-27T15:00:00Z',
+      reason: 'monetization_off', ready: false, expires_at: '2026-12-27T15:00:00Z' },
+  ],
 };
 const organization: AdminOrganization = {
   id: 'org-antiga',
@@ -118,6 +125,7 @@ describe('Administração · contas de corridas', () => {
       'Cessões de frota para revisar (1)',
       'Faturas para fechar (1)',
       'Contestações de fatura (1)',
+      'Vouchers retidos (2)',
     ])
       expect(await screen.findByRole('heading', { level: 2, name })).toBeVisible();
     expect(screen.getByRole('heading', { level: 3, name: 'Ateliê Fictício · Empresa' })).toBeVisible();
@@ -138,6 +146,7 @@ describe('Administração · contas de corridas', () => {
     expect(screen.getByText('Nenhum dependente aguardando revisão.')).toBeVisible();
     expect(screen.getByText('Nenhuma cessão aguardando revisão.')).toBeVisible();
     expect(screen.getByText('Nenhuma competência encerrada aguardando fechamento.')).toBeVisible();
+    expect(screen.getByText('Nenhum voucher retido aguardando a operação.')).toBeVisible();
     expect(screen.getByText('Nenhuma contestação aguardando decisão.')).toBeVisible();
     expect(screen.queryByLabelText(/Código da conta$/)).toBeNull();
     expect(screen.queryByLabelText(/Código do dependente/)).toBeNull();
@@ -256,6 +265,66 @@ describe('Administração · dependente e cessão de frota', () => {
     press(area, 'Confirmar recusa');
     expect(await within(area).findByText('Cessão de ABC1D23 a Bruno recusada.')).toBeVisible();
     expect(partiesAdmin.reviewAssignment).toHaveBeenLastCalledWith('cessao', false, 'REV-4');
+  });
+});
+
+describe('Administração · vouchers retidos', () => {
+  it('lista o voucher retido com empresa, programa, valor, início e motivo, sem cobrar quem viaja', async () => {
+    const area = await section(/^Vouchers retidos \(2\)/);
+    expect(within(area).getByRole('heading', { level: 3, name: /Gráfica Fictícia · Visitas · R\$\s35,00/ })).toBeVisible();
+    expect(within(area).getByText(/a liberação do benefício neste trajeto está fechada\. Nada é cobrado de\s+quem viaja/)).toBeVisible();
+    expect(within(area).getByText(/a cobrança está desligada neste ambiente ou trajeto/)).toBeVisible();
+    expect(within(area).getByText('Aplicar fica disponível quando a liberação do benefício do trajeto voltar.')).toBeVisible();
+    type(area, /Referência da decisão sobre o voucher de Ateliê Fictício/, 'ficticio-dd124');
+    expect(within(area).getByRole('button', { name: /^Aplicar voucher de Ateliê Fictício/ })).toBeDisabled();
+    expectAccessibleScreen();
+  });
+
+  it('aplica o voucher com a referência e a nova tentativa reutiliza a chave', async () => {
+    vi.mocked(partiesAdmin.resolveVoucherHold)
+      .mockRejectedValueOnce(new Error('rede'))
+      .mockResolvedValueOnce({ leg_id: 'trecho-pronto', action: 'apply', reason: 'release_closed', cents: 0, applied_cents: 3500, order_id: 'ordem', payer_choice: false, reference: 'ficticio-dd124' });
+    const area = await section(/^Vouchers retidos/);
+    const apply = within(area).getByRole('button', { name: /^Aplicar voucher de Gráfica Fictícia/ });
+    expect(apply).toBeDisabled();
+    type(area, /Referência da decisão sobre o voucher de Gráfica Fictícia/, ' ficticio-dd124 ');
+    fireEvent.click(apply);
+    expect(await within(area).findByRole('alert')).toBeVisible();
+    fireEvent.click(within(area).getByRole('button', { name: /^Aplicar voucher de Gráfica Fictícia/ }));
+    expect(await within(area).findByText(/Voucher de Gráfica Fictícia aplicado ao pedido do trecho\. Voucher aplicado: R\$\s35,00/)).toBeVisible();
+    const calls = vi.mocked(partiesAdmin.resolveVoucherHold).mock.calls;
+    expect(calls).toHaveLength(2);
+    expect(calls[0].slice(0, 3)).toEqual(['trecho-pronto', 'apply', 'ficticio-dd124']);
+    expect(calls[0][3]).toMatch(/^[0-9a-f-]{36}$/);
+    expect(calls[1]).toEqual(calls[0]);
+  });
+
+  it('o voucher parcial sem pedido é liberado para quem viaja escolher como pagar a diferença', async () => {
+    vi.mocked(partiesAdmin.resolveVoucherHold).mockResolvedValue({
+      leg_id: 'trecho-pronto', action: 'apply', reason: 'release_closed', cents: 3500, applied_cents: null, order_id: null, payer_choice: true, reference: 'ficticio-dd124',
+    });
+    const area = await section(/^Vouchers retidos/);
+    type(area, /Referência da decisão sobre o voucher de Gráfica Fictícia/, 'ficticio-dd124');
+    fireEvent.click(within(area).getByRole('button', { name: /^Aplicar voucher de Gráfica Fictícia/ }));
+    expect(
+      await within(area).findByText('Voucher de Gráfica Fictícia liberado. Quem viaja escolhe em Corridas como pagar a diferença aceita e usa o voucher.'),
+    ).toBeVisible();
+    expect(within(area).queryByText(/aplicado ao pedido do trecho/)).toBeNull();
+  });
+
+  it('devolve o voucher ao programa só depois da confirmação', async () => {
+    vi.mocked(partiesAdmin.resolveVoucherHold).mockResolvedValue({
+      leg_id: 'trecho-fechado', action: 'return', reason: 'monetization_off', cents: 0, applied_cents: null, order_id: null, payer_choice: false, reference: 'ficticio-dd124',
+    });
+    const area = await section(/^Vouchers retidos/);
+    expect(within(area).getByRole('button', { name: /^Devolver ao programa o voucher de Ateliê Fictício/ })).toBeDisabled();
+    type(area, /Referência da decisão sobre o voucher de Ateliê Fictício/, 'ficticio-dd124');
+    press(area, /^Devolver ao programa o voucher de Ateliê Fictício/);
+    expect(within(area).getByText(/O valor volta ao saldo do programa/)).toBeVisible();
+    expect(partiesAdmin.resolveVoucherHold).not.toHaveBeenCalled();
+    press(area, 'Confirmar devolução');
+    expect(await within(area).findByText(/Voucher de Ateliê Fictício devolvido ao programa/)).toBeVisible();
+    expect(vi.mocked(partiesAdmin.resolveVoucherHold).mock.calls[0].slice(0, 3)).toEqual(['trecho-fechado', 'return', 'ficticio-dd124']);
   });
 });
 

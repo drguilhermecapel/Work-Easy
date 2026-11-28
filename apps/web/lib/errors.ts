@@ -126,6 +126,9 @@ export const DATABASE_ERROR_CODES = [
   'driver_unavailable',
   'ride_voucher_pending',
   'ride_dependent_in_trip',
+  // O17 voucher release hold (DD124)
+  'ride_voucher_on_hold',
+  'ride_voucher_returned',
 ] as const;
 
 export type DatabaseErrorCode = (typeof DATABASE_ERROR_CODES)[number];
@@ -279,6 +282,10 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   driver_unavailable: 'Este trecho não cabe na sua agenda agora. Atualize as ofertas e escolha outro trecho.',
   ride_voucher_pending:
     'Este trecho tem um voucher da empresa que ainda não foi usado. Confira o trecho em Corridas e use “Usar voucher”: a empresa paga a parte dela e só a diferença que você aceitou fica para pagar.',
+  ride_voucher_on_hold:
+    'O voucher da empresa deste trecho está aguardando a operação. Nada será cobrado de você enquanto isso; confira o trecho em Corridas mais tarde.',
+  ride_voucher_returned:
+    'O voucher deste trecho voltou para o programa da empresa. A tarifa agora é paga pelo caminho comum, em "Formas de pagamento do trecho".',
   ride_dependent_in_trip:
     'O dependente está em uma viagem que ainda não terminou. Confira a viagem em Corridas e retire o cadastro depois que ela terminar ou for cancelada.',
   invalid_ride_transition: 'Esta ação não se aplica ao estado atual do trecho. Atualize as corridas.',
