@@ -1484,6 +1484,9 @@ isOneToOne: true
 "admin_decide_invoice_dispute":
 { Args: { "p_accept": boolean,"p_dispute": string,"p_reason": string }; Returns: string
                            },
+"admin_designate_shuttle_driver":
+{ Args: { "p_departure": string,"p_driver": string }; Returns: Json
+                           },
 "admin_funnel_daily":
 { Args: { "p_from": string,"p_to": string }; Returns: {
               "day": string,"event": string,"events": number
@@ -1499,6 +1502,9 @@ isOneToOne: true
                            },
 "admin_log_document_view":
 { Args: { "p_storage_path": string }; Returns: undefined
+                           },
+"admin_mark_shuttle_departed":
+{ Args: { "p_departure": string }; Returns: Json
                            },
 "admin_publish_service_commission":
 { Args: { "p_occupation": string,"p_starts_at": string,"p_terms_url": string,"p_version": string }; Returns: undefined
@@ -1533,7 +1539,16 @@ isOneToOne: true
 "admin_review_payment":
 { Args: { "p_payment": string,"p_reason": string }; Returns: boolean
                            },
+"admin_revoke_ride_guest_invite":
+{ Args: { "p_id": string,"p_reason": string }; Returns: Json
+                           },
 "admin_ride_appeals":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"admin_ride_block_tariffs":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"admin_ride_closed_invoices":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
 "admin_ride_decide_appeal":
@@ -1545,6 +1560,15 @@ isOneToOne: true
 "admin_ride_fleet_assignments":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
+"admin_ride_guest_invites":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"admin_ride_intercity_corridors":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"admin_ride_minor_clearances":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
 "admin_ride_organizations":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
@@ -1553,6 +1577,9 @@ isOneToOne: true
                            },
 "admin_ride_psp_reviews":
 { Args: { "p_leg": string }; Returns: Json
+                           },
+"admin_ride_reserve_policies":
+{ Args: Record<PropertyKey, never>; Returns: Json
                            },
 "admin_ride_restrict":
 { Args: { "p_days": number,"p_evidence": string,"p_protocol": string,"p_reason": string,"p_subject": string }; Returns: string
@@ -1563,11 +1590,32 @@ isOneToOne: true
 "admin_ride_settlement":
 { Args: { "p_leg": string }; Returns: Json
                            },
+"admin_ride_shuttle_line_departures":
+{ Args: { "p_line": string }; Returns: Json
+                           },
+"admin_ride_shuttle_lines":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
 "admin_ride_support_action":
 { Args: { "p_action": string,"p_code": string,"p_protocol": string }; Returns: string
                            },
 "admin_ride_support_queue":
 { Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"admin_save_ride_block_tariff":
+{ Args: { "p_area": string,"p_block_cents": number,"p_code": string,"p_evidence_ref": string,"p_extra_15min_cents": number,"p_extra_km_cents": number,"p_id": string,"p_included_km": number,"p_minutes": number,"p_valid_until": string }; Returns: Json
+                           },
+"admin_save_ride_intercity_corridor":
+{ Args: { "p_authority_ref": string,"p_coverage_ref": string,"p_destination": string,"p_destination_jurisdiction": string,"p_empty_return_cents": number,"p_enabled": boolean,"p_origin": string,"p_origin_jurisdiction": string,"p_return_minutes": number,"p_valid_until": string }; Returns: Json
+                           },
+"admin_save_ride_reserve_policy":
+{ Args: { "p_area": string,"p_confirm_lead_minutes": number,"p_enabled": boolean,"p_evidence_ref": string,"p_max_shift_minutes": number,"p_min_lead_minutes": number,"p_valid_until": string }; Returns: Json
+                           },
+"admin_save_ride_shuttle_departure":
+{ Args: { "p_departs_at": string,"p_id": string,"p_line": string,"p_seats_total": number }; Returns: Json
+                           },
+"admin_save_ride_shuttle_line":
+{ Args: { "p_destination": string,"p_enabled": boolean,"p_evidence_ref": string,"p_id": string,"p_minutes": number,"p_operator_ref": string,"p_origin": string,"p_seat_cents": number,"p_valid_until": string }; Returns: Json
                            },
 "admin_save_ride_voucher_program":
 { Args: { "p_account": string,"p_areas": (string)[],"p_budget": number,"p_classes": (string)[],"p_enabled": boolean,"p_evidence_ref": string,"p_excess_payer": string,"p_from": string,"p_funding_ref": string,"p_group": string,"p_id": string,"p_label": string,"p_member_limit": number,"p_requires_approval": boolean,"p_ride_value": number,"p_until": string }; Returns: string

@@ -126,6 +126,11 @@ export const DATABASE_ERROR_CODES = [
   'driver_unavailable',
   'ride_voucher_pending',
   'ride_dependent_in_trip',
+  // O17 operations registry (DD125)
+  'ride_registry_evidence_required',
+  'ride_registry_frozen',
+  'ride_registry_duplicate',
+  'ride_departure_not_ready',
 ] as const;
 
 export type DatabaseErrorCode = (typeof DATABASE_ERROR_CODES)[number];
@@ -281,6 +286,13 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
     'Este trecho tem um voucher da empresa que ainda não foi usado. Confira o trecho em Corridas e use “Usar voucher”: a empresa paga a parte dela e só a diferença que você aceitou fica para pagar.',
   ride_dependent_in_trip:
     'O dependente está em uma viagem que ainda não terminou. Confira a viagem em Corridas e retire o cadastro depois que ela terminar ou for cancelada.',
+  ride_registry_evidence_required:
+    'No ambiente real, um cadastro só é ligado com a referência da evidência conferida, que não seja de ensaio, e uma data de validade futura de no máximo 24 meses.',
+  ride_registry_frozen:
+    'Este cadastro já está em uso e não muda de área nem de código. Desligue este e crie um novo cadastro com os dados novos.',
+  ride_registry_duplicate: 'Já existe um cadastro com estes dados. Atualize a lista e altere o cadastro existente.',
+  ride_departure_not_ready:
+    'A partida só é marcada como realizada com um motorista designado e em dia, depois de chegado o horário marcado.',
   invalid_ride_transition: 'Esta ação não se aplica ao estado atual do trecho. Atualize as corridas.',
   outside_waiting_area: 'A posição informada está fora da área autorizada de espera do terminal.',
   offer_unavailable: 'A oferta de viagem já foi atendida ou está indisponível. Atualize as ofertas.',
