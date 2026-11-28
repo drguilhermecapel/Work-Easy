@@ -1463,6 +1463,9 @@ isOneToOne: true
 "ack_ride_alert":
 { Args: { "p_attempt": number,"p_device": string,"p_leg": string }; Returns: undefined
                            },
+"admin_accept_provider_refund":
+{ Args: { "p_cumulative": number,"p_extras": number,"p_order": string,"p_reference": string }; Returns: string
+                           },
 "admin_close_service_commission":
 { Args: { "p_ends_at": string,"p_occupation": string,"p_version": string }; Returns: undefined
                            },
@@ -1556,6 +1559,9 @@ isOneToOne: true
                            },
 "admin_simulate_ride_payment_event":
 { Args: { "p_amount_cents": number,"p_extras_cents"?: number,"p_kind": string,"p_leg": string,"p_operation": string }; Returns: Json
+                           },
+"admin_void_order_refund":
+{ Args: { "p_case": string,"p_reference": string }; Returns: string
                            },
 "admin_void_ride_cash_report":
 { Args: { "p_receipt": string,"p_reference": string }; Returns: string

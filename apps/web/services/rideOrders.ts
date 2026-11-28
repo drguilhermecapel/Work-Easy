@@ -199,6 +199,17 @@ export const rideOrders = {
     ),
   sendRefund: (id: string, extras: number, evidence: string) =>
     invokeFunction('ride-order-refund', { case_id: id, extras_cents: extras, evidence }),
+  voidRefund: async (id: string, reference: string) =>
+    unwrap<string>(await db().rpc('admin_void_order_refund', { p_case: id, p_reference: reference })),
+  acceptProviderRefund: async (order: string, cumulative: number, extras: number, reference: string) =>
+    unwrap<string>(
+      await db().rpc('admin_accept_provider_refund', {
+        p_order: order,
+        p_cumulative: cumulative,
+        p_extras: extras,
+        p_reference: reference,
+      }),
+    ),
   transfer: (id: string) => invokeFunction('ride-wallet-transfer', { withdrawal: id }),
   withdraw: async (key: string, cents: number, fee: number) =>
     unwrap<string>(await db().rpc('ride_request_withdrawal', { p_key: key, p_cents: cents, p_fee: fee })),

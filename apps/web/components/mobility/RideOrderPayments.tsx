@@ -57,17 +57,20 @@ const field = (name: string, label: string, amount = false) => (
 
 function Action({
   label,
+  done,
   children,
   submit,
   refresh,
 }: {
   label: string;
+  done?: string;
   children?: ReactNode;
   submit: (data: FormData, key: string) => Promise<unknown>;
   refresh: () => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const [notice, setNotice] = useState('');
   const inFlight = useRef(false);
   const attempt = useRef<{ fingerprint: string; key: string } | null>(null);
   async function run(event: FormEvent<HTMLFormElement>) {
@@ -81,10 +84,12 @@ function Action({
     inFlight.current = true;
     setBusy(true);
     setError(null);
+    setNotice('');
     try {
       await submit(data, attempt.current.key);
       attempt.current = null;
       form.reset();
+      setNotice(done ?? '');
       refresh();
     } catch (e) {
       setError(e);
@@ -101,6 +106,7 @@ function Action({
           {busy ? 'Consultando…' : label}
         </button>
       </fieldset>
+      {notice && <p role="status">{notice}</p>}
       <ErrorAlert error={error} />
     </form>
   );
@@ -353,6 +359,43 @@ function PaymentItem({ o, desk, refresh }: { o: Order; desk: Desk; refresh: () =
               {field('reference', 'Evidência da repartição do estorno')}
             </Action>
           )}
+          {desk.operator && c.status === 'approved' && o.method !== 'cash' && o.received > o.benefit && (
+            <Disclosure title="Estorno no Asaas falhou em definitivo">
+              <Action
+                label="Anular tentativa de estorno"
+                done={
+                  'Tentativa anulada. ' +
+                  (o.benefit > 0
+                    ? 'Restitua este protocolo pelo benefício original'
+                    : 'Esta ordem não tem benefício: retire a aprovação do protocolo') +
+                  ', ou solicite novo estorno se a tentativa não chegou ao Asaas.'
+                }
+                refresh={refresh}
+                submit={(d) => rideOrders.voidRefund(c.id, String(d.get('reference')))}
+              >
+                <p>
+                  Anule somente com prova de que o Asaas não fará este estorno. Se a devolução já foi feita no
+                  painel do Asaas, aceite a devolução do provedor em vez de anular. O protocolo segue aprovado.
+                </p>
+                {field('reference', 'Comprovante da falha do estorno no Asaas')}
+              </Action>
+            </Disclosure>
+          )}
+          {desk.operator && c.status === 'approved' && (
+            <Disclosure title="Retirar a aprovação deste protocolo">
+              <Action
+                label="Recusar protocolo aprovado"
+                refresh={refresh}
+                submit={(d) => rideOrders.decide(c.id, false, String(d.get('reason')))}
+              >
+                <p>
+                  Aceito enquanto nenhum estorno deste protocolo estiver em andamento no Asaas. Use quando nenhuma
+                  fonte puder restituir o valor, ou quando a devolução foi feita por outro valor direto no Asaas.
+                </p>
+                {field('reason', 'Motivo da retirada da aprovação')}
+              </Action>
+            </Disclosure>
+          )}
           {desk.operator && c.status === 'approved' && (o.benefit > 0 || o.method === 'cash') && (
             <Action
               label="Conciliar restituição documentada"
@@ -390,6 +433,31 @@ function PaymentItem({ o, desk, refresh }: { o: Order; desk: Desk; refresh: () =
           >
             {field('amount', 'Repasse do financiador (R$)', true)}
             {field('reference', 'Comprovante bancário do repasse')}
+          </Action>
+        </Disclosure>
+      )}
+      {desk.operator && o.status === 'review' && o.method !== 'cash' && (
+        <Disclosure title="Devolução feita direto no Asaas">
+          <Action
+            label="Aceitar devolução do provedor"
+            done="Devolução vinculada a um protocolo aprovado e cobrança reconsultada no Asaas."
+            refresh={refresh}
+            submit={async (d) => {
+              const extras = cents(d, 'extras');
+              const reference = String(d.get('reference'));
+              const id = await rideOrders.acceptProviderRefund(o.id, cents(d, 'cumulative'), extras, reference);
+              // The same extras and reference only re-read the charge, which books the accepted refund now.
+              await rideOrders.sendRefund(id, extras, reference);
+            }}
+          >
+            <p>
+              O aceite vincula a devolução a um protocolo e reconsulta a cobrança para lançar. Se a consulta
+              falhar, envie de novo com os mesmos dados. Com protocolo pendente de outro valor, decida ou retire a
+              aprovação dele antes.
+            </p>
+            {field('cumulative', 'Total já devolvido no Asaas (R$)', true)}
+            {field('extras', 'Adicionais incluídos na devolução (R$)', true)}
+            {field('reference', 'Extrato do Asaas com a devolução')}
           </Action>
         </Disclosure>
       )}
