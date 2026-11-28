@@ -583,14 +583,23 @@ describe('Empresa · relatório e fatura', () => {
 
 describe('Empresa · voucher e convite do convidado', () => {
   it('usa o voucher no trecho concluído e mostra a diferença a cargo de quem viajou', async () => {
-    vi.mocked(redeemVoucher).mockResolvedValue({ order_id: 'ord', applied_cents: 2500, remainder_cents: 700 });
+    vi.mocked(redeemVoucher).mockResolvedValue({ order_id: 'ord', applied_cents: 2500, remainder_cents: 700, method: 'card' });
     render(<UseVoucher legId="trecho" onChange={refresh} />);
     type('Forma de pagamento da diferença', 'card');
     fireEvent.click(screen.getByRole('button', { name: 'Usar voucher' }));
-    expect(await screen.findByText(/Voucher aplicado/)).toHaveTextContent(/R\$\s25,00.*Diferença a seu cargo: R\$\s7,00/);
+    expect(await screen.findByText(/Voucher aplicado/)).toHaveTextContent(/R\$\s25,00.*Diferença a seu cargo: R\$\s7,00, por cartão/);
     expect(redeemVoucher).toHaveBeenCalledWith('trecho', 'card');
     expect(refresh).toHaveBeenCalled();
     expect(screen.queryByRole('button', { name: 'Usar voucher' })).toBeNull();
+  });
+
+  it('o voucher que já quitou o trecho ao fim da viagem aparece aplicado, sem diferença a pagar', async () => {
+    vi.mocked(redeemVoucher).mockResolvedValue({ order_id: 'ord', applied_cents: 3200, remainder_cents: 0, method: 'pix' });
+    render(<UseVoucher legId="quitado" onChange={refresh} />);
+    expect(screen.getByText(/Quando ele cobre a tarifa inteira, já é aplicado ao fim do trecho/)).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Usar voucher' }));
+    expect(await screen.findByText(/Voucher aplicado/)).toHaveTextContent(/R\$\s32,00.*Nada a pagar por você neste trecho/);
+    expect(redeemVoucher).toHaveBeenCalledWith('quitado', 'pix');
   });
 
   const guest: GuestInviteView = {

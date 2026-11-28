@@ -13,6 +13,7 @@ const CLOSED: Record<string, string> = {
   declined: 'Este convite foi recusado.',
   expired: 'Este convite expirou. Peça um novo a quem convidou.',
   revoked: 'Quem convidou revogou este convite.',
+  reprice: 'O preço desta viagem passou do valor que quem convidou autorizou. Nada foi cobrado e a viagem não foi pedida. Peça a quem convidou uma nova cotação e um novo convite.',
 };
 const CHANNELS = { email: 'e-mail', phone: 'telefone' };
 
@@ -27,15 +28,17 @@ export default function RiderInvite({ token, fallback }: { token: string; fallba
     () => (token ? parties.riderInvite(token) : Promise.resolve(null)),
     (authUser?.id ?? '') + ':' + token,
   );
-  const [answer, setAnswer] = useState<'accepted' | 'declined' | ''>('');
+  const [answer, setAnswer] = useState<'accepted' | 'declined' | 'reprice' | ''>('');
   const action = useAction(result.reload);
   const invite = result.data;
   const pending = invite?.status === 'pending' && !answer;
 
   const decide = (accept: boolean) =>
     action.run(accept ? 'accept' : 'decline', async (key) => {
-      await parties.answerRiderInvite(token, accept, key);
-      setAnswer(accept ? 'accepted' : 'declined');
+      const reply = await parties.answerRiderInvite(token, accept, key);
+      const status = reply?.status ?? (accept ? 'accepted' : 'declined');
+      setAnswer(status);
+      if (status === 'reprice') return CLOSED.reprice;
       return accept ? 'Viagem pedida. O embarque aparece em Corridas.' : 'Convite recusado. Nenhuma viagem foi pedida.';
     });
 

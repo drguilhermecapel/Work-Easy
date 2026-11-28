@@ -71,7 +71,7 @@ select public.admin_save_ride_voucher_program(tests.ref(p)::uuid,tests.ref('org'
  now()-interval '1 hour',now()+interval '5 days','none',false,'ficticio','ficticio',true) from unnest(array['p_work','p_guest']) p;
 select tests.authenticate_as('org_m0');
 select public.ride_consent((public.ride_quote_funded(gen_random_uuid(),null,tests.trip(),tests.ref('p_last')::uuid,tests.ref('cc')::uuid)->>'id')::uuid,true);
--- (c) One completed leg whose voucher nobody used yet.
+-- (c) One completed leg. Its voucher covers the whole fare, so completing it already applied the voucher (20261127110509); both sessions must read that single use.
 select tests.authenticate_as('org_m3');
 insert into tests.race_refs select 'q_redeem',public.ride_quote_funded(gen_random_uuid(),null,tests.trip(),tests.ref('p_work')::uuid,tests.ref('cc')::uuid)->>'id';
 select public.ride_consent(tests.ref('q_redeem')::uuid,true);

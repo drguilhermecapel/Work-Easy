@@ -21,6 +21,15 @@ create function pg_temp.line(p_statement jsonb,p_leg uuid) returns jsonb languag
  select r from jsonb_array_elements(p_statement->'rows') r where r->>'leg_id'=p_leg::text$$;
 grant execute on function pg_temp.g(text),pg_temp.u(text),pg_temp.n(text),pg_temp.trip(),pg_temp.point(numeric,numeric,text),
  pg_temp.dash_leg(uuid),pg_temp.dash_quote(uuid),pg_temp.line(jsonb,uuid) to authenticated,anon;
+-- Runs one expression and answers its value, or {"error": code} when it raises, so a refused call is a failed assertion and not an aborted file.
+create function pg_temp.attempt(p_sql text) returns jsonb language plpgsql as $f$
+declare r jsonb;
+begin
+ execute 'select to_jsonb(('||p_sql||'))' into r;
+ return r;
+exception when others then return jsonb_build_object('error',sqlerrm);
+end $f$;
+grant execute on function pg_temp.attempt(text) to authenticated,anon,service_role;
 insert into public.ride_drivers(id,environment,vehicle,status,valid_until,reviewed_by,online)
  values(tests.uid('provider_c'),'simulation','sedan','approved',private.sp_date(now())+30,tests.uid('admin'),true);
 insert into private.ride_method_releases(environment,origin,destination,method,evidence_ref,validity,card_brands,acquirer_profile_ref)
@@ -57,7 +66,8 @@ insert into t values('inv_b_key',gen_random_uuid()::text),('inv_e_key',gen_rando
 insert into t select 'inv_b',public.ride_invite_member(pg_temp.u('fam'),'Client_B@test.local','member',60,pg_temp.u('inv_b_key'))->>'token';
 select ok(pg_temp.g('inv_b') ~ '^[a-f0-9]{64}$','o convite devolve o código uma única vez');
 select is(public.ride_invite_member(pg_temp.u('fam'),'Client_B@test.local','member',60,pg_temp.u('inv_b_key'))->>'token',null,'repetir o convite não devolve o código de novo');
-select throws_ok($$select public.ride_invite_member(pg_temp.u('fam'),'provider_e@test.local','member',60,pg_temp.u('inv_b_key'))$$,'P0001','idempotency_conflict','mesma chave para outro destinatário é conflito');
+select is(pg_temp.attempt($$public.ride_invite_member(pg_temp.u('fam'),'provider_e@test.local','member',60,pg_temp.u('inv_b_key'))->>'token'$$),null::jsonb,'mesma chave para outro destinatário devolve o convite já emitido, sem código');
+select throws_ok($$select public.ride_invite_member(pg_temp.u('fam'),'client_b@test.local','member',30,pg_temp.u('inv_b_key'))$$,'P0001','idempotency_conflict','mesma chave com outra validade é conflito');
 select throws_ok($$select public.ride_invite_member(pg_temp.u('fam'),'provider_e@test.local','manager',60,gen_random_uuid())$$,'P0001','invalid_input','família só convida participante');
 select throws_ok($$select public.ride_invite_member(pg_temp.u('fam'),'client_a@test.local','member',60,gen_random_uuid())$$,'P0001','invalid_input','ninguém convida a si mesmo');
 select throws_ok($$select public.ride_invite_member(pg_temp.u('fam'),'sem-arroba','member',60,gen_random_uuid())$$,'P0001','invalid_input','e-mail inválido é recusado');
@@ -65,6 +75,9 @@ insert into t select 'inv_e',public.ride_invite_member(pg_temp.u('fam'),'provide
 insert into t select 'inv_a',public.ride_invite_member(pg_temp.u('fam'),'provider_a@test.local','member',5,pg_temp.u('inv_a_key'))->>'token';
 select tests.clear_authentication();
 select is((select token_hash from private.ride_account_invites where id=pg_temp.u('inv_b_key')),sha256(convert_to(pg_temp.g('inv_b'),'UTF8')),'só o resumo do código é guardado');
+select is((select count(*) from private.ride_account_invites i cross join (values ('client_b@test.local'),('provider_e@test.local'),('client_a@test.local')) e(m)
+  where i.id=pg_temp.u('inv_b_key') and i.request_hash=private.ride_party_hash(i.id::text,i.account_id::text,i.role,'60',e.m)),0::bigint,
+ 'a linha do convite não permite achar o e-mail convidado por tentativa');
 select is((select count(*) from information_schema.columns where table_schema='private' and table_name='ride_account_invites' and column_name ~ 'mail'),0::bigint,'o convite não guarda e-mail');
 select tests.authenticate_as('provider_b');
 select throws_ok($$select public.ride_invite_member(pg_temp.u('fam'),'provider_e@test.local','member',60,gen_random_uuid())$$,'P0001','ride_account_role_required','quem não é da conta não convida');
@@ -207,6 +220,12 @@ select ok(public.ride_set_account_limit(pg_temp.u('fam'),pg_temp.n('limit10'),'c
 select ok(public.ride_set_member_limit(pg_temp.u('fam'),tests.uid('provider_a'),pg_temp.n('x')),'administradora define o limite de uma pessoa');
 select throws_ok($$select public.ride_set_member_limit(pg_temp.u('fam'),tests.uid('provider_b'),100)$$,'P0001','invalid_input','limite só para quem é da conta');
 select throws_ok($$select public.ride_set_account_limit(pg_temp.u('fam'),-1,'pix')$$,'P0001','invalid_input','limite negativo é recusado');
+select throws_ok($$select public.ride_set_account_limit(pg_temp.u('fam'),null,'pix')$$,'P0001','invalid_input','limite ausente é recusado');
+select throws_ok($$select public.ride_set_account_limit(pg_temp.u('fam'),pg_temp.n('limit10'),null)$$,'P0001','invalid_input','meio de pagamento ausente é recusado');
+select throws_ok($$select public.ride_create_family('Família sem limite',null,'pix',gen_random_uuid())$$,'P0001','invalid_input','família sem limite mensal é recusada');
+select throws_ok($$select public.ride_create_family('Família sem meio',1000,null,gen_random_uuid())$$,'P0001','invalid_input','família sem meio de pagamento é recusada');
+select tests.clear_authentication();
+select is((select monthly_limit_cents from private.ride_accounts where id=pg_temp.u('fam')),pg_temp.n('limit10'),'a recusa mantém o limite autorizado');
 select tests.authenticate_as('provider_a');
 select throws_ok($$select public.ride_quote_sponsored(gen_random_uuid(),null,pg_temp.trip(),pg_temp.u('m_a'))$$,'P0001','ride_limit_exceeded','o limite da pessoa é respeitado');
 select is((public.ride_my_accounts()->0->>'member_limit_cents')::int,pg_temp.n('x'),'a pessoa vê o próprio limite');
@@ -228,6 +247,17 @@ select tests.authenticate_as('client_b');
 select throws_ok($$select public.ride_quote_sponsored(gen_random_uuid(),null,pg_temp.trip(),pg_temp.u('m_b'))$$,'P0001','ride_feature_disabled','praça sem habilitação fecha o perfil familiar');
 select tests.clear_authentication();
 update private.ride_party_rules set enabled=true where environment='simulation' and capability='family' and area='Jabaquara';
+-- O portão fechado entre a cotação e o aceite também barra a corrida paga pela família.
+select tests.authenticate_as('client_b');
+insert into t select 'q_gate',public.ride_quote_sponsored(gen_random_uuid(),null,pg_temp.trip(),pg_temp.u('m_b'))->>'id';
+select tests.clear_authentication();
+update private.ride_party_rules set enabled=false where environment='simulation' and capability='family';
+select tests.authenticate_as('client_b');
+select throws_ok($$select public.ride_consent(pg_temp.u('q_gate'),true)$$,'P0001','ride_feature_disabled','portão fechado depois da cotação barra o aceite pago pela família');
+select tests.clear_authentication();
+select is((select count(*) from public.rides where quote_id=pg_temp.u('q_gate')),0::bigint,'com o portão fechado nenhuma corrida nasce paga pela família');
+update private.ride_party_rules set enabled=true where environment='simulation' and capability='family';
+select throws_ok($$update private.ride_accounts set monthly_limit_cents=null where id=pg_temp.u('fam')$$,'23514',null,'uma família nunca fica sem limite mensal');
 
 -- B4.3 e B4.4 · Pessoa removida perde o acesso; corridas e cobranças anteriores ficam.
 insert into t select 'legs_before',count(*)::text from public.ride_legs l join private.ride_leg_funding f on f.leg_id=l.id where f.account_id=pg_temp.u('fam');
@@ -306,6 +336,14 @@ select is(public.ride_decide_amendment(pg_temp.u('change'),true)->>'status','app
 select tests.clear_authentication();
 select ok((select fare_cents from public.ride_legs where id=pg_temp.u('leg7'))>pg_temp.n('fare7'),'a tarifa maior só vale depois do aceite da administradora');
 select is((select payer_id from public.ride_legs where id=pg_temp.u('leg7')),tests.uid('client_a'),'a alteração mantém a pagadora');
+insert into t select 'q_amend',source_quote_id::text from public.ride_legs where id=pg_temp.u('leg7');
+insert into t select 'fare_amend',fare_cents::text from public.ride_legs where id=pg_temp.u('leg7');
+select tests.authenticate_as('client_b');
+select ok(pg_temp.dash_quote(pg_temp.u('q_amend')) is not null,'quem viaja vê a cotação da alteração no painel');
+select is(pg_temp.dash_quote(pg_temp.u('q_amend'))->>'total_cents',null,'quem viaja não vê o total da cotação da alteração');
+select tests.authenticate_as('client_a');
+select is((pg_temp.dash_quote(pg_temp.u('q_amend'))->>'total_cents')::int,pg_temp.n('fare_amend'),'a pagadora vê o total da alteração');
+select tests.clear_authentication();
 select tests.authenticate_as('client_a');
 select is((pg_temp.line(public.ride_account_statement(pg_temp.u('fam'),null),pg_temp.u('leg7'))->>'fare_cents')::int,
  (public.ride_amendment_state(pg_temp.u('leg7'))->>'current_cents')::int,'o extrato passa a mostrar a tarifa alterada');

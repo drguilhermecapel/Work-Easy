@@ -4,9 +4,13 @@ import { redeemVoucher, type VoucherMethod, type VoucherRedemption } from '../..
 import { useAction } from '../safety/state';
 import { field, primary } from './shared';
 
+const METHODS: Record<VoucherMethod, string> = { pix: 'Pix', card: 'cartão' };
+
 /**
- * "Usar voucher" of a completed leg funded by a company. The payer applies the voucher in their own
- * session; what it does not cover stays on the same payment order, for the method chosen here.
+ * "Usar voucher" of a completed leg funded by a company. A voucher that covers the whole fare is
+ * already applied when the leg ends, and opening the leg's payment applies it too; here the payer
+ * reads the result or chooses the method of what the voucher does not cover. A personal charge is
+ * never prepared while the voucher is unused.
  */
 export default function UseVoucher({ legId, onChange }: { legId: string; onChange?: () => void }) {
   const action = useAction(onChange);
@@ -20,14 +24,16 @@ export default function UseVoucher({ legId, onChange }: { legId: string; onChang
         <p role="status">
           Voucher aplicado: {formatCents(result.applied_cents)}.{' '}
           {result.remainder_cents > 0
-            ? 'Diferença a seu cargo: ' + formatCents(result.remainder_cents) + '. Pague em "Formas de pagamento do trecho".'
+            ? 'Diferença a seu cargo: ' + formatCents(result.remainder_cents) + ', por ' + METHODS[result.method] +
+              '. Pague em "Formas de pagamento do trecho".'
             : 'Nada a pagar por você neste trecho.'}
         </p>
       ) : (
         <>
           <p className="text-sm text-gray-600">
-            O voucher paga a parte da empresa. Se a tarifa passar do voucher, a diferença que você aceitou na cotação
-            fica no mesmo pedido, na forma escolhida abaixo.
+            O voucher paga a parte da empresa. Quando ele cobre a tarifa inteira, já é aplicado ao fim do trecho. Se a
+            tarifa passar do voucher, a diferença que você aceitou na cotação fica no mesmo pedido, na forma escolhida
+            abaixo, e só é cobrada depois que o voucher é usado.
           </p>
           <label htmlFor={id} className="block text-sm font-medium text-gray-700">
             Forma de pagamento da diferença

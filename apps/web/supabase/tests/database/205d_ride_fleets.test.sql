@@ -400,7 +400,7 @@ select lives_ok($$select public.ride_accept_offer(pg_temp.u('leg2'),gen_random_u
 select tests.clear_authentication();
 select is((select account_id from private.ride_leg_vehicles where leg_id=pg_temp.u('leg2')),pg_temp.u('fb'),'o trecho fica ligado à frota B');
 
--- Saída da frota: a cessão do motorista termina e ele volta a dirigir como autônomo, fora do resumo da frota.
+-- Saída da frota: a cessão do motorista termina; ele só volta a dirigir como autônomo depois que a operação confere o carro próprio.
 select tests.authenticate_as('fleet_mgr_a');
 select is(public.ride_fleet_assign(pg_temp.u('v2'),tests.uid('provider_c'),'CESSAO-A5','fleet',now()-interval '1 hour',now()+interval '30 days',pg_temp.u('a5')),pg_temp.u('a5'),
  'a gestora cede o segundo veículo ao primeiro motorista');
@@ -409,10 +409,22 @@ select ok(public.ride_remove_member(pg_temp.u('fa'),tests.uid('provider_c'),pg_t
 select tests.clear_authentication();
 select is(pg_temp.status('a5'),'ended','a saída do motorista encerra a cessão que ele tinha');
 select tests.authenticate_as('rider_c');
+insert into t select 'r3x',public.ride_consent((public.ride_quote(gen_random_uuid(),null,null,pg_temp.trip())->>'id')::uuid,true)->>'ride_id';
+select tests.clear_authentication();
+insert into t select 'leg3x',id::text from public.ride_legs where ride_id=pg_temp.u('r3x');
+select ok(not pg_temp.eligible('provider_c','leg3x'),'fora da frota, o carro registrado como veículo da frota continua sem novas ofertas');
+select ok(not pg_temp.fleet_rule('provider_c','leg3x'),'sair da frota não dispensa a revisão do veículo da frota');
+select is(pg_temp.offered('provider_c','leg3x'),0::bigint,'a busca não oferece a corrida ao ex-motorista com o veículo da frota');
+select tests.authenticate_as('rider_c');
+select lives_ok($$select public.ride_transition(pg_temp.u('leg3x'),'cancelled',gen_random_uuid())$$,'quem pediu cancela a corrida sem motorista');
+select tests.clear_authentication();
+-- A operação confere o carro próprio do motorista: ele volta a dirigir como autônomo.
+update private.ride_vehicle_capacity set document_ref='PARTICULAR-C' where driver_id=tests.uid('provider_c');
+select tests.authenticate_as('rider_c');
 insert into t select 'r3',public.ride_consent((public.ride_quote(gen_random_uuid(),null,null,pg_temp.trip())->>'id')::uuid,true)->>'ride_id';
 select tests.clear_authentication();
 insert into t select 'leg3',id::text from public.ride_legs where ride_id=pg_temp.u('r3');
-select ok(pg_temp.eligible('provider_c','leg3'),'fora da frota, o motorista volta a ser elegível como autônomo');
+select ok(pg_temp.eligible('provider_c','leg3'),'com o carro próprio conferido, o motorista volta a ser elegível como autônomo');
 select tests.authenticate_as('provider_c');
 select lives_ok($$select public.ride_accept_offer(pg_temp.u('leg3'),gen_random_uuid())$$,'o ex-motorista da frota aceita uma corrida particular');
 select tests.clear_authentication();
@@ -487,7 +499,16 @@ select ok(pg_temp.fleet_rule('provider_d','leg3'),'reaberto o portão, a cessão
 -- Frota encerrada: as cessões terminam e o motorista deixa de ser tratado como motorista de frota.
 update private.ride_accounts set status='closed' where id=pg_temp.u('fa');
 select is(pg_temp.status('a2'),'ended','o encerramento da frota termina as cessões vigentes');
-select ok(pg_temp.fleet_rule('provider_d','leg3'),'sem frota ativa, o motorista volta à regra do autônomo');
+select ok(pg_temp.fleet_rule('provider_d','leg3'),'sem a frota em que dirigia, o motorista volta à regra do autônomo, mesmo com o identificador cadastrado na frota B');
+-- Uma frota não alcança quem nunca dirigiu para ela: cadastrar o identificador de um autônomo não o tira das ofertas.
+select ok(pg_temp.fleet_rule('indep_driver','leg3'),'o autônomo atende antes de outra frota cadastrar o seu identificador');
+select tests.authenticate_as('fleet_mgr_b');
+select lives_ok($$select public.ride_fleet_save_vehicle(pg_temp.u('fb'),'PARTICULAR-01','sedan','DOC-P1','APOLICE-P1','VISTORIA-P1',pg_temp.today()+60,pg_temp.today()+60,pg_temp.today()+60)$$,
+ 'a gestora da frota B cadastra um identificador igual ao do carro do autônomo');
+select tests.clear_authentication();
+select ok(pg_temp.fleet_rule('indep_driver','leg3'),'o cadastro de outra frota não tira o autônomo das ofertas');
+update private.ride_fleet_vehicles set status='retired' where id=pg_temp.u('vb0');
+select ok(pg_temp.fleet_rule('provider_d','leg3'),'sem frota ativa com o veículo, o motorista segue na regra do autônomo');
 update private.ride_network set module_enabled=false where environment='simulation';
 select tests.authenticate_as('provider_b');
 select throws_ok($$select public.ride_create_fleet('Frota desligada',gen_random_uuid())$$,'P0001','ride_feature_disabled','módulo desligado recusa abrir frota');

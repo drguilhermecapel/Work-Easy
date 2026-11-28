@@ -4,7 +4,7 @@ import ErrorAlert from '../../ErrorAlert';
 import { formatDateBR } from '../../../lib/timezone';
 import { parties, type AgeBand, type Dependent, type PartyAccount } from '../../../services/rideParties';
 import { label as alertName, useAction, useSafetyPoll } from '../safety/state';
-import { banner, card, field, primary, secondary } from './common';
+import { ConfirmAction, banner, card, field, primary, secondary } from './common';
 import { legStatus, until } from './state';
 
 const BANDS: Record<AgeBand, string> = { '13-15': '13 a 15 anos', '16-17': '16 ou 17 anos' };
@@ -91,6 +91,30 @@ export function GuardianWatch({ leg, label }: { leg: string; label?: string }) {
       </button>
       {open && <WatchPanel leg={leg} />}
     </section>
+  );
+}
+
+/** The guardian removes the dependent's record whenever no trip with them is under way. */
+function Withdraw({ dependent, onChange }: { dependent: Dependent; onChange: () => void }) {
+  const action = useAction(onChange);
+  return (
+    <div>
+      <ConfirmAction
+        label={`Retirar o cadastro de ${dependent.label}`}
+        confirmLabel="Confirmar retirada do cadastro"
+        busy={action.busy}
+        onConfirm={() =>
+          action.run('withdraw:' + dependent.id, async () => {
+            await parties.withdrawDependent(dependent.id);
+            return 'Cadastro retirado. O nome, a faixa etária e as viagens ligadas ao dependente deixam de ficar guardados.';
+          })
+        }
+      >
+        O cadastro de {dependent.label} e as ligações com cotações e viagens são apagados agora. Para uma nova viagem, será
+        preciso cadastrar de novo e esperar a conferência da operação.
+      </ConfirmAction>
+      {action.message}
+    </div>
   );
 }
 
@@ -208,6 +232,7 @@ export default function DependentPanel({
                 <GuardianWatch leg={leg.leg_id} label={dependent.label} />
               </div>
             ))}
+            {!active.length && <Withdraw dependent={dependent} onChange={onChange} />}
           </article>
         );
       })}

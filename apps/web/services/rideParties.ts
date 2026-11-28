@@ -149,7 +149,8 @@ export interface IssuedInvite {
 }
 export interface RiderInviteView {
   id: string;
-  status: 'pending' | 'accepted' | 'declined' | 'expired' | 'revoked';
+  /** 'reprice': the price went above what the sponsor authorized when the rider accepted; the invite closed. */
+  status: 'pending' | 'accepted' | 'declined' | 'expired' | 'revoked' | 'reprice';
   /** Areas only; empty once the invite is closed. */
   legs: { seq: number; origin: string; destination: string; pickup_at: string | null }[];
   scheduled_at: string | null;
@@ -160,7 +161,8 @@ export interface RiderInviteView {
   support: { channel: 'email' | 'phone'; address: string; team: string; on_duty: boolean } | null;
 }
 export interface RiderInviteAnswer {
-  status: 'accepted' | 'declined';
+  /** 'reprice': nothing was requested nor charged, and the invite is closed. */
+  status: 'accepted' | 'declined' | 'reprice';
   quote_id: string | null;
   ride_id: string | null;
 }
@@ -407,6 +409,9 @@ export const parties = {
         p_key: key,
       }),
     ),
+  /** The guardian removes the dependent's record; refused with ride_dependent_in_trip during a trip. */
+  withdrawDependent: async (dependent: string) =>
+    unwrap<boolean>(await db().rpc('ride_withdraw_dependent', { p_dependent: dependent })),
   guardianWatch: async (leg: string): Promise<GuardianWatch> => {
     const data = unwrap<GuardianWatch>(await db().rpc('ride_guardian_watch', { p_leg: leg }));
     return { ...data, alerts: list(data.alerts) };

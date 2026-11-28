@@ -30,6 +30,7 @@ const STATUS: Record<string, string> = {
   declined: 'Recusado',
   expired: 'Expirado',
   revoked: 'Revogado',
+  reprice: 'Encerrado · o preço passou do valor autorizado; cote de novo e envie outro convite',
 };
 
 /** "Pedir para outra pessoa" on the caller's own awaiting quote: turns the quote into a single-use invite. */

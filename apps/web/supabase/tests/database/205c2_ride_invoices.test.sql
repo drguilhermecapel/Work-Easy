@@ -6,6 +6,15 @@
 begin;
 select no_plan();
 select tests.setup_fixture();
+-- Runs one expression and answers its value, or {"error": code} when it raises, so a refused call is a failed assertion and not an aborted file.
+create function pg_temp.attempt(p_sql text) returns jsonb language plpgsql as $f$
+declare r jsonb;
+begin
+ execute 'select to_jsonb(('||p_sql||'))' into r;
+ return r;
+exception when others then return jsonb_build_object('error',sqlerrm);
+end $f$;
+grant execute on function pg_temp.attempt(text) to authenticated,anon,service_role;
 update private.ride_network set module_enabled=true,quote_enabled=true,dispatch_enabled=true where environment='simulation';
 create temp table t(k text primary key,v text not null);
 grant select,insert on t to authenticated,anon;
@@ -311,6 +320,17 @@ select results_eq($$select status,credit_cents,decided_by,raised_by,reason from 
 select is((select count(*) from public.audit_log where action='ride.invoice_dispute'),2::bigint,'cada decisão fica na auditoria uma vez');
 select is((select count(*)::text from private.ride_invoice_lines where invoice_id=pg_temp.u('k_m')),pg_temp.g('count_m'),'a decisão não mexe na fatura contestada');
 select is((select count(*) from private.ride_invoice_lines where kind='adjustment'),0::bigint,'o crédito aceito espera o fechamento seguinte');
+-- O crédito aceito e um estorno posterior do mesmo pedido não devolvem os mesmos centavos duas vezes.
+select tests.authenticate_as('client_b');
+insert into t select 'case_late',public.ride_request_order_review(pg_temp.u('o_1'),100,'Mesmo motivo da contestação',gen_random_uuid())::text;
+select tests.authenticate_as('admin');
+select is(public.ride_decide_order_review(pg_temp.u('case_late'),true,'Pedido conferido no ensaio'),'approved','a operação aprova o pedido de estorno do mesmo pedido');
+select throws_ok($$select public.ride_refund_order_source(pg_temp.u('case_late'),'benefit',0,'ENSAIO-205C2-B')$$,'P0001','ride_financial_state',
+ 'o estorno pela verba da empresa não devolve centavos que a contestação aceita já creditou');
+select is(pg_temp.attempt($$public.ride_decide_order_review(pg_temp.u('case_late'),false,'Crédito já concedido na fatura')$$),to_jsonb('declined'::text),'a operação retira a aprovação que nenhuma fonte paga');
+select tests.clear_authentication();
+select results_eq($$select applied_cents,restored_cents from private.ride_benefit_uses where order_id=pg_temp.u('o_1')$$,$$select pg_temp.n('x'),400$$,
+ 'a verba da empresa não recebe de volta o que a fatura já creditou');
 
 -- B9.2 · Estorno liquidado em M+1: linha negativa só em M+1; as linhas de M ficam idênticas depois do fechamento de M+1.
 insert into t select 'frozen_m',pg_temp.frozen('k_m');
